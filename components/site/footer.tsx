@@ -1,3 +1,4 @@
+import { type Locale, localePath } from '@/lib/i18n'
 import { occasions } from '@/lib/occasions'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { Aperture } from 'lucide-react'
@@ -5,7 +6,7 @@ import Link from 'next/link'
 
 interface FooterColumn {
   heading: string
-  links: { label: string; href: string }[]
+  links: { label: string; href: string; external?: boolean }[]
 }
 
 /**
@@ -16,6 +17,10 @@ interface FooterColumn {
  * Homepage anchors are absolute (`/#faq`, not `#faq`) because the footer also
  * renders on /arak, /rolunk and the rest, where a bare fragment points at
  * nothing.
+ *
+ * Every href is written locale-relative and prefixed at render. The one
+ * exception is `/admin/login`, which is flagged `external` here: the admin area
+ * sits outside the locale tree, and `proxy.ts` guards it by that exact path.
  */
 const columns: FooterColumn[] = [
   {
@@ -41,7 +46,7 @@ const columns: FooterColumn[] = [
     links: [
       { label: 'Gyakori kérdések', href: '/#faq' },
       { label: 'Kapcsolat', href: '/kapcsolat' },
-      { label: 'Esemény létrehozása', href: '/admin/login' },
+      { label: 'Esemény létrehozása', href: '/admin/login', external: true },
     ],
   },
   {
@@ -55,7 +60,7 @@ const columns: FooterColumn[] = [
   },
 ]
 
-export function Footer() {
+export function Footer({ locale }: { locale: Locale }) {
   return (
     <footer className="relative px-4 pt-16 pb-10 sm:px-6">
       <div className="mx-auto max-w-6xl">
@@ -63,7 +68,7 @@ export function Footer() {
           <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
             <div className="max-w-xs">
               <Link
-                href="/"
+                href={localePath(locale, '/')}
                 className="flex items-center gap-2.5"
                 aria-label="OurFilm — vissza a főoldalra"
               >
@@ -102,7 +107,11 @@ export function Footer() {
                     {column.links.map((link) => (
                       <li key={link.href}>
                         <Link
-                          href={link.href}
+                          href={
+                            link.external
+                              ? link.href
+                              : localePath(locale, link.href)
+                          }
                           className="text-sm text-foreground/80 transition-colors hover:text-foreground"
                         >
                           {link.label}

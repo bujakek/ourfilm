@@ -1,6 +1,7 @@
 import { QrCode } from 'lucide-react'
 import Image from 'next/image'
 import { Reveal } from './reveal'
+import Link from 'next/link'
 
 const floatingPhotos = [
   {
@@ -78,12 +79,12 @@ export function FinalCta() {
                 vendégeid meséljék el a napot.
               </p>
               <div className="mt-9 flex justify-center">
-                <a
+                <Link
                   href="/admin/login"
                   className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
                 >
                   Esemény létrehozása — ingyen
-                </a>
+                </Link>
               </div>
               <p className="mt-5 text-sm text-muted-foreground">
                 Bankkártya nélkül indulhatsz. Percek alatt kész.

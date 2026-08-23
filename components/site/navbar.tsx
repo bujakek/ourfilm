@@ -1,5 +1,6 @@
 'use client'
 
+import { type Locale, localePath } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { Aperture, Menu, X } from 'lucide-react'
 import Link from 'next/link'
@@ -8,7 +9,10 @@ import { useEffect, useState } from 'react'
 /**
  * Absolute fragments (`/#faq`, not `#faq`): the navbar renders on /arak,
  * /rolunk and the other standalone pages too, where a bare fragment has no
- * target to scroll to.
+ * target to scroll to. They are locale-relative now, so the target is the
+ * homepage of the language the reader is already in.
+ *
+ * The ids themselves stay English — an anchor ends up in the address bar.
  */
 const navLinks = [
   { label: 'Hogyan működik', href: '/#how-it-works' },
@@ -17,7 +21,7 @@ const navLinks = [
   { label: 'GYIK', href: '/#faq' },
 ]
 
-export function Navbar() {
+export function Navbar({ locale }: { locale: Locale }) {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -47,7 +51,7 @@ export function Navbar() {
         aria-label="Fő navigáció"
       >
         <Link
-          href="/"
+          href={localePath(locale, '/')}
           className="flex shrink-0 items-center gap-2"
           aria-label="OurFilm — vissza a főoldalra"
         >
@@ -72,7 +76,7 @@ export function Navbar() {
           {navLinks.map((link) => (
             <li key={link.href}>
               <Link
-                href={link.href}
+                href={localePath(locale, link.href)}
                 className={cn(
                   'rounded-full text-foreground/80 transition-all duration-200 hover:text-foreground',
                   scrolled ? 'px-2.5 py-1.5 text-[13px]' : 'px-3 py-2 text-sm',
@@ -126,7 +130,7 @@ export function Navbar() {
           {navLinks.map((link) => (
             <Link
               key={link.href}
-              href={link.href}
+              href={localePath(locale, link.href)}
               onClick={() => setOpen(false)}
               className="rounded-2xl px-5 py-4 text-lg font-medium text-foreground/90 transition-colors hover:bg-white/5"
             >

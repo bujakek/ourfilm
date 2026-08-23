@@ -3,6 +3,7 @@
 import { BackgroundGlow } from '@/components/site/background-glow'
 import Link from 'next/link'
 import { useEffect } from 'react'
+import { defaultLocale, localePath } from '@/lib/i18n'
 
 export default function Error({
   error,
@@ -38,7 +39,7 @@ export default function Error({
             Próbáld újra
           </button>
           <Link
-            href="/"
+            href={localePath(defaultLocale, '/')}
             className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"
           >
             Vissza a főoldalra

@@ -1,3 +1,4 @@
+import { Comparison, Cta, Faq } from '@/components/blog/mdx-blocks'
 import type { MDXComponents } from 'mdx/types'
 import Link from 'next/link'
 
@@ -71,6 +72,42 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       )
     },
     hr: () => <hr className="mt-12 border-border" />,
+    // GFM tables. Wrapped rather than styled alone: a table with four
+    // columns does not fit 390px, and the page body must never be what
+    // scrolls sideways.
+    table: ({ children }) => (
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full border-collapse text-sm">{children}</table>
+      </div>
+    ),
+    th: ({ children }) => (
+      <th className="border-b border-border px-4 py-3 text-left font-semibold">
+        {children}
+      </th>
+    ),
+    td: ({ children }) => (
+      <td className="border-b border-border px-4 py-3 align-top text-muted-foreground">
+        {children}
+      </td>
+    ),
+    // Deliberately a plain <img>, not next/image: markdown carries no
+    // dimensions, and next/image without them means either `fill` plus a sized
+    // wrapper or a guessed aspect ratio that crops someone's photo. An author
+    // who wants an optimised hero can import <Image> in the MDX itself.
+    img: ({ src, alt }) => (
+      // eslint-disable-next-line @next/next/no-img-element -- see above
+      <img
+        src={typeof src === 'string' ? src : ''}
+        alt={alt ?? ''}
+        loading="lazy"
+        decoding="async"
+        className="mt-6 w-full rounded-2xl"
+      />
+    ),
+    // Available in every post without an import line.
+    Cta,
+    Faq,
+    Comparison,
     ...components,
   }
 }

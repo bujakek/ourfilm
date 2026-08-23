@@ -1,9 +1,11 @@
+import { getPosts, getTranslations } from '@/lib/blog/posts'
+import { type Locale, localePath, locales } from '@/lib/i18n'
 import { OCCASIONS_ARE_DRAFT, occasions } from '@/lib/occasions'
-import { SITE_URL } from '@/lib/site'
+import { canonicalUrl, languageAlternates } from '@/lib/seo'
 import type { MetadataRoute } from 'next'
 
 /**
- * Only pages we actually want indexed.
+ * Only pages we actually want indexed, in every enabled locale.
  *
  * Event routes must never appear here. A sitemap is a public, machine-readable
  * list of every URL worth visiting — publishing album addresses in one would
@@ -17,30 +19,73 @@ import type { MetadataRoute } from 'next'
  * removes its noindex and its DraftNotice.
  *
  * The occasion routes need no such bookkeeping: they come and go with
- * `OCCASIONS_ARE_DRAFT`, which is the same flag their pages read.
+ * `OCCASIONS_ARE_DRAFT`, which is the same flag their pages read. Articles
+ * need none either — they are read from `content/blog/`, so publishing a post
+ * adds its URL here and removing the file takes it away again.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const marketing: MetadataRoute.Sitemap = OCCASIONS_ARE_DRAFT
+  return locales.flatMap(localeEntries)
+}
+
+function localeEntries(locale: Locale): MetadataRoute.Sitemap {
+  const home: MetadataRoute.Sitemap = [
+    {
+      url: canonicalUrl(localePath(locale, '/')),
+      changeFrequency: 'monthly',
+      priority: 1,
+    },
+  ]
+
+  const occasionPages: MetadataRoute.Sitemap = OCCASIONS_ARE_DRAFT
     ? []
     : [
         {
-          url: `${SITE_URL}/alkalmak`,
+          url: canonicalUrl(localePath(locale, '/alkalmak')),
           changeFrequency: 'monthly',
           priority: 0.8,
         },
         ...occasions.map((occasion) => ({
-          url: `${SITE_URL}/alkalmak/${occasion.slug}`,
+          url: canonicalUrl(localePath(locale, `/alkalmak/${occasion.slug}`)),
           changeFrequency: 'monthly' as const,
           priority: 0.7,
         })),
       ]
 
-  return [
-    {
-      url: SITE_URL,
-      changeFrequency: 'monthly',
-      priority: 1,
-    },
-    ...marketing,
-  ]
+  const posts = getPosts(locale)
+
+  const blog: MetadataRoute.Sitemap =
+    posts.length === 0
+      ? []
+      : [
+          {
+            url: canonicalUrl(localePath(locale, '/blog')),
+            // The index changes whenever the newest article does.
+            lastModified: lastModifiedOf(posts[0]),
+            changeFrequency: 'weekly',
+            priority: 0.8,
+          },
+          ...posts.map((post) => {
+            const alternates = languageAlternates(getTranslations(post.id))
+            return {
+              url: canonicalUrl(post.href),
+              lastModified: lastModifiedOf(post),
+              changeFrequency: 'yearly' as const,
+              priority: 0.7,
+              // `languageAlternates` returns nothing until an article
+              // genuinely exists in two languages, so this is empty today and
+              // fills in by itself when a translation lands.
+              ...(Object.keys(alternates).length > 0
+                ? { alternates: { languages: alternates } }
+                : {}),
+            }
+          }),
+        ]
+
+  return [...home, ...occasionPages, ...blog]
+}
+
+/** Frontmatter dates are calendar days; pin to UTC so the sitemap does not
+ *  claim a different day than the article does. */
+function lastModifiedOf(post: { publishedAt: string; updatedAt?: string }) {
+  return new Date(`${post.updatedAt ?? post.publishedAt}T00:00:00Z`)
 }

@@ -1,3 +1,4 @@
+import { defaultLocale } from '@/lib/i18n'
 import { SITE_URL } from '@/lib/site'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'hu_HU',
-    url: SITE_URL,
+    url: `${SITE_URL}/${defaultLocale}`,
     siteName: 'OurFilm',
     title: 'OurFilm — Az esemény minden vendég szemével',
     description:

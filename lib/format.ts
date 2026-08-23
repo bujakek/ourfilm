@@ -1,3 +1,5 @@
+import type { KnownLocale } from '@/lib/i18n'
+
 const HU_DATE = new Intl.DateTimeFormat('hu-HU', {
   year: 'numeric',
   month: 'long',
@@ -17,6 +19,28 @@ const HU_DATE = new Intl.DateTimeFormat('hu-HU', {
 export function formatEventDate(date: string | null): string | null {
   if (!date) return null
   return HU_DATE.format(new Date(`${date}T00:00:00Z`))
+}
+
+/**
+ * Formats an article's `publishedAt` in the reader's language.
+ *
+ * Same UTC pinning as `formatEventDate` above and for the same reason: a
+ * frontmatter date is a calendar day, not an instant, so rendering it in a zone
+ * behind UTC would date every article to the day before. One formatter per
+ * locale, built once at module scope.
+ */
+const POST_DATE: Record<KnownLocale, Intl.DateTimeFormat> = {
+  hu: HU_DATE,
+  en: new Intl.DateTimeFormat('en-GB', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }),
+}
+
+export function formatPostDate(date: string, locale: KnownLocale): string {
+  return POST_DATE[locale].format(new Date(`${date}T00:00:00Z`))
 }
 
 /**

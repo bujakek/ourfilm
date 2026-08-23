@@ -7,8 +7,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Reveal } from './reveal'
+import { type Locale, localePath } from '@/lib/i18n'
 
-export function Occasions() {
+export function Occasions({ locale }: { locale: Locale }) {
   const [active, setActive] = useState(occasions[0].slug)
   const current = occasions.find((o) => o.slug === active) ?? occasions[0]
 
@@ -82,7 +83,7 @@ export function Occasions() {
                     {current.text}
                   </p>
                   <Link
-                    href={`/alkalmak/${current.slug}`}
+                    href={localePath(locale, `/alkalmak/${current.slug}`)}
                     className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-foreground"
                   >
                     {current.label} — tudj meg többet

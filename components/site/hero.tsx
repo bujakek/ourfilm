@@ -1,5 +1,6 @@
 import { QrCode, ScanLine, Star } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 const galleryImages = [
   {
@@ -40,12 +41,12 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <a
+            <Link
               href="/admin/login"
               className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
               Esemény létrehozása — ingyen
-            </a>
+            </Link>
             <a
               href="#live-demo"
               className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"

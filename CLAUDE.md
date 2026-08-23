@@ -10,7 +10,9 @@ Guests scan a QR code at an event and upload photos from their phone browser —
 
 **Phase: MVP / pilot for one real wedding.** The single question we're answering: do guests actually use the QR to upload? Nothing else matters yet. There is no validated business model — don't build for scale, don't build for a second customer.
 
-**Language:** UI copy is **Hungarian only** (`lang="hu"`). Not multi-language. Code, comments, commit messages, and this doc stay in English.
+**Language:** UI copy is **Hungarian only** today, but the routing and content
+model are locale-prefixed and English-ready — see "Locales" below. Code,
+comments, commit messages, and this doc stay in English.
 
 **Mobile-first, always.** Guests arrive almost exclusively on phones via QR or a shared link. Design and test at 390px width before anything else.
 
@@ -62,11 +64,32 @@ STRIPE_WEBHOOK_SECRET=          # whsec_…, from the endpoint or `stripe listen
 STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 ```
 
-**There is no Stripe account yet.** Everything is written and builds without
-them; `stripeIsConfigured()` is what keeps the admin UI honest in the meantime,
-and filling these in is the whole switch. Provision with
-`vercel integration add stripe` once the account exists — it is the Marketplace
-provider for `payments` and wires the production variables itself.
+**The Stripe account exists and test mode is wired up locally.** All three
+are filled in in `.env.local`, so `stripeIsConfigured()` is true and the admin
+billing card offers checkout. Nothing is set on Vercel yet, so payments are
+still off in every deployed environment — `stripeIsConfigured()` is what keeps
+that UI honest.
+
+- `STRIPE_SECRET_KEY` is an **`sk_test_`** key. Live mode is not activated.
+- `STRIPE_PRICE_EVENT` is `price_1U6nve35IJWm7mht2mSfIVDO` — a test-mode
+  one-time Price, 1290000 HUF minor units (12 900 Ft), on product
+  `prod_V71zasJ11DOF1Y` ("OurFilm - korlátlan feltöltés egy eseményhez"). That
+  product name is what a host reads on Stripe's hosted checkout page, so it is
+  copy, not a label. Live mode needs its own Price; test and live objects
+  never cross.
+
+  **List before you create.** A second product/price pair with the same
+  12 900 Ft amount was created here by accident and archived again
+  (`prod_V7oYzn5uXQ8vgH`); two active identical Prices is how an account ends
+  up billing from the wrong one. `stripe products list` first.
+
+- `STRIPE_WEBHOOK_SECRET` is the one `stripe listen --print-secret` prints for
+  **this machine**. It is per-destination: a deployed endpoint has a different
+  `whsec_`, taken from that endpoint in the dashboard. Copying this one to
+  Vercel would fail every signature check.
+
+Provision production with `vercel integration add stripe` — it is the
+Marketplace provider for `payments` and wires the production variables itself.
 
 **`vercel env pull` does not work on this project — don't reach for it.** The Vercel–Supabase integration created all 16 of its variables as _Sensitive_, which on Vercel means write-only: the value cannot be read back by the CLI, the API or the dashboard, and a pull returns the literal string `[SENSITIVE]` for every one. This is a property of the Sensitive flag, not of the environment scope, so re-scoping them to Development does not help either. Copy the three values from the Supabase dashboard instead.
 
@@ -77,7 +100,7 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
 ## Current state
 
 - **`docs/mvp-backlog.md` is the working plan** — the build order below, broken into ordered tickets with dependencies, plus four decisions that block Phase 1. Check it before starting work, and tick items off as they land.
-- **Marketing landing page** — `app/page.tsx` composing `components/site/*` (hero, stats, how-it-works, occasions, testimonials, qr-preview, live-demo, photo-quality, faq, final-cta, footer). Originally v0-generated, now the permanent homepage at `/`.
+- **Marketing landing page** — `app/[locale]/page.tsx` composing `components/site/*` (hero, stats, how-it-works, occasions, testimonials, qr-preview, live-demo, photo-quality, faq, final-cta, footer). Originally v0-generated, now the permanent homepage at `/hu`, with `/` redirecting to it.
 - `components/site/live-demo.tsx` is a **fake simulation** with hardcoded images, not a real gallery.
 - **Phases 1–5 built** (see `docs/mvp-backlog.md`): migrations applied, RLS and storage policies enforced and covered by `supabase/tests/*.py`, typed clients and query modules in `lib/`, the guest event page and gallery, the upload pipeline and queue, and the admin area. `pnpm seed` creates an event to develop against and prints its URL.
 - **Guest pages are latency-tuned; the migration may still be pending.**
@@ -95,12 +118,13 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   `pnpm types:check` if `lib/supabase/database.types.ts` looks suspect — the
   `view_path` entries there were hand-written to match the generator rather
   than regenerated.
-- **Roles and the billing schema are live; Stripe itself is not.**
+- **Roles and the billing schema are live; Stripe is live in test mode only.**
   `20260820100000_user_roles.sql` and `20260820100100_stripe_billing.sql` are
   **applied on the remote**, so the 5-photo cap is real and enforced today.
-  There is still no Stripe account, so `.env.local` has no `STRIPE_*` keys and
-  the admin billing card says payment is not switched on — a host cannot yet
-  lift the cap by paying. See Billing below.
+  Stripe is now configured **in test mode, locally only**: `.env.local` has all
+  three `STRIPE_*` keys, so a host can run a full test checkout on a dev
+  machine. No `STRIPE_*` variable is set on Vercel, so every deployed
+  environment still says payment is not switched on. See Billing below.
 
   **Check, never assume, which migrations are live.** This section claimed for
   a while that roles and billing were unpushed after they had been pushed, and
@@ -108,6 +132,18 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   deploy look like it would switch on billing as a side effect.
   `pnpm supabase migration list` compares local against remote and is the only
   answer worth trusting.
+
+- **Auth emails are branded and live in `supabase/templates/`.** Delivery is
+  Resend over SMTP, configured in the Supabase dashboard. Two files, because
+  `signInWithOtp` picks between them: `magic-link.html` goes to a returning
+  host and `confirm-signup.html` to a first-time one, so branding only one
+  leaves half of them on the Supabase default. `config.toml` points the local
+  stack at both; the linked project is updated with `pnpm emails:push --apply`,
+  which PATCHes only the four mailer fields on the Management API. **Do not run
+  `supabase config push`** — it sends this whole file, and the auth section here
+  is otherwise stock, so it would point production's magic links at `127.0.0.1`
+  and drop the Resend SMTP settings. Details in
+  `supabase/templates/README.md`.
 
 - `lib/slug.ts` holds the canonical `slugify()` — admin and the QR preview must both use it so printed QR codes never disagree.
 - `vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
@@ -170,18 +206,96 @@ prefetches a dynamic route only when the route has one.
 
 ## Routing (settled — QR codes get printed, so this is expensive to change)
 
-| Route               | Purpose                                                                 |
-| ------------------- | ----------------------------------------------------------------------- |
-| `/`                 | Marketing homepage. Permanent. Don't repurpose it.                      |
-| `/e/[slug]`         | Event page guests land on from the QR code, and where uploading happens |
-| `/e/[slug]/gallery` | Shared gallery                                                          |
-| `/admin`            | Host/admin area, Supabase Auth magic link                               |
+| Route                                                                                      | Purpose                                                                 |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `/`                                                                                        | 308 to `/hu`. Nothing renders here.                                     |
+| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                      |
+| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                  |
+| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                          |
+| `/e/[slug]`                                                                                | Event page guests land on from the QR code, and where uploading happens |
+| `/e/[slug]/gallery`                                                                        | Shared gallery                                                          |
+| `/admin`                                                                                   | Host/admin area, Supabase Auth magic link                               |
+
+**Public pages are locale-prefixed; the product is not.** `/e/`, `/admin`,
+`/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
+with the first, and `proxy.ts` guards the second by the exact path
+`/admin/:path*`. Putting a locale in front of either would silently break a
+printed code or an auth gate.
+
+Every pre-prefix URL (`/arak`, `/blog/:slug`, …) 308s to its `/hu` twin from
+`next.config.mjs`. Those redirects are spelled out one by one — a catch-all
+would swallow `/e/` and `/admin`.
 
 Plus one machine endpoint: `POST /api/stripe/webhook`, which is the only thing
 that marks a purchase paid. Under `/api/` rather than the Hungarian namespace
 because no human navigates to it and the URL is pasted into Stripe's dashboard.
 
 The `/e/` prefix is what the landing page already advertises in `qr-preview.tsx` and `how-it-works.tsx`, and it keeps the root namespace free for marketing pages.
+
+## Locales and the blog (settled)
+
+`lib/i18n.ts` holds `locales = ['hu'] as const`, and everything else is derived
+from it: URLs, `generateStaticParams`, hreflang, the sitemap, RSS. Nothing else
+enumerates languages.
+
+**Articles are MDX files in `content/blog/<locale>/`.** There is no registry to
+keep in step any more — `lib/blog/posts.ts` reads the directory, validates the
+frontmatter with zod, and everything downstream follows from that. Frontmatter
+is parsed off disk with `gray-matter` rather than imported out of the MDX,
+because `@types/mdx` cannot type named exports.
+
+**`id` is the article; `slug` is its address in one language.** They are
+separate so a Hungarian URL reads Hungarian:
+`/hu/blog/eskuvoi-foto-megosztas` and `/en/blog/wedding-photo-sharing` share
+`id: wedding-photo-sharing`. Never find a translation by swapping the locale
+segment in a URL — use `getTranslations(id)`. `related` in frontmatter lists
+**ids** for the same reason.
+
+**`content/blog/CLAUDE.md` is the authoring guide** — frontmatter contract,
+heading and link rules, the components available inside an article, Hungarian
+copy conventions, and what the build refuses. It sits next to the articles so
+it loads automatically when one is being written; read it before writing or
+editing a post rather than reconstructing the rules from here.
+
+### Adding an article
+
+1. Write `content/blog/hu/<slug>.mdx`. The filename **must** equal the `slug`
+   in its frontmatter; the build refuses otherwise.
+2. Frontmatter needs `id`, `locale`, `slug`, `title`, `description`,
+   `publishedAt` (`YYYY-MM-DD`). Optional: `updatedAt`, `author`, `image`,
+   `related`, `draft`.
+3. Start the body at `##` — the `<h1>` is rendered from `title`, and a second
+   one would be an SEO defect.
+4. That is all. The route, the index entry, the sitemap URL, the RSS item and
+   `/llms.txt` all follow from the file.
+
+`draft: true` renders in `next dev` and disappears from a production build —
+index, sitemap, RSS, related lists, and the URL itself 404s.
+
+Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`components/blog/mdx-blocks.tsx`)
+with no import line; they are injected through `mdx-components.tsx`. Markdown
+tables work via `remark-gfm`. **Remark plugins must be named as strings** in
+`next.config.mjs` — Turbopack runs the MDX pipeline in Rust and cannot accept a
+JS function.
+
+### Enabling English
+
+1. Add `'en'` to `locales` in `lib/i18n.ts`.
+2. Uncomment the `en` line in `lib/blog/mdx.ts`.
+3. Run `pnpm typecheck`. Every `Record<Locale, …>` of UI strings becomes a type
+   error listing exactly what needs translating — that is the checklist, and it
+   is the reason those maps are typed that way.
+4. Translate the marketing pages under `app/[locale]/`.
+5. **`<html lang>`.** It is fixed at `hu` in the single root layout, which is
+   correct only while Hungarian is the only locale. Making it vary means
+   splitting into two root layouts (`app/(site)/[locale]/layout.tsx` for
+   marketing, `app/(product)/layout.tsx` for `/e/` and `/admin`) and deleting
+   `app/layout.tsx`. That also forces the global 404 onto
+   `experimental.globalNotFound`, which is why it was deferred rather than done
+   up front.
+
+An `en` article already sits in `content/blog/en/` as a worked example. It is
+inert — unread and unvalidated — until step 1.
 
 ## Access model (settled)
 
@@ -213,7 +327,6 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   `setUploadDeadline`). Setting a time in the past is the supported way to
   close an album early, which is why that action does not reject one — and the
   reason a required deadline needs an edit path at all.
-
 
 - **`photos`** — `id`, `event_id`, `storage_path`, `thumb_path`, `view_path` (nullable — the ~1600px lightbox render; null on photos uploaded before it existed, so **always read it as `view_path ?? storage_path`**), `uploader_name` (nullable — optional guest nickname, remembered on their device), `hidden_at` (soft delete for moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type` (so the gallery grid reserves space and avoids layout shift), `taken_at` (EXIF capture time, read in the browser **before** the canvas re-encode destroys it; null when the file carried none — always fall back to `created_at`), `created_at`
 
@@ -288,7 +401,10 @@ Key files: `lib/stripe/*`, `lib/billing.ts`, `lib/roles.ts`,
 - Guest accounts or mandatory registration
 - Film filters
 - **Automatic** delayed reveal (timed or scheduled unveiling). The host _can_ close the gallery manually at any time via `gallery_hidden_at` — guests keep uploading, they just can't browse — and can reopen it just as easily. That manual toggle is in scope; anything that schedules or automates it is not.
-- Email notifications, multi-language
+- Email notifications
+- **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
+  actually writing and maintaining an English site is a separate decision that
+  has not been made.
 - Realtime gallery updates (Supabase Realtime) — guests refresh; the copy no longer promises live updates
 - Resumable/background uploads — manual retry only
 
