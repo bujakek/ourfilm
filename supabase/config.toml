@@ -248,6 +248,23 @@ otp_expiry = 3600
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
+# The two emails an OurFilm host can actually receive, branded to match the
+# product. Both are magic links: `signInWithOtp` sends `magic_link` to an
+# existing account and `confirmation` to a first-time one, so leaving either
+# on the Supabase default means half the hosts get a stock email.
+#
+# These entries configure the LOCAL stack (`supabase start`, read in Inbucket).
+# The linked project is configured in the dashboard — see the README next to
+# the templates before reaching for `supabase config push`, which writes this
+# whole file's auth section over the remote's.
+[auth.email.template.magic_link]
+subject = "Belépési linked az OurFilmhez"
+content_path = "./supabase/templates/magic-link.html"
+
+[auth.email.template.confirmation]
+subject = "Erősítsd meg az e-mail-címed — OurFilm"
+content_path = "./supabase/templates/confirm-signup.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true

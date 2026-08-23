@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>Belépési linked az OurFilmhez</title>
+    <style>
+      /* Only Apple Mail, iOS Mail and Thunderbird honour this block; every
+         rule that matters is also inline below. Gmail strips <style> in the
+         mobile apps, so nothing here may be load-bearing. */
+      @media only screen and (max-width: 480px) {
+        .card {
+          padding: 32px 22px !important;
+          border-radius: 22px !important;
+        }
+        .h1 {
+          font-size: 24px !important;
+        }
+        .btn a {
+          display: block !important;
+        }
+      }
+    </style>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #050505;
+      color: #f7f7f7;
+      -webkit-font-smoothing: antialiased;
+    "
+  >
+    <!-- Preheader: the grey line the inbox shows next to the subject. Kept
+         short so it is not truncated mid-word, then padded out so the client
+         cannot pull body copy in after it. -->
+    <div
+      style="
+        display: none;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        mso-hide: all;
+      "
+    >
+      Koppints a linkre, és beléptetünk. Egy órán át érvényes.
+      &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+    </div>
+
+    <table
+      role="presentation"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      width="100%"
+      style="background-color: #050505"
+    >
+      <tr>
+        <td align="center" style="padding: 40px 16px">
+          <table
+            role="presentation"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            width="100%"
+            style="max-width: 480px"
+          >
+            <!-- Wordmark -->
+            <tr>
+              <td align="center" style="padding-bottom: 24px">
+                <span
+                  style="
+                    font-family:
+                      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                      Helvetica, Arial, sans-serif;
+                    font-size: 17px;
+                    font-weight: 700;
+                    letter-spacing: -0.01em;
+                    color: #f7f7f7;
+                  "
+                  >OurFilm</span
+                >
+              </td>
+            </tr>
+
+            <!-- Card -->
+            <tr>
+              <td
+                class="card"
+                style="
+                  background-color: #0b0b0d;
+                  border: 1px solid #1c1c22;
+                  border-radius: 28px;
+                  padding: 40px 32px;
+                "
+              >
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  width="100%"
+                >
+                  <tr>
+                    <td
+                      style="
+                        font-family:
+                          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                          Helvetica, Arial, sans-serif;
+                        font-size: 11px;
+                        font-weight: 600;
+                        letter-spacing: 0.22em;
+                        color: #c3b6ff;
+                        padding-bottom: 14px;
+                      "
+                    >
+                      BELÉPÉS
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      class="h1"
+                      style="
+                        font-family:
+                          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                          Helvetica, Arial, sans-serif;
+                        font-size: 27px;
+                        line-height: 1.2;
+                        font-weight: 600;
+                        letter-spacing: -0.02em;
+                        color: #f7f7f7;
+                        padding-bottom: 14px;
+                      "
+                    >
+                      Itt a belépési linked
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      style="
+                        font-family:
+                          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                          Helvetica, Arial, sans-serif;
+                        font-size: 15px;
+                        line-height: 1.6;
+                        color: #a1a1aa;
+                        padding-bottom: 28px;
+                      "
+                    >
+                      Koppints a gombra, és beléptetünk az eseményeidhez.
+                      Jelszóra nincs szükség.
+                    </td>
+                  </tr>
+
+                  <!-- Button. Outlook on Windows renders with Word, which
+                       knows neither border-radius nor padding on an anchor,
+                       so it gets a VML pill of its own. -->
+                  <tr>
+                    <td class="btn" align="center" style="padding-bottom: 18px">
+                      <!--[if mso]>
+                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .ConfirmationURL }}" style="height:52px;v-text-anchor:middle;width:400px;" arcsize="50%" stroke="f" fillcolor="#f7f7f7">
+                          <w:anchorlock/>
+                          <center style="color:#050505;font-family:'Segoe UI',Arial,sans-serif;font-size:16px;font-weight:600;">Belépés az OurFilmbe</center>
+                        </v:roundrect>
+                      <![endif]-->
+                      <!--[if !mso]><!-- -->
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        style="
+                          display: inline-block;
+                          background-color: #f7f7f7;
+                          color: #050505;
+                          font-family:
+                            -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                            Roboto, Helvetica, Arial, sans-serif;
+                          font-size: 16px;
+                          font-weight: 600;
+                          line-height: 52px;
+                          text-align: center;
+                          text-decoration: none;
+                          padding: 0 32px;
+                          border-radius: 999px;
+                        "
+                        >Belépés az OurFilmbe</a
+                      >
+                      <!--<![endif]-->
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td
+                      align="center"
+                      style="
+                        font-family:
+                          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                          Helvetica, Arial, sans-serif;
+                        font-size: 13px;
+                        line-height: 1.6;
+                        color: #71717a;
+                        padding-bottom: 28px;
+                      "
+                    >
+                      Egy órán át érvényes, és csak egyszer használható.
+                    </td>
+                  </tr>
+
+                  <!-- Same-device note. Not a nicety: the session is redeemed
+                       with a verifier stored in the browser that asked for the
+                       link, so a link opened on another device fails. -->
+                  <tr>
+                    <td
+                      style="
+                        background-color: #111114;
+                        border: 1px solid #1c1c22;
+                        border-radius: 16px;
+                        padding: 14px 16px;
+                        font-family:
+                          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                          Helvetica, Arial, sans-serif;
+                        font-size: 13px;
+                        line-height: 1.6;
+                        color: #a1a1aa;
+                      "
+                    >
+                      Ugyanazon az eszközön nyisd meg, ahol a linket kérted.
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding: 24px 0 0">
+                      <div
+                        style="
+                          font-family:
+                            -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                            Roboto, Helvetica, Arial, sans-serif;
+                          font-size: 12px;
+                          line-height: 1.6;
+                          color: #71717a;
+                          padding-bottom: 8px;
+                        "
+                      >
+                        Ha a gomb nem működik, másold be ezt a címet a
+                        böngésződbe:
+                      </div>
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        style="
+                          font-family:
+                            ui-monospace, SFMono-Regular, Menlo, Consolas,
+                            monospace;
+                          font-size: 12px;
+                          line-height: 1.5;
+                          color: #c3b6ff;
+                          text-decoration: none;
+                          word-break: break-all;
+                        "
+                        >{{ .ConfirmationURL }}</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td align="center" style="padding: 24px 8px 0">
+                <div
+                  style="
+                    font-family:
+                      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                      Helvetica, Arial, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: #71717a;
+                  "
+                >
+                  Ha nem te kérted, hagyd figyelmen kívül ezt a levelet — a link
+                  nélkül senki nem tud belépni.
+                </div>
+                <div
+                  style="
+                    font-family:
+                      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                      Helvetica, Arial, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: #52525b;
+                    padding-top: 10px;
+                  "
+                >
+                  OurFilm — közös fotóalbum eseményekre · ourfilm.app
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
