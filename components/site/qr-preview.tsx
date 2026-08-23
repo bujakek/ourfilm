@@ -30,9 +30,7 @@ export function QrPreview() {
               Nézd meg, mit olvasnak be a vendégeid
             </h2>
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              Írd be az esemény nevét, és azonnal látod a kártyát, ami az
-              asztalokra kerül. A vendégek ezt olvassák be, és már tölthetik is
-              fel a képeiket.
+              Írd be az esemény nevét, és nézd meg a QR-kártya előnézetét.
             </p>
 
             <div className="mt-8 max-w-md">
@@ -58,9 +56,8 @@ export function QrPreview() {
                 </code>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                A valódi eseményedhez nyomtatható kártyát és megosztható linket
-                is kapsz. A link végén lévő egyedi kód gondoskodik arról, hogy
-                csak a meghívottak találják meg az albumot.
+                A saját eseményedhez egyedi QR-kódot és megosztható
+                meghívólinket kapsz.
               </p>
             </div>
           </Reveal>
@@ -89,8 +86,8 @@ export function QrPreview() {
                 </div>
 
                 <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
-                  Olvasd be, és töltsd fel a képeidet — app és regisztráció
-                  nélkül.
+                  Olvasd be a QR-kódot, és töltsd fel a képeidet — app és
+                  regisztráció nélkül.
                 </p>
                 <div className="mt-6 border-t border-black/10 pt-4">
                   <p className="truncate text-xs font-medium text-black/50">

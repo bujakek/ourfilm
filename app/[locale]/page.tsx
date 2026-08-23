@@ -11,8 +11,6 @@ import { Navbar } from '@/components/site/navbar'
 import { Occasions } from '@/components/site/occasions'
 import { PhotoQuality } from '@/components/site/photo-quality'
 import { QrPreview } from '@/components/site/qr-preview'
-import { Stats } from '@/components/site/stats'
-import { Testimonials } from '@/components/site/testimonials'
 import { isLocale } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
@@ -34,10 +32,13 @@ export default async function Page({ params }: Props) {
       <BackgroundGlow />
       <Navbar locale={locale} />
       <main className="relative z-10">
+        {/* <Stats /> and <Testimonials /> are deliberately not rendered.
+            Both only ever held invented numbers and invented quotes, and the
+            pilot has no verified ones to put in their place. The components
+            stay, take their content as props, and can come back the day there
+            is something true to show. */}
         <Hero />
-        <Stats />
         <Benefits />
-        <Testimonials />
         <Occasions locale={locale} />
         <LiveDemo />
         <HowItWorks />

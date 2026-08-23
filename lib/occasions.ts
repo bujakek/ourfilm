@@ -1,4 +1,4 @@
-import { Cake, GlassWater, Heart, Plane, Sun } from 'lucide-react'
+import { Cake, GlassWater, Heart, Plane } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 /**
@@ -46,7 +46,7 @@ export const occasions: Occasion[] = [
     image: '/images/wedding-dance.webp',
     alt: 'Esküvői első tánc',
     title: 'Az egész nap, ahogy a vendégek látták',
-    text: 'A fotós képei mellé ott lesz minden ölelés, könnycsepp és éjszakai táncparkett-pillanat is.',
+    text: 'A fotós képei mellett az ölelések, nevetések és késő esti pillanatok is megmaradnak — úgy, ahogy a vendégeid látták őket.',
     sections: [
       {
         heading: 'Miért pont esküvőre',
@@ -112,25 +112,6 @@ export const occasions: Occasion[] = [
       {
         heading: 'Hova tedd a QR-kódot',
         body: 'TODO: bárpult, mosdó ajtaja, vetítés. Gyakorlati tippek.',
-      },
-    ],
-  },
-  {
-    slug: 'hetkoznapok',
-    label: 'Hétköznapok',
-    icon: Sun,
-    image: '/images/everyday.webp',
-    alt: 'Hétköznapi pillanat',
-    title: 'A kis pillanatok, amikből az élet áll',
-    text: 'Egy közös ebéd vagy egy vasárnap délután — a legszebb képek nem mindig a nagy alkalmakon készülnek.',
-    sections: [
-      {
-        heading: 'Miért pont hétköznapra',
-        body: 'TODO: nem kell alkalom ahhoz, hogy egy család közös albumot vezessen.',
-      },
-      {
-        heading: 'Hogyan indítsd el',
-        body: 'TODO: hosszabb feltöltési ablak, visszatérő album. Gyakorlati tippek.',
       },
     ],
   },

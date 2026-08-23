@@ -5,34 +5,48 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Reveal } from './reveal'
 
+/**
+ * Every answer here is checked against what the product actually does, because
+ * this is the page a host reads before deciding to trust it with a wedding.
+ *
+ * Two are worth the note:
+ *
+ * - **Quality.** `lib/image.ts` re-encodes every upload in the browser to a
+ *   4096px JPEG at q0.92 before it leaves the phone. That is a large,
+ *   print-usable render — it is not the untouched original file, and EXIF does
+ *   not survive the canvas. So: "nagy felbontású", never "eredeti minőség".
+ * - **Visibility.** The album has no gate; anyone holding the link is in, and
+ *   `gallery_hidden_at` is what decides whether guests may browse at all. The
+ *   answer says both, and never says "biztonságos" or "jelszóval védett".
+ */
 const faqs = [
   {
     q: 'Kell a vendégeknek alkalmazást letölteniük?',
-    a: 'Nem. A QR-kód beolvasása után a telefon böngészője megnyitja a feltöltő oldalt, és onnan azonnal küldhetik a képeket.',
+    a: 'Nem. A QR-kód beolvasása után az esemény a telefon böngészőjében nyílik meg, és a vendégek onnan tölthetik fel a képeiket.',
   },
   {
     q: 'Regisztrálniuk kell a vendégeknek?',
-    a: 'Fiókot nem kell létrehozniuk, és e-mail-címet sem kérünk. Egyetlen dolgot kérünk tőlük: a nevüket, hogy a képeik alatt lássátok, kitől érkeztek.',
+    a: 'Nem kell fiókot létrehozniuk vagy e-mail-címet megadniuk. A nevüket kérjük el, hogy a képek mellett látható legyen, kitől érkeztek.',
   },
   {
     q: 'Ki láthatja a feltöltött képeket?',
-    a: 'Az albumot csak azok érhetik el, akik megkapták az esemény QR-kódját vagy meghívólinkjét. Az album nem nyilvános, és nem jelenik meg a keresőkben.',
+    a: 'A házigazda minden feltöltött képet lát. A vendégek akkor nyithatják meg a közös albumot, ha a házigazda engedélyezte az album megjelenítését, és rendelkeznek az esemény linkjével vagy QR-kódjával.',
   },
   {
-    q: 'Milyen minőségben érkeznek a fotók?',
-    a: 'Nyomtatható minőségben. Nagyíthatók, vághatók, és szépen mutatnak papíron — nem úgy, mint a csevegőappokban.',
+    q: 'Milyen minőségben érkeznek meg a fotók?',
+    a: 'A telefon a feltöltés előtt egyetlen nagy felbontású változatot készít a képből: legfeljebb 4096 képpont a hosszabbik oldalon, magas JPEG-minőséggel. Így a fotó nagyítható, vágható és nyomtatásra is használható, de nem a telefonon lévő eredeti fájl kerül fel — az átalakítás során a képadatok egy része, például a felvétel technikai adatai, elvesznek.',
   },
   {
     q: 'Meddig érhetők el a képek?',
-    a: 'A galéria az esemény után is elérhető marad, így a házigazda ráérősen letöltheti az egész albumot. Az esemény tartalmát a házigazda bármikor véglegesen törölheti.',
+    a: 'A képek az esemény albumában maradnak, amíg a házigazda nem törli az eseményt. A később bevezetett megőrzési határidőkről előre tájékoztatjuk a házigazdát.',
   },
   {
-    q: 'Moderálhatom, mi kerül az albumba?',
+    q: 'Moderálhatom, mi jelenjen meg az albumban?',
     a: 'Igen. Házigazdaként elrejtheted vagy törölheted a nem kívánt képeket.',
   },
   {
-    q: 'Hogyan kezelitek az adatokat?',
-    a: 'A fotókat kizárólag az album működtetéséhez tároljuk. Nem adjuk el őket, és nem használjuk fel hirdetési célokra. A házigazda bármikor véglegesen törölheti az eseményt és annak tartalmát.',
+    q: 'Hogyan kezelitek a feltöltött fotókat?',
+    a: 'A fotókat az eseményalbum működtetéséhez tároljuk. Nem értékesítjük őket, és nem használjuk fel hirdetési célokra. A házigazda az eseményt és annak tartalmát véglegesen törölheti.',
   },
 ]
 

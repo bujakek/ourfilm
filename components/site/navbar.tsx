@@ -17,7 +17,6 @@ import { useEffect, useState } from 'react'
 const navLinks = [
   { label: 'Hogyan működik', href: '/#how-it-works' },
   { label: 'Alkalmak', href: '/#occasions' },
-  { label: 'Vélemények', href: '/#testimonials' },
   { label: 'GYIK', href: '/#faq' },
 ]
 

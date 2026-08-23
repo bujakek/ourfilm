@@ -86,17 +86,24 @@ export default async function EventPage({ params }: Props) {
           {subline ? (
             <p className="mt-3 text-sm text-muted-foreground">{subline}</p>
           ) : null}
+          {/* Not "hogy mindenki lássa": the host can close the gallery to
+              guests at any time, so the promise this line can keep is that the
+              people whose event it is will see the photo. */}
           <p className="mx-auto mt-5 max-w-sm leading-relaxed text-pretty text-muted-foreground">
             {canUpload
-              ? 'Töltsd fel a képeidet, hogy mindenki lássa, milyen volt a te szemeddel. App és regisztráció nélkül.'
-              : 'A feltöltés lezárult, de az album megmarad — nézd meg, mi gyűlt össze.'}
+              ? 'Töltsd fel a képeidet, hogy az ünnepeltek azokat a pillanatokat is lássák, amelyeket te örökítettél meg. App és regisztráció nélkül.'
+              : 'A feltöltés lezárult, de a közös album megmarad — nézd meg, mi gyűlt össze.'}
           </p>
         </header>
 
         {/* Social proof, and a signal that the album is alive. Hidden at zero:
           "0 kép" reads as broken rather than as an empty album waiting for
           you. The contributor count is suppressed until at least one guest
-          has given a name — see GuestEvent for why it is a floor. */}
+          has given a name — see GuestEvent for why it is a floor.
+
+          "közreműködő", not "vendég": this counts the guests who have
+          uploaded something, not the guests at the event, and the two numbers
+          are wildly different at a wedding. */}
         {summary && summary.photo_count > 0 ? (
           <div className="glass mt-6 flex items-stretch justify-center divide-x divide-border rounded-2xl py-3">
             <div className="px-7 text-center">
@@ -110,7 +117,7 @@ export default async function EventPage({ params }: Props) {
                 <p className="text-xl font-semibold tracking-tight">
                   {summary.contributor_count}
                 </p>
-                <p className="text-xs text-muted-foreground">vendég</p>
+                <p className="text-xs text-muted-foreground">közreműködő</p>
               </div>
             ) : null}
           </div>
@@ -130,8 +137,8 @@ export default async function EventPage({ params }: Props) {
             />
           ) : (
             <p className="glass flex min-h-14 items-center justify-center gap-2 rounded-full px-6 text-center text-sm text-muted-foreground">
-              <Lock className="size-4 shrink-0" strokeWidth={1.8} />A feltöltés
-              lezárult
+              <Lock className="size-4 shrink-0" strokeWidth={1.8} />A feltöltési
+              határidő lejárt
             </p>
           )}
 
@@ -148,7 +155,7 @@ export default async function EventPage({ params }: Props) {
               className="glass glass-hover inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-7 text-base font-semibold text-foreground"
             >
               <Images className="size-5" strokeWidth={1.8} />
-              Közös album megtekintése
+              Közös album megnyitása
             </Link>
           )}
         </div>

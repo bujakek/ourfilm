@@ -31,12 +31,13 @@ export function DemoAlbum({ preview, url, href }: DemoAlbumProps) {
             PRÓBÁLD KI
           </span>
           <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Nyiss meg egy igazi közös albumot
+            Nézd meg, milyen egyszerű vendégként
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Ez nem mockup: egy valódi album, ugyanazon a címen és ugyanazzal a
-            galériával, amit a vendégeid is látnak. Olvasd be a kódot a
-            telefonoddal, vagy nyisd meg egy koppintással.
+            Ez a mi bemutató albumunk, nem egy ügyfél eseménye — de ugyanazon a
+            címen és ugyanazzal a felülettel nyílik meg, amit a vendégeid is
+            látnak. Olvasd be a kódot a telefonoddal, vagy nyisd meg egy
+            koppintással.
           </p>
         </Reveal>
 
@@ -99,14 +100,14 @@ export function DemoAlbum({ preview, url, href }: DemoAlbumProps) {
                 <p className="text-sm leading-relaxed text-pretty text-muted-foreground sm:mt-5">
                   Pontosan ezt látja egy vendég, amikor beolvassa a kártyát az
                   asztalon. A bemutató album csak megtekinthető — a sajátodba a
-                  vendégeid tölthetnek fel.
+                  vendégeid app és regisztráció nélkül tölthetnek fel.
                 </p>
 
                 <Link
                   href={href}
                   className="btn-shine mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] sm:mt-auto"
                 >
-                  Album megnyitása
+                  Közös album megnyitása
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               </div>

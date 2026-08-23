@@ -1,4 +1,4 @@
-import { QrCode, ScanLine, Star } from 'lucide-react'
+import { QrCode, ScanLine } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -23,21 +23,19 @@ export function Hero() {
         <div className="reveal is-visible max-w-xl">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-muted-foreground">
             <span className="size-1.5 rounded-full bg-accent" />
-            QR-kódos közös fotóalbum
+            QR-kódos közös fotóalbum eseményekhez
           </span>
 
           <h1 className="mt-6 text-[2rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl xl:text-[3.5rem]">
-            <span className="text-gradient">Nincs app.</span>
+            <span className="text-gradient">Minden vendég szemszöge.</span>
             <br />
-            Nincs regisztráció.
-            <br />
-            <span className="text-gradient-accent">Csak a fotók.</span>
+            <span className="text-gradient-accent">Egy közös album.</span>
           </h1>
 
           <p className="mt-7 max-w-lg text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            A vendégek beolvassák a QR-kódot, és a telefonjuk böngészőjéből
-            azonnal feltöltik a képeiket — minden fotó egyetlen közös galériába
-            érkezik.
+            A vendégeid beolvassák a QR-kódot, és a telefonjuk böngészőjéből
+            azonnal feltöltik a képeiket. Nem kell alkalmazást letölteniük vagy
+            regisztrálniuk.
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -45,27 +43,22 @@ export function Hero() {
               href="/admin/login"
               className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              Esemény létrehozása — ingyen
+              Ingyenes esemény létrehozása
             </Link>
             <a
               href="#live-demo"
               className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"
             >
-              Nézd meg, hogyan működik
+              Nézd meg működés közben
             </a>
           </div>
 
-          <div className="mt-10 flex items-center gap-3">
-            <div className="flex" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="size-4 fill-accent text-accent" />
-              ))}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">4,9 / 5</span> · 2
-              800+ értékelés alapján
-            </p>
-          </div>
+          {/* True today: creating an event, the QR-kód and the first five
+              photos cost nothing, and checkout is only ever reached from the
+              host's own settings page. */}
+          <p className="mt-10 text-sm text-muted-foreground">
+            Bankkártya nélkül kipróbálható.
+          </p>
         </div>
 
         {/* Visual */}
@@ -81,7 +74,7 @@ export function Hero() {
                         Anna &amp; Péter
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        Közös album · 342 fotó
+                        Közös album
                       </p>
                     </div>
                     <span className="size-6 rounded-full bg-gradient-to-br from-accent to-accent-blue" />

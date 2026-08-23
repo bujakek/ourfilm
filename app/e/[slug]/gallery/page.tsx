@@ -92,8 +92,8 @@ export default async function GalleryPage({ params }: Props) {
           </span>
           <p className="text-lg font-semibold">A közös album most rejtve van</p>
           <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground">
-            A házigazda egyelőre elrejtette az albumot. A feltöltött képek
-            megvannak — akkor lesznek láthatók, amikor megnyitja.
+            A házigazda egyelőre elrejtette a közös albumot. A feltöltött képek
+            megvannak — akkor lesznek láthatók, amikor újra megnyitja.
           </p>
         </div>
       ) : photos.length === 0 ? (
@@ -101,10 +101,10 @@ export default async function GalleryPage({ params }: Props) {
           <span className="glass flex size-14 items-center justify-center rounded-full">
             <ImagePlus className="size-6 text-accent" strokeWidth={1.6} />
           </span>
-          <p className="text-lg font-semibold">Még nincs egyetlen kép sem</p>
+          <p className="text-lg font-semibold">Még nincs feltöltött kép</p>
           <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground">
             {canUpload
-              ? 'Legyél te az első! Töltsd fel a képeidet, és mindenki láthatja őket itt.'
+              ? 'Legyél te az első — töltsd fel a képeidet, és itt gyűlnek majd a többiekéivel együtt.'
               : 'Erre az eseményre nem érkezett kép.'}
           </p>
           {canUpload ? (

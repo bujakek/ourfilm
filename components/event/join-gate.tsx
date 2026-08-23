@@ -85,8 +85,8 @@ export function JoinGate({ eventName }: { eventName: string }) {
           {eventName}
         </h1>
         <p className="mx-auto mt-5 max-w-sm leading-relaxed text-pretty text-muted-foreground">
-          Írd be a neved, hogy a képeid alatt lássák, kitől érkeztek. Fiókot nem
-          kell létrehoznod, és e-mail-címet sem kérünk.
+          Írd be a neved, hogy a képeid mellett látható legyen, kitől érkeztek.
+          Fiókot nem kell létrehoznod, és e-mail-címet sem kérünk.
         </p>
       </div>
 

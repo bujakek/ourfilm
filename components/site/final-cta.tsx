@@ -75,19 +75,19 @@ export function FinalCta() {
                 <span className="text-gradient">Egy album.</span>
               </h2>
               <p className="mx-auto mt-6 max-w-lg leading-relaxed text-pretty text-muted-foreground">
-                Hozd létre az eseményedet néhány perc alatt, és hagyd, hogy a
-                vendégeid meséljék el a napot.
+                Hozd létre a közös albumot, oszd meg a QR-kódot, és hagyd, hogy
+                a vendégeid is elmeséljék az eseményt.
               </p>
               <div className="mt-9 flex justify-center">
                 <Link
                   href="/admin/login"
                   className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
                 >
-                  Esemény létrehozása — ingyen
+                  Ingyenes esemény létrehozása
                 </Link>
               </div>
               <p className="mt-5 text-sm text-muted-foreground">
-                Bankkártya nélkül indulhatsz. Percek alatt kész.
+                Bankkártya nélkül kipróbálható.
               </p>
             </div>
           </div>

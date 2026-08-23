@@ -25,9 +25,9 @@ export async function createEvent(
   if (!name) return { error: 'Adj nevet az eseménynek.' }
   // Required, unlike before. An optional deadline is one nobody sets, and an
   // event without one accepts uploads forever.
-  if (!closesAt) return { error: 'Add meg, mikor ér véget az esemény.' }
+  if (!closesAt) return { error: 'Add meg, meddig tölthetnek fel a vendégek.' }
   if (new Date(closesAt) <= new Date()) {
-    return { error: 'A záró időpont legyen a jövőben.' }
+    return { error: 'A feltöltési határidő legyen a jövőben.' }
   }
 
   const supabase = await createClient()

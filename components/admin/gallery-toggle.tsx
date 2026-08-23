@@ -31,11 +31,11 @@ export function GalleryToggle({
     <div className="glass rounded-2xl px-5 py-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-medium">Galéria láthatósága</p>
+          <p className="font-medium">Album megjelenítése a vendégeknek</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {optimisticHidden
-              ? 'A vendégek most nem látják az albumot. Feltölteni továbbra is tudnak.'
-              : 'A vendégek látják az albumot.'}
+              ? 'A vendégek feltölthetnek képeket, de a közös albumot nem látják.'
+              : 'A vendégek megnyithatják és megnézhetik a közös albumot.'}
           </p>
         </div>
 
@@ -43,7 +43,7 @@ export function GalleryToggle({
           type="button"
           role="switch"
           aria-checked={!optimisticHidden}
-          aria-label="Galéria láthatósága"
+          aria-label="Album megjelenítése a vendégeknek"
           disabled={pending}
           onClick={() =>
             startTransition(async () => {

@@ -58,12 +58,12 @@ export function LiveDemoFallback() {
             PRÓBÁLD KI
           </span>
           <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Nézd meg, milyen egy közös album
+            Nézd meg, milyen egyszerű vendégként
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Próbáld ki mindkét oldalt: vendégként tölts fel egy fotót,
-            házigazdaként töltsd le az egészet. Ez itt egy szimuláció — de
-            pontosan így működik.
+            Tölts fel egy próbaképet, és nézd meg, hogyan érkezik meg a közös
+            albumba. Pontosan ugyanezt látják majd a vendégeid is. Ez itt egy
+            szimuláció, nem egy valódi esemény.
           </p>
         </Reveal>
 
@@ -81,8 +81,8 @@ export function LiveDemoFallback() {
               <div className="glass flex rounded-full p-1">
                 {(
                   [
-                    { id: 'vendeg', label: 'Vendég nézet' },
-                    { id: 'hazigazda', label: 'Házigazda nézet' },
+                    { id: 'vendeg', label: 'Vendégként' },
+                    { id: 'hazigazda', label: 'Házigazdaként' },
                   ] as { id: Tab; label: string }[]
                 ).map((t) => (
                   <button
@@ -138,8 +138,8 @@ export function LiveDemoFallback() {
                 {tab === 'vendeg' ? (
                   <>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Beolvasod a QR-kódot, kiválasztod a képet, és már fent is
-                      van. Nincs app, nincs regisztráció.
+                      Válassz ki egy képet, és töltsd fel közvetlenül a
+                      böngészőből. Nincs alkalmazás és nincs vendégregisztráció.
                     </p>
                     <div className="mt-auto pt-6">
                       <button
@@ -161,11 +161,11 @@ export function LiveDemoFallback() {
                         ) : uploaded ? (
                           <>
                             <Check className="size-4" aria-hidden="true" /> Fent
-                            van a galériában
+                            van a közös albumban
                           </>
                         ) : (
                           <>
-                            <ImagePlus className="size-4" /> Fotó feltöltése
+                            <ImagePlus className="size-4" /> Próbakép feltöltése
                           </>
                         )}
                       </button>
@@ -184,8 +184,8 @@ export function LiveDemoFallback() {
                 ) : (
                   <>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Házigazdaként az esemény után egyetlen kattintással
-                      letöltöd az összes fotót — nagy felbontásban, ZIP-ben.
+                      Házigazdaként egy helyen látod az összes feltöltött képet,
+                      és egyben is letöltheted őket.
                     </p>
                     <div className="mt-auto space-y-3 pt-6">
                       <div className="glass flex items-center justify-between rounded-2xl px-4 py-3">
@@ -193,7 +193,7 @@ export function LiveDemoFallback() {
                           Album mérete
                         </span>
                         <span className="text-sm font-semibold">
-                          {photos.length} fotó · 148 MB
+                          {photos.length} fotó
                         </span>
                       </div>
                       <button

@@ -41,7 +41,7 @@ export function CreateOwnAlbum({
           dismissUpsell()
           setDismissed(true)
         }}
-        aria-label="Ajánlat elrejtése"
+        aria-label="Ajánlat bezárása"
         className="absolute top-3 right-3 flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
       >
         <X className="size-4" aria-hidden="true" />
@@ -56,18 +56,18 @@ export function CreateOwnAlbum({
       </span>
 
       <p className="mt-4 pr-8 text-base font-semibold text-balance">
-        Szeretnéd megőrizni ezeket a pillanatokat?
+        Szeretnél te is egy helyen megkapni minden képet?
       </p>
       <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-        Hozz létre saját albumot a következő eseményedre — a vendégeid ugyanígy
-        egy QR-kóddal töltenek fel, app és regisztráció nélkül.
+        A következő esküvőre, születésnapra vagy bulira készíts saját közös
+        albumot. A vendégeid QR-kóddal csatlakoznak, app és regisztráció nélkül.
       </p>
 
       <Link
         href="/admin/login"
         className="btn-shine mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
       >
-        Esemény létrehozása — ingyen
+        Saját album indítása — ingyen
       </Link>
     </div>
   )

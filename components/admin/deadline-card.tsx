@@ -44,10 +44,10 @@ export function DeadlineCard({
       <p className="font-medium">Feltöltési határidő</p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
         {state === 'closed'
-          ? 'A feltöltés lezárult. A vendégek látják az albumot, de már nem tölthetnek fel — állíts be későbbi időpontot, ha újra megnyitnád.'
+          ? 'A feltöltési határidő lejárt. A vendégek látják a közös albumot, de már nem tölthetnek fel — állíts be későbbi időpontot, ha újra megnyitnád.'
           : state === 'none'
-            ? 'Ennek az eseménynek nincs határideje: a vendégek bármeddig tölthetnek fel. Adj meg egy időpontot, ha le szeretnéd zárni.'
-            : 'A vendégek eddig tölthetnek fel. Az album ezután is megmarad.'}
+            ? 'Nincs feltöltési határidő: a vendégek bármeddig tölthetnek fel. Adj meg egy időpontot, ha le szeretnéd zárni.'
+            : 'Eddig az időpontig tölthetnek fel képeket a vendégek. A közös album ezután is megmarad.'}
       </p>
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -82,7 +82,7 @@ export function DeadlineCard({
           className="glass glass-hover inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold disabled:opacity-40"
         >
           {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-          Mentés
+          Változtatások mentése
         </button>
       </div>
 
@@ -92,7 +92,9 @@ export function DeadlineCard({
         </p>
       ) : null}
       {saved && local === value ? (
-        <p className="mt-2 text-xs text-muted-foreground">Mentve.</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          A beállításokat elmentettük.
+        </p>
       ) : null}
     </div>
   )

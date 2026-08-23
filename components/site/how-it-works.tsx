@@ -9,7 +9,7 @@ const steps = [
     number: '01',
     icon: CalendarPlus,
     title: 'Hozd létre az eseményt',
-    text: 'Adj nevet és dátumot az eseménynek. Egy perc alatt kész, kártya és regisztráció nélkül indulhatsz.',
+    text: 'Add meg az esemény nevét és a feltöltés határidejét. Néhány perc alatt elkészül a közös album.',
     image: '/images/wedding-portrait.webp',
     alt: 'Esküvői portré a párról',
     note: null,
@@ -17,17 +17,17 @@ const steps = [
   {
     number: '02',
     icon: QrCode,
-    title: 'Hívd meg a vendégeket QR-kóddal',
-    text: 'Nyomtatható QR-kódot és megosztható linket kapsz. Tedd az asztalokra, küldd el üzenetben — bárki egy koppintással csatlakozik.',
+    title: 'Oszd meg a QR-kódot',
+    text: 'Töltsd le a nyomtatható QR-kódot, tedd ki az asztalokra, vagy küldd el a meghívólinket üzenetben.',
     image: '/images/garden-party.webp',
     alt: 'Kerti buli fényfüzérek alatt',
-    note: 'Csak azok látják a képeket, akikhez eljut a meghívó — az album nem nyilvános, és nem jelenik meg a keresőkben. A fotókat nem osztjuk meg és nem adjuk el senkinek, és bármikor véglegesen törölheted őket.',
+    note: 'Az albumot azok érik el, akikhez eljut a meghívólink vagy a QR-kód, és az oldal nem jelenik meg a keresőkben. A fotókat nem adjuk el és nem használjuk hirdetési célokra, és bármikor véglegesen törölheted őket.',
   },
   {
     number: '03',
     icon: Images,
-    title: 'Gyűjtsétek együtt a pillanatokat',
-    text: 'A képek a közös galériába gyűlnek. Az esemény után nagy felbontásban töltheted le az egészet.',
+    title: 'Gyűjtsétek össze a pillanatokat',
+    text: 'A vendégek elkészítik vagy kiválasztják a képeiket, és feltöltik őket a közös albumba. Házigazdaként az egészet letöltheted egy ZIP-fájlban.',
     image: '/images/evening-party.webp',
     alt: 'Esti buli vendégekkel',
     note: null,
@@ -40,7 +40,7 @@ export function HowItWorks() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Három lépés, és gyűlnek a képek
+            Három lépés, és gyűlhetnek a képek
           </h2>
         </Reveal>
 

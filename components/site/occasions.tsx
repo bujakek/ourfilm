@@ -18,11 +18,11 @@ export function Occasions({ locale }: { locale: Locale }) {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Minden alkalomra, ahol fotó készül
+            Minden eseményhez, amit több szemszögből szeretnél megőrizni
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Válassz egy alkalmat, és nézd meg, hogyan gyűlik össze a nap minden
-            szemszögből.
+            Esküvő, születésnap, ballagás vagy céges rendezvény: egy QR-kóddal
+            minden vendég hozzáteheti a saját pillanatait.
           </p>
         </Reveal>
 

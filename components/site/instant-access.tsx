@@ -35,13 +35,15 @@ export function InstantAccess() {
               AZONNAL
             </span>
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Nem kell várnod, nem kell linkeket kérned
+              Nem kell napokig elkérned a képeket
             </h2>
+            {/* "lehet", not "lesz": how much a given event actually collects
+                depends on the guests, and this section is not in a position to
+                promise a number. */}
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              Ma ez úgy megy, hogy hetekig gyűjtöd a képeket: egyvalaki elküldi,
-              a másik elfelejti, a harmadiktól külön kell elkérni. Itt a fotók
-              már az esemény alatt megérkeznek. Mire hazaérsz, együtt van az
-              album.
+              A feltöltött fotók már az esemény alatt megérkeznek a közös
+              albumba. Mire hazaérsz, a vendégeid pillanatainak nagy része már
+              egy helyen lehet.
             </p>
           </Reveal>
 
@@ -49,7 +51,7 @@ export function InstantAccess() {
             <div className="glass-strong w-full max-w-[300px] rounded-[2.5rem] p-2.5">
               <div className="overflow-hidden rounded-[2rem] bg-background-secondary">
                 <div className="flex items-center justify-between px-4 py-3.5">
-                  <p className="text-sm font-semibold">Közös galéria</p>
+                  <p className="text-sm font-semibold">Közös album</p>
                   <span className="flex items-center gap-1.5 text-[10px] text-accent">
                     <span className="size-1.5 animate-pulse rounded-full bg-accent" />
                     Gyűlik

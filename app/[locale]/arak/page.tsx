@@ -39,7 +39,7 @@ const tiers = [
       '5 kép az albumban',
       'Korlátlan vendég',
       'Feltöltés QR-kóddal',
-      'Közös galéria',
+      'Közös album',
     ],
     cta: 'Kezdd el ingyen',
     featured: false,

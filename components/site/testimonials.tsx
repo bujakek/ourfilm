@@ -1,31 +1,25 @@
-import { Quote, Star } from 'lucide-react'
+import { Quote } from 'lucide-react'
 import { Reveal } from './reveal'
 
-const reviews = [
-  {
-    name: 'Anna és Péter',
-    date: '2025. augusztus',
-    monogram: 'AP',
-    quote:
-      'A fotósunk képeire hat hetet vártunk. A vendégek fotói már az esküvő éjszakáján ott voltak az albumban — ezeket néztük legtöbbet.',
-  },
-  {
-    name: 'Kovács Réka',
-    date: '2025. október',
-    monogram: 'KR',
-    quote:
-      'Anyukám is fel tudta tölteni a képeit. Ez nálunk a legnagyobb dicséret egy alkalmazásnak, ami nem is alkalmazás.',
-  },
-  {
-    name: 'Szabó Máté',
-    date: '2026. március',
-    monogram: 'SZ',
-    quote:
-      'Kitettük a QR-kódot minden asztalra, és estére 900 fotó jött össze. Semmit nem kellett utólag összevadásznom.',
-  },
-]
+export interface Review {
+  name: string
+  date: string
+  monogram: string
+  quote: string
+}
 
-export function Testimonials() {
+/**
+ * What hosts said, once any of them has said it.
+ *
+ * The quotes and the star rating that used to live here were written, not
+ * collected. They are gone rather than reworded: an invented review is the one
+ * kind of landing-page copy that cannot be made honest by softening it. The
+ * component takes real reviews as a prop and renders nothing without them, so
+ * it is ready for the first pilot host who agrees to be quoted.
+ */
+export function Testimonials({ reviews }: { reviews: Review[] }) {
+  if (reviews.length === 0) return null
+
   return (
     <section id="testimonials" className="relative px-4 py-24 sm:px-6 lg:py-32">
       <div className="mx-auto max-w-6xl">
@@ -33,17 +27,6 @@ export function Testimonials() {
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
             Amit a házigazdák mondanak
           </h2>
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <div className="flex" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="size-4 fill-accent text-accent" />
-              ))}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">4,9 / 5</span> · 2
-              800+ értékelés alapján
-            </p>
-          </div>
         </Reveal>
 
         <div className="mt-14 grid gap-4 lg:grid-cols-3">

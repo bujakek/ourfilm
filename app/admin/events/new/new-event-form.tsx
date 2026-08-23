@@ -11,8 +11,8 @@ const initial: CreateEventState = { error: null }
  *  the blank-field pause, not writing the name for them. */
 const SUGGESTIONS = [
   'Esküvő',
-  'Szülinap',
-  'Céges buli',
+  'Születésnap',
+  'Céges rendezvény',
   'Ballagás',
   'Évforduló',
 ]
@@ -54,11 +54,14 @@ export function NewEventForm({
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Anna & Péter"
+          placeholder="Például: Anna és Péter esküvője"
           className="glass min-h-14 w-full rounded-2xl px-5 text-base outline-none placeholder:text-muted-foreground/60 focus:border-accent"
         />
 
-        <ul className="mt-3 flex flex-wrap gap-2">
+        <p className="mt-4 mb-2 text-sm text-muted-foreground">
+          Milyen eseményhez készül az album?
+        </p>
+        <ul className="flex flex-wrap gap-2">
           {SUGGESTIONS.map((suggestion) => (
             <li key={suggestion}>
               <button
@@ -78,7 +81,7 @@ export function NewEventForm({
           htmlFor="uploads_close_at"
           className="mb-2 block text-sm text-muted-foreground"
         >
-          Mikor ér véget az esemény?
+          Meddig tölthetnek fel a vendégek?
         </label>
         <input
           id="uploads_close_at"
@@ -89,10 +92,11 @@ export function NewEventForm({
           min={earliestCloses}
           className="glass min-h-14 w-full rounded-2xl px-5 text-base outline-none focus:border-accent"
         />
+        {/* Says the album stays — it does. Nothing in the product deletes an
+            event when its deadline passes; only the host can. */}
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-          A feltöltés azonnal megnyílik, és a vendégek eddig az időpontig
-          tölthetnek fel. A közös album ezután is megmarad, és a határidőt
-          később bármikor módosíthatod.
+          A feltöltés az esemény létrehozása után azonnal elindul. A határidőt
+          később is módosíthatod, és a közös album utána is megmarad.
         </p>
       </div>
 

@@ -39,7 +39,8 @@ export function QrCard({ name, url }: { name: string; url: string }) {
           </div>
 
           <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
-            Olvasd be, és töltsd fel a képeidet — app és regisztráció nélkül.
+            Olvasd be a QR-kódot, és töltsd fel a képeidet — app és regisztráció
+            nélkül.
           </p>
           <div className="mt-6 border-t border-black/10 pt-4">
             <p className="truncate text-xs font-medium text-black/50">
@@ -55,7 +56,7 @@ export function QrCard({ name, url }: { name: string; url: string }) {
         className="glass glass-hover print-hidden mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold"
       >
         <Printer className="size-4" />
-        Kártya nyomtatása
+        QR-kártya nyomtatása
       </button>
     </>
   )

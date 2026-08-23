@@ -58,8 +58,8 @@ export function DangerZone({
       <h2 className="text-destructive font-semibold">Esemény törlése</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         {photoCount > 0
-          ? `Végleg törli az eseményt és mind a ${photoCount} képet. Ez nem vonható vissza.`
-          : 'Végleg törli az eseményt. Ez nem vonható vissza.'}
+          ? `Véglegesen törli az eseményt és mind a ${photoCount} feltöltött képet. Ez a művelet nem vonható vissza.`
+          : 'Véglegesen törli az eseményt és az összes feltöltött képet. Ez a művelet nem vonható vissza.'}
       </p>
 
       {error ? <p className="text-destructive mt-3 text-sm">{error}</p> : null}
@@ -70,7 +70,7 @@ export function DangerZone({
         className="border-destructive/40 text-destructive mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold"
       >
         <Trash2 className="size-4" />
-        Esemény törlése
+        Esemény végleges törlése
       </button>
 
       <dialog
@@ -97,12 +97,12 @@ export function DangerZone({
             />
           </span>
           <h3 id="delete-title" className="text-lg font-semibold text-balance">
-            Törlöd az „{eventName}” eseményt?
+            Biztosan törlöd az eseményt?
           </h3>
           <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
             {photoCount > 0
-              ? `A ${photoCount} feltöltött kép is véglegesen törlődik. Ez nem vonható vissza.`
-              : 'Ez nem vonható vissza.'}
+              ? `Az „${eventName}” esemény és mind a ${photoCount} feltöltött kép véglegesen törlődik. Ezt később nem lehet visszavonni.`
+              : `Az „${eventName}” esemény véglegesen törlődik. Ezt később nem lehet visszavonni.`}
           </p>
 
           <div className="mt-3 flex w-full flex-col gap-2">
@@ -117,7 +117,7 @@ export function DangerZone({
               ) : (
                 <Trash2 className="size-4" />
               )}
-              Igen, törlöm
+              Igen, végleg törlöm
             </button>
             <button
               type="button"
@@ -128,7 +128,7 @@ export function DangerZone({
               onClick={() => setOpen(false)}
               className="glass glass-hover inline-flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-medium"
             >
-              Mégsem
+              Mégse
             </button>
           </div>
         </div>

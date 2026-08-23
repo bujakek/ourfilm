@@ -163,7 +163,7 @@ export function UploadQueue({
         markUploadedTo(eventId)
         setRemaining((left) => (left === null ? null : Math.max(left - 1, 0)))
       } catch (e) {
-        // A refusal is final, so it must not leave a "Újra" button promising
+        // A refusal is final, so it must not leave an "Újrapróbálom" button promising
         // otherwise. It also means the local count is stale — two guests can
         // both spend the last slot — so trust the database and zero it.
         if (e instanceof UploadRefusedError) setRemaining(0)
@@ -266,13 +266,13 @@ export function UploadQueue({
           </span>
           <p className="text-xl font-semibold tracking-tight">
             {doneCount === 1
-              ? 'Megvan! A képed felkerült.'
-              : `Megvan! ${doneCount} képed felkerült.`}
+              ? 'Megvan! A képed bekerült a közös albumba.'
+              : `Megvan! ${doneCount} képed bekerült a közös albumba.`}
           </p>
           <p className="max-w-xs text-sm leading-relaxed text-pretty text-muted-foreground">
             {galleryPrivate
-              ? 'A közös albumot a házigazda egyelőre elrejtette — a képeid megvannak, és akkor lesznek láthatók, amikor újra megnyitja.'
-              : 'Köszönjük, hogy megosztottad! Nézd meg, mit töltöttek fel a többiek.'}
+              ? 'A közös albumot a házigazda egyelőre elrejtette — a képeid megvannak, és akkor lesznek láthatók, amikor újra megnyitja. Tölthetsz fel még képeket.'
+              : 'Köszönjük, hogy megosztottad. Tölthetsz fel még képeket, vagy megnézheted a többiek pillanatait.'}
           </p>
           {!galleryPrivate ? (
             <Link
@@ -280,7 +280,7 @@ export function UploadQueue({
               className="glass glass-hover mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold"
             >
               <Images className="size-4" strokeWidth={1.8} />
-              Közös album megtekintése
+              Közös album megnyitása
             </Link>
           ) : null}
 
@@ -337,7 +337,7 @@ export function UploadQueue({
                   className="glass glass-hover flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-xs font-semibold"
                 >
                   <RotateCw className="size-3.5" />
-                  Újra
+                  Újrapróbálom
                 </button>
               ) : null}
             </li>
@@ -345,11 +345,16 @@ export function UploadQueue({
         </ul>
       ) : null}
 
+      {/* No file-type or file-size copy here on purpose: the pipeline enforces
+          neither, so naming a limit would invent one. What actually fails at a
+          venue is the network, which is what this says. */}
       {failedCount > 0 && !busy ? (
-        <p className="text-center text-sm text-muted-foreground">
-          {failedCount} kép nem sikerült. Koppints az „Újra” gombra — a
-          feltöltés ott folytatódik, ahol abbamaradt.
-        </p>
+        <div className="text-center">
+          <p className="text-sm font-medium">A feltöltés nem sikerült</p>
+          <p className="mt-1 text-sm leading-relaxed text-pretty text-muted-foreground">
+            Ellenőrizd az internetkapcsolatot, majd próbáld meg újra.
+          </p>
+        </div>
       ) : null}
 
       {full ? (
@@ -358,7 +363,7 @@ export function UploadQueue({
         // guest is not the customer, and "they did not pay" is a miserable
         // thing to read at somebody's wedding.
         <div className="glass rounded-2xl px-6 py-5 text-center">
-          <p className="font-semibold">Ez az album most megtelt</p>
+          <p className="font-semibold">Ez a közös album most megtelt</p>
           <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
             Egyelőre nem fogad több képet. Szólj a házigazdának — ha feloldja,
             folytathatod ott, ahol abbahagytad.
@@ -386,7 +391,7 @@ export function UploadQueue({
           )}
         >
           <Camera className="size-5" strokeWidth={1.8} />
-          Kamera
+          Fotózás
           <input
             type="file"
             accept={ACCEPT}
@@ -409,7 +414,7 @@ export function UploadQueue({
           )}
         >
           <ImagePlus className="size-5" strokeWidth={1.8} />
-          Fájlok
+          Képek
           <input
             type="file"
             accept={ACCEPT}
@@ -433,7 +438,8 @@ export function UploadQueue({
 
       {busy ? (
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
-          Feltöltés folyamatban — ne zárd be az oldalt.
+          Feltöltjük a képeidet — ne zárd be az oldalt. Ez a kapcsolat
+          sebességétől függően eltarthat néhány másodpercig.
         </p>
       ) : null}
     </div>

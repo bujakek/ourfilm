@@ -46,7 +46,7 @@ export function InviteButton({ url }: { url: string }) {
       onClick={invite}
       // Icon-only at rest, so it needs a real name for anyone who cannot see
       // the glyph. 44px minimum — this is a thumb target on a phone.
-      aria-label="Meghívás — az album linkjének megosztása"
+      aria-label="Meghívólink megosztása"
       className={cn(
         'glass glass-hover inline-flex min-h-11 items-center justify-center gap-2 rounded-full text-sm font-medium transition-all',
         // Grows to carry the confirmation, then collapses back. Without the
@@ -61,7 +61,7 @@ export function InviteButton({ url }: { url: string }) {
             strokeWidth={2.2}
             aria-hidden="true"
           />
-          Link másolva
+          Link kimásolva
         </>
       ) : (
         <Share2 className="size-5" strokeWidth={1.8} aria-hidden="true" />
@@ -69,7 +69,7 @@ export function InviteButton({ url }: { url: string }) {
       {/* Announced rather than shown: a screen reader never sees the visible
           swap above, so the confirmation needs its own live region. */}
       <span aria-live="polite" className="sr-only">
-        {copied ? 'Link másolva a vágólapra' : ''}
+        {copied ? 'Link kimásolva a vágólapra' : ''}
       </span>
     </button>
   )

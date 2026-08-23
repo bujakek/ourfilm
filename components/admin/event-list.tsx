@@ -10,7 +10,7 @@ function PreviewStrip({ event }: { event: EventWithPreview }) {
     return (
       <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Images className="size-3.5" />
-        Még nincs kép
+        Még nincs feltöltött kép
       </p>
     )
   }
@@ -57,7 +57,7 @@ function EventRow({ event }: { event: EventWithPreview }) {
           <p className="text-xs text-muted-foreground">
             {event.uploads_close_at
               ? formatDeadline(event.uploads_close_at)
-              : 'Nincs záró időpont'}
+              : 'Nincs feltöltési határidő'}
           </p>
         </div>
         <p className="mt-1 truncate text-xs text-muted-foreground">
@@ -66,7 +66,7 @@ function EventRow({ event }: { event: EventWithPreview }) {
         </p>
         {event.gallery_hidden_at ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <EyeOff className="size-3" />A galéria rejtve van
+            <EyeOff className="size-3" />A közös album rejtve van
           </p>
         ) : null}
         <PreviewStrip event={event} />

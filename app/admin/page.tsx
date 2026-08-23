@@ -56,9 +56,16 @@ async function OwnedEventList() {
         </span>
         <p className="text-lg font-semibold">Még nincs eseményed</p>
         <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground">
-          Hozz létre egyet, és megkapod hozzá a QR-kódot, amit az asztalokra
-          tehetsz.
+          Hozd létre az első közös albumot, és máris megkapod a megosztható
+          QR-kódot és meghívólinket.
         </p>
+        <Link
+          href="/admin/events/new"
+          className="btn-shine mt-3 inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground"
+        >
+          <Plus className="size-4" strokeWidth={2.2} />
+          Első esemény létrehozása
+        </Link>
       </div>
     )
   }

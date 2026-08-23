@@ -42,13 +42,21 @@ export function PhotoQuality() {
             FOTÓMINŐSÉG
           </span>
           <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Nyomtatható minőségben, nem összenyomva
+            A képek nem vesznek el az üzenetek között
           </h2>
+          {/* Second paragraph checked against `lib/image.ts`: the browser
+              re-encodes every upload to a 4096px JPEG at q0.92, so this may
+              promise a large, downloadable render and must not promise the
+              untouched original file. */}
           <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
-            A vendégek ma jellemzően Messenger-csoportba küldik a képeket, ahol
-            a telefon összenyomja őket. Ami ott megmarad, az a fotó töredéke.
-            Nálunk minden kép nagy felbontásban érkezik — nagyítható, vágható,
-            nyomtatható.
+            Ha a vendégek különböző Messenger-csoportokba és privát üzenetekbe
+            küldik a fotókat, nehéz mindent összegyűjteni. Az OurFilmben minden
+            kép ugyanabba az albumba érkezik, és a házigazda egyben letöltheti
+            őket.
+          </p>
+          <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
+            A feltöltött képeket letölthető, nagy felbontású változatban őrizzük
+            meg.
           </p>
         </Reveal>
 
@@ -65,7 +73,7 @@ export function PhotoQuality() {
               {/* Original (right, full) */}
               <Image
                 src="/images/quality-original.webp"
-                alt="A fotó éles, nyomtatható minőségben"
+                alt="Ugyanaz a fotó az OurFilm közös albumában, nagy felbontásban"
                 fill
                 sizes="(max-width: 768px) 100vw, 1100px"
                 className="object-cover"
@@ -77,7 +85,7 @@ export function PhotoQuality() {
               >
                 <Image
                   src="/images/quality-original.webp"
-                  alt="Ugyanaz a fotó csevegőappban, összenyomva"
+                  alt="A fotó csevegőappban, összenyomva"
                   fill
                   sizes="(max-width: 768px) 100vw, 1100px"
                   className="object-cover blur-[2.5px] brightness-95 contrast-[0.92] saturate-[0.72]"
@@ -87,7 +95,7 @@ export function PhotoQuality() {
 
               {/* Labels */}
               <span className="glass absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-medium">
-                Csevegőappban
+                Szétszórva
               </span>
               <span className="glass absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-medium text-accent">
                 OurFilmmel
@@ -107,14 +115,14 @@ export function PhotoQuality() {
 
           {/* Accessible control */}
           <label className="mt-5 flex items-center gap-3 px-1">
-            <span className="text-xs text-muted-foreground">Csevegőappban</span>
+            <span className="text-xs text-muted-foreground">Szétszórva</span>
             <input
               type="range"
               min={0}
               max={100}
               value={pos}
               onChange={(e) => setPos(Number(e.target.value))}
-              aria-label="Összehasonlítás csúszka a csevegőappban összenyomott és az OurFilmmel feltöltött fotó között"
+              aria-label="Összehasonlítás csúszka az üzenetekben szétszórt és az OurFilmben egy helyen tárolt fotó között"
               className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-border accent-accent"
             />
             <span className="text-xs text-accent">OurFilmmel</span>

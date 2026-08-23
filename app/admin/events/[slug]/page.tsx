@@ -56,9 +56,9 @@ export default async function AdminEventPage({ params }: Props) {
   // created before the deadline was required have none — say that plainly
   // rather than leaving the line blank.
   const deadline = !event.uploads_close_at
-    ? 'Nincs záró időpont'
+    ? 'Nincs feltöltési határidő'
     : closed
-      ? 'A feltöltés lezárult'
+      ? 'A feltöltési határidő lejárt'
       : `Feltöltés ${formatDeadline(event.uploads_close_at)}-ig`
 
   return (
@@ -94,9 +94,7 @@ export default async function AdminEventPage({ params }: Props) {
       </div>
 
       <div className="print-hidden mt-8 flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
-          Ezt a linket olvassák be a vendégek:
-        </p>
+        <p className="text-sm text-muted-foreground">Meghívólink</p>
         <code className="glass truncate rounded-xl px-4 py-3 text-sm text-accent">
           {url}
         </code>
@@ -106,14 +104,14 @@ export default async function AdminEventPage({ params }: Props) {
             className="glass glass-hover inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold"
           >
             <ExternalLink className="size-4" />
-            Vendégnézet
+            Vendégnézet megnyitása
           </Link>
           <Link
             href={`/e/${event.slug}/gallery`}
             className="glass glass-hover inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold"
           >
             <Images className="size-4" />
-            Galéria
+            Album megnyitása
           </Link>
         </div>
       </div>
@@ -123,10 +121,12 @@ export default async function AdminEventPage({ params }: Props) {
       </Suspense>
 
       <section className="print-hidden mt-10">
-        <h2 className="mb-3 text-lg font-semibold tracking-tight">Képek</h2>
+        <h2 className="mb-3 text-lg font-semibold tracking-tight">
+          Feltöltött képek
+        </h2>
         <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-          Az elrejtett képek eltűnnek a galériából, de nem vesznek el — bármikor
-          visszaállíthatod őket.
+          A vendégek által feltöltött képek itt jelennek meg. A rejtett képeket
+          csak te látod, és bármikor visszaállíthatod őket.
         </p>
         <Suspense fallback={<ModerationGridSkeleton />}>
           <EventPhotos slug={event.slug} eventId={event.id} />
@@ -210,10 +210,13 @@ async function AlbumDownload({
 
   return (
     <>
+      {/* Not "eredeti méretben": `lib/image.ts` re-encodes every upload to a
+          4096px JPEG in the browser, so the ZIP holds the largest render we
+          have, not the untouched file off the phone. */}
       <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
         {empty
-          ? 'Még nincs kép az albumban — a letöltés akkor lesz elérhető, ha a vendégek feltöltenek.'
-          : 'Az összes kép eredeti méretben, egyetlen ZIP-fájlban. Az elrejtett képek külön mappába kerülnek. Nagy albumnál a letöltés indulása eltarthat egy ideig.'}
+          ? 'Még nincs feltöltött kép — a letöltés akkor lesz elérhető, ha a vendégek feltöltenek.'
+          : 'Töltsd le az esemény összes fotóját egy ZIP-fájlban, nagy felbontásban. Az elrejtett képek külön mappába kerülnek. Nagy albumnál a letöltés indulása eltarthat egy ideig.'}
       </p>
       {empty ? (
         <button
@@ -222,7 +225,7 @@ async function AlbumDownload({
           className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground disabled:opacity-60"
         >
           <Download className="size-5" strokeWidth={1.8} />
-          ZIP letöltése
+          Összes kép letöltése
         </button>
       ) : (
         <a
@@ -230,7 +233,7 @@ async function AlbumDownload({
           className="btn-shine inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground"
         >
           <Download className="size-5" strokeWidth={1.8} />
-          ZIP letöltése
+          Összes kép letöltése
         </a>
       )}
     </>

@@ -2,40 +2,21 @@
 
 import { useCountUp } from './use-count-up'
 
-interface Stat {
+export interface Stat {
   end: number
   format: (v: number) => string
   label: string
 }
 
-const stats: Stat[] = [
-  {
-    end: 4.9,
-    format: (v) =>
-      v.toLocaleString('hu-HU', {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }),
-    label: 'átlagos értékelés',
-  },
-  {
-    end: 3.2,
-    format: (v) =>
-      `${v.toLocaleString('hu-HU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} millió`,
-    label: 'összegyűjtött fotó',
-  },
-  {
-    end: 12400,
-    format: (v) => `${Math.round(v).toLocaleString('hu-HU')}+`,
-    label: 'megörökített esemény',
-  },
-  {
-    end: 0,
-    format: () => '0',
-    label: 'letöltendő alkalmazás',
-  },
-]
-
+/**
+ * A row of counters that animate into view.
+ *
+ * Content-free on purpose. This used to carry a hardcoded list — an average
+ * rating, a photo total, an event count — none of which was measured, and all
+ * of which read as fact on a landing page. The caller now supplies the
+ * numbers, so the component cannot invent any; while there are none to supply,
+ * `app/[locale]/page.tsx` simply does not render it.
+ */
 function StatCard({ stat, delay }: { stat: Stat; delay: number }) {
   const { ref, value } = useCountUp(stat.end)
   return (
@@ -52,7 +33,9 @@ function StatCard({ stat, delay }: { stat: Stat; delay: number }) {
   )
 }
 
-export function Stats() {
+export function Stats({ stats }: { stats: Stat[] }) {
+  if (stats.length === 0) return null
+
   return (
     <section className="relative px-4 py-8 sm:px-6">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-4 lg:grid-cols-4">

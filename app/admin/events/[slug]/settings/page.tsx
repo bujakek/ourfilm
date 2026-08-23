@@ -91,8 +91,8 @@ export default async function AdminEventSettingsPage({
         Beállítások
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Az album láthatósága, a feltöltési határidő és keret, és az esemény
-        törlése.
+        Itt szabályozhatod, hogy a vendégek láthatják-e a közös albumot, meddig
+        tölthetnek fel képeket, és törölheted az eseményt.
       </p>
 
       <div className="mt-8 flex flex-col gap-4">

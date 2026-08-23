@@ -1,26 +1,32 @@
 import { Download, ShieldCheck, Smartphone, Zap } from 'lucide-react'
 import { Reveal } from './reveal'
 
+/**
+ * The third card is the one to keep honest. The album has no gate — anyone
+ * holding the link is in — so it may promise reachability and non-indexing,
+ * which are both true, and must not promise a password or secrecy, which are
+ * not.
+ */
 const benefits = [
   {
     icon: Smartphone,
-    title: 'Nincs alkalmazás',
-    text: 'A vendégek az okostelefon böngészőjéből töltik fel a képeket — semmit nem kell letölteni.',
+    title: 'Nincs letöltés',
+    text: 'A vendégek a telefonjuk böngészőjéből töltenek fel. Nem kell alkalmazást telepíteniük.',
   },
   {
     icon: Zap,
-    title: 'Egy közös helyen',
-    text: 'A feltöltött fotó bekerül a közös galériába, ahol minden vendég megnézheti.',
+    title: 'Egy közös album',
+    text: 'Minden feltöltött kép ugyanabba az eseményalbumba érkezik, így nem kell őket üzenetekből és csoportokból összegyűjtened.',
   },
   {
     icon: ShieldCheck,
-    title: 'Privát marad',
-    text: 'Az albumot csak a QR-kódot vagy meghívólinket használó vendégek érhetik el — nincs nyilvános megosztás.',
+    title: 'Csak a meghívottaknak',
+    text: 'Az albumot azok érik el, akik megkapták az esemény QR-kódját vagy meghívólinkjét. Az oldal nem jelenik meg a keresőkben.',
   },
   {
     icon: Download,
-    title: 'Töltsd le mind',
-    text: 'Egyetlen kattintással letöltheted az összes fotót egy ZIP-fájlban.',
+    title: 'Letöltés egyben',
+    text: 'Házigazdaként egyetlen ZIP-fájlban letöltheted az esemény összes fotóját.',
   },
 ]
 
@@ -30,11 +36,12 @@ export function Benefits() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Minden megvan, semmit nem kell megtanulni
+            Egyszerű a vendégeknek. Minden kép egy helyen neked.
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            A vendégeid a telefonjukból küldik a képeket — ahogy mindig is.
-            Semmit nem kell letölteniük vagy megtanulniuk.
+            A vendégeid ugyanazzal a telefonnal készítik és töltik fel a
+            képeket, ami már náluk van. Nincs új alkalmazás, nincs bonyolult
+            beállítás.
           </p>
         </Reveal>
 
