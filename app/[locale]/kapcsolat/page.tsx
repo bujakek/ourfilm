@@ -1,4 +1,3 @@
-import { DraftNotice } from '@/components/site/draft-notice'
 import { PageShell } from '@/components/site/page-shell'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { HelpCircle, Mail, MapPin } from 'lucide-react'
@@ -8,10 +7,10 @@ import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
 export const metadata: Metadata = {
-  title: 'Kapcsolat — OurFilm',
+  title: 'Kapcsolat – OurFilm',
   description:
     'Írj nekünk, ha kérdésed van az OurFilmről, egy eseményről vagy a fotóidról.',
-  // TODO(copy): remove once the contact address is confirmed.
+  // Publish with the other standalone pages once the company details are real.
   robots: { index: false, follow: true },
 }
 
@@ -26,18 +25,10 @@ export default async function KapcsolatPage({ params }: Props) {
       locale={locale}
       eyebrow="KAPCSOLAT"
       title="Írj nekünk"
-      lead="Kérdés az eseményedről, a feltöltésről vagy a letöltésről? Egy ember olvassa a leveleket, és igyekszik egy munkanapon belül válaszolni."
+      lead="Kérdésed van az eseményedről, a feltöltésről vagy a letöltésről? Írj nekünk, és személyesen válaszolunk."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
-          <DraftNotice>
-            <strong className="font-semibold text-foreground">
-              Ez az oldal még vázlat.
-            </strong>{' '}
-            Az e-mail-cím helykitöltő, és a válaszidőre tett ígéret sincs még
-            megerősítve. Az oldal egyelőre nem jelenik meg a keresőkben.
-          </DraftNotice>
-
           <div className="glass-strong mt-12 rounded-3xl p-8 sm:p-10">
             <span className="glass flex size-12 items-center justify-center rounded-2xl">
               <Mail
@@ -50,8 +41,8 @@ export default async function KapcsolatPage({ params }: Props) {
               E-mail
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Ez a leggyorsabb út. Ha egy konkrét eseményről írsz, küldd el az
-              album linkjét is — úgy sokkal hamarabb tudunk segíteni.
+              Írd meg röviden, miben segíthetünk. Ha egy konkrét eseményről
+              írsz, add meg az esemény nevét is.
             </p>
             {/* mailto only, on purpose: a contact form with nothing behind it
                 silently swallows messages, which is worse than no form. */}
@@ -73,12 +64,9 @@ export default async function KapcsolatPage({ params }: Props) {
                   aria-hidden="true"
                 />
               </span>
-              <h2 className="mt-6 text-base font-semibold">
-                Először nézd meg a GYIK-et
-              </h2>
+              <h2 className="mt-6 text-base font-semibold">Gyakori kérdések</h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                A leggyakoribb kérdésekre — feltöltés, minőség, adatvédelem —
-                ott már ott a válasz.
+                A leggyakoribb kérdésekre már összegyűjtöttük a válaszokat.
               </p>
               <Link
                 href={localePath(locale, '/#faq')}
@@ -96,10 +84,11 @@ export default async function KapcsolatPage({ params }: Props) {
                   aria-hidden="true"
                 />
               </span>
-              <h2 className="mt-6 text-base font-semibold">Hol vagyunk</h2>
+              <h2 className="mt-6 text-base font-semibold">
+                Budapesten készül
+              </h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                Budapest. TODO: ide jön a postai cím és a cégadatok, ha kellenek
-                a számlázáshoz.
+                Az OurFilm magyar fejlesztés.
               </p>
               <Link
                 href={localePath(locale, '/rolunk')}

@@ -150,7 +150,7 @@ export function Hero() {
                   />
                 </div>
                 <p className="mt-2 text-center text-[9px] font-medium text-muted-foreground">
-                  Olvasd be a képekhez
+                  Olvasd be, és töltsd fel a képeidet.
                 </p>
                 {/* scan line */}
                 <span className="absolute inset-x-3 top-3 h-8 animate-float-slow rounded-lg bg-gradient-to-b from-accent/40 to-transparent" />

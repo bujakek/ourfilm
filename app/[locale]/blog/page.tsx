@@ -20,7 +20,7 @@ const COPY: Record<
   hu: {
     eyebrow: 'BLOG',
     title: 'Gyakorlati tippek eseményekhez',
-    lead: 'Rövid írások arról, hogyan gyűjthető össze egy nap összes fotója — a QR-kód elhelyezésétől a nagy felbontású letöltésig.',
+    lead: 'Gyakorlati ötletek ahhoz, hogy a vendégeid fotói egy közös albumba kerüljenek.',
     empty: 'Még nincs bejegyzés. Hamarosan.',
     more: 'Elolvasom',
   },

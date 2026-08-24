@@ -42,7 +42,7 @@ export function PhotoQuality() {
             EGY HELYEN
           </span>
           <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Ne üzenetekből kelljen összeszedned a képeket.
+            Ne az üzenetek között keresd a képeket.
           </h2>
           <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
             Minden feltöltött fotó a közös albumba kerül, amit később egyben

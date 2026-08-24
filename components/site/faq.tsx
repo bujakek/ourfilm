@@ -45,7 +45,7 @@ const faqs = [
   },
   {
     q: 'Mennyibe kerül?',
-    a: '5 fotóig ingyen, bankkártya nélkül kipróbálhatod. A teljes esemény egyszeri 12 900 Ft, korlátlan vendéggel és korlátlan fotóval.',
+    a: '5 fotóig ingyen, bankkártya nélkül kipróbálhatod. A teljes album egyszeri 12 900 Ft, korlátlan vendéggel és korlátlan fotóval.',
   },
   {
     q: 'Hogyan kezelitek a fotókat?',

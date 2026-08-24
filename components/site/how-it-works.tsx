@@ -9,7 +9,7 @@ const steps = [
     number: '01',
     icon: CalendarPlus,
     title: 'Hozd létre',
-    text: 'Add meg az esemény nevét, és hozd létre a közös albumot.',
+    text: 'Adj nevet az eseménynek, és már kész is a közös album.',
     image: '/images/wedding-portrait.webp',
     alt: 'Esküvői portré a párról',
     note: null,
@@ -21,13 +21,13 @@ const steps = [
     text: 'Tedd ki a QR-kódot, vagy küldd el a meghívólinket.',
     image: '/images/garden-party.webp',
     alt: 'Kerti buli fényfüzérek alatt',
-    note: 'Az albumot az esemény linkjével vagy QR-kódjával lehet megnyitni, és az oldal nem jelenik meg a keresőkben.',
+    note: 'Az album nem nyilvános. A linkkel vagy a QR-kóddal lehet megnyitni.',
   },
   {
     number: '03',
     icon: Images,
     title: 'Kapd meg a képeket',
-    text: 'A vendégek feltöltenek, te pedig minden fotót egy helyen találsz.',
+    text: 'A vendégek feltöltik a fotóikat, te pedig mindet egy helyen találod.',
     image: '/images/evening-party.webp',
     alt: 'Esti buli vendégekkel',
     note: null,
@@ -116,7 +116,7 @@ export function HowItWorks() {
                                 {SITE_HOST}/e/…
                               </p>
                               <p className="text-[10px] text-muted-foreground">
-                                Koppints a csatlakozáshoz
+                                Koppints a feltöltéshez
                               </p>
                             </div>
                           </div>
