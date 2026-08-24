@@ -3,30 +3,29 @@ import { Reveal } from './reveal'
 
 /**
  * The third card is the one to keep honest. The album has no gate — anyone
- * holding the link is in — so it may promise reachability and non-indexing,
- * which are both true, and must not promise a password or secrecy, which are
- * not.
+ * holding the link is in — so it may promise reachability, which is true, and
+ * must not promise a password or secrecy, which are not.
  */
 const benefits = [
   {
     icon: Smartphone,
-    title: 'Nincs letöltés',
-    text: 'A vendégek beolvassák a QR-kódot, és már tölthetik is fel a képeiket.',
+    title: 'Csak egy QR-kód',
+    text: 'A vendégeid beolvassák, és már tölthetik is fel a képeiket.',
   },
   {
     icon: Zap,
-    title: 'Egy közös album',
-    text: 'Minden feltöltött fotó ugyanoda érkezik, nem kell Messenger-beszélgetésekből és privát üzenetekből összeszedned őket.',
+    title: 'Minden fotó egy helyen',
+    text: 'Nem kell üzenetekből és különböző csoportokból összeszedned őket.',
   },
   {
     icon: ShieldCheck,
     title: 'Nem nyilvános',
-    text: 'Az album nem jelenik meg a keresőkben. Az esemény linkjével vagy QR-kódjával lehet megnyitni.',
+    text: 'Az albumot az esemény linkjével vagy QR-kódjával lehet megnyitni.',
   },
   {
     icon: Download,
-    title: 'Letöltés egyben',
-    text: 'Házigazdaként egyetlen ZIP-fájlban töltheted le az esemény összes feltöltött fotóját.',
+    title: 'Az egész album a tiéd',
+    text: 'Az összes feltöltött képet egyben letöltheted.',
   },
 ]
 
@@ -36,12 +35,11 @@ export function Benefits() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            A vendégeknek csak egy QR-kód. Neked nem kell többé elkérned a
-            képeket.
+            Mindenki fotózik. Most a képek hozzád is eljutnak.
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Ugyanazzal a telefonnal töltenek fel, amivel fotóztak. Neked pedig
-            nem marad utómunka: a feltöltött képek maguktól egy helyre kerülnek.
+            A vendégeid feltöltik a saját fotóikat, te pedig egy közös albumban
+            kapod meg őket.
           </p>
         </Reveal>
 

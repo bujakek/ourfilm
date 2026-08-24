@@ -7,9 +7,9 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 /**
- * Absolute fragments (`/#faq`, not `#faq`): the navbar renders on /arak,
- * /rolunk and the other standalone pages too, where a bare fragment has no
- * target to scroll to. They are locale-relative now, so the target is the
+ * Absolute fragments (`/#occasions`, not `#occasions`): the navbar renders on
+ * /arak, /rolunk and the other standalone pages too, where a bare fragment has
+ * no target to scroll to. They are locale-relative now, so the target is the
  * homepage of the language the reader is already in.
  *
  * The ids themselves stay English — an anchor ends up in the address bar.
@@ -17,7 +17,8 @@ import { useEffect, useState } from 'react'
 const navLinks = [
   { label: 'Hogyan működik', href: '/#how-it-works' },
   { label: 'Alkalmak', href: '/#occasions' },
-  { label: 'GYIK', href: '/#faq' },
+  { label: 'Árak', href: '/arak' },
+  { label: 'Rólunk', href: '/rolunk' },
 ]
 
 export function Navbar({ locale }: { locale: Locale }) {
@@ -42,7 +43,7 @@ export function Navbar({ locale }: { locale: Locale }) {
     <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
       <nav
         className={cn(
-          'glass-nav flex w-full max-w-3xl items-center rounded-full',
+          'glass-nav flex w-full max-w-4xl items-center rounded-full',
           'gap-2 py-2 pr-2 pl-4 sm:gap-6 sm:py-2.5 sm:pr-3 sm:pl-5',
           scrolled &&
             'glass-nav-scrolled py-1.5 pl-3 sm:gap-4 sm:py-1.5 sm:pr-2 sm:pl-4',
@@ -86,6 +87,16 @@ export function Navbar({ locale }: { locale: Locale }) {
             </li>
           ))}
         </ul>
+
+        <Link
+          href="/admin/login"
+          className={cn(
+            'hidden shrink-0 rounded-full text-foreground/80 transition-all duration-200 hover:text-foreground md:inline-flex',
+            scrolled ? 'px-2.5 py-1.5 text-[13px]' : 'px-3 py-2 text-sm',
+          )}
+        >
+          Belépés
+        </Link>
 
         <Link
           href="/admin/login"
@@ -136,6 +147,13 @@ export function Navbar({ locale }: { locale: Locale }) {
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/admin/login"
+            onClick={() => setOpen(false)}
+            className="rounded-2xl px-5 py-4 text-lg font-medium text-foreground/90 transition-colors hover:bg-white/5"
+          >
+            Belépés
+          </Link>
           <Link
             href="/admin/login"
             onClick={() => setOpen(false)}

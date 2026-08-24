@@ -11,20 +11,28 @@ const manrope = Manrope({
   display: 'swap',
 })
 
+/**
+ * The site-wide defaults are the homepage's own title and description: /hu
+ * inherits them verbatim, and every other public page overrides both. Keeping
+ * one pair rather than three near-variants is what stops the tab title, the
+ * link preview and the search result from disagreeing about what this is.
+ */
+const TITLE = 'OurFilm – Közös fotóalbum QR-kóddal'
+const DESCRIPTION =
+  'Egy QR-kód, és minden vendégfotó egy közös albumba kerül. App és regisztráció nélkül.'
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'OurFilm — QR-kódos közös fotóalbum eseményekhez',
-  description:
-    'Gyűjtsd össze az esküvő vagy esemény vendégfotóit egyetlen közös albumban. QR-kódos feltöltés app és vendégregisztráció nélkül.',
+  title: TITLE,
+  description: DESCRIPTION,
   authors: [{ name: 'OurFilm' }],
   openGraph: {
     type: 'website',
     locale: 'hu_HU',
     url: `${SITE_URL}/${defaultLocale}`,
     siteName: 'OurFilm',
-    title: 'OurFilm — A fotók, amiket másképp sosem kapnál meg',
-    description:
-      'A vendégeid beolvassák a QR-kódot, és egy közös albumba töltik a képeiket. App és regisztráció nélkül.',
+    title: TITLE,
+    description: DESCRIPTION,
     images: [
       {
         // Crawlers fetch this URL directly — no Next optimization, and WebP
@@ -38,9 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'OurFilm — A fotók, amiket másképp sosem kapnál meg',
-    description:
-      'QR-kódos közös fotóalbum esküvőkre és eseményekre. App és regisztráció nélkül.',
+    title: TITLE,
+    description: DESCRIPTION,
     images: ['/images/og-cover.jpg'],
   },
 }

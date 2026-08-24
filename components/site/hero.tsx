@@ -23,21 +23,23 @@ export function Hero() {
         <div className="reveal is-visible max-w-xl">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-muted-foreground">
             <span className="size-1.5 rounded-full bg-accent" />
-            QR-kódos közös fotóalbum eseményekhez
+            Közös fotóalbum eseményekhez
           </span>
 
+          {/* The two spans are separated by a real space, not a <br />: a
+              line break contributes nothing to textContent, so the old markup
+              read as one joined word to screen readers and to anything else
+              parsing the heading. `text-balance` handles the wrap. */}
           <h1 className="mt-6 text-[2rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl xl:text-[3.5rem]">
-            <span className="text-gradient">A fotók, amiket</span>
-            <br />
+            <span className="text-gradient">A napod,</span>{' '}
             <span className="text-gradient-accent">
-              másképp sosem kapnál meg.
+              ahogy a vendégeid látták.
             </span>
           </h1>
 
           <p className="mt-7 max-w-lg text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            A vendégeid beolvassák a QR-kódot, és egy közös albumba töltik a
-            képeiket. Nekik nem kell app vagy regisztráció. Neked nem kell
-            napokig elkérned a fotókat.
+            Egy QR-kód, és minden vendégfotó egy közös albumba kerül. App és
+            regisztráció nélkül.
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -59,7 +61,7 @@ export function Hero() {
               photos cost nothing, and checkout is only ever reached from the
               host's own settings page. */}
           <p className="mt-10 text-sm text-muted-foreground">
-            5 képig, bankkártya nélkül.
+            5 fotóig ingyen, bankkártya nélkül.
           </p>
         </div>
 

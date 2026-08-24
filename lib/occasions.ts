@@ -4,10 +4,14 @@ import type { LucideIcon } from 'lucide-react'
 /**
  * The one definition of an occasion.
  *
- * Read by three places that must not drift: the homepage tab widget
- * (`components/site/occasions.tsx`), the `/alkalmak` routes, and
+ * Read by four places that must not drift: the homepage tab widget
+ * (`components/site/occasions.tsx`), the `/alkalmak` routes, the footer, and
  * `app/sitemap.ts`. Adding an occasion here gives it a page and a sitemap
  * entry with no other edit.
+ *
+ * The homepage card and the occasion page's own hero deliberately share
+ * `title` and `text` — they say the same thing, so a visitor who taps through
+ * lands on the sentence they just tapped rather than a paraphrase of it.
  *
  * Not `server-only` on purpose — the homepage widget is a Client Component and
  * imports this directly. Icons therefore have to be component references
@@ -25,7 +29,14 @@ export interface Occasion {
   title: string
   /** One-paragraph summary — the widget caption and the page lead. */
   text: string
+  /** What the homepage card's link to this page is called. */
+  linkLabel: string
   sections: { heading: string; body: string }[]
+  /** The page's closing card. Wording differs per occasion — a wedding is
+   *  addressed as a couple, a birthday as one host. */
+  cta: { heading: string; body: string; button: string; helper: string }
+  /** `<title>` and `<meta name="description">` for the page. */
+  meta: { title: string; description: string }
 }
 
 /**
@@ -40,6 +51,10 @@ export interface Occasion {
  */
 export const OCCASIONS_ARE_DRAFT = true
 
+/** The same free-trial line closes every occasion page. */
+const OCCASION_CTA_HELPER =
+  '5 fotóig ingyen, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft.'
+
 export const occasions: Occasion[] = [
   {
     slug: 'eskuvo',
@@ -47,18 +62,30 @@ export const occasions: Occasion[] = [
     icon: Heart,
     image: '/images/wedding-dance.webp',
     alt: 'Esküvői első tánc',
-    title: 'Az egész nap, ahogy a vendégek látták',
-    text: 'A fotós megörökíti a nagy pillanatokat. Az OurFilm összegyűjti mindazt, ami közben a vendégeid telefonjára került — egy közös albumban, app nélkül.',
+    title: 'A napotok, ahogy a vendégeitek látták.',
+    text: 'A fotós megörökíti a nagy pillanatokat. A vendégeitek pedig mindazt, ami közben történik.',
+    linkLabel: 'Album esküvőre',
     sections: [
       {
-        heading: 'A fotós nem lehet egyszerre mindenhol. A vendégeid igen.',
-        body: 'Az OurFilm nem a fotós helyett van, hanem mellette. Amíg ő a szertartást és a portrékat fotózza, a vendégeid az asztaloknál, a készülődés közben és a késő esti bulin fotóznak. Ezek a képek általában a telefonjukon vagy egy-egy Messenger-beszélgetésben maradnak, és sosem jutnak el hozzád. Az OurFilmmel a feltöltött fotók már az esemény alatt a közös albumba kerülnek, ahonnan egyben letöltöd őket.',
+        heading: 'Mert a fotós nem lehet egyszerre mindenhol.',
+        body: 'Az asztaloknál, a készülődés közben és a hajnali bulin is készülnek képek. Az OurFilm egy közös albumba gyűjti őket, hogy hozzátok is eljussanak.',
       },
       {
-        heading: 'Hova tedd a QR-kódot',
-        body: 'A legjobb, ha több helyen is elérhető, nem csak egyetlen, könnyen elkerülhető ponton. Tegyél kártyát az asztalokra, a bárpulthoz és a vendégkönyv mellé, a meghívólinket pedig küldd el az esküvői Messenger-csoportba. A ceremóniamester egyszer, röviden be is mondhatja: egy mondat elég ahhoz, hogy mindenki tudja, hova kerülnek a képek.',
+        heading: 'Legyen ott, ahol a vendégek is vannak',
+        body: 'Tegyétek ki a QR-kódot az asztalokra, a bárpulthoz vagy a vendégkönyv mellé. A meghívólinket az esküvői csoportban is megoszthatjátok.',
       },
     ],
+    cta: {
+      heading: 'Lássátok viszont a napot a vendégeitek szemével.',
+      body: 'Hozzátok létre az albumot, és gyűjtsétek össze egy helyre a képeket.',
+      button: 'Próbáljátok ki ingyen',
+      helper: OCCASION_CTA_HELPER,
+    },
+    meta: {
+      title: 'Esküvői közös fotóalbum – OurFilm',
+      description:
+        'A napotok, ahogy a vendégeitek látták. Egy QR-kód, és minden vendégfotó egy közös albumba kerül.',
+    },
   },
   {
     slug: 'szuletesnap',
@@ -66,18 +93,30 @@ export const occasions: Occasion[] = [
     icon: Cake,
     image: '/images/birthday.webp',
     alt: 'Születésnapi ünneplés',
-    title: 'A saját bulidról marad a legkevesebb fotód',
-    text: 'Az ünnepelt egész este mindenkivel beszélget, nem fotózik. A vendégek viszont igen, és az ő képeik egy közös albumba kerülnek.',
+    title: 'Te ünnepelsz. A vendégeid fotóznak.',
+    text: 'A képek egy közös albumba kerülnek, miközben te a bulit élvezed.',
+    linkLabel: 'Album születésnapra',
     sections: [
       {
-        heading: 'Miért pont születésnapra',
-        body: 'Ha te vagy az ünnepelt, végig mással vagy elfoglalva: köszöntesz, tortát vágsz, beszélgetsz. A vendégeid közben végig fotóznak. Az OurFilmmel nem kell másnap egyesével elkérned a képeiket, mert amit feltöltenek, az már ott van egy helyen.',
+        heading: 'Ne másnap kelljen elkérned őket',
+        body: 'A vendégeid már a helyszínen feltölthetik a fotóikat. Mire véget ér a buli, a képek egy helyen várnak.',
       },
       {
-        heading: 'Hova tedd a QR-kódot',
-        body: 'Egy kártya a bejárathoz, egy a tortaasztalra, egy az italpulthoz: ezen a három helyen mindenki megfordul az este folyamán. Ha digitális meghívót vagy csoportos üzenetet küldtél, tedd bele a meghívólinket is, így azok is fel tudnak tölteni, akik korán hazamennek.',
+        heading: 'Tedd oda, ahol mindenki látja',
+        body: 'Kerüljön egy QR-kód a bejárathoz, a tortaasztalra vagy az italpulthoz. A meghívólinket a közös üzenetben is elküldheted.',
       },
     ],
+    cta: {
+      heading: 'Gyűjtsd össze a vendégeid fotóit.',
+      body: 'Hozd létre az albumot, és oszd meg a vendégeiddel.',
+      button: 'Próbáld ki ingyen',
+      helper: OCCASION_CTA_HELPER,
+    },
+    meta: {
+      title: 'Születésnapi közös fotóalbum – OurFilm',
+      description:
+        'A vendégeid fotói egy közös albumban. QR-kóddal, app és regisztráció nélkül.',
+    },
   },
   {
     slug: 'utazas',
@@ -85,18 +124,30 @@ export const occasions: Occasion[] = [
     icon: Plane,
     image: '/images/travel.webp',
     alt: 'Közös utazás',
-    title: 'Az út végén mindenkinél más képek maradnak',
-    text: 'Egy közös albumba gyűjtöd a fotókat, ahelyett hogy csoportokban és megosztási linkekben szóródnának szét.',
+    title: 'Egy út. Sok telefon. Egy közös album.',
+    text: 'Mindenki hozzáadhatja a saját képeit, így semmi nem marad szétszórva.',
+    linkLabel: 'Album utazáshoz',
     sections: [
       {
-        heading: 'Miért pont utazásra',
-        body: 'Egy közös úton mindenki mást fotóz, és a végén mindenkinél más képek maradnak. Ami átmegy az üzenetküldőkön, az gyakran összenyomva érkezik meg, a többi pedig különböző csoportokban és megosztási linkeken szóródik szét. Az OurFilmbe feltöltött képek egy helyre kerülnek, nagy felbontásban, és a hazaérkezés után egyben letölthetők.',
+        heading: 'Mindenkinél más képek készülnek',
+        body: 'Az OurFilm egy helyre gyűjti őket, hogy az út végén ne különböző csoportokból és mappákból kelljen összeszedned mindent.',
       },
       {
-        heading: 'Hogyan oszd meg az úton',
-        body: 'Itt a meghívólink fontosabb, mint a nyomtatott QR-kód: küldd el a közös csoportba még indulás előtt, így már az első naptól mindenki tud tölteni. A QR-kódot elég egyszer megmutatnod a telefonodról, ha valaki útközben csatlakozik a csapathoz.',
+        heading: 'Oszd meg még indulás előtt',
+        body: 'Küldd el a meghívólinket a közös csoportba, így mindenki már az első naptól ugyanabba az albumba tölthet.',
       },
     ],
+    cta: {
+      heading: 'Gyűjtsétek össze egy helyre az út fotóit.',
+      body: 'Hozd létre az albumot, és oszd meg az útitársaiddal.',
+      button: 'Próbáld ki ingyen',
+      helper: OCCASION_CTA_HELPER,
+    },
+    meta: {
+      title: 'Közös fotóalbum utazáshoz – OurFilm',
+      description:
+        'Gyűjtsétek össze egy helyre az út minden fotóját. Egy link, egy közös album.',
+    },
   },
   {
     slug: 'buli',
@@ -104,18 +155,30 @@ export const occasions: Occasion[] = [
     icon: GlassWater,
     image: '/images/party.webp',
     alt: 'Esti buli',
-    title: 'Este mindenki fotózik, másnap már nehéz összeszedni',
-    text: 'A képek akkor kerülnek a közös albumba, amikor még mindenki a helyszínen van. Nem kell másnap összeszedned őket.',
+    title: 'Este mindenki fotózik.',
+    text: 'Mire véget ér a buli, a feltöltött képek már egy helyen várnak.',
+    linkLabel: 'Album bulira',
     sections: [
       {
-        heading: 'Miért pont bulira',
-        body: 'Az este folyamán mindenki fotózik, másnap viszont már sokkal kisebb az esélye, hogy a képek el is jutnak hozzád. Az OurFilmmel a vendégek ott helyben, két koppintással feltöltenek, így nem marad minden az ő telefonjukon.',
+        heading: 'Ne másnap kelljen összeszedned őket',
+        body: 'A vendégek már a helyszínen feltölthetik a fotóikat. Egy QR-kód, és minden kép ugyanabba az albumba kerül.',
       },
       {
-        heading: 'Hova tedd a QR-kódot',
-        body: 'A bejárat, a bárpult és az asztalok a legbiztosabb helyek. Ha van vetítés vagy kijelző, tedd ki rá a kódot két számblokk között, és egy kártya a mosdóhoz vezető folyosón is meglepően jól működik. Minél több ponton látszik, annál kevesebb kép marad a telefonokon.',
+        heading: 'Tedd oda, ahol mindenki megfordul',
+        body: 'A bejárat, a bárpult és az asztalok a legjobb helyek. Ha van kijelző, azon is megmutathatod a QR-kódot.',
       },
     ],
+    cta: {
+      heading: 'A buli képei, egyetlen albumban.',
+      body: 'Hozd létre az albumot, és oszd meg a vendégeiddel.',
+      button: 'Próbáld ki ingyen',
+      helper: OCCASION_CTA_HELPER,
+    },
+    meta: {
+      title: 'Közös fotóalbum bulikhoz – OurFilm',
+      description:
+        'A vendégek a helyszínen feltöltik a képeiket, te pedig egy közös albumban kapod meg őket.',
+    },
   },
 ]
 

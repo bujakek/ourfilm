@@ -5,7 +5,8 @@
  *
  * Only rendered when the real sample album cannot be read — see
  * `live-demo.tsx`. It stays honest about being a mockup, because it is one:
- * the upload button and the ZIP button do nothing, and the section says so.
+ * neither the upload button nor the download button does anything, and the
+ * section says so above the frame.
  */
 
 import { cn } from '@/lib/utils'
@@ -58,11 +59,13 @@ export function LiveDemoFallback() {
             PRÓBÁLD KI
           </span>
           <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Nézd meg, milyen egyszerű vendégként
+            Próbáld ki vendégként
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Tölts fel egy próbaképet, és nézd meg, hogyan érkezik meg a közös
-            albumba. Ez a bemutató egy szimuláció.
+            Tölts fel egy próbaképet, és nézd meg, milyen egyszerű csatlakozni.
+          </p>
+          <p className="mt-3 text-sm text-pretty text-muted-foreground">
+            Ez csak egy bemutató, a kép nem kerül valódi eseménybe.
           </p>
         </Reveal>
 
@@ -137,8 +140,7 @@ export function LiveDemoFallback() {
                 {tab === 'vendeg' ? (
                   <>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      A vendég kiválaszt egy képet, és feltölti a böngészőből.
-                      App és regisztráció nélkül.
+                      Válassz egy képet, és töltsd fel.
                     </p>
                     <div className="mt-auto pt-6">
                       <button
@@ -183,8 +185,7 @@ export function LiveDemoFallback() {
                 ) : (
                   <>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Házigazdaként egy helyen látod az összes feltöltött képet,
-                      és egyetlen ZIP-fájlban letöltöd őket.
+                      Az összes feltöltött képet egyben letöltheted.
                     </p>
                     <div className="mt-auto space-y-3 pt-6">
                       <div className="glass flex items-center justify-between rounded-2xl px-4 py-3">
@@ -199,8 +200,8 @@ export function LiveDemoFallback() {
                         type="button"
                         className="btn-shine flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
                       >
-                        <Download className="size-4" aria-hidden="true" />{' '}
-                        Összes letöltése (ZIP)
+                        <Download className="size-4" aria-hidden="true" /> Az
+                        egész album letöltése
                       </button>
                     </div>
                   </>

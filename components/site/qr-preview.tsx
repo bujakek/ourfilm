@@ -24,14 +24,14 @@ export function QrPreview() {
           {/* Copy + input */}
           <Reveal>
             <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
-              QR-KÓD ELŐNÉZET
+              QR-KÓD
             </span>
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Így néz ki a vendégeidnek szánt QR-kártya
+              Egy QR-kód az egész eseményre
             </h2>
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              Írd be az esemény nevét, és nézd meg, mit teszel majd ki az
-              asztalokra.
+              Tedd ki az asztalokra, a bejárathoz vagy a bárpulthoz. Minden
+              feltöltött kép ugyanabba az albumba érkezik.
             </p>
 
             <div className="mt-8 max-w-md">
@@ -51,14 +51,13 @@ export function QrPreview() {
                 className="glass w-full rounded-2xl px-5 py-3.5 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground/60 focus:border-accent"
               />
               <div className="mt-4 flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">A generált link:</span>
+                <span className="text-muted-foreground">Megosztható link:</span>
                 <code className="glass truncate rounded-lg px-2.5 py-1 text-xs text-accent">
                   {url}
                 </code>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                A saját eseményedhez egyedi QR-kódot és megosztható
-                meghívólinket kapsz.
+                A saját eseményedhez egyedi QR-kódot és meghívólinket kapsz.
               </p>
             </div>
           </Reveal>
@@ -87,8 +86,7 @@ export function QrPreview() {
                 </div>
 
                 <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
-                  Olvasd be a QR-kódot, és töltsd fel a képeidet — app és
-                  regisztráció nélkül.
+                  Olvasd be a QR-kódot, és töltsd fel a képeidet.
                 </p>
                 <div className="mt-6 border-t border-black/10 pt-4">
                   <p className="truncate text-xs font-medium text-black/50">

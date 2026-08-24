@@ -70,13 +70,14 @@ export function FinalCta() {
 
             <div className="relative mx-auto max-w-2xl">
               <h2 className="text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                <span className="text-gradient">Ne hagyd, hogy a</span>{' '}
-                <span className="text-gradient-accent">vendégfotók</span>{' '}
-                <span className="text-gradient">a telefonokon maradjanak.</span>
+                <span className="text-gradient">Lásd viszont a napot</span>{' '}
+                <span className="text-gradient-accent">
+                  a vendégeid szemével.
+                </span>
               </h2>
               <p className="mx-auto mt-6 max-w-lg leading-relaxed text-pretty text-muted-foreground">
-                Hozd létre a közös albumot, oszd meg a QR-kódot, és gyűjtsd
-                össze egy helyre a vendégeid képeit.
+                Hozd létre az albumot, oszd meg a QR-kódot, és gyűjtsd össze egy
+                helyre a képeket.
               </p>
               <div className="mt-9 flex justify-center">
                 <Link
@@ -87,11 +88,10 @@ export function FinalCta() {
                 </Link>
               </div>
               <p className="mt-5 text-sm text-muted-foreground">
-                5 képig, bankkártya nélkül.
+                5 fotóig ingyen, bankkártya nélkül.
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
-                A teljes esemény egyszeri 12 900 Ft, korlátlan vendéggel és
-                korlátlan képpel.
+                A teljes esemény egyszeri 12 900 Ft. Nincs előfizetés.
               </p>
             </div>
           </div>

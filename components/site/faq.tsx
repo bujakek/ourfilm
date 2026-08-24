@@ -11,49 +11,45 @@ import { Reveal } from './reveal'
  *
  * Two are worth the note:
  *
- * - **Quality.** `lib/image.ts` re-encodes every upload in the browser to a
- *   4096px JPEG at q0.92 before it leaves the phone. That is a large,
- *   print-usable render — it is not the untouched original file, and EXIF does
- *   not survive the canvas. So: "nagy felbontású", never "eredeti minőség".
  * - **Moderation.** A host hides photos (`hidden_at`); single photos are never
- *   hard-deleted. Only the whole event can be deleted, so the answer offers
- *   exactly those two and never "törölheted a képet".
+ *   hard-deleted. Only the whole event can be deleted, so the answer speaks of
+ *   what appears in the gallery and never of deleting one photo.
  * - **Visibility.** The album has no gate; anyone holding the link is in, and
  *   `gallery_hidden_at` is what decides whether guests may browse at all. The
  *   answer says both, and never says "biztonságos" or "jelszóval védett".
  */
 const faqs = [
   {
-    q: 'Kell a vendégeknek alkalmazást letölteniük?',
-    a: 'Nem. A QR-kód beolvasása után az esemény a telefon böngészőjében nyílik meg, és a vendégek onnan töltenek fel.',
+    q: 'Kell alkalmazást letölteni?',
+    a: 'Nem. A vendégeid a QR-kód beolvasása után közvetlenül a böngészőből tölthetnek fel.',
   },
   {
-    q: 'Regisztrálniuk kell a vendégeknek?',
-    a: 'Nem kell fiókot létrehozniuk vagy e-mail-címet megadniuk. A nevüket megadhatják, hogy a képek mellett látszódjon, kitől érkeztek.',
+    q: 'Kell regisztrálni?',
+    a: 'A vendégeknek nem. A nevüket megadhatják, hogy lásd, kitől érkeztek a képek.',
   },
   {
-    q: 'Ki láthatja a feltöltött képeket?',
-    a: 'A házigazda minden feltöltött fotót lát. A vendégek akkor nyithatják meg a közös albumot, ha a házigazda bekapcsolta a galériát, és rendelkeznek az esemény linkjével vagy QR-kódjával.',
+    q: 'Ki láthatja az albumot?',
+    a: 'Az album nem nyilvános. Az esemény linkjével vagy QR-kódjával lehet megnyitni, a vendégeknek szánt galériát pedig te kapcsolhatod be.',
   },
   {
-    q: 'Milyen minőségben érkeznek meg a fotók?',
-    a: 'A fotók nagy felbontásban, legfeljebb 4096 képpontos hosszabbik oldallal kerülnek az albumba, így nagyíthatók, vághatók és a legtöbb hétköznapi méretben ki is nyomtathatók. Nem a telefonon lévő eredeti fájl kerül fel, ezért egyes technikai metaadatok elveszhetnek.',
+    q: 'Ki lehet nyomtatni a képeket?',
+    a: 'Igen. A fotók jó minőségben kerülnek az albumba, így később le is töltheted és ki is nyomtathatod őket.',
   },
   {
-    q: 'Meddig érhetők el a képek?',
-    a: 'A képek addig maradnak az esemény albumában, amíg házigazdaként nem törlöd az eseményt.',
+    q: 'Meddig maradnak meg a képek?',
+    a: 'Addig maradnak az albumodban, amíg nem törlöd az eseményt.',
   },
   {
-    q: 'Moderálhatom, mi jelenjen meg az albumban?',
-    a: 'Igen. Házigazdaként elrejtheted a nem kívánt képeket, és az egész eseményt a tartalmával együtt véglegesen törölheted.',
+    q: 'Elrejthetem a nem kívánt képeket?',
+    a: 'Igen. Te döntöd el, mi jelenjen meg a vendégeknek szánt galériában.',
   },
   {
     q: 'Mennyibe kerül?',
-    a: 'Az esemény létrehozása és az első 5 feltöltött kép ingyenes, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft, korlátlan vendéggel és korlátlan képpel. Nincs előfizetés, és a vendégek soha nem fizetnek semmit.',
+    a: '5 fotóig ingyen, bankkártya nélkül kipróbálhatod. A teljes esemény egyszeri 12 900 Ft, korlátlan vendéggel és korlátlan fotóval.',
   },
   {
-    q: 'Hogyan kezelitek a feltöltött fotókat?',
-    a: 'A fotókat az eseményalbum működtetéséhez tároljuk. Nem értékesítjük őket, és nem használjuk fel hirdetési célokra.',
+    q: 'Hogyan kezelitek a fotókat?',
+    a: 'A képeidet nem adjuk el, és nem használjuk fel hirdetésekhez.',
   },
 ]
 

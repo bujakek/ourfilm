@@ -20,8 +20,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!occasion) return {}
 
   return {
-    title: `${occasion.label} — közös fotóalbum | OurFilm`,
-    description: occasion.text,
+    title: occasion.meta.title,
+    description: occasion.meta.description,
+    openGraph: {
+      title: occasion.meta.title,
+      description: occasion.meta.description,
+    },
     ...(OCCASIONS_ARE_DRAFT ? { robots: { index: false, follow: true } } : {}),
   }
 }
@@ -69,22 +73,19 @@ export default async function OccasionPage({ params }: Props) {
 
           <div className="glass-strong mt-14 rounded-3xl p-8 sm:p-10">
             <h2 className="text-2xl font-semibold tracking-tight text-balance">
-              Hozd létre a közös albumot
+              {occasion.cta.heading}
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Néhány perc, és megvan az esemény, a QR-kód és a megosztható
-              meghívólink. Senkinek nem kell appot telepítenie vagy
-              regisztrálnia.
+              {occasion.cta.body}
             </p>
             <Link
               href="/admin/login"
               className="btn-shine mt-7 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              Próbáld ki ingyen
+              {occasion.cta.button}
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
-              5 képig, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft,
-              korlátlan vendéggel és korlátlan képpel.
+              {occasion.cta.helper}
             </p>
           </div>
 

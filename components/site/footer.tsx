@@ -54,8 +54,8 @@ const columns: FooterColumn[] = [
     links: [
       { label: 'Rólunk', href: '/rolunk' },
       { label: 'Blog', href: '/blog' },
-      { label: 'Adatkezelés', href: '/adatvedelem' },
-      { label: 'ÁSZF', href: '/aszf' },
+      { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
+      { label: 'Általános Szerződési Feltételek', href: '/aszf' },
     ],
   },
 ]
@@ -84,8 +84,7 @@ export function Footer({ locale }: { locale: Locale }) {
                 </span>
               </Link>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                A vendégeid fotói egy közös albumban, app és regisztráció
-                nélkül.
+                Minden vendégfotó egy közös albumban.
               </p>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
@@ -126,8 +125,10 @@ export function Footer({ locale }: { locale: Locale }) {
           </div>
 
           <div className="mt-12 border-t border-border pt-6">
+            {/* Never a literal year: the footer renders on every page, and a
+                hardcoded one silently goes stale on 1 January. */}
             <p className="text-sm text-muted-foreground">
-              © 2026 OurFilm. Készült Budapesten, sok-sok fényképpel.
+              © {new Date().getFullYear()} OurFilm. Minden jog fenntartva.
             </p>
           </div>
         </div>

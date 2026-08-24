@@ -8,8 +8,8 @@ const steps = [
   {
     number: '01',
     icon: CalendarPlus,
-    title: 'Hozd létre az eseményt',
-    text: 'Add meg az esemény nevét és azt, meddig lehet feltölteni. A közös album és a QR-kód pár perc alatt megvan.',
+    title: 'Hozd létre',
+    text: 'Add meg az esemény nevét, és hozd létre a közös albumot.',
     image: '/images/wedding-portrait.webp',
     alt: 'Esküvői portré a párról',
     note: null,
@@ -17,8 +17,8 @@ const steps = [
   {
     number: '02',
     icon: QrCode,
-    title: 'Oszd meg a QR-kódot',
-    text: 'Nyomtasd ki a QR-kártyát és tedd ki az asztalokra, vagy küldd el a meghívólinket a csoportba. A vendégeidnek innentől nincs más dolguk, mint beolvasni.',
+    title: 'Oszd meg',
+    text: 'Tedd ki a QR-kódot, vagy küldd el a meghívólinket.',
     image: '/images/garden-party.webp',
     alt: 'Kerti buli fényfüzérek alatt',
     note: 'Az albumot az esemény linkjével vagy QR-kódjával lehet megnyitni, és az oldal nem jelenik meg a keresőkben.',
@@ -26,8 +26,8 @@ const steps = [
   {
     number: '03',
     icon: Images,
-    title: 'Megkapod a vendégek fotóit',
-    text: 'A képek már az esemény alatt megérkeznek. Utána egyetlen ZIP-fájlban letöltöd az egészet.',
+    title: 'Kapd meg a képeket',
+    text: 'A vendégek feltöltenek, te pedig minden fotót egy helyen találsz.',
     image: '/images/evening-party.webp',
     alt: 'Esti buli vendégekkel',
     note: null,
@@ -40,7 +40,7 @@ export function HowItWorks() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Három lépés, és már gyűlhetnek is a képek
+            Három lépés, és kész az album
           </h2>
         </Reveal>
 

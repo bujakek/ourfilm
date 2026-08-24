@@ -31,7 +31,7 @@ export function DemoAlbum({ preview, url, href }: DemoAlbumProps) {
             PRÓBÁLD KI
           </span>
           <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Nézd meg, milyen egyszerű vendégként
+            Próbáld ki vendégként
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
             Ez a bemutató albumunk, és pontosan úgy nyílik meg, ahogy a

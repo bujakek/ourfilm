@@ -118,7 +118,7 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
         ) : (
           <Mail className="size-5" strokeWidth={1.8} aria-hidden="true" />
         )}
-        {pending ? 'Küldés…' : 'Belépési link kérése'}
+        {pending ? 'Küldés…' : 'Kérem a belépési linket'}
       </button>
     </form>
   )

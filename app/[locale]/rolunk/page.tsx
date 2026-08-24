@@ -5,10 +5,14 @@ import Link from 'next/link'
 import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
+const TITLE = 'Rólunk – OurFilm'
+const DESCRIPTION =
+  'Az OurFilm egy saját esküvő után született, amikor a vendégek fotóinak nagy része sosem jutott el hozzánk.'
+
 export const metadata: Metadata = {
-  title: 'Rólunk — OurFilm',
-  description:
-    'Az OurFilm egy saját esküvő után született: a vendégek fotói szétszóródtak, és sok közülük sosem jutott vissza hozzánk.',
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { title: TITLE, description: DESCRIPTION },
   // Held back with the rest of the standalone pages until the provider's
   // details are real and /arak may be indexed — not because the copy below is
   // unfinished. Flip it in the same change that publishes those.
@@ -21,17 +25,17 @@ const facts = [
   {
     icon: MapPin,
     title: 'Budapesten készül',
-    text: 'Az OurFilm magyar fejlesztés, amelyet valódi eseményeken, valódi vendégekkel tesztelünk.',
+    text: 'Az OurFilm magyar fejlesztés.',
   },
   {
     icon: Camera,
     title: 'Egy esküvőből indult',
-    text: 'A vendégek képeinek nagy része sosem jutott el hozzánk. Ebből lett az OurFilm.',
+    text: 'A saját élményünkből született megoldás más események képeit is egy helyre gyűjti.',
   },
   {
     icon: Heart,
-    title: 'Amit fontosnak tartunk',
-    text: 'A vendégnek ne kelljen semmit telepítenie vagy regisztrálnia. Egy QR-kód, és kész.',
+    title: 'Egyszerű a vendégeknek',
+    text: 'Nincs app és nincs regisztráció. Beolvassák a QR-kódot, és feltöltik a képeiket.',
   },
 ]
 
@@ -45,30 +49,27 @@ export default async function RolunkPage({ params }: Props) {
     <PageShell
       locale={locale}
       eyebrow="RÓLUNK"
-      title="Azért csináljuk, mert velünk is megtörtént"
+      title="Azért készítettük el, mert velünk is megtörtént."
       lead="Egy esemény emlékei ritkán férnek el egyetlen fényképezőgépben. A vendégek telefonjain is rengeteg kép készül, és sok közülük sosem jut el a házigazdához."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
           <div className="mt-12 space-y-5 text-lg leading-relaxed text-pretty text-muted-foreground">
             <p>
-              Az ötlet a saját esküvőnk után született. Béreltünk egy Instax
-              fényképezőgépet, hogy a vendégek is fotózzanak, és tényleg
-              fotóztak. A kész képek egy része aztán elveszett, más része soha
-              nem jutott vissza hozzánk. Ami telefonnal készült, az különböző
-              Messenger-beszélgetésekben maradt, és amit végül elküldtek, azt az
-              üzenetküldő gyakran össze is nyomta.
+              Az OurFilm ötlete a saját esküvőnk után született. A vendégeink
+              rengeteget fotóztak, de a képek különböző telefonokon és
+              beszélgetésekben maradtak. Sok közülük végül sosem jutott el
+              hozzánk.
             </p>
             <p>
-              Utólag derült ki, mennyi minden történt a napon, amiről nekünk
-              egyetlen fotónk sem volt. Nem a fotós hibája: ő nem lehet
-              egyszerre az asztaloknál, a készülődésnél és a hajnali bulin.
+              Csak később láttuk, mennyi minden történt aznap, amiről nekünk
+              egyetlen fotónk sem volt. Nem azért, mert nem készültek képek,
+              hanem mert nem volt egy hely, ahová mindenki feltölthette volna
+              őket.
             </p>
             <p>
-              Ezért csináltuk meg az OurFilmet úgy, hogy a vendégnek semmit ne
-              kelljen telepítenie vagy regisztrálnia. Beolvassa a QR-kódot,
-              feltölti a képeit, és ennyi. Amit feltöltenek, az egy helyre
-              érkezik, és a házigazda egyben letöltheti.
+              Ezért készítettük el az OurFilmet: egy QR-kód, és minden
+              vendégfotó egy közös albumba kerül.
             </p>
           </div>
 
@@ -98,8 +99,8 @@ export default async function RolunkPage({ params }: Props) {
               Kérdésed van?
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Írd meg, mire készülsz, és segítünk kitalálni, hogyan érdemes
-              megosztanod a QR-kódot.
+              Írd meg, milyen eseményre készülsz, és segítünk a QR-kód
+              elhelyezésében.
             </p>
             <Link
               href={localePath(locale, '/kapcsolat')}

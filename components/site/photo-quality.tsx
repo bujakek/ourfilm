@@ -39,24 +39,14 @@ export function PhotoQuality() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
-            FOTÓMINŐSÉG
+            EGY HELYEN
           </span>
           <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            A képek nem vesznek el az üzenetek között
+            Ne üzenetekből kelljen összeszedned a képeket.
           </h2>
-          {/* Second paragraph checked against `lib/image.ts`: the browser
-              re-encodes every upload to a 4096px JPEG at q0.92, so this may
-              promise a large, downloadable render and must not promise the
-              untouched original file. */}
           <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
-            Az üzenetküldők gyakran összenyomják a fotókat, hogy gyorsabban
-            menjenek át. Az OurFilm nem ezt csinálja: a feltöltött képeket nagy
-            felbontásban, legfeljebb 4096 képpontos hosszabbik oldallal tárolja.
-          </p>
-          <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
-            Ez elég a nagyításhoz, a vágáshoz és a nyomtatáshoz is. Nem a
-            telefonon lévő eredeti fájl kerül fel, így egyes technikai
-            metaadatok elveszhetnek.
+            Minden feltöltött fotó a közös albumba kerül, amit később egyben
+            letölthetsz.
           </p>
         </Reveal>
 
@@ -73,7 +63,7 @@ export function PhotoQuality() {
               {/* Original (right, full) */}
               <Image
                 src="/images/quality-original.webp"
-                alt="Ugyanaz a fotó az OurFilm közös albumában, nagy felbontásban"
+                alt="Egy közös albumban"
                 fill
                 sizes="(max-width: 768px) 100vw, 1100px"
                 className="object-cover"
@@ -85,7 +75,7 @@ export function PhotoQuality() {
               >
                 <Image
                   src="/images/quality-original.webp"
-                  alt="Ugyanaz a fotó üzenetben elküldve, összenyomva"
+                  alt="Üzenetek között"
                   fill
                   sizes="(max-width: 768px) 100vw, 1100px"
                   className="object-cover blur-[2.5px] brightness-95 contrast-[0.92] saturate-[0.72]"
@@ -95,10 +85,10 @@ export function PhotoQuality() {
 
               {/* Labels */}
               <span className="glass absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-medium">
-                Üzenetben
+                Üzenetek között
               </span>
               <span className="glass absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-medium text-accent">
-                OurFilmben
+                Egy közös albumban
               </span>
 
               {/* Divider + handle */}
@@ -115,17 +105,21 @@ export function PhotoQuality() {
 
           {/* Accessible control */}
           <label className="mt-5 flex items-center gap-3 px-1">
-            <span className="text-xs text-muted-foreground">Üzenetben</span>
+            <span className="text-xs text-muted-foreground">
+              Üzenetek között
+            </span>
+            {/* No aria-label: the wrapping <label> already names this control
+                from the two visible endpoint labels, and an explicit
+                aria-label would override — and then contradict — them. */}
             <input
               type="range"
               min={0}
               max={100}
               value={pos}
               onChange={(e) => setPos(Number(e.target.value))}
-              aria-label="Összehasonlítás csúszka az üzenetben összenyomott és az OurFilmben nagy felbontásban tárolt fotó között"
               className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-border accent-accent"
             />
-            <span className="text-xs text-accent">OurFilmben</span>
+            <span className="text-xs text-accent">Egy közös albumban</span>
           </label>
         </Reveal>
       </div>

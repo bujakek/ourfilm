@@ -32,17 +32,14 @@ export function InstantAccess() {
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <Reveal>
             <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
-              AZONNAL
+              MÁR AZNAP
             </span>
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Nem kell napokig elkérned a képeket
+              Mire véget ér az este, a képek már együtt várnak.
             </h2>
-            {/* Only ever "a feltöltött fotók": how much a given event
-                actually collects depends on the guests, and this section is
-                not in a position to promise a number. */}
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              A vendégek a helyszínen töltenek fel, nem másnap. Mire véget ér az
-              este, a feltöltött vendégfotók már egy helyen várnak.
+              A vendégek már a helyszínen feltölthetik a fotóikat. Neked nem
+              kell másnap egyesével elkérned őket.
             </p>
           </Reveal>
 

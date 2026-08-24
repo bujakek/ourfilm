@@ -18,11 +18,11 @@ export function Occasions({ locale }: { locale: Locale }) {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Nem csak esküvőre
+            Egy album minden közös alkalomhoz
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Születésnapon, közös utazáson vagy egy jól sikerült bulin ugyanígy
-            működik: egy QR-kód, és a képek egy albumba kerülnek.
+            Esküvő, születésnap, utazás vagy buli: mindenki hozzáadhatja a saját
+            képeit.
           </p>
         </Reveal>
 
@@ -86,7 +86,7 @@ export function Occasions({ locale }: { locale: Locale }) {
                     href={localePath(locale, `/alkalmak/${current.slug}`)}
                     className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-foreground"
                   >
-                    {current.label} — tudj meg többet
+                    {current.linkLabel}
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                 </div>
