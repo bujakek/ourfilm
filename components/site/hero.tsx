@@ -27,15 +27,17 @@ export function Hero() {
           </span>
 
           <h1 className="mt-6 text-[2rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl xl:text-[3.5rem]">
-            <span className="text-gradient">Minden vendég szemszöge.</span>
+            <span className="text-gradient">A fotók, amiket</span>
             <br />
-            <span className="text-gradient-accent">Egy közös album.</span>
+            <span className="text-gradient-accent">
+              másképp sosem kapnál meg.
+            </span>
           </h1>
 
           <p className="mt-7 max-w-lg text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            A vendégeid beolvassák a QR-kódot, és a telefonjuk böngészőjéből
-            azonnal feltöltik a képeiket. Nem kell alkalmazást letölteniük vagy
-            regisztrálniuk.
+            A vendégeid beolvassák a QR-kódot, és egy közös albumba töltik a
+            képeiket. Nekik nem kell app vagy regisztráció. Neked nem kell
+            napokig elkérned a fotókat.
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -43,7 +45,7 @@ export function Hero() {
               href="/admin/login"
               className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              Ingyenes esemény létrehozása
+              Próbáld ki ingyen
             </Link>
             <a
               href="#live-demo"
@@ -57,7 +59,7 @@ export function Hero() {
               photos cost nothing, and checkout is only ever reached from the
               host's own settings page. */}
           <p className="mt-10 text-sm text-muted-foreground">
-            Bankkártya nélkül kipróbálható.
+            5 képig, bankkártya nélkül.
           </p>
         </div>
 

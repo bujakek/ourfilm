@@ -11,22 +11,22 @@ const benefits = [
   {
     icon: Smartphone,
     title: 'Nincs letöltés',
-    text: 'A vendégek a telefonjuk böngészőjéből töltenek fel. Nem kell alkalmazást telepíteniük.',
+    text: 'A vendégek beolvassák a QR-kódot, és már tölthetik is fel a képeiket.',
   },
   {
     icon: Zap,
     title: 'Egy közös album',
-    text: 'Minden feltöltött kép ugyanabba az eseményalbumba érkezik, így nem kell őket üzenetekből és csoportokból összegyűjtened.',
+    text: 'Minden feltöltött fotó ugyanoda érkezik, nem kell Messenger-beszélgetésekből és privát üzenetekből összeszedned őket.',
   },
   {
     icon: ShieldCheck,
-    title: 'Csak a meghívottaknak',
-    text: 'Az albumot azok érik el, akik megkapták az esemény QR-kódját vagy meghívólinkjét. Az oldal nem jelenik meg a keresőkben.',
+    title: 'Nem nyilvános',
+    text: 'Az album nem jelenik meg a keresőkben. Az esemény linkjével vagy QR-kódjával lehet megnyitni.',
   },
   {
     icon: Download,
     title: 'Letöltés egyben',
-    text: 'Házigazdaként egyetlen ZIP-fájlban letöltheted az esemény összes fotóját.',
+    text: 'Házigazdaként egyetlen ZIP-fájlban töltheted le az esemény összes feltöltött fotóját.',
   },
 ]
 
@@ -36,12 +36,12 @@ export function Benefits() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Egyszerű a vendégeknek. Minden kép egy helyen neked.
+            A vendégeknek csak egy QR-kód. Neked nem kell többé elkérned a
+            képeket.
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            A vendégeid ugyanazzal a telefonnal készítik és töltik fel a
-            képeket, ami már náluk van. Nincs új alkalmazás, nincs bonyolult
-            beállítás.
+            Ugyanazzal a telefonnal töltenek fel, amivel fotóztak. Neked pedig
+            nem marad utómunka: a feltöltött képek maguktól egy helyre kerülnek.
           </p>
         </Reveal>
 

@@ -37,13 +37,12 @@ export function InstantAccess() {
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
               Nem kell napokig elkérned a képeket
             </h2>
-            {/* "lehet", not "lesz": how much a given event actually collects
-                depends on the guests, and this section is not in a position to
-                promise a number. */}
+            {/* Only ever "a feltöltött fotók": how much a given event
+                actually collects depends on the guests, and this section is
+                not in a position to promise a number. */}
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              A feltöltött fotók már az esemény alatt megérkeznek a közös
-              albumba. Mire hazaérsz, a vendégeid pillanatainak nagy része már
-              egy helyen lehet.
+              A vendégek a helyszínen töltenek fel, nem másnap. Mire véget ér az
+              este, a feltöltött vendégfotók már egy helyen várnak.
             </p>
           </Reveal>
 

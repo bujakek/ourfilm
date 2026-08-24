@@ -49,14 +49,14 @@ export function PhotoQuality() {
               promise a large, downloadable render and must not promise the
               untouched original file. */}
           <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
-            Ha a vendégek különböző Messenger-csoportokba és privát üzenetekbe
-            küldik a fotókat, nehéz mindent összegyűjteni. Az OurFilmben minden
-            kép ugyanabba az albumba érkezik, és a házigazda egyben letöltheti
-            őket.
+            Az üzenetküldők gyakran összenyomják a fotókat, hogy gyorsabban
+            menjenek át. Az OurFilm nem ezt csinálja: a feltöltött képeket nagy
+            felbontásban, legfeljebb 4096 képpontos hosszabbik oldallal tárolja.
           </p>
           <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
-            A feltöltött képeket letölthető, nagy felbontású változatban őrizzük
-            meg.
+            Ez elég a nagyításhoz, a vágáshoz és a nyomtatáshoz is. Nem a
+            telefonon lévő eredeti fájl kerül fel, így egyes technikai
+            metaadatok elveszhetnek.
           </p>
         </Reveal>
 
@@ -85,7 +85,7 @@ export function PhotoQuality() {
               >
                 <Image
                   src="/images/quality-original.webp"
-                  alt="A fotó csevegőappban, összenyomva"
+                  alt="Ugyanaz a fotó üzenetben elküldve, összenyomva"
                   fill
                   sizes="(max-width: 768px) 100vw, 1100px"
                   className="object-cover blur-[2.5px] brightness-95 contrast-[0.92] saturate-[0.72]"
@@ -95,10 +95,10 @@ export function PhotoQuality() {
 
               {/* Labels */}
               <span className="glass absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-medium">
-                Szétszórva
+                Üzenetben
               </span>
               <span className="glass absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-medium text-accent">
-                OurFilmmel
+                OurFilmben
               </span>
 
               {/* Divider + handle */}
@@ -115,17 +115,17 @@ export function PhotoQuality() {
 
           {/* Accessible control */}
           <label className="mt-5 flex items-center gap-3 px-1">
-            <span className="text-xs text-muted-foreground">Szétszórva</span>
+            <span className="text-xs text-muted-foreground">Üzenetben</span>
             <input
               type="range"
               min={0}
               max={100}
               value={pos}
               onChange={(e) => setPos(Number(e.target.value))}
-              aria-label="Összehasonlítás csúszka az üzenetekben szétszórt és az OurFilmben egy helyen tárolt fotó között"
+              aria-label="Összehasonlítás csúszka az üzenetben összenyomott és az OurFilmben nagy felbontásban tárolt fotó között"
               className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-border accent-accent"
             />
-            <span className="text-xs text-accent">OurFilmmel</span>
+            <span className="text-xs text-accent">OurFilmben</span>
           </label>
         </Reveal>
       </div>

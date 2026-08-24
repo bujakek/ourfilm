@@ -34,9 +34,8 @@ export function DemoAlbum({ preview, url, href }: DemoAlbumProps) {
             Nézd meg, milyen egyszerű vendégként
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
-            Ez a mi bemutató albumunk, nem egy ügyfél eseménye — de ugyanazon a
-            címen és ugyanazzal a felülettel nyílik meg, amit a vendégeid is
-            látnak. Olvasd be a kódot a telefonoddal, vagy nyisd meg egy
+            Ez a bemutató albumunk, és pontosan úgy nyílik meg, ahogy a
+            vendégeidé fog. Olvasd be a kódot a telefonoddal, vagy nyisd meg egy
             koppintással.
           </p>
         </Reveal>
@@ -98,9 +97,9 @@ export function DemoAlbum({ preview, url, href }: DemoAlbumProps) {
                 </div>
 
                 <p className="text-sm leading-relaxed text-pretty text-muted-foreground sm:mt-5">
-                  Pontosan ezt látja egy vendég, amikor beolvassa a kártyát az
-                  asztalon. A bemutató album csak megtekinthető — a sajátodba a
-                  vendégeid app és regisztráció nélkül tölthetnek fel.
+                  Ezt látja egy vendég, amikor beolvassa a kártyát az asztalon.
+                  A bemutató album csak megtekinthető. A sajátodba a vendégeid
+                  app és regisztráció nélkül tölthetnek fel.
                 </p>
 
                 <Link

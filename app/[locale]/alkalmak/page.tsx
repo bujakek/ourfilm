@@ -1,4 +1,3 @@
-import { DraftNotice } from '@/components/site/draft-notice'
 import { PageShell } from '@/components/site/page-shell'
 import { OCCASIONS_ARE_DRAFT, occasions } from '@/lib/occasions'
 import { ArrowRight } from 'lucide-react'
@@ -11,7 +10,7 @@ import { notFound } from 'next/navigation'
 export const metadata: Metadata = {
   title: 'Alkalmak — OurFilm',
   description:
-    'Esküvő, születésnap, utazás, buli vagy egy hétköznap — közös fotóalbum minden alkalomra, ahol fotó készül.',
+    'Esküvő, születésnap, utazás vagy buli: gyűjtsd össze a vendégek fotóit egy közös albumban, QR-kóddal.',
   ...(OCCASIONS_ARE_DRAFT ? { robots: { index: false, follow: true } } : {}),
 }
 
@@ -26,22 +25,10 @@ export default async function AlkalmakPage({ params }: Props) {
       locale={locale}
       eyebrow="ALKALMAK"
       title="Minden alkalomra, ahol fotó készül"
-      lead="Ugyanaz a QR-kód, ugyanaz a közös album — csak a nap más. Válaszd ki, mire készülsz."
+      lead="Ugyanaz a QR-kód, ugyanaz a közös album, csak az alkalom más. Válaszd ki, mire készülsz."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-6xl">
-          {OCCASIONS_ARE_DRAFT ? (
-            <div className="mx-auto max-w-3xl">
-              <DraftNotice>
-                <strong className="font-semibold text-foreground">
-                  Ezek az oldalak még vázlatok.
-                </strong>{' '}
-                A szerkezet kész, a szöveg egy része helykitöltő. Az oldalak
-                egyelőre nem jelennek meg a keresőkben.
-              </DraftNotice>
-            </div>
-          ) : null}
-
           <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {occasions.map((occasion) => (
               <li key={occasion.slug}>

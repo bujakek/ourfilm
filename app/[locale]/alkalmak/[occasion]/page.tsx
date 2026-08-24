@@ -1,4 +1,3 @@
-import { DraftNotice } from '@/components/site/draft-notice'
 import { PageShell } from '@/components/site/page-shell'
 import { OCCASIONS_ARE_DRAFT, occasionBySlug, occasions } from '@/lib/occasions'
 import { ArrowLeft } from 'lucide-react'
@@ -42,16 +41,6 @@ export default async function OccasionPage({ params }: Props) {
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
-          {OCCASIONS_ARE_DRAFT ? (
-            <DraftNotice>
-              <strong className="font-semibold text-foreground">
-                Ez az oldal még vázlat.
-              </strong>{' '}
-              A „TODO” jelölésű részeket kell valódi tartalomra cserélni. Az
-              oldal egyelőre nem jelenik meg a keresőkben.
-            </DraftNotice>
-          ) : null}
-
           <div className="glass-strong mt-12 overflow-hidden rounded-[2rem] p-2">
             <div className="relative aspect-[16/10] overflow-hidden rounded-[1.6rem] sm:aspect-[16/8]">
               <Image
@@ -80,18 +69,23 @@ export default async function OccasionPage({ params }: Props) {
 
           <div className="glass-strong mt-14 rounded-3xl p-8 sm:p-10">
             <h2 className="text-2xl font-semibold tracking-tight text-balance">
-              Készen állsz?
+              Hozd létre a közös albumot
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Hozd létre az eseményt, nyomtasd ki a QR-kódot, és hagyd, hogy a
-              vendégeid meséljék el a napot.
+              Néhány perc, és megvan az esemény, a QR-kód és a megosztható
+              meghívólink. Senkinek nem kell appot telepítenie vagy
+              regisztrálnia.
             </p>
             <Link
               href="/admin/login"
               className="btn-shine mt-7 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              Esemény létrehozása — ingyen
+              Próbáld ki ingyen
             </Link>
+            <p className="mt-4 text-sm text-muted-foreground">
+              5 képig, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft,
+              korlátlan vendéggel és korlátlan képpel.
+            </p>
           </div>
 
           <Link

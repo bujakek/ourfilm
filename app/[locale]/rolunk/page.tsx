@@ -1,6 +1,5 @@
-import { DraftNotice } from '@/components/site/draft-notice'
 import { PageShell } from '@/components/site/page-shell'
-import { Heart, MapPin, Users } from 'lucide-react'
+import { Camera, Heart, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { isLocale, localePath } from '@/lib/i18n'
@@ -9,28 +8,30 @@ import { notFound } from 'next/navigation'
 export const metadata: Metadata = {
   title: 'Rólunk — OurFilm',
   description:
-    'Kik állnak az OurFilm mögött. Budapesten készül, azért, hogy egy esemény minden fotója egy helyre kerüljön.',
-  // TODO(copy): remove once the real team and story copy lands.
+    'Az OurFilm egy saját esküvő után született: a vendégek fotói szétszóródtak, és sok közülük sosem jutott vissza hozzánk.',
+  // Held back with the rest of the standalone pages until the provider's
+  // details are real and /arak may be indexed — not because the copy below is
+  // unfinished. Flip it in the same change that publishes those.
   robots: { index: false, follow: true },
 }
 
-// PLACEHOLDER — scaffolding only. Names, headcount and dates are deliberately
-// left out rather than invented; fill these in with the real story.
+// Only what is verifiably true. Headcount, customer numbers and testimonials
+// are deliberately absent rather than invented.
 const facts = [
   {
     icon: MapPin,
     title: 'Budapesten készül',
-    text: 'Itt találjuk ki, itt írjuk, és itt teszteljük — magyar eseményeken, magyar vendégekkel.',
+    text: 'Az OurFilm magyar fejlesztés, amelyet valódi eseményeken, valódi vendégekkel tesztelünk.',
   },
   {
-    icon: Users,
-    title: 'Kicsi csapat',
-    text: 'TODO: hányan vagytok, és ki mit csinál. Egy-két mondat elég.',
+    icon: Camera,
+    title: 'Egy esküvőből indult',
+    text: 'A vendégek képeinek nagy része sosem jutott el hozzánk. Ebből lett az OurFilm.',
   },
   {
     icon: Heart,
-    title: 'Miért csináljuk',
-    text: 'TODO: az eredeti történet — melyik esemény után hiányoztak a vendégek fotói.',
+    title: 'Amit fontosnak tartunk',
+    text: 'A vendégnek ne kelljen semmit telepítenie vagy regisztrálnia. Egy QR-kód, és kész.',
   },
 ]
 
@@ -44,32 +45,30 @@ export default async function RolunkPage({ params }: Props) {
     <PageShell
       locale={locale}
       eyebrow="RÓLUNK"
-      title="Az esemény minden vendég szemével"
-      lead="Egy jó esemény legszebb képei ritkán egy fényképezőgépben vannak. Szét vannak szórva húsz telefonon — és ott is maradnak."
+      title="Azért csináljuk, mert velünk is megtörtént"
+      lead="Egy esemény emlékei ritkán férnek el egyetlen fényképezőgépben. A vendégek telefonjain is rengeteg kép készül, és sok közülük sosem jut el a házigazdához."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
-          <DraftNotice>
-            <strong className="font-semibold text-foreground">
-              Ez az oldal még vázlat.
-            </strong>{' '}
-            A szerkezet kész, a szöveg egy része helykitöltő — a „TODO” jelölésű
-            részeket kell valódi tartalomra cserélni. Az oldal egyelőre nem
-            jelenik meg a keresőkben.
-          </DraftNotice>
-
           <div className="mt-12 space-y-5 text-lg leading-relaxed text-pretty text-muted-foreground">
             <p>
-              Az OurFilm egyetlen dolgot csinál: a vendégek beolvassák a
-              QR-kódot, és a telefonjuk böngészőjéből feltöltik a képeiket.
-              Nincs alkalmazás, nincs regisztráció, nincs jelszó — mert minden
-              egyes lépés, amit egy vendégnek meg kell tennie, több tucat
-              elmaradt fotót jelent.
+              Az ötlet a saját esküvőnk után született. Béreltünk egy Instax
+              fényképezőgépet, hogy a vendégek is fotózzanak, és tényleg
+              fotóztak. A kész képek egy része aztán elveszett, más része soha
+              nem jutott vissza hozzánk. Ami telefonnal készült, az különböző
+              Messenger-beszélgetésekben maradt, és amit végül elküldtek, azt az
+              üzenetküldő gyakran össze is nyomta.
             </p>
             <p>
-              TODO: itt jön a valódi történet. Honnan jött az ötlet, mikor
-              kezdtétek, és mi az, amit másképp csináltok, mint a fotómegosztó
-              alkalmazások.
+              Utólag derült ki, mennyi minden történt a napon, amiről nekünk
+              egyetlen fotónk sem volt. Nem a fotós hibája: ő nem lehet
+              egyszerre az asztaloknál, a készülődésnél és a hajnali bulin.
+            </p>
+            <p>
+              Ezért csináltuk meg az OurFilmet úgy, hogy a vendégnek semmit ne
+              kelljen telepítenie vagy regisztrálnia. Beolvassa a QR-kódot,
+              feltölti a képeit, és ennyi. Amit feltöltenek, az egy helyre
+              érkezik, és a házigazda egyben letöltheti.
             </p>
           </div>
 
@@ -99,7 +98,8 @@ export default async function RolunkPage({ params }: Props) {
               Kérdésed van?
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Egy ember olvassa a leveleket, és tényleg válaszol.
+              Írd meg, mire készülsz, és segítünk kitalálni, hogyan érdemes
+              megosztanod a QR-kódot.
             </p>
             <Link
               href={localePath(locale, '/kapcsolat')}

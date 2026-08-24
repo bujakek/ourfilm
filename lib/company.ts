@@ -81,6 +81,13 @@ export const VAT_STATUS = {
    */
   priceNote:
     'A feltüntetett ár a fizetendő végösszeg. A szolgáltató alanyi adómentes (AAM), az ár áfát nem tartalmaz.',
+  /**
+   * The same fact for /arak, where the reader is deciding whether to buy
+   * rather than reading a contract. Separate from `priceNote` because the ÁSZF
+   * quotes that one verbatim and a legal document needs the long form.
+   */
+  pricePageNote:
+    'A feltüntetett ár a fizetendő végösszeg. Alanyi adómentes szolgáltatás.',
 } as const
 
 /** Hosting provider named in the ÁSZF, per the Elker tv. */
@@ -116,7 +123,9 @@ export const LAST_UPDATED = '2026. augusztus 21.'
 
 /**
  * Flips the legal pages *and* the price page out of draft: hides the
- * DraftNotice banners and lets all three be indexed.
+ * DraftNotice banners on the two legal pages and lets all three be indexed.
+ * /arak carries no banner any more — its copy is final — but it stays out of
+ * search results on the same flag, for the reason below.
  *
  * Keep false until COMPANY above is real. Publishing a privacy notice that
  * says `[NÉV — TODO]` is worse than not publishing one, and /arak is gated on

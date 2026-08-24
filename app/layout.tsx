@@ -15,16 +15,16 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: 'OurFilm — QR-kódos közös fotóalbum eseményekhez',
   description:
-    'A vendégeid QR-kóddal, alkalmazás és regisztráció nélkül tölthetik fel képeiket egy közös eseményalbumba.',
+    'Gyűjtsd össze az esküvő vagy esemény vendégfotóit egyetlen közös albumban. QR-kódos feltöltés app és vendégregisztráció nélkül.',
   authors: [{ name: 'OurFilm' }],
   openGraph: {
     type: 'website',
     locale: 'hu_HU',
     url: `${SITE_URL}/${defaultLocale}`,
     siteName: 'OurFilm',
-    title: 'OurFilm — Minden vendég szemszöge egy közös albumban',
+    title: 'OurFilm — A fotók, amiket másképp sosem kapnál meg',
     description:
-      'QR-kódos közös fotóalbum esküvőkre és eseményekre. A vendégek közvetlenül a telefonjuk böngészőjéből töltenek fel.',
+      'A vendégeid beolvassák a QR-kódot, és egy közös albumba töltik a képeiket. App és regisztráció nélkül.',
     images: [
       {
         // Crawlers fetch this URL directly — no Next optimization, and WebP
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'OurFilm — Minden vendég szemszöge egy közös albumban',
+    title: 'OurFilm — A fotók, amiket másképp sosem kapnál meg',
     description:
       'QR-kódos közös fotóalbum esküvőkre és eseményekre. App és regisztráció nélkül.',
     images: ['/images/og-cover.jpg'],

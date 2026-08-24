@@ -27,10 +27,11 @@ export function QrPreview() {
               QR-KÓD ELŐNÉZET
             </span>
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Nézd meg, mit olvasnak be a vendégeid
+              Így néz ki a vendégeidnek szánt QR-kártya
             </h2>
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              Írd be az esemény nevét, és nézd meg a QR-kártya előnézetét.
+              Írd be az esemény nevét, és nézd meg, mit teszel majd ki az
+              asztalokra.
             </p>
 
             <div className="mt-8 max-w-md">

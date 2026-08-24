@@ -46,7 +46,7 @@ const columns: FooterColumn[] = [
     links: [
       { label: 'Gyakori kérdések', href: '/#faq' },
       { label: 'Kapcsolat', href: '/kapcsolat' },
-      { label: 'Esemény létrehozása', href: '/admin/login', external: true },
+      { label: 'Próbáld ki ingyen', href: '/admin/login', external: true },
     ],
   },
   {
@@ -84,7 +84,8 @@ export function Footer({ locale }: { locale: Locale }) {
                 </span>
               </Link>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Közös albumok, minden vendég szemével.
+                A vendégeid fotói egy közös albumban, app és regisztráció
+                nélkül.
               </p>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}

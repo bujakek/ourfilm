@@ -9,7 +9,7 @@ const steps = [
     number: '01',
     icon: CalendarPlus,
     title: 'Hozd létre az eseményt',
-    text: 'Add meg az esemény nevét és a feltöltés határidejét. Néhány perc alatt elkészül a közös album.',
+    text: 'Add meg az esemény nevét és azt, meddig lehet feltölteni. A közös album és a QR-kód pár perc alatt megvan.',
     image: '/images/wedding-portrait.webp',
     alt: 'Esküvői portré a párról',
     note: null,
@@ -18,16 +18,16 @@ const steps = [
     number: '02',
     icon: QrCode,
     title: 'Oszd meg a QR-kódot',
-    text: 'Töltsd le a nyomtatható QR-kódot, tedd ki az asztalokra, vagy küldd el a meghívólinket üzenetben.',
+    text: 'Nyomtasd ki a QR-kártyát és tedd ki az asztalokra, vagy küldd el a meghívólinket a csoportba. A vendégeidnek innentől nincs más dolguk, mint beolvasni.',
     image: '/images/garden-party.webp',
     alt: 'Kerti buli fényfüzérek alatt',
-    note: 'Az albumot azok érik el, akikhez eljut a meghívólink vagy a QR-kód, és az oldal nem jelenik meg a keresőkben. A fotókat nem adjuk el és nem használjuk hirdetési célokra, és bármikor véglegesen törölheted őket.',
+    note: 'Az albumot az esemény linkjével vagy QR-kódjával lehet megnyitni, és az oldal nem jelenik meg a keresőkben.',
   },
   {
     number: '03',
     icon: Images,
-    title: 'Gyűjtsétek össze a pillanatokat',
-    text: 'A vendégek elkészítik vagy kiválasztják a képeiket, és feltöltik őket a közös albumba. Házigazdaként az egészet letöltheted egy ZIP-fájlban.',
+    title: 'Megkapod a vendégek fotóit',
+    text: 'A képek már az esemény alatt megérkeznek. Utána egyetlen ZIP-fájlban letöltöd az egészet.',
     image: '/images/evening-party.webp',
     alt: 'Esti buli vendégekkel',
     note: null,
@@ -40,7 +40,7 @@ export function HowItWorks() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Három lépés, és gyűlhetnek a képek
+            Három lépés, és már gyűlhetnek is a képek
           </h2>
         </Reveal>
 

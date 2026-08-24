@@ -94,7 +94,7 @@ export function Navbar({ locale }: { locale: Locale }) {
             scrolled ? 'px-3.5 py-1.5 text-[13px]' : 'px-4 py-2 text-sm',
           )}
         >
-          Esemény létrehozása
+          Próbáld ki ingyen
         </Link>
 
         <button
@@ -141,7 +141,7 @@ export function Navbar({ locale }: { locale: Locale }) {
             onClick={() => setOpen(false)}
             className="btn-shine mt-2 rounded-2xl bg-primary px-5 py-4 text-center text-lg font-semibold text-primary-foreground"
           >
-            Esemény létrehozása
+            Próbáld ki ingyen
           </Link>
         </div>
       </div>

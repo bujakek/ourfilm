@@ -1,4 +1,3 @@
-import { DraftNotice } from '@/components/site/draft-notice'
 import { PageShell } from '@/components/site/page-shell'
 import { hasRealCompanyDetails, VAT_STATUS } from '@/lib/company'
 import { Check } from 'lucide-react'
@@ -10,7 +9,7 @@ import { notFound } from 'next/navigation'
 export const metadata: Metadata = {
   title: 'Árak — OurFilm',
   description:
-    'Az OurFilm csomagjai eseményekhez. Egy esemény, egy QR-kód, korlátlan vendég.',
+    'Egyszeri 12 900 Ft eseményenként, korlátlan vendéggel és korlátlan képpel. Előfizetés nélkül, 5 képig ingyen kipróbálható.',
   // Indexed only once the provider's details are real. The prices below are
   // now final, but a price a stranger can find in Google leads to an ÁSZF
   // that still says [NÉV — TODO], and a service cannot lawfully be sold to a
@@ -30,46 +29,46 @@ export const metadata: Metadata = {
 // alanyi adómentes and charges no VAT. See VAT_STATUS in lib/company.ts.
 const tiers = [
   {
-    name: 'Próba',
+    name: 'Ingyenes próba',
     price: '0 Ft',
     cadence: 'egy eseményre',
-    description: 'Nézd meg, hogy működik, mielőtt bármit fizetnél.',
+    description:
+      'Hozz létre egy eseményt, és próbáld ki legfeljebb 5 feltöltött képpel.',
     features: [
       'Egy esemény',
-      '5 kép az albumban',
+      '5 feltöltött kép',
       'Korlátlan vendég',
       'Feltöltés QR-kóddal',
       'Közös album',
     ],
-    cta: 'Kezdd el ingyen',
+    cta: 'Próbáld ki ingyen',
     featured: false,
   },
   {
-    name: 'Esemény',
+    name: 'Teljes esemény',
     price: '12 900 Ft',
     cadence: 'egyszeri díj, eseményenként',
-    description: 'Egy nagy naphoz, a teljes albummal és letöltéssel.',
+    description:
+      'Korlátlan vendég, korlátlan kép és a teljes album letöltése egyszeri 12 900 Ft-ért.',
     features: [
-      'Minden, ami a Próbában',
+      'Korlátlan vendég',
       'Korlátlan számú kép',
-      'Nyomtatható felbontás (4096 px)',
-      'Teljes album letöltése ZIP-ben',
-      'Fotók elrejtése moderáláshoz',
+      'Nagy felbontás, legfeljebb 4096 px',
+      'A teljes album letöltése ZIP-ben',
+      'Nem kívánt fotók elrejtése a galériából',
       'Nyomtatható QR-kártya',
+      'Nincs előfizetés',
     ],
     cta: 'Esemény létrehozása',
     featured: true,
   },
   {
-    name: 'Egyedi',
+    name: 'Partnereknek',
     price: 'Egyedi',
     cadence: 'megbeszélés szerint',
-    description: 'Több eseményre vagy visszatérő alkalmakra.',
-    features: [
-      'Minden, ami az Esemény csomagban',
-      'Több esemény egy fiókban',
-      'Egyedi igények',
-    ],
+    description:
+      'Fotósoknak, ceremóniamestereknek, helyszíneknek és több eseményt kezelő partnereknek.',
+    features: ['Több esemény egy fiókban', 'Egyedi igények egyeztetés után'],
     cta: 'Írj nekünk',
     featured: false,
   },
@@ -85,23 +84,11 @@ export default async function ArakPage({ params }: Props) {
     <PageShell
       locale={locale}
       eyebrow="ÁRAK"
-      title="Egy esemény, egy ár"
-      lead="Nincs előfizetés és nincs vendégenkénti díj — a vendégeid soha nem fizetnek semmit, és nem is regisztrálnak."
+      title="Korlátlan vendég és kép. Egyetlen egyszeri díj."
+      lead="Nincs előfizetés, vendégenkénti díj vagy rejtett költség. A vendégeid ingyen és regisztráció nélkül töltenek fel."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-3xl">
-            {hasRealCompanyDetails ? null : (
-              <DraftNotice>
-                <strong className="font-semibold text-foreground">
-                  Ez az oldal még nem éles.
-                </strong>{' '}
-                Az összegek véglegesek, de a szolgáltatás megrendelése még nem
-                indult el. Az oldal addig nem jelenik meg a keresőkben.
-              </DraftNotice>
-            )}
-          </div>
-
           <div className="mt-12 grid gap-4 lg:grid-cols-3">
             {tiers.map((tier) => (
               <article
@@ -147,7 +134,7 @@ export default async function ArakPage({ params }: Props) {
 
                 <Link
                   href={
-                    tier.name === 'Egyedi'
+                    tier.name === 'Partnereknek'
                       ? localePath(locale, '/kapcsolat')
                       : '/admin/login'
                   }
@@ -164,7 +151,7 @@ export default async function ArakPage({ params }: Props) {
           </div>
 
           <p className="mx-auto mt-10 max-w-3xl text-sm leading-relaxed text-pretty text-muted-foreground">
-            {VAT_STATUS.priceNote}
+            {VAT_STATUS.pricePageNote}
           </p>
 
           <p className="mx-auto mt-4 max-w-3xl text-sm leading-relaxed text-pretty text-muted-foreground">

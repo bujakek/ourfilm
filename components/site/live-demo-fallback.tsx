@@ -62,8 +62,7 @@ export function LiveDemoFallback() {
           </h2>
           <p className="mt-4 text-pretty text-muted-foreground">
             Tölts fel egy próbaképet, és nézd meg, hogyan érkezik meg a közös
-            albumba. Pontosan ugyanezt látják majd a vendégeid is. Ez itt egy
-            szimuláció, nem egy valódi esemény.
+            albumba. Ez a bemutató egy szimuláció.
           </p>
         </Reveal>
 
@@ -138,8 +137,8 @@ export function LiveDemoFallback() {
                 {tab === 'vendeg' ? (
                   <>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Válassz ki egy képet, és töltsd fel közvetlenül a
-                      böngészőből. Nincs alkalmazás és nincs vendégregisztráció.
+                      A vendég kiválaszt egy képet, és feltölti a böngészőből.
+                      App és regisztráció nélkül.
                     </p>
                     <div className="mt-auto pt-6">
                       <button
@@ -185,7 +184,7 @@ export function LiveDemoFallback() {
                   <>
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       Házigazdaként egy helyen látod az összes feltöltött képet,
-                      és egyben is letöltheted őket.
+                      és egyetlen ZIP-fájlban letöltöd őket.
                     </p>
                     <div className="mt-auto space-y-3 pt-6">
                       <div className="glass flex items-center justify-between rounded-2xl px-4 py-3">
