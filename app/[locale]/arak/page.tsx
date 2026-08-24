@@ -59,11 +59,10 @@ const tiers: Tier[] = [
     featured: false,
   },
   {
-    name: 'Teljes esemény',
+    name: 'Teljes album',
     price: '12 900 Ft',
     cadence: 'egyszeri díj',
-    description:
-      'Minden, amire szükséged van ahhoz, hogy egy helyre gyűjtsd a vendégeid képeit.',
+    description: 'Minden vendégfotó egy közös albumban.',
     features: [
       'Korlátlan vendég',
       'Korlátlan fotó',

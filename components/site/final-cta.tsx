@@ -91,7 +91,7 @@ export function FinalCta() {
                 5 fotóig ingyen, bankkártya nélkül.
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
-                A teljes esemény egyszeri 12 900 Ft. Nincs előfizetés.
+                A teljes album egyszeri 12 900 Ft. Nincs előfizetés.
               </p>
             </div>
           </div>

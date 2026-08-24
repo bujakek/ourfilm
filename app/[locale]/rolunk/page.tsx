@@ -30,7 +30,7 @@ const facts = [
   {
     icon: Camera,
     title: 'Egy esküvőből indult',
-    text: 'A saját élményünkből született megoldás más események képeit is egy helyre gyűjti.',
+    text: 'A saját esküvőnkre kerestünk megoldást. Ma másoknak segítünk összegyűjteni a vendégeik fotóit.',
   },
   {
     icon: Heart,
@@ -99,8 +99,8 @@ export default async function RolunkPage({ params }: Props) {
               Kérdésed van?
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Írd meg, milyen eseményre készülsz, és segítünk a QR-kód
-              elhelyezésében.
+              Írd meg, milyen eseményre készülsz, és segítünk létrehozni az
+              albumot.
             </p>
             <Link
               href={localePath(locale, '/kapcsolat')}

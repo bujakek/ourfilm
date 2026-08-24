@@ -53,7 +53,7 @@ export const OCCASIONS_ARE_DRAFT = true
 
 /** The same free-trial line closes every occasion page. */
 const OCCASION_CTA_HELPER =
-  '5 fotóig ingyen, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft.'
+  '5 fotóig ingyen, bankkártya nélkül. A teljes album egyszeri 12 900 Ft.'
 
 export const occasions: Occasion[] = [
   {
@@ -98,7 +98,7 @@ export const occasions: Occasion[] = [
     linkLabel: 'Album születésnapra',
     sections: [
       {
-        heading: 'Ne másnap kelljen elkérned őket',
+        heading: 'Ne másnap kelljen elkérned a képeket.',
         body: 'A vendégeid már a helyszínen feltölthetik a fotóikat. Mire véget ér a buli, a képek egy helyen várnak.',
       },
       {
@@ -130,15 +130,15 @@ export const occasions: Occasion[] = [
     sections: [
       {
         heading: 'Mindenkinél más képek készülnek',
-        body: 'Az OurFilm egy helyre gyűjti őket, hogy az út végén ne különböző csoportokból és mappákból kelljen összeszedned mindent.',
+        body: 'Az OurFilm egy helyre gyűjti őket, így az út végén minden fotót ugyanabban az albumban találsz.',
       },
       {
         heading: 'Oszd meg még indulás előtt',
-        body: 'Küldd el a meghívólinket a közös csoportba, így mindenki már az első naptól ugyanabba az albumba tölthet.',
+        body: 'Küldd el a meghívólinket a közös csoportba, így mindenki már az első naptól ugyanabba az albumba töltheti fel a képeit.',
       },
     ],
     cta: {
-      heading: 'Gyűjtsétek össze egy helyre az út fotóit.',
+      heading: 'Gyűjtsd össze egy helyre az út fotóit.',
       body: 'Hozd létre az albumot, és oszd meg az útitársaiddal.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,
@@ -146,7 +146,7 @@ export const occasions: Occasion[] = [
     meta: {
       title: 'Közös fotóalbum utazáshoz – OurFilm',
       description:
-        'Gyűjtsétek össze egy helyre az út minden fotóját. Egy link, egy közös album.',
+        'Gyűjtsd össze egy helyre az út minden fotóját. Egy link, egy közös album.',
     },
   },
   {
@@ -160,7 +160,7 @@ export const occasions: Occasion[] = [
     linkLabel: 'Album bulira',
     sections: [
       {
-        heading: 'Ne másnap kelljen összeszedned őket',
+        heading: 'Ne másnap kelljen összeszedned a képeket.',
         body: 'A vendégek már a helyszínen feltölthetik a fotóikat. Egy QR-kód, és minden kép ugyanabba az albumba kerül.',
       },
       {
@@ -169,7 +169,7 @@ export const occasions: Occasion[] = [
       },
     ],
     cta: {
-      heading: 'A buli képei, egyetlen albumban.',
+      heading: 'Gyűjtsd össze egy helyre a buli képeit.',
       body: 'Hozd létre az albumot, és oszd meg a vendégeiddel.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,

@@ -27,8 +27,8 @@ const columns: FooterColumn[] = [
     heading: 'Termék',
     links: [
       { label: 'Hogyan működik', href: '/#how-it-works' },
-      { label: 'Élő bemutató', href: '/#live-demo' },
-      { label: 'Fotóminőség', href: '/#photo-quality' },
+      { label: 'Bemutató', href: '/#live-demo' },
+      { label: 'Minden kép egy helyen', href: '/#photo-quality' },
       { label: 'Árak', href: '/arak' },
     ],
   },
