@@ -164,7 +164,7 @@ export function BillingCard({
       )}
 
       {state.error ? (
-        <p className="text-destructive mt-3 text-xs">{state.error}</p>
+        <p className="mt-3 text-xs text-destructive">{state.error}</p>
       ) : null}
     </div>
   )

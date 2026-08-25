@@ -100,7 +100,7 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
       </div>
 
       {linkError || result.status === 'error' ? (
-        <p className="text-destructive text-sm">
+        <p className="text-sm text-destructive">
           {result.status === 'error'
             ? result.message
             : 'Ez a link lejárt vagy már felhasználtad. Kérj egy újat.'}

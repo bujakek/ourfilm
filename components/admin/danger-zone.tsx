@@ -54,20 +54,20 @@ export function DangerZone({
     })
 
   return (
-    <section className="print-hidden border-destructive/30 mt-12 rounded-2xl border px-5 py-4">
-      <h2 className="text-destructive font-semibold">Esemény törlése</h2>
+    <section className="print-hidden mt-12 rounded-2xl border border-destructive/30 px-5 py-4">
+      <h2 className="font-semibold text-destructive">Esemény törlése</h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         {photoCount > 0
           ? `Véglegesen törli az eseményt és mind a ${photoCount} feltöltött képet. Ez a művelet nem vonható vissza.`
           : 'Véglegesen törli az eseményt és az összes feltöltött képet. Ez a művelet nem vonható vissza.'}
       </p>
 
-      {error ? <p className="text-destructive mt-3 text-sm">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="border-destructive/40 text-destructive mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold"
+        className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-destructive/40 px-5 text-sm font-semibold text-destructive"
       >
         <Trash2 className="size-4" />
         Esemény végleges törlése
@@ -90,9 +90,9 @@ export function DangerZone({
         className="glass-strong m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl p-6 text-foreground backdrop:bg-black/80 backdrop:backdrop-blur-sm"
       >
         <div className="flex flex-col items-center gap-3 text-center">
-          <span className="bg-destructive/15 flex size-14 items-center justify-center rounded-full">
+          <span className="flex size-14 items-center justify-center rounded-full bg-destructive/15">
             <TriangleAlert
-              className="text-destructive size-7"
+              className="size-7 text-destructive"
               strokeWidth={2}
             />
           </span>
@@ -110,7 +110,7 @@ export function DangerZone({
               type="button"
               disabled={pending}
               onClick={confirmDelete}
-              className="bg-destructive/90 inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-destructive/90 px-5 text-sm font-semibold text-white disabled:opacity-60"
             >
               {pending ? (
                 <Loader2 className="size-4 animate-spin" />

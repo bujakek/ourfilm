@@ -325,3 +325,90 @@ export function eventLocalToIso(
   )
   return Number.isNaN(exact.getTime()) ? null : exact.toISOString()
 }
+
+/**
+ * `H K Sze Cs P Szo V` — the onboarding calendar's column headers, Monday-first.
+ *
+ * Written out rather than derived from `Intl`: hu-HU's narrow weekdays are
+ * `V H K Sz Cs P Sz`, where szerda and szombat are both `Sz`. A calendar header
+ * whose two columns carry the same label is not a header.
+ */
+export const HU_WEEKDAYS_SHORT = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V']
+
+const HU_MONTH_YEAR = new Intl.DateTimeFormat('hu-HU', {
+  year: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+})
+
+/**
+ * `2026. augusztus` — the calendar's month heading.
+ *
+ * Takes the year and a 0-indexed month rather than a `Date`, because a calendar
+ * grid is a calendar, not an instant: the month being drawn has no timezone to
+ * get wrong. Formatted in UTC for the same reason `formatEventDate` is.
+ */
+export function formatHuMonthYear(year: number, month: number): string {
+  return HU_MONTH_YEAR.format(new Date(Date.UTC(year, month, 1)))
+}
+
+const HU_LONG_DAY = new Intl.DateTimeFormat('hu-HU', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  weekday: 'long',
+  timeZone: 'UTC',
+})
+
+/** `2026. augusztus 24., hétfő` — the accessible name of one calendar cell.
+ *  A screen reader user tabbing the grid gets the whole date; the visible
+ *  label is only ever the number. */
+export function formatHuCalendarDay(day: string): string {
+  return HU_LONG_DAY.format(new Date(`${day}T00:00:00Z`))
+}
+
+const REVEAL_BADGE_CACHE = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * `aug. 24. 20:42` — the reveal badge over the onboarding photo preview.
+ *
+ * `formatDeadline` with the year dropped. The year is load-bearing in the admin
+ * list, where a wedding booked for next January sits next to one from last
+ * week; here the moment is always within a month or so of a date the host has
+ * just picked two screens earlier, and the year only costs width on a badge
+ * that has to fit across two photos on a 390px phone.
+ */
+export function formatRevealBadge(iso: string, zone = EVENT_TIME_ZONE): string {
+  return memoFormatter(
+    REVEAL_BADGE_CACHE,
+    zone,
+    (tz) =>
+      new Intl.DateTimeFormat('hu-HU', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        timeZone: tz,
+      }),
+  ).format(new Date(iso))
+}
+
+/**
+ * The IANA zone this browser is in, or the event default when it cannot be
+ * read.
+ *
+ * Onboarding never asks for a zone: the host picks a wall clock and means the
+ * one on the phone in their hand. Resolving it here rather than showing a
+ * select is the whole difference between one question and two — but it can only
+ * happen in the browser, so callers read it in an effect and start from
+ * `EVENT_TIME_ZONE` for the server render.
+ */
+export function browserTimeZone(): string {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return zone && isValidTimeZone(zone) ? zone : EVENT_TIME_ZONE
+  } catch {
+    return EVENT_TIME_ZONE
+  }
+}

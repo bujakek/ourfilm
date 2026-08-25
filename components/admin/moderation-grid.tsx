@@ -80,7 +80,7 @@ function Tile({
       </button>
 
       {error ? (
-        <p className="text-destructive mt-1 text-xs">Nem sikerült</p>
+        <p className="mt-1 text-xs text-destructive">Nem sikerült</p>
       ) : null}
       {hidden ? (
         <p className="mt-1 text-center text-xs text-muted-foreground">Rejtve</p>

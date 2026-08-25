@@ -113,7 +113,7 @@ export function CaptureWindowCard({
       </button>
 
       {error ? (
-        <p className="text-destructive mt-2 text-xs">{error}</p>
+        <p className="mt-2 text-xs text-destructive">{error}</p>
       ) : saved ? (
         <p className="mt-2 text-xs text-accent">Elmentettük.</p>
       ) : null}

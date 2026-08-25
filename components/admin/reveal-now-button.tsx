@@ -76,7 +76,7 @@ export function RevealNowButton({
         ) : null}
 
         {error ? (
-          <p className="text-destructive mt-3 text-sm">{error}</p>
+          <p className="mt-3 text-sm text-destructive">{error}</p>
         ) : null}
 
         <div className="mt-6 flex flex-col gap-2">

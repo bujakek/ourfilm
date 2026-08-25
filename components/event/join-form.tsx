@@ -115,7 +115,7 @@ export function JoinForm({
         </div>
 
         {state.error ? (
-          <p className="text-destructive text-sm">{state.error}</p>
+          <p className="text-sm text-destructive">{state.error}</p>
         ) : null}
 
         <button

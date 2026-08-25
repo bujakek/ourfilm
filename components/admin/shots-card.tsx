@@ -89,7 +89,7 @@ export function ShotsCard({
       </fieldset>
 
       {error ? (
-        <p className="text-destructive mt-2 text-xs">
+        <p className="mt-2 text-xs text-destructive">
           Nem sikerült módosítani.
         </p>
       ) : null}

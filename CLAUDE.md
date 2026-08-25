@@ -207,6 +207,38 @@ impersonates that participant, and album privacy rests on the unguessable slug.
 What it is, is the thing that stops a guest spending someone else's film, or more
 than their own.
 
+## The create flow is four full-screen questions (settled)
+
+`/admin/events/new` asks four things, one per screen, in a shared shell
+(`components/admin/onboarding/*`): the name, when the event ends, when the
+photos appear, and how long a roll is. Modelled closely on Once's onboarding —
+full-bleed dark screens, one question each, a back arrow top-left, progress dots
+and the CTA pinned to the bottom.
+
+- **The camera opens the moment the event is created.** `capture_start_at` is
+  stamped by the server action, not sent from the browser, so there is no clock
+  skew between the phone that filled the form and the row that gets inserted.
+  The host is only ever asked when it _ends_.
+- **The timezone is never asked.** It is read off the browser
+  (`browserTimeZone()`) and stored with the event, so every later screen still
+  formats in the event's own zone. The zone reaches the client one render late,
+  through `useSyncExternalStore` rather than an effect — see
+  `components/admin/onboarding/use-browser-time-zone.ts`.
+- **The delayed reveal is counted in days** (1–30), resolved as
+  `capture_end_at + n * 24h` by `revealAfterDelay()` in `lib/onboarding.ts`. The
+  form posts the day count, not an instant, and the action recomputes it.
+- **`guests_can_view` is no longer a question** — new events are created with it
+  on, and the switch that turns it off lives in settings.
+- **There is no cover picker in the flow any more**, and nothing else offers
+  one. `cover_path` stays nullable and every surface already renders an event
+  without a cover; the upload branch in `createEvent` still works and is waiting
+  for whatever surfaces the picker next.
+- **`app/admin/events/new/page.tsx` must stay synchronous.** `app/admin/loading.tsx`
+  wraps every admin segment in a Suspense boundary, and an `async` page here
+  suspends into it — after which the boundary never completes on the client and
+  the whole flow is served as unhydrated markup. Same Next 16.3 failure as the
+  `loading.tsx` note on `app/e/[slug]`, reproduced here by A/B.
+
 ## Optimistic updates (settled)
 
 Three admin controls show the result before the server has confirmed it. All
@@ -497,7 +529,7 @@ search. Fix it in that phase, not by halves.
    front/back switch, a `capture` file-input fallback when the live camera is
    refused or unavailable. No preview, no retake.
 3. Gallery `/e/[slug]/gallery` — reveal-gated, hidden photos excluded
-4. Admin `/admin` — six-step create wizard, QR, moderation, early reveal,
+4. Admin `/admin` — four-step create flow, QR, moderation, early reveal,
    **ZIP download of the whole album**
 5. QR code generated from the final event URL
 
@@ -536,7 +568,7 @@ now, in the order it was built:
 4. `lib/` domain layer: `camera.ts`, `participants.ts`, `capture.ts`,
    `photo-urls.ts`, `event-copy.ts`
 5. Guest surface: join → camera → gallery
-6. Admin: create wizard, dashboard, settings, early reveal
+6. Admin: create flow, dashboard, settings, early reveal
 7. Tests, then real-phone testing and QR printing
 
 ## Photo quality policy (settled — the landing page depends on it)

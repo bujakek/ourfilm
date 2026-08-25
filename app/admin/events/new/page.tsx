@@ -1,11 +1,11 @@
-import { formatEventLocalInput } from '@/lib/format'
-import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
-import Link from 'next/link'
+
+import { eventNameSuggestions } from '@/lib/onboarding'
 import { NewEventForm } from './new-event-form'
 
-// The suggested deadline is computed from the clock, so this page cannot be
-// prerendered — a build-time default would go stale the day after a deploy.
+// Both the suggested deadline and the earliest selectable day are computed from
+// the clock, so this page cannot be prerendered — a build-time default would go
+// stale the day after a deploy.
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
@@ -13,42 +13,47 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-/** A week out. Hosts create the event to print the QR code, which happens days
- *  before the party rather than at it, so "tonight" would be the wrong guess
- *  far more often than this is. A starting point for the picker, not a
- *  recommendation — every host is expected to move both ends. */
-const SUGGESTED_DAYS = 7
+/**
+ * Where the suggested end lands: six hours out, floored to the half hour.
+ *
+ * The camera now opens the moment the event is created, so this is no longer a
+ * date days ahead — it is tonight. Six hours is a party: pick it at six in the
+ * evening and it ends at midnight, pick it at ten and it runs to four. Floored
+ * to :00 or :30 because 23:42 reads as a value someone typed, and this one is a
+ * guess the host is meant to move.
+ */
+const SUGGESTED_HOURS = 6
+const HALF_HOUR_MS = 30 * 60 * 1000
 
-/** 16:00 to 23:59 on the suggested day. A party rather than a working day, and
- *  a window whose two ends are already in the right order, so the first thing a
- *  host sees on the step is a valid answer instead of a validation error. */
-const SUGGESTED_START_HOUR = '16:00'
-const SUGGESTED_END_HOUR = '23:59'
-
+/**
+ * **This component must stay synchronous.** `app/admin/loading.tsx` puts a
+ * Suspense boundary around every admin segment, and an `async` page here makes
+ * this segment suspend into it — at which point the boundary never completes on
+ * the client and the whole flow is served as unhydrated markup: the suggestions
+ * do nothing, the CTA never enables, and nothing says why. It is the same Next
+ * 16.3 failure CLAUDE.md records against `app/e/[slug]`, reproduced here by
+ * A/B (remove the loading file and it hydrates, restore it and it does not).
+ *
+ * That is why the host's account is not read here. `proxy.ts` already gates
+ * `/admin/:path*`, so there is nothing to check — and the only thing an
+ * `await supabase.auth.getUser()` would add is a first name for two of the five
+ * ÖTLETEK. Magic-link signups carry no name, so every account today falls back
+ * anyway; `eventNameSuggestions` takes one the day a provider supplies it, and
+ * whoever wires that up has to get it here without suspending the segment.
+ */
 export default function NewEventPage() {
   const now = new Date()
-  const week = new Date(now.getTime() + SUGGESTED_DAYS * 24 * 60 * 60 * 1000)
-  // Rendered on the server, in the default event zone, and handed down as
-  // props: computing them in the client component instead would either flash
-  // an empty field until hydration or mismatch the server's markup.
-  const day = formatEventLocalInput(week).slice(0, 10)
+  const end = new Date(
+    Math.floor(
+      (now.getTime() + SUGGESTED_HOURS * 60 * 60 * 1000) / HALF_HOUR_MS,
+    ) * HALF_HOUR_MS,
+  )
 
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
-      <Link
-        href="/admin"
-        className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Eseményeid
-      </Link>
-      <h1 className="mt-6 mb-8 text-3xl font-semibold tracking-tight">
-        Új esemény
-      </h1>
-      <NewEventForm
-        defaultStart={`${day}T${SUGGESTED_START_HOUR}`}
-        defaultEnd={`${day}T${SUGGESTED_END_HOUR}`}
-      />
-    </main>
+    <NewEventForm
+      nowIso={now.toISOString()}
+      defaultEndIso={end.toISOString()}
+      suggestions={eventNameSuggestions(null)}
+    />
   )
 }
