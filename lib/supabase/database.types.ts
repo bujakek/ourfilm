@@ -41,36 +41,89 @@ export type Database = {
     Tables: {
       events: {
         Row: {
+          capture_end_at: string
+          capture_start_at: string
+          cover_path: string | null
           created_at: string
-          event_date: string | null
           event_name: string
-          gallery_hidden_at: string | null
+          guests_can_view: boolean
           id: string
           owner_id: string
+          reveal_at: string
+          reveal_mode: Database["public"]["Enums"]["reveal_mode"]
+          shots_per_participant: number
           slug: string
-          uploads_close_at: string | null
+          time_zone: string
+          updated_at: string
         }
         Insert: {
+          capture_end_at: string
+          capture_start_at: string
+          cover_path?: string | null
           created_at?: string
-          event_date?: string | null
           event_name: string
-          gallery_hidden_at?: string | null
+          guests_can_view?: boolean
           id?: string
           owner_id: string
+          reveal_at: string
+          reveal_mode?: Database["public"]["Enums"]["reveal_mode"]
+          shots_per_participant?: number
           slug: string
-          uploads_close_at?: string | null
+          time_zone?: string
+          updated_at?: string
         }
         Update: {
+          capture_end_at?: string
+          capture_start_at?: string
+          cover_path?: string | null
           created_at?: string
-          event_date?: string | null
           event_name?: string
-          gallery_hidden_at?: string | null
+          guests_can_view?: boolean
           id?: string
           owner_id?: string
+          reveal_at?: string
+          reveal_mode?: Database["public"]["Enums"]["reveal_mode"]
+          shots_per_participant?: number
           slug?: string
-          uploads_close_at?: string | null
+          time_zone?: string
+          updated_at?: string
         }
         Relationships: []
+      }
+      participants: {
+        Row: {
+          display_name: string
+          event_id: string
+          id: string
+          joined_at: string
+          last_seen_at: string
+          session_token_hash: string
+        }
+        Insert: {
+          display_name: string
+          event_id: string
+          id?: string
+          joined_at?: string
+          last_seen_at?: string
+          session_token_hash: string
+        }
+        Update: {
+          display_name?: string
+          event_id?: string
+          id?: string
+          joined_at?: string
+          last_seen_at?: string
+          session_token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       photos: {
         Row: {
@@ -80,11 +133,13 @@ export type Database = {
           height: number | null
           hidden_at: string | null
           id: string
+          idempotency_key: string | null
           mime_type: string | null
+          participant_id: string
+          status: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at: string | null
           thumb_path: string
-          uploader_name: string | null
           view_path: string | null
           width: number | null
         }
@@ -95,11 +150,13 @@ export type Database = {
           height?: number | null
           hidden_at?: string | null
           id?: string
+          idempotency_key?: string | null
           mime_type?: string | null
+          participant_id: string
+          status?: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at?: string | null
           thumb_path: string
-          uploader_name?: string | null
           view_path?: string | null
           width?: number | null
         }
@@ -110,11 +167,13 @@ export type Database = {
           height?: number | null
           hidden_at?: string | null
           id?: string
+          idempotency_key?: string | null
           mime_type?: string | null
+          participant_id?: string
+          status?: Database["public"]["Enums"]["photo_status"]
           storage_path?: string
           taken_at?: string | null
           thumb_path?: string
-          uploader_name?: string | null
           view_path?: string | null
           width?: number | null
         }
@@ -124,6 +183,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
             referencedColumns: ["id"]
           },
         ]
@@ -225,22 +291,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      event_accepts_uploads: { Args: { p_event_id: string }; Returns: boolean }
-      event_by_slug: {
-        Args: { p_slug: string }
+      commit_shot: {
+        Args: {
+          p_byte_size: number
+          p_height: number
+          p_photo_id: string
+          p_taken_at: string
+          p_token_hash: string
+          p_width: number
+        }
         Returns: {
-          created_at: string
-          event_date: string
-          event_name: string
-          gallery_private: boolean
-          id: string
-          slug: string
-          uploads_close_at: string
+          committed: boolean
+          shots_remaining: number
         }[]
-      }
-      event_folder_accepts_uploads: {
-        Args: { p_folder: string }
-        Returns: boolean
       }
       event_gallery_by_slug: {
         Args: { p_slug: string }
@@ -255,74 +318,104 @@ export type Database = {
           width: number
         }[]
       }
-      event_has_unlimited_uploads: {
-        Args: { p_event_id: string }
-        Returns: boolean
-      }
-      event_page_by_slug: {
-        Args: { p_slug: string }
+      event_guest_state: {
+        Args: { p_slug: string; p_token_hash: string }
         Returns: {
-          contributor_count: number
-          created_at: string
-          event_date: string
+          can_capture: boolean
+          can_guest_view_gallery: boolean
+          capture_end_at: string
+          capture_open: boolean
+          capture_start_at: string
+          cover_path: string
+          display_name: string
           event_name: string
-          gallery_private: boolean
-          has_named_contributors: boolean
+          guests_can_view: boolean
+          host_name: string
           id: string
+          participant_id: string
+          participant_limit_reached: boolean
           photo_count: number
+          reveal_at: string
+          reveal_mode: Database["public"]["Enums"]["reveal_mode"]
+          shots_per_participant: number
+          shots_remaining: number
           slug: string
-          uploads_close_at: string
+          time_zone: string
         }[]
       }
-      event_photo_count_capped: {
+      event_is_full_plan: { Args: { p_event_id: string }; Returns: boolean }
+      event_participant_count_capped: {
         Args: { p_cap: number; p_event_id: string }
         Returns: number
       }
-      event_photos: {
+      event_participant_quota: {
         Args: { p_event_id: string }
         Returns: {
-          created_at: string
-          height: number
-          id: string
-          storage_path: string
-          thumb_path: string
-          uploader_name: string
-          view_path: string
-          width: number
-        }[]
-      }
-      event_upload_quota: {
-        Args: { p_event_id: string }
-        Returns: {
-          photo_limit: number
-          remaining: number
+          participant_count: number
+          participant_limit: number
           unlimited: boolean
         }[]
       }
-      event_within_photo_limit: {
-        Args: { p_event_id: string }
-        Returns: boolean
-      }
-      free_photo_limit: { Args: never; Returns: number }
+      free_participant_limit: { Args: never; Returns: number }
       is_admin: { Args: never; Returns: boolean }
+      join_event: {
+        Args: { p_name: string; p_slug: string; p_token_hash: string }
+        Returns: {
+          cap_reached: boolean
+          display_name: string
+          participant_id: string
+        }[]
+      }
       owned_events_with_previews: {
         Args: never
         Returns: {
+          capture_end_at: string
+          capture_start_at: string
+          cover_path: string
           created_at: string
-          event_date: string
           event_name: string
-          gallery_hidden_at: string
+          guests_can_view: boolean
           id: string
+          participant_count: number
           photo_count: number
           previews: string[]
+          reveal_at: string
+          reveal_mode: Database["public"]["Enums"]["reveal_mode"]
+          shots_per_participant: number
           slug: string
-          uploads_close_at: string
+          time_zone: string
         }[]
       }
+      participant_shots_used: {
+        Args: { p_participant_id: string }
+        Returns: number
+      }
+      release_shot: {
+        Args: { p_photo_id: string; p_token_hash: string }
+        Returns: undefined
+      }
+      reserve_shot: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_token_hash: string
+        }
+        Returns: {
+          photo_id: string
+          refusal: string
+          shots_remaining: number
+          storage_path: string
+          thumb_path: string
+          view_path: string
+        }[]
+      }
+      shot_reservation_ttl: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "user" | "admin"
+      photo_status: "pending" | "ready"
       purchase_status: "pending" | "paid" | "refunded"
+      reveal_mode: "instant" | "event_end" | "custom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -454,7 +547,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "admin"],
+      photo_status: ["pending", "ready"],
       purchase_status: ["pending", "paid", "refunded"],
+      reveal_mode: ["instant", "event_end", "custom"],
     },
   },
 } as const

@@ -5,7 +5,7 @@ import {
   startEventCheckout,
 } from '@/app/admin/events/[slug]/billing-actions'
 import { cn } from '@/lib/utils'
-import { CreditCard, Infinity as InfinityIcon, Loader2 } from 'lucide-react'
+import { CreditCard, Loader2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useActionState, useEffect, useState } from 'react'
 
@@ -17,9 +17,8 @@ const SETTLE_POLL_TRIES = 6
 
 export type BillingCardProps = {
   slug: string
-  photoLimit: number
-  /** Null when the event has no cap. */
-  remaining: number | null
+  participantLimit: number
+  participantCount: number
   unlimited: boolean
   /** Set when the cap is lifted by a payment rather than by the owner's role. */
   paidLabel: string | null
@@ -30,14 +29,17 @@ export type BillingCardProps = {
 /**
  * The billing state of one event, and the one button that changes it.
  *
- * Framed around the *cap* rather than around a plan, because that is what a
- * host actually experiences: nothing here is a subscription, and the only
- * question the card has to answer is "can my guests still upload".
+ * The cap counts **participants**, not photos. Every guest gets the host's
+ * chosen roll of film whether or not the event is paid for; what paying buys is
+ * more guests. So the question this card answers is "can another friend join",
+ * which is also the only way a host ever runs into the limit.
+ *
+ * No per-guest price and no tiers anywhere: one event, one payment, 12 900 Ft.
  */
 export function BillingCard({
   slug,
-  photoLimit,
-  remaining,
+  participantLimit,
+  participantCount,
   unlimited,
   paidLabel,
   stripeReady,
@@ -58,12 +60,13 @@ export function BillingCard({
       <div className="glass rounded-2xl px-5 py-4">
         <div className="flex items-center gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/20">
-            <InfinityIcon className="size-5 text-accent" strokeWidth={1.8} />
+            <Users className="size-5 text-accent" strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
-            <p className="font-medium">Korlátlan feltöltés</p>
+            <p className="font-medium">Teljes esemény</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {paidLabel ?? 'Ehhez a fiókhoz nem tartozik feltöltési korlát.'}
+              {paidLabel ??
+                'Korlátlan résztvevő — ehhez a fiókhoz nem tartozik keret.'}
             </p>
           </div>
         </div>
@@ -71,21 +74,21 @@ export function BillingCard({
     )
   }
 
-  const left = remaining ?? 0
-  const used = Math.max(photoLimit - left, 0)
+  const used = Math.min(participantCount, participantLimit)
+  const left = Math.max(participantLimit - participantCount, 0)
   const full = left === 0
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
       <div className="flex items-baseline justify-between gap-4">
-        <p className="font-medium">Ingyenes keret</p>
+        <p className="font-medium">Ingyenes esemény</p>
         <p
           className={cn(
             'text-sm tabular-nums',
             full ? 'text-destructive' : 'text-muted-foreground',
           )}
         >
-          {used} / {photoLimit} kép
+          {participantCount} / {participantLimit} résztvevő
         </p>
       </div>
 
@@ -94,22 +97,24 @@ export function BillingCard({
         role="progressbar"
         aria-valuenow={used}
         aria-valuemin={0}
-        aria-valuemax={photoLimit}
-        aria-label="Felhasznált ingyenes keret"
+        aria-valuemax={participantLimit}
+        aria-label="Felhasznált résztvevői keret"
       >
         <div
           className={cn(
             'h-full rounded-full transition-[width]',
             full ? 'bg-destructive' : 'bg-accent',
           )}
-          style={{ width: `${Math.min((used / photoLimit) * 100, 100)}%` }}
+          style={{
+            width: `${Math.min((used / participantLimit) * 100, 100)}%`,
+          }}
         />
       </div>
 
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {full
-          ? 'A keret betelt — a vendégeid egyelőre nem tudnak több képet feltölteni. Az eddigiek megvannak, és az album továbbra is megtekinthető.'
-          : `Még ${left} kép fér bele. Utána a vendégek nem tudnak többet feltölteni, amíg fel nem oldod a korlátot.`}
+          ? 'A keret betelt — új vendég egyelőre nem tud csatlakozni. Aki már csatlakozott, változatlanul fotózhat.'
+          : `Még ${left} vendég csatlakozhat. Utána új résztvevőt nem tudunk beengedni, amíg fel nem oldod.`}
       </p>
 
       {settling ? (
@@ -143,12 +148,15 @@ export function BillingCard({
                 aria-hidden="true"
               />
             )}
-            {pending ? 'Átirányítás…' : 'Korlát feloldása'}
+            {pending ? 'Átirányítás…' : 'Teljes esemény feloldása – 12 900 Ft'}
           </button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Korlátlan résztvevő, egyszeri fizetéssel.
+          </p>
         </form>
       ) : (
         // Honest about the state of the world rather than offering a button
-        // that would 500: there is no Stripe account yet.
+        // that would 500 — no STRIPE_* variables are set in this environment.
         <p className="mt-4 rounded-xl bg-white/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
           A fizetés még nincs bekapcsolva. Amíg nincs, írj nekünk, és feloldjuk
           neked kézzel.

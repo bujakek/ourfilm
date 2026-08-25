@@ -2,51 +2,49 @@ import 'server-only'
 
 import { cache } from 'react'
 
+import { readParticipantTokenHash } from './participants'
+import { createAdminClient } from './supabase/admin'
 import { createClient } from './supabase/server'
 import type { Database } from './supabase/database.types'
 
 /**
- * What a guest is allowed to know about an event. Derived from the RPC's own
- * return type rather than hand-written, so adding a column to the function
- * without updating callers is a compile error instead of a silent `undefined`.
- * Note there is no `owner_id` — the function deliberately withholds it.
+ * Everything the guest surface is allowed to know, plus what this particular
+ * guest is allowed to do.
  *
- * Carries the album's photo and contributor counts alongside the row. They are
- * aggregated in the same query rather than fetched separately because they are
- * free there — the alternative was pulling every photo row in the album across
- * the wire to count it in JavaScript.
+ * Derived from the RPC's own return type rather than hand-written, so adding a
+ * column to the function without updating callers is a compile error instead of
+ * a silent `undefined`. Note the omissions: no `owner_id`, no `guests_can_view`
+ * — a guest gets the resolved permission, not the setting behind it.
  *
- * `contributorCount` is a **floor, not a headcount**. Guests who skip the name
- * field are indistinguishable from one another, so every anonymous upload
- * collapses into a single bucket — twenty unnamed photos from twenty people
- * count as one. Undercounting is the right direction to be wrong in: it never
- * inflates participation, which is the number the pilot exists to measure.
- *
- * Both counts read zero while the gallery is hidden, matching what
- * `event_gallery_by_slug` returns in the same state. Check `gallery_private`
- * before showing them, or a host holding photos back for a reveal gets the
- * total printed on the landing screen anyway.
+ * The permission booleans (`can_capture`, `can_guest_view_gallery`) are computed
+ * in Postgres, not here. That is the point: the join screen, the camera and the
+ * gallery all read the same three fields, so they cannot drift apart about
+ * whether the camera is open.
  */
-export type GuestEvent =
-  Database['public']['Functions']['event_page_by_slug']['Returns'][number]
+export type GuestEventState =
+  Database['public']['Functions']['event_guest_state']['Returns'][number]
 
 /**
- * Look up an event by the slug in its URL, with its counts.
+ * The event as this guest sees it, keyed on their session cookie.
  *
- * Goes through the `event_page_by_slug` RPC, not `.from('events')`: guests
- * have no read policy on the table, precisely so that nobody can list every
- * album. You must already know the slug to get anything back.
+ * Goes through `service_role`, unlike every guest read before it. The RPC takes
+ * the session token hash and returns this guest's own participant row and shot
+ * count alongside the event, and granting that to `anon` would make an observed
+ * hash enough to read someone's state. The cookie is httpOnly and only a server
+ * action or Server Component can present it, so the read belongs here.
  *
- * Wrapped in React `cache()` because every event route needs the same row
- * twice — once in `generateMetadata` to title the page, once in the component.
- * Unlike `fetch`, Next does not dedupe arbitrary async calls, so without this
- * each render costs two identical round trips.
+ * Wrapped in React `cache()` because every event route needs it twice — once in
+ * `generateMetadata` to title the page, once in the component. Unlike `fetch`,
+ * Next does not dedupe arbitrary async calls, so without this each render costs
+ * two identical round trips.
  */
-export const getEventBySlug = cache(
-  async (slug: string): Promise<GuestEvent | null> => {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .rpc('event_page_by_slug', { p_slug: slug })
+export const getGuestEventState = cache(
+  async (slug: string): Promise<GuestEventState | null> => {
+    const tokenHash = await readParticipantTokenHash()
+    const db = createAdminClient()
+
+    const { data, error } = await db
+      .rpc('event_guest_state', { p_slug: slug, p_token_hash: tokenHash })
       .maybeSingle()
 
     // supabase-js resolves rather than rejects on a failed query, so an
@@ -59,41 +57,67 @@ export const getEventBySlug = cache(
 )
 
 /**
- * Whether guests can still upload. Mirrors `event_accepts_uploads()`, which is
- * the real enforcement — this only decides what the UI offers. Never rely on
- * it for correctness; the database refuses a closed event regardless.
+ * The same row, without consulting the caller's session.
+ *
+ * For `generateMetadata`, which needs the event's name and nothing else.
+ * Reading cookies there would make the page's metadata depend on which guest is
+ * asking — a per-participant `<title>` is meaningless, and it drags the cookie
+ * read into a second, separately-suspended part of the render for no gain.
+ *
+ * Passing an empty token hash is the same code path a guest who has not joined
+ * takes, so there is no second query shape to keep in step.
  */
-export function uploadsAreOpen(event: GuestEvent): boolean {
-  if (!event.uploads_close_at) return true
-  return new Date(event.uploads_close_at) > new Date()
+export const getPublicEventBySlug = cache(
+  async (slug: string): Promise<GuestEventState | null> => {
+    const db = createAdminClient()
+    const { data, error } = await db
+      .rpc('event_guest_state', { p_slug: slug, p_token_hash: '' })
+      .maybeSingle()
+
+    if (error) throw error
+    return data
+  },
+)
+
+/** Has this guest joined on this device? Everything else on the guest surface
+ *  is gated on it, and it is simply whether the RPC found a participant. */
+export function hasJoined(state: GuestEventState): boolean {
+  return state.participant_id !== null
 }
 
 export type OwnedEvent = {
   id: string
   slug: string
   event_name: string
-  event_date: string | null
-  uploads_close_at: string | null
-  gallery_hidden_at: string | null
+  cover_path: string | null
+  time_zone: string
+  capture_start_at: string
+  capture_end_at: string
+  reveal_mode: Database['public']['Enums']['reveal_mode']
+  reveal_at: string
+  shots_per_participant: number
+  guests_can_view: boolean
   created_at: string
 }
+
+const OWNED_EVENT_COLUMNS =
+  'id, slug, event_name, cover_path, time_zone, capture_start_at, capture_end_at, reveal_mode, reveal_at, shots_per_participant, guests_can_view, created_at'
 
 /**
  * One of the host's own events, by slug. Returns null when it does not exist
  * *or* belongs to someone else — RLS makes those indistinguishable here, which
  * is the correct answer to give either way.
  *
- * Wrapped in React `cache()` like `getEventBySlug`: `generateMetadata` and the
- * page both need this row, and without it that is two identical round trips.
+ * Reads the table directly rather than an RPC, on purpose. The host is signed
+ * in, so ownership policies are the boundary, and the host is the one viewer
+ * who must see the event regardless of reveal or guest visibility.
  */
 export const getOwnedEventBySlug = cache(
   async (slug: string): Promise<OwnedEvent | null> => {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('events')
-      .select(
-        'id, slug, event_name, event_date, uploads_close_at, gallery_hidden_at, created_at',
-      )
+      .select(OWNED_EVENT_COLUMNS)
       .eq('slug', slug)
       .maybeSingle()
 
@@ -104,15 +128,16 @@ export const getOwnedEventBySlug = cache(
 
 export type EventWithPreview = OwnedEvent & {
   photoCount: number
+  participantCount: number
   /** A few thumbnails for the list, newest first. */
   previews: string[]
 }
 
 /**
- * The admin list, with enough of each album to recognise it at a glance.
+ * The admin list, with enough of each event to recognise it at a glance.
  *
  * Aggregated in Postgres rather than pulling every photo row into the server:
- * each event returns only its count and four recent visible thumbnail paths.
+ * each event returns only its counts and four recent visible thumbnail paths.
  * The function is SECURITY INVOKER, so the same ownership RLS policies that
  * protect direct table reads also scope this result.
  */
@@ -124,16 +149,54 @@ export async function getOwnedEventsWithPreviews(): Promise<
 
   if (error) throw error
 
-  return (data ?? []).map(({ photo_count, ...event }) => ({
-    ...event,
-    photoCount: photo_count,
-  }))
+  return (data ?? []).map(
+    ({ photo_count, participant_count, cover_path, ...event }) => ({
+      ...event,
+      // The generator types a table-returning function's columns as
+      // non-nullable, so it claims `cover_path: string` for a column that is
+      // genuinely null on most events. Asserted here so no caller inherits the
+      // lie — the same wrinkle `lib/billing.ts` documents.
+      cover_path: cover_path as string | null,
+      photoCount: photo_count,
+      participantCount: participant_count,
+    }),
+  )
 }
 
-/** Uploads still open? Mirrors the database rule; used only for display. */
-export function eventIsActive(event: {
-  uploads_close_at: string | null
+/**
+ * One row of the admin list, with its preview thumbnails signed.
+ *
+ * The list is the one host screen that renders many events at once, so the
+ * signing happens in a single batch across all of them rather than per event.
+ */
+export type EventListItem = Omit<EventWithPreview, 'previews'> & {
+  previewUrls: string[]
+}
+
+/** Whether guests can shoot right now. Display only — `reserve_shot` decides. */
+export function captureIsOpen(event: {
+  capture_start_at: string
+  capture_end_at: string
 }): boolean {
-  if (!event.uploads_close_at) return true
-  return new Date(event.uploads_close_at) > new Date()
+  const now = Date.now()
+  return (
+    now >= new Date(event.capture_start_at).getTime() &&
+    now <= new Date(event.capture_end_at).getTime()
+  )
+}
+
+/** The host's events, ready to render. */
+export async function getEventListItems(): Promise<EventListItem[]> {
+  const events = await getOwnedEventsWithPreviews()
+
+  const { signPhotoUrls } = await import('./photo-urls')
+  const signed = await signPhotoUrls(events.flatMap((e) => e.previews))
+
+  return events.map(({ previews, ...event }) => ({
+    ...event,
+    previewUrls: previews.flatMap((path) => {
+      const url = signed.get(path)
+      return url ? [url] : []
+    }),
+  }))
 }

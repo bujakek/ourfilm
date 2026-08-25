@@ -1,30 +1,19 @@
-import { getDemoAlbumPreview } from '@/lib/demo'
-import { DEMO_EVENT_SLUG, demoEventUrl } from '@/lib/site'
-import { DemoAlbum } from './demo-album'
 import { LiveDemoFallback } from './live-demo-fallback'
 
 /**
- * The "try it" section, backed by the real sample album when there is one.
+ * The "try it" section.
  *
- * A Server Component so the album is read at build/revalidate time rather than
- * from the browser — see `lib/demo.ts` for why it deliberately avoids the
- * cookie-reading Supabase client, and `app/page.tsx` for the revalidate window
- * that keeps this fresh.
+ * This used to read a real seeded sample album out of the database and fall
+ * back to the hardcoded simulation when it could not. The disposable camera
+ * pivot removed the RPCs it read through, and a sample album no longer makes
+ * sense as a thing to link to: a camera has a capture window and a reveal, so a
+ * permanently-open public demo event would be a fourth event state that exists
+ * only for the marketing page.
  *
- * Falls back to the hardcoded simulation when the album cannot be read: an
- * unseeded database, or Supabase being briefly unreachable. The marketing
- * homepage must not go down because a demo row is missing.
+ * The fallback was always the designed behaviour for an unseeded database, so
+ * the section looks exactly as it did. Kept as a seam rather than inlined into
+ * the page: if a demo ever comes back, this is the one file that changes.
  */
-export async function LiveDemo() {
-  const preview = await getDemoAlbumPreview()
-
-  if (!preview) return <LiveDemoFallback />
-
-  return (
-    <DemoAlbum
-      preview={preview}
-      url={demoEventUrl()}
-      href={`/e/${DEMO_EVENT_SLUG}`}
-    />
-  )
+export function LiveDemo() {
+  return <LiveDemoFallback />
 }

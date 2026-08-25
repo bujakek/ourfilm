@@ -1,4 +1,4 @@
-# Project: OurFilm — QR-code shared photo album for events
+# Project: OurFilm — QR-code disposable camera for events
 
 > Product name: **OurFilm**. Domain: `ourfilm.app`. (Earlier working names "Fomio", "Moments" and "Pillanatok" are deprecated — never use them in code or copy.)
 >
@@ -6,9 +6,16 @@
 
 ## Read this first
 
-Guests scan a QR code at an event and upload photos from their phone browser — **no app, no account**. The host views and downloads all of them afterward.
+OurFilm is a **private digital disposable camera**. A host creates one camera per
+event; guests scan a QR code or open a link, give a name, and get a **fixed roll
+of shots** — **no app, no account**. The camera works only inside a capture
+window, and the host decides when the photos are "developed": instantly, at the
+end of the event, or at a chosen later moment.
 
-**Phase: MVP / pilot for one real wedding.** The single question we're answering: do guests actually use the QR to upload? Nothing else matters yet. There is no validated business model — don't build for scale, don't build for a second customer.
+There is no preview and no retake. You press the shutter and find out later what
+you got — that is the format, not an omission.
+
+**Phase: MVP / pilot for one real wedding.** The single question we're answering: do guests actually use the QR to shoot? Nothing else matters yet. There is no validated business model — don't build for scale, don't build for a second customer.
 
 **Language:** UI copy is **Hungarian only** today, but the routing and content
 model are locale-prefixed and English-ready — see "Locales" below. Code,
@@ -19,9 +26,16 @@ comments, commit messages, and this doc stay in English.
 ## Before you say a task is done
 
 ```bash
-pnpm verify   # typecheck + lint + build. Must pass.
+pnpm verify   # typecheck + lint + unit tests + build. Must pass. Offline.
 pnpm format   # Prettier; run after writing files
 ```
+
+`pnpm test:db` is **not** part of `verify` and is run deliberately: it talks to
+the linked remote project and mutates it (throwaway users, events and
+participants, cleaned up in a `finally`). Run it after touching any migration,
+RPC or policy — the properties it checks (a row lock holding under concurrent
+requests, a policy refusing a real anon key) do not exist anywhere but a real
+Postgres.
 
 Never use npm or yarn — this project is **pnpm**. Never re-add `typescript.ignoreBuildErrors` to `next.config.mjs`; it was removed deliberately so type errors actually fail the build.
 
@@ -99,32 +113,19 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
 
 ## Current state
 
-- **`docs/mvp-backlog.md` is the working plan** — the build order below, broken into ordered tickets with dependencies, plus four decisions that block Phase 1. Check it before starting work, and tick items off as they land.
+- **`docs/mvp-backlog.md` is the historical plan for the album build.** Most of
+  it describes a product that no longer exists. Read it for the decisions that
+  still hold (slug shape, region, ownership scoping, self-serve delete) and
+  ignore the phase list.
 - **Marketing landing page** — `app/[locale]/page.tsx` composing `components/site/*` (hero, stats, how-it-works, occasions, testimonials, qr-preview, live-demo, photo-quality, faq, final-cta, footer). Originally v0-generated, now the permanent homepage at `/hu`, with `/` redirecting to it.
-- `components/site/live-demo.tsx` is a **fake simulation** with hardcoded images, not a real gallery.
-- **Phases 1–5 built** (see `docs/mvp-backlog.md`): migrations applied, RLS and storage policies enforced and covered by `supabase/tests/*.py`, typed clients and query modules in `lib/`, the guest event page and gallery, the upload pipeline and queue, and the admin area. `pnpm seed` creates an event to develop against and prints its URL.
-- **Guest pages are latency-tuned; the migration may still be pending.**
-  `20260821090000_guest_page_round_trips.sql` adds `event_page_by_slug` and
-  `event_gallery_by_slug`, and `lib/events.ts` / `lib/photos.ts` already call
-  them — so **the guest routes 500 until it is pushed**. Deploying the code
-  and pushing the migration are two separate acts and there is no CI step that
-  does the second one; `pnpm supabase db push` is manual.
-- **`20260822100000_photo_view_render.sql` is applied on the remote.** It adds
-  `photos.view_path` and **drops and recreates** `event_photos` and
-  `event_gallery_by_slug` to return it (a `returns table` cannot gain a column
-  via `create or replace`), so the lightbox now serves a ~1600px render instead
-  of the 4096px master. Photos uploaded before it keep working: the column is
-  nullable and every reader falls back to `storage_path`. Run
-  `pnpm types:check` if `lib/supabase/database.types.ts` looks suspect — the
-  `view_path` entries there were hand-written to match the generator rather
-  than regenerated.
-- **Roles and the billing schema are live; Stripe is live in test mode only.**
-  `20260820100000_user_roles.sql` and `20260820100100_stripe_billing.sql` are
-  **applied on the remote**, so the 5-photo cap is real and enforced today.
-  Stripe is now configured **in test mode, locally only**: `.env.local` has all
-  three `STRIPE_*` keys, so a host can run a full test checkout on a dev
-  machine. No `STRIPE_*` variable is set on Vercel, so every deployed
-  environment still says payment is not switched on. See Billing below.
+- **The marketing site still describes the old album product.** Copy, the blog
+  and `/hu/arak` are a separate later phase and were deliberately not touched by
+  the pivot. `components/site/live-demo.tsx` now always renders the hardcoded
+  simulation: the seeded sample album is gone, and a permanently-open public demo
+  event would be a fourth event state existing only for the marketing page.
+- **All migrations are applied on the remote** and `pnpm types:check` matches.
+  The disposable camera schema is live: `participants`, the reveal trigger, the
+  capture RPCs and the private bucket.
 
   **Check, never assume, which migrations are live.** This section claimed for
   a while that roles and billing were unpushed after they had been pushed, and
@@ -132,6 +133,25 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   deploy look like it would switch on billing as a side effect.
   `pnpm supabase migration list` compares local against remote and is the only
   answer worth trusting.
+
+- **The guest write RPCs are `service_role` only, and that needs an explicit
+  revoke.** `revoke all … from public` does **not** remove Supabase's grants:
+  it grants execute to `anon` and `authenticated` _directly_, so the function
+  stays wide open. `20260825080000_lock_down_capture_rpcs.sql` exists because a
+  test caught exactly that — `join_event` and `reserve_shot` were callable with
+  the anon key that ships in the browser bundle, which would have made the
+  httpOnly session cookie pointless. `20260818172146` is the same lesson on
+  `owned_events_with_previews`. Always revoke from `anon, authenticated` by name.
+
+- **`pnpm seed` needs `SEED_HOST_EMAIL`** when the project has more than one
+  account. It creates a camera that is open now, reveals instantly, and has five
+  participants with photos — every screen reachable without editing a timestamp.
+
+- **Roles are live; Stripe is live in test mode only.** `.env.local` has all
+  three `STRIPE_*` keys, so a host can run a full test checkout on a dev
+  machine. No `STRIPE_*` variable is set on Vercel, so every deployed
+  environment still says payment is not switched on. The comment in
+  `lib/stripe/env.ts` claiming there is no Stripe account is stale. See Billing.
 
 - **Auth emails are branded and live in `supabase/templates/`.** Delivery is
   Resend over SMTP, configured in the Supabase dashboard. Two files, because
@@ -152,69 +172,80 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   Vercel region. If the Supabase project ever moves, move this with it —
   nothing else in the code notices, and the symptom is a uniformly slow app.
 
-## The join gate is in the pages, not the layout (settled — learned the hard way)
+## The guest gate is in the pages, not the layout (settled — learned the hard way)
 
-`guestHasJoined()` (`lib/guest-name-server.ts`) reads a cookie that
-`writeGuestName()` mirrors, and **each guest page checks it and returns
-`<JoinGate>` before fetching anything**. Do not move this back up into
-`app/e/[slug]/layout.tsx`, however much tidier that looks:
+`readParticipantTokenHash()` (`lib/participants.ts`) reads the httpOnly cookie,
+and **each guest page checks it and returns or redirects before fetching
+anything**. Do not move this back up into `app/e/[slug]/layout.tsx`, however
+tidier that looks:
 
 - Next renders the child segment and hands the layout the **result**. A layout
-  that declines to render `children` still lets the page run — verified: a
-  gated gallery served all seven `thumb_path`s and every `uploader_name` in the
-  flight payload to a visitor who had typed nothing. Only an early return
-  inside the page skips the query.
+  that declines to render `children` still lets the page run — verified: a gated
+  gallery served all seven `thumb_path`s and every uploader name in the flight
+  payload to a visitor who had typed nothing. Only an early return inside the
+  page skips the query.
 - The old localStorage check could only run after hydration, so every guest who
   had already joined saw the gate flash on every navigation.
 
-Joining costs one `router.refresh()`. That is the deliberate trade for the two
-fixes above: it happens once per device, at the moment a guest expects a submit.
-The gate is still **UX, not access control** — a cookie is forged as easily as
-it is read, and privacy still rests on the unguessable slug.
+Joining navigates once, from **inside the server action** (`redirect()` after the
+cookie is set) rather than from a client effect. An effect keyed on
+`useActionState`'s state has no stable resting point — that state is a fresh
+object on every render — so the success path would depend on render timing
+rather than on the action having succeeded.
+
+**`app/e/[slug]` has no `loading.tsx`, deliberately.** With one present, the
+Suspense boundary around the join screen never completed on the client: the
+server-rendered form stayed in the DOM unhydrated, so the submit button was
+permanently disabled while typing still showed text. Verified by A/B — remove the
+file and the page hydrates, restore it and it does not (Next 16.3, both `next dev`
+and a production build). The route is a QR landing page reached by full page
+load, so there is no prefetch for a loading boundary to enable anyway. If you add
+one back, re-test that the join form actually submits.
+
+The cookie is still **not a privacy boundary** — someone who copies it
+impersonates that participant, and album privacy rests on the unguessable slug.
+What it is, is the thing that stops a guest spending someone else's film, or more
+than their own.
 
 ## Optimistic updates (settled)
 
-Three places show the result before the server has confirmed it. All three
-revert on their own — none of them carries hand-written rollback code.
+Three admin controls show the result before the server has confirmed it. All
+revert on their own — none carries hand-written rollback code.
 
 - **`components/admin/moderation-grid.tsx`** — `useOptimistic` is held on the
   **grid**, not the tile, so the "N rejtve" counter moves with the photo it
   describes. Per-tile state would flip the tile instantly and leave the count a
-  round trip behind, which reads as a bug. Measured: tile, label and counter
-  all update 74ms after the tap, and a failed action reverts all three and
-  shows "Nem sikerült".
-- **`components/admin/gallery-toggle.tsx`** — same reasoning, one boolean. A
+  round trip behind, which reads as a bug.
+- **`components/admin/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
-- **`lib/recent-uploads.ts` + `app/e/[slug]/gallery/loading.tsx`** — the
-  gallery's loading state draws the guest's own just-uploaded photos from the
-  `blob:` URLs still in memory. Measured cold: their photo is on screen 377ms
-  after the tap and holds until the real grid arrives.
+- **`components/admin/shots-card.tsx`** — a five-way choice whose selected value
+  is visible at a glance, so showing it immediately cannot mislead.
 
-Two rules the upload store depends on:
+**The two date cards are deliberately _not_ optimistic.**
+`capture-window-card.tsx` and `reveal-card.tsx` show a saved/failed state
+instead. A field that displays the typed text while the stored answer is an hour
+off would be lying about the one value guests are held to — and unlike a boolean,
+there is no way to glance at it and notice.
 
-1. **Only committed uploads are recorded.** `rememberUpload` is called after
-   the row insert succeeds, so everything shown is genuinely in the album.
-   Recording at queue time would flicker — a guest who navigated mid-queue
-   would watch photos appear and then vanish when the server answered.
-2. **The store owns the object URLs it is handed.** `upload-queue.tsx` marks
-   those items `handedOver` and skips them when it revokes previews on unmount,
-   or the gallery draws broken tiles. The store caps itself and revokes what it
-   evicts.
-
-`loading.tsx` is also what makes the tap navigate at all — Next partially
-prefetches a dynamic route only when the route has one.
+**Nothing on the guest side is optimistic any more.** The old `recent-uploads`
+store showed a guest their own photo the instant it uploaded, drawn from the
+`blob:` URL still in memory. That is exactly what a reveal model must not do, so
+the store and its tiles are gone. The camera's shot counter is not optimistic
+either: it renders whatever `commit_shot` returned, never a local decrement,
+because a client-side counter is a display and the database is the count.
 
 ## Routing (settled — QR codes get printed, so this is expensive to change)
 
-| Route                                                                                      | Purpose                                                                 |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `/`                                                                                        | 308 to `/hu`. Nothing renders here.                                     |
-| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                      |
-| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                  |
-| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                          |
-| `/e/[slug]`                                                                                | Event page guests land on from the QR code, and where uploading happens |
-| `/e/[slug]/gallery`                                                                        | Shared gallery                                                          |
-| `/admin`                                                                                   | Host/admin area, Supabase Auth magic link                               |
+| Route                                                                                      | Purpose                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `/`                                                                                        | 308 to `/hu`. Nothing renders here.                                                        |
+| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                         |
+| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                     |
+| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                             |
+| `/e/[slug]`                                                                                | Join screen guests land on from the QR code. Redirects to the camera once they have joined |
+| `/e/[slug]/camera`                                                                         | The camera. Where shots are taken                                                          |
+| `/e/[slug]/gallery`                                                                        | Shared gallery, reveal-gated                                                               |
+| `/admin`                                                                                   | Host/admin area, Supabase Auth magic link                                                  |
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/admin`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
@@ -299,7 +330,11 @@ inert — unread and unvalidated — until step 1.
 
 ## Access model (settled)
 
-- **Guests: no gate at all.** Anyone with the link or QR can view the gallery and upload. No passcode, no login, no nickname required. Any friction directly reduces the participation rate we're trying to measure.
+- **Guests: a name, and nothing else.** No passcode, no login, no account. One
+  field, once per device, and it is not friction for its own sake — a roll of
+  film has to belong to somebody, and the gallery credits each photo to the
+  person who took it. Everything past that is the participant session
+  (`lib/participants.ts`).
 - **Host/admin: Supabase Auth magic link.** Only the admin area is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
 - **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/admin` to list **every** event once you promote an account.
 - Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Slugs therefore carry a random suffix (`anna-peter-k3f9x7`); `slugify()` stays deterministic for the QR preview, and `generateEventSlug()` is what real events get. Never create an event with a bare `slugify()` result.
@@ -308,27 +343,68 @@ inert — unread and unvalidated — until step 1.
 
 Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
-- **`events`** — `id`, `slug` (unique), `event_name`, `event_date` (**legacy**; nullable, and nothing sets it any more — read it only as a fallback), `uploads_close_at` (when uploads stop; the gallery stays viewable after), `gallery_hidden_at` (set = guests upload but cannot view; host togglable both ways), `owner_id` (→ `auth.users`; the host, and what every RLS host policy keys off), `created_at`
+- **`events`** — `id`, `slug` (unique), `event_name`, `cover_path` (nullable),
+  `capture_start_at` / `capture_end_at` (the window the camera works in; both
+  required, `end > start` enforced by a check constraint), `time_zone` (IANA
+  name, stored beside the UTC instants because an offset is not a zone),
+  `reveal_mode` (`instant | event_end | custom`), `reveal_at`,
+  `shots_per_participant` (`5 | 10 | 16 | 24 | 36`, default 24, enforced by a
+  check constraint), `guests_can_view`, `owner_id` (→ `auth.users`),
+  `created_at`, `updated_at`
 
-  **Creating an event asks one date question: when it ends.** `uploads_close_at`
-  is required by the create form and pre-filled a week out at 23:59; the start
-  is not asked because uploads open the moment the event exists. It replaced a
-  pair of optional fields — an optional deadline is one nobody sets, so every
-  album accepted uploads forever. The column stays nullable for the events
-  created before this, which really are open-ended; each surface says so rather
-  than leaving the line blank.
+  **`reveal_at` is materialised, never computed per read.** A trigger
+  (`events_resolve_reveal_at`) resolves it on every write: `instant` →
+  `capture_start_at`, `event_end` → `capture_end_at`, `custom` → the chosen
+  instant. So moving `capture_end_at` on an `event_end` event moves the reveal
+  with it and no caller has to remember, and every reader is a plain
+  `now() >= reveal_at`. Nothing schedules anything — the gallery opens because a
+  request arrives after that instant, which is the only mechanism Vercel offers
+  without a background worker.
 
-  Both directions of the conversion live in `lib/format.ts` and read the wall
-  clock as **`EVENT_TIME_ZONE`**, never the browser's or the server's — a
+  There is deliberately **no constraint** forcing `reveal_at >= capture_end_at`.
+  There was one, and it silently broke "Galéria megnyitása most", which reveals
+  while the camera is still running. That rule is a _form_ validation — it lives
+  in `setReveal` and `validateEventDraft`, both of which can explain a refusal.
+
+  Both directions of the `datetime-local` conversion live in `lib/format.ts` and
+  take the **event's own zone**, never the browser's or the server's — a
   `datetime-local` value carries no zone, and Vercel runs UTC, so resolving one
-  there would move every deadline two hours off what the host typed.
+  there would move every window two hours off what the host typed.
 
-  The host can move it afterwards on `settings` (`DeadlineCard` →
-  `setUploadDeadline`). Setting a time in the past is the supported way to
-  close an album early, which is why that action does not reject one — and the
-  reason a required deadline needs an edit path at all.
+- **`participants`** — `id`, `event_id`, `display_name`, `session_token_hash`,
+  `joined_at`, `last_seen_at`, unique on `(event_id, session_token_hash)`.
 
-- **`photos`** — `id`, `event_id`, `storage_path`, `thumb_path`, `view_path` (nullable — the ~1600px lightbox render; null on photos uploaded before it existed, so **always read it as `view_path ?? storage_path`**), `uploader_name` (nullable — optional guest nickname, remembered on their device), `hidden_at` (soft delete for moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type` (so the gallery grid reserves space and avoids layout shift), `taken_at` (EXIF capture time, read in the browser **before** the canvas re-encode destroys it; null when the file carried none — always fall back to `created_at`), `created_at`
+  A guest's identity is a random 32-byte token in an **httpOnly** cookie; only
+  its SHA-256 is stored. `httpOnly` is the load-bearing part — the cookie decides
+  how many photos someone gets, and a value the page can read is a value the page
+  can forge. The old `ourfilm_name` cookie was written by client JS and gated
+  nothing, which is why it could be.
+
+  RLS on, **no anon policies at all**. Joining goes through `join_event`, which
+  takes `for update` on the event row before counting, so five parallel joins on
+  a free event cannot produce six participants.
+
+- **`photos`** — `id`, `event_id`, `participant_id` (**not null** — an
+  unattributed photo is one that consumed nobody's shot), `status`
+  (`pending | ready`), `idempotency_key` (unique per participant),
+  `storage_path`, `thumb_path`, `view_path`, `hidden_at` (soft delete for
+  moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type`,
+  `taken_at`, `created_at`
+
+  **The shot limit is atomic, and this is how.** `reserve_shot` takes
+  `for update` on the _participant_ row, checks the window and the count, and
+  inserts a `pending` row with all three paths. The server action then mints
+  three signed upload URLs; the browser PUTs straight to Storage; `commit_shot`
+  flips the row to `ready`. The lock is held for microseconds rather than across
+  a 2MB upload on venue wifi, and it serialises only that one guest's own
+  concurrent captures — locking the event would serialise every guest at the
+  party.
+
+  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes), so
+  a failed upload costs no frame and nothing has to be swept. Retrying with the
+  same `idempotency_key` re-claims the same frame instead of spending another.
+  Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
+  refunding on hide would make hiding a way to shoot forever.
 
 **Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); admin reads the tables directly under ownership policies. Details in the Supabase skill.
 
@@ -338,7 +414,24 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
 
-Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it. Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
+Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it, and `{event_id}/cover.jpg` for the cover. Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
+
+**The bucket is private.** It used to be public, with privacy resting on two
+unguessable uuids in the path — a fair bet for an album with no reveal and an
+untenable one now: a public object URL keeps working forever regardless of what
+the reveal predicate says, so "nobody sees these until the album develops" could
+not have been kept by a URL anyone could hold. Reads are signed server-side in
+`lib/photo-urls.ts` (one batch `createSignedUrls` per grid, 1-hour expiry);
+guests never construct a photo URL.
+
+**Guests hold no direct write access to Supabase at all.** Both anon insert
+policies — on `photos` and on `storage.objects` — are gone. Uploads go to signed
+upload URLs minted by `reserve_shot`'s server action and bound to one exact path
+the database has already agreed to, so a guest cannot choose where bytes land,
+cannot write to another event's folder, and cannot write without first being
+granted a frame. There is still deliberately **no anon select policy** on
+`storage.objects`: one scoped to the bucket would let anyone list every event id
+and photo id in the system.
 
 **Three renders, one per job. Never serve a bigger one than the job needs.** The client already holds the decoded bitmap during upload, so producing all three there costs a resize each rather than another decode.
 
@@ -352,73 +445,99 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
 
 ## Billing (settled)
 
-**One-time purchase per event.** No subscription and no per-guest fee — `/arak`
-promises exactly that on a live page.
+**One-time purchase per event, 12 900 Ft.** No subscription, no per-guest fee.
 
-- **Free:** creating an event, the QR, the gallery, ZIP export, and the first
-  **5 photos** (`public.free_photo_limit()`). The pilot measures whether guests
-  scan and upload, so nothing in the guest journey sits behind a paywall.
-- **Paying unlocks:** the photo cap, for that event, permanently.
-- **Enforced in** `event_accepts_uploads()` _and_ `event_folder_accepts_uploads()`
-  — both guest write paths. Gating only the `photos` row would let a guest fill
-  the bucket with objects no row references. Hiding the upload button is a
-  courtesy, not the enforcement.
-- **Checkout is a redirect** to Stripe's hosted page (`mode: 'payment'`). No
-  card data touches this app, which is the difference between SAQ A and a
-  compliance project.
-- **Only the webhook marks a purchase paid.** `?checkout=success` proves
-  nothing: a host can type it, and a host who closes the tab on Stripe's
-  success page still deserves their album.
-- **The cap counts hidden photos.** `hidden_at` is moderation, not deletion —
-  the object still costs storage, so reclaiming quota by hiding would be a way
-  to upload free forever.
+- **The free tier is a _participant_ cap, not a photo cap:** an event is free for
+  up to **5 distinct participants** (`public.free_participant_limit()`). Every
+  guest gets the host's chosen roll of 5/10/16/24/36 frames either way — what
+  paying buys is more guests. Five friends shooting 36 frames each is a
+  legitimately free event.
+- **Enforced in `join_event`**, under the `for update` lock on the event row, so
+  the cap holds under concurrent joins. A guest who has **already** joined is
+  never turned away once the cap fills — their session predates the limit, and
+  revoking it mid-event is the worst possible moment to tell someone the host has
+  not paid.
+- **A capped guest is shown no checkout.** They get "Az esemény elérte a
+  résztvevői keretet" and are told to ask the organizer. A wedding guest holding
+  a phone cannot fix this, and asking them to pay for the couple's album is the
+  wrong sentence to put in front of them. The upgrade lives on the host's
+  dashboard.
+- **Checkout is a redirect** to Stripe's hosted page (`mode: 'payment'`). No card
+  data touches this app — the difference between SAQ A and a compliance project.
+- **Only the webhook marks a purchase paid.** `?checkout=success` proves nothing:
+  a host can type it, and a host who closes the tab on Stripe's success page
+  still deserves their album. `purchases` has no update policy at all, so the
+  service role is the only writer of `status = 'paid'`.
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
-- **Invoicing is still on the never-start list.** A Hungarian company selling
-  to consumers must issue an invoice and report it to NAV Online Számla, and
-  Stripe does not do that for you. Flag it before the first real forint.
+- **Invoicing is still on the never-start list.** A Hungarian company selling to
+  consumers must issue an invoice and report it to NAV Online Számla, and Stripe
+  does not do that for you. Flag it before the first real forint.
+
+Nothing about the Stripe integration changed in the pivot — only the predicate it
+gates. `event_upload_quota` (photos) became `event_participant_quota`
+(participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
 
 Key files: `lib/stripe/*`, `lib/billing.ts`, `lib/roles.ts`,
 `app/api/stripe/webhook/route.ts`, `app/admin/events/[slug]/billing-actions.ts`,
 `components/admin/billing-card.tsx`.
 
+**`/hu/arak` is knowingly out of date.** It still advertises a "5 feltöltött
+fotó" free tier and "Korlátlan fotó" on the paid one, neither of which is true
+after the pivot. Marketing copy is a separate later phase, and the page is
+`noindex` while `hasRealCompanyDetails` is false, so it is not reachable from
+search. Fix it in that phase, not by halves.
+
 ## MVP scope
 
 **Building:**
 
-1. Event page `/e/[slug]` — name, date, participation counts, the upload queue itself, link to gallery
-2. Upload, inline on the event page — OS picker, client-side HEIC conversion + compression, per-file progress, manual retry
-3. Gallery `/e/[slug]/gallery` — responsive grid, lightbox, hidden photos excluded
-4. Admin `/admin` — create events, generate/print QR, hide photos, **ZIP download of the whole album**
+1. Join screen `/e/[slug]` — cover, event name, state, shot limit, one name field
+2. Camera `/e/[slug]/camera` — live `getUserMedia` preview, big shutter,
+   front/back switch, a `capture` file-input fallback when the live camera is
+   refused or unavailable. No preview, no retake.
+3. Gallery `/e/[slug]/gallery` — reveal-gated, hidden photos excluded
+4. Admin `/admin` — six-step create wizard, QR, moderation, early reveal,
+   **ZIP download of the whole album**
 5. QR code generated from the final event URL
 
 **Not building — flag it and ask first, never start it:**
 
 - App Clip / native app
 - Photographer or multi-tenant dashboard, per-client branding
-- Token system, revenue share, invoicing (**payments themselves are now
-  built** — one-time per event via Stripe Checkout; see Billing below)
+- Token system, revenue share, invoicing (**payments themselves are built**)
 - Guest accounts or mandatory registration
-- Film filters
-- **Automatic** delayed reveal (timed or scheduled unveiling). The host _can_ close the gallery manually at any time via `gallery_hidden_at` — guests keep uploading, they just can't browse — and can reopen it just as easily. That manual toggle is in scope; anything that schedules or automates it is not.
-- Email notifications
+- **Film filters / Original-Vintage-B&W selector.** Deferred deliberately, not
+  forgotten — a later phase.
+- Retake, in-camera preview, or an editor
+- Video, audio guestbook, live slideshow, RSVP
+- Leaderboard, recap, gamification, analytics, referral
+- Email notifications and lifecycle email
 - **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
-  actually writing and maintaining an English site is a separate decision that
-  has not been made.
-- Realtime gallery updates (Supabase Realtime) — guests refresh; the copy no longer promises live updates
+  actually writing and maintaining an English site is a separate decision.
+- Realtime gallery updates (Supabase Realtime) — guests refresh
 - Resumable/background uploads — manual retry only
+- Long-running requests, background workers, cron. The reveal is computed at
+  request time precisely so none of these is needed.
+
+**Reversed by the pivot.** Per-guest shot scarcity, delayed reveal and a
+capture-window were all on this list before, and the Once review had explicitly
+rejected the first. They are the product now. Film filters are the one item from
+that group still deferred.
 
 ## Build order
 
-Ticket-level detail, dependencies, and the open decisions live in `docs/mvp-backlog.md` — work from there; this is the summary.
+Phases 1–5 of the original album build are superseded by the pivot. What exists
+now, in the order it was built:
 
-1. Supabase installed and connected (`@supabase/supabase-js`, `@supabase/ssr`)
-2. Migrations for `events` + `photos`, RLS, storage bucket
-3. Event page with real data
-4. Upload flow → Storage + DB row
-5. Gallery
-6. Admin: create event, hide photo, ZIP export
-7. Real-phone testing, QR printing
+1. Schema reset + `participants` + reveal trigger (`20260824174541`)
+2. Guest RPCs: join, reserve/commit/release, state, gallery (`20260824174542`)
+3. Private bucket (`20260824174543`)
+4. `lib/` domain layer: `camera.ts`, `participants.ts`, `capture.ts`,
+   `photo-urls.ts`, `event-copy.ts`
+5. Guest surface: join → camera → gallery
+6. Admin: create wizard, dashboard, settings, early reveal
+7. Tests, then real-phone testing and QR printing
 
 ## Photo quality policy (settled — the landing page depends on it)
 
@@ -429,17 +548,30 @@ Compress **client-side before upload**, in the browser, straight to Supabase Sto
 
 Full pipeline in `.cursor/skills/ourfilm-upload/SKILL.md`.
 
-## Landing page promises we must honor
+## Landing page promises
 
-The marketing page is live, so guests and hosts arrive with expectations. These claims are load-bearing:
+The marketing page is live and still describes the **old album product** — the
+pivot deliberately did not touch it. Rewriting it is the next phase. Until then:
 
-- **ZIP download of the whole album** (`benefits.tsx`, `live-demo.tsx`) — must actually work for the pilot
-- **High-resolution, print-ready photos** (`photo-quality.tsx` comparison slider, FAQ) — satisfied by the 4096px/92% policy above. The pitch is "chat apps crush your photos, we don't", which stays true; never re-add claims of literally uncompressed originals
-- **Private, unindexed album** (`benefits.tsx`, FAQ) — event routes need `noindex`
-- **Host can hide unwanted photos** (FAQ) — needs the `hidden_at` flag
-- **The free tier's 5-photo cap** (`/arak`) — real and enforced on every guest upload by `public.free_photo_limit()`. `/arak` is the only page that states it; if the limit changes, the migration and that copy move together
+Still true, and load-bearing:
 
-If a change would falsify a landing-page claim, either honor it or update the Hungarian copy in the same change.
+- **ZIP download of the whole album** (`benefits.tsx`) — works
+- **High-resolution, print-ready photos** (`photo-quality.tsx`, FAQ) — satisfied
+  by the 4096px/92% policy above. The pitch is "chat apps crush your photos, we
+  don't", which stays true; never re-add claims of literally uncompressed
+  originals
+- **Private, unindexed album** (`benefits.tsx`, FAQ) — event routes are
+  `noindex`, and the bucket is now private as well
+- **Host can hide unwanted photos** (FAQ) — `hidden_at`
+
+Knowingly false until the copy phase:
+
+- **"5 feltöltött fotó" free tier and "Korlátlan fotó"** (`/hu/arak`) — the free
+  tier is 5 _participants_, and photos are capped per guest on both plans
+- Anything describing uploading from a camera roll rather than taking a photo
+
+If a change would falsify a claim that is still true, either honor it or update
+the Hungarian copy in the same change.
 
 ## Conventions
 
@@ -447,6 +579,12 @@ If a change would falsify a landing-page claim, either honor it or update the Hu
 - Files kebab-case; components named exports (`export function EventHeader()`), no default exports except App Router pages/layouts
 - Server Components by default; add `'use client'` only for state, refs, or browser APIs
 - Shared logic in `lib/` (`lib/slug.ts`, `lib/supabase/*`); never duplicate a helper across components
+- The camera's rules live in `lib/camera.ts` as **pure functions taking `now`** —
+  the server computes them to decide what is allowed and the client to decide
+  what to draw, and the two must never disagree. Nothing there reads a clock of
+  its own. Guest-facing Hungarian for event states lives in `lib/event-copy.ts`,
+  so the join screen, the camera and the gallery cannot describe the same event
+  differently.
 - Import alias `@/*` from the repo root
 
 <!-- BEGIN:nextjs-agent-rules -->

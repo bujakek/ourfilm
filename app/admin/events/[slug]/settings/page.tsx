@@ -1,7 +1,10 @@
 import { BillingCard } from '@/components/admin/billing-card'
+import { CaptureWindowCard } from '@/components/admin/capture-window-card'
 import { DangerZone } from '@/components/admin/danger-zone'
-import { DeadlineCard } from '@/components/admin/deadline-card'
-import { GalleryToggle } from '@/components/admin/gallery-toggle'
+import { GuestsToggle } from '@/components/admin/guests-toggle'
+import { RevealCard } from '@/components/admin/reveal-card'
+import { RevealNowButton } from '@/components/admin/reveal-now-button'
+import { ShotsCard } from '@/components/admin/shots-card'
 import {
   type EventQuota,
   formatAmount,
@@ -9,6 +12,7 @@ import {
   getEventQuota,
   type Purchase,
 } from '@/lib/billing'
+import { captureWindowState, type ShotOption } from '@/lib/camera'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
@@ -57,22 +61,19 @@ export default async function AdminEventSettingsPage({
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
 
+  // Every date field is rendered in the event's own zone, not the server's and
+  // not the browser's — a `datetime-local` carries no zone, so handing it any
+  // other wall clock would show a host a window their guests are not held to.
+  const zone = event.time_zone
+  const windowState = captureWindowState({
+    now: new Date(),
+    captureStartAt: new Date(event.capture_start_at),
+    captureEndAt: new Date(event.capture_end_at),
+  })
+
   // Only the two values Stripe is sent back with are honoured. Anything else
   // in the query string is somebody typing, and a "payment succeeded" banner
   // is not something a URL should be able to conjure.
-  // The field needs a wall clock either way. An event that predates the
-  // required deadline has none to show, so it gets the same week-out
-  // suggestion the create form offers rather than an empty picker.
-  const now = new Date()
-  const deadlineState = !event.uploads_close_at
-    ? 'none'
-    : new Date(event.uploads_close_at) <= now
-      ? 'closed'
-      : 'open'
-  const deadlineValue = event.uploads_close_at
-    ? formatEventLocalInput(new Date(event.uploads_close_at))
-    : `${formatEventLocalInput(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)).slice(0, 10)}T23:59`
-
   const { checkout } = await searchParams
   const checkoutState =
     checkout === 'success' || checkout === 'cancelled' ? checkout : null
@@ -91,21 +92,47 @@ export default async function AdminEventSettingsPage({
         Beállítások
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Itt szabályozhatod, hogy a vendégek láthatják-e a közös albumot, meddig
-        tölthetnek fel képeket, és törölheted az eseményt.
+        Itt állíthatod be, mikor lehet fotózni, mikor jelenjenek meg a képek,
+        hányat készíthet egy vendég — és itt törölheted az eseményt.
       </p>
 
       <div className="mt-8 flex flex-col gap-4">
-        <GalleryToggle
+        <CaptureWindowCard
           slug={event.slug}
-          hidden={event.gallery_hidden_at !== null}
+          startValue={formatEventLocalInput(
+            new Date(event.capture_start_at),
+            zone,
+          )}
+          endValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
+          timeZone={zone}
+          state={windowState}
         />
 
-        <DeadlineCard
+        <RevealCard
           slug={event.slug}
-          value={deadlineValue}
-          state={deadlineState}
+          mode={event.reveal_mode}
+          customValue={formatEventLocalInput(new Date(event.reveal_at), zone)}
+          timeZone={zone}
+          minValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
         />
+
+        <div className="glass rounded-2xl px-5 py-4">
+          <p className="font-medium">Korai leleplezés</p>
+          <p className="mt-1 mb-4 text-xs leading-relaxed text-muted-foreground">
+            Nem akarsz várni? Nyisd meg a galériát most.
+          </p>
+          <RevealNowButton
+            slug={event.slug}
+            guestsCanView={event.guests_can_view}
+          />
+        </div>
+
+        <ShotsCard
+          slug={event.slug}
+          shots={event.shots_per_participant as ShotOption}
+        />
+
+        <GuestsToggle slug={event.slug} canView={event.guests_can_view} />
 
         <Suspense fallback={<BillingCardSkeleton />}>
           <EventBilling
@@ -148,8 +175,7 @@ async function EventBilling({
   // Contained on purpose. A billing read that throws would take the whole
   // route to the error boundary and leave a host unable to reach the other
   // settings — including deletion, which is the one thing they may be here to
-  // do in a hurry. Before the billing migrations are pushed this is not
-  // hypothetical: the table and the RPC do not exist yet.
+  // do in a hurry.
   let quota: EventQuota
   let purchase: Purchase | null
   try {
@@ -161,10 +187,10 @@ async function EventBilling({
     console.error('Could not read billing state', e)
     return (
       <div className="glass rounded-2xl px-5 py-4">
-        <p className="font-medium">Feltöltési keret</p>
+        <p className="font-medium">Résztvevői keret</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Most nem tudjuk lekérdezni. Az album és a feltöltés ettől
-          változatlanul működik.
+          Most nem tudjuk lekérdezni. A kamera és a galéria ettől változatlanul
+          működik.
         </p>
       </div>
     )
@@ -186,8 +212,8 @@ async function EventBilling({
   return (
     <BillingCard
       slug={slug}
-      photoLimit={quota.photoLimit}
-      remaining={quota.remaining}
+      participantLimit={quota.participantLimit}
+      participantCount={quota.participantCount}
       unlimited={quota.unlimited}
       paidLabel={receipt ? `Kifizetve — ${receipt}` : null}
       stripeReady={stripeIsConfigured()}

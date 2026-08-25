@@ -1,5 +1,3 @@
-import { publicSupabaseEnv } from './supabase/env'
-
 export const PHOTO_BUCKET = 'event-photos'
 
 /**
@@ -9,6 +7,10 @@ export const PHOTO_BUCKET = 'event-photos'
  * path segment, so a stray path shape does not fail loudly — it fails as a
  * permission denial that looks like a broken upload. Build paths here and
  * nowhere else.
+ *
+ * Photo paths are also built inside `reserve_shot`, which is what actually
+ * writes them onto the row. These two spellings have to agree; this one exists
+ * for the cover image and for tests.
  */
 export function photoStoragePaths(eventId: string, photoId: string) {
   return {
@@ -19,11 +21,10 @@ export function photoStoragePaths(eventId: string, photoId: string) {
 }
 
 /**
- * Public URL for an object. The bucket is public, so this needs no client,
- * no signing and no round trip — which is why it lives apart from the query
- * modules and stays safe to import from a Client Component.
+ * The event's cover image. One per event, overwritten in place when the host
+ * changes it — there is no history to keep and a stable path means nothing has
+ * to remember the old one to delete it.
  */
-export function photoPublicUrl(storagePath: string) {
-  const { url } = publicSupabaseEnv()
-  return `${url}/storage/v1/object/public/${PHOTO_BUCKET}/${storagePath}`
+export function coverStoragePath(eventId: string) {
+  return `${eventId}/cover.jpg`
 }

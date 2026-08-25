@@ -44,38 +44,117 @@ export function formatPostDate(date: string, locale: KnownLocale): string {
 }
 
 /**
- * The zone an event's clock times are rendered in.
+ * The zone an event's clock times are rendered in, when nothing says otherwise.
  *
- * Unlike `event_date` above, a `timestamptz` is an exact instant, so showing it
- * needs *a* zone — and pinning to UTC would be the bug rather than the fix,
+ * Unlike `formatPostDate` above, a `timestamptz` is an exact instant, so showing
+ * it needs *a* zone — and pinning to UTC would be the bug rather than the fix,
  * labelling a photo taken at 14:32 as 12:32. Vercel runs UTC, so the server's
  * own zone is no help either.
  *
- * The product is Hungarian-only and the pilot is one Hungarian wedding, so the
- * event's zone is Budapest. If OurFilm ever runs an event elsewhere this
- * becomes a column on `events` — a wider guess would not be an improvement.
+ * Every event now carries its own `time_zone`, so this is only the default the
+ * create wizard pre-selects and the fallback for anything not tied to one
+ * event. Pass the event's zone wherever you have it: a host who sets up a
+ * camera for a wedding abroad has told us which clock the guests are on, and
+ * rendering their deadline in Budapest time would be ignoring the answer.
  */
 export const EVENT_TIME_ZONE = 'Europe/Budapest'
 
-const EVENT_PARTS = new Intl.DateTimeFormat('en-CA', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  // h23 rather than hour12:false — the latter renders midnight as 24 under some
-  // ICU builds, which would sort a photo to the wrong end of the day.
-  hourCycle: 'h23',
-  timeZone: EVENT_TIME_ZONE,
-})
+/**
+ * The zones the create wizard offers.
+ *
+ * A short list rather than the full IANA database: the product is Hungarian and
+ * the realistic answers are "here" or "the country we are getting married in".
+ * A 400-entry select on a 390px phone is a worse question than a wrong default.
+ * The column takes any IANA name, so widening this is copy, not schema.
+ */
+export const EVENT_TIME_ZONES = [
+  'Europe/Budapest',
+  'Europe/London',
+  'Europe/Lisbon',
+  'Europe/Athens',
+  'Europe/Istanbul',
+  'Atlantic/Canary',
+  'America/New_York',
+  'America/Los_Angeles',
+  'Asia/Dubai',
+  'Asia/Tokyo',
+] as const
 
-function eventParts(iso: string) {
+/** Hungarian labels for the zones above. A guest never sees these; a host picks
+ *  one once, so it reads as a place rather than an offset. */
+export const EVENT_TIME_ZONE_LABELS: Record<string, string> = {
+  'Europe/Budapest': 'Budapest',
+  'Europe/London': 'London',
+  'Europe/Lisbon': 'Lisszabon',
+  'Europe/Athens': 'Athén',
+  'Europe/Istanbul': 'Isztambul',
+  'Atlantic/Canary': 'Kanári-szigetek',
+  'America/New_York': 'New York',
+  'America/Los_Angeles': 'Los Angeles',
+  'Asia/Dubai': 'Dubaj',
+  'Asia/Tokyo': 'Tokió',
+}
+
+export function eventTimeZoneLabel(zone: string): string {
+  return EVENT_TIME_ZONE_LABELS[zone] ?? zone
+}
+
+/** Whether a string is a zone this runtime can actually format in. The value
+ *  reaches us from a form, and an unknown zone makes `Intl` throw at render
+ *  time rather than at the point it was accepted. */
+export function isValidTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: zone })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Formatters are expensive to construct and there are only ever a handful of
+ * distinct zones in play, so they are built once per zone and kept.
+ */
+function memoFormatter(
+  cache: Map<string, Intl.DateTimeFormat>,
+  zone: string,
+  build: (zone: string) => Intl.DateTimeFormat,
+): Intl.DateTimeFormat {
+  const hit = cache.get(zone)
+  if (hit) return hit
+  const made = build(zone)
+  cache.set(zone, made)
+  return made
+}
+
+const PARTS_CACHE = new Map<string, Intl.DateTimeFormat>()
+
+function partsFormatter(zone: string) {
+  return memoFormatter(
+    PARTS_CACHE,
+    zone,
+    (tz) =>
+      new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        // h23 rather than hour12:false — the latter renders midnight as 24
+        // under some ICU builds, which would sort a photo to the wrong end of
+        // the day.
+        hourCycle: 'h23',
+        timeZone: tz,
+      }),
+  )
+}
+
+function eventParts(iso: string, zone: string) {
   const found = Object.fromEntries(
-    EVENT_PARTS.formatToParts(new Date(iso)).map((part) => [
-      part.type,
-      part.value,
-    ]),
+    partsFormatter(zone)
+      .formatToParts(new Date(iso))
+      .map((part) => [part.type, part.value]),
   )
   return found as Record<
     'year' | 'month' | 'day' | 'hour' | 'minute' | 'second',
@@ -89,33 +168,39 @@ function eventParts(iso: string) {
  * Sorts chronologically as plain text, and keeps meaning once a file is dragged
  * out of the folder and away from its numbering.
  */
-export function formatFileStamp(iso: string): string {
-  const p = eventParts(iso)
+export function formatFileStamp(iso: string, zone = EVENT_TIME_ZONE): string {
+  const p = eventParts(iso, zone)
   return `${p.year}-${p.month}-${p.day}_${p.hour}${p.minute}`
 }
 
 /** `2026:08:15 14:32:10` — the EXIF spelling of a timestamp, in the event's
  *  zone. Colons in the date half are not a typo; that is the format. */
-export function eventStamp(iso: string): string {
-  const p = eventParts(iso)
+export function eventStamp(iso: string, zone = EVENT_TIME_ZONE): string {
+  const p = eventParts(iso, zone)
   return `${p.year}:${p.month}:${p.day} ${p.hour}:${p.minute}:${p.second}`
 }
 
-const OFFSET = new Intl.DateTimeFormat('en-US', {
-  timeZone: EVENT_TIME_ZONE,
-  timeZoneName: 'longOffset',
-})
+const OFFSET_CACHE = new Map<string, Intl.DateTimeFormat>()
 
 /**
- * `+02:00` — the event zone's UTC offset **on that date**, which is the whole
- * reason this is computed per timestamp rather than stored as a constant.
- * Budapest is +01:00 in January and +02:00 in July, so a wedding and a
- * Christmas party cannot share one answer.
+ * `+02:00` — the zone's UTC offset **on that date**, which is the whole reason
+ * this is computed per timestamp rather than stored as a constant. Budapest is
+ * +01:00 in January and +02:00 in July, so a wedding and a Christmas party
+ * cannot share one answer.
  */
-export function eventUtcOffset(iso: string): string {
-  const name = OFFSET.formatToParts(new Date(iso)).find(
-    (part) => part.type === 'timeZoneName',
-  )?.value
+export function eventUtcOffset(iso: string, zone = EVENT_TIME_ZONE): string {
+  const formatter = memoFormatter(
+    OFFSET_CACHE,
+    zone,
+    (tz) =>
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        timeZoneName: 'longOffset',
+      }),
+  )
+  const name = formatter
+    .formatToParts(new Date(iso))
+    .find((part) => part.type === 'timeZoneName')?.value
   // A zone sitting exactly on UTC formats as a bare "GMT" with no offset.
   const found = name ? /GMT([+-]\d{2}:\d{2})/.exec(name) : null
   return found ? found[1] : '+00:00'
@@ -134,8 +219,8 @@ export function eventUtcOffset(iso: string): string {
  * Shifting the instant looks like a hack and is the opposite: a zone-less
  * timestamp means wall clock, so wall clock is what has to go in.
  */
-export function eventWallClock(iso: string): Date {
-  const p = eventParts(iso)
+export function eventWallClock(iso: string, zone = EVENT_TIME_ZONE): Date {
+  const p = eventParts(iso, zone)
   return new Date(
     Number(p.year),
     Number(p.month) - 1,
@@ -146,47 +231,58 @@ export function eventWallClock(iso: string): Date {
   )
 }
 
-const HU_MOMENT = new Intl.DateTimeFormat('hu-HU', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: EVENT_TIME_ZONE,
-})
+const MOMENT_CACHE = new Map<string, Intl.DateTimeFormat>()
 
 /**
  * `2026. augusztus 20. 14:32` — an exact instant rendered in the event's zone.
  *
- * Unlike `formatEventDate`, which pins to UTC because a `date` column has no
- * time to get wrong, this takes a `timestamptz` and so must pick a zone. UTC
- * would be the bug rather than the fix here: a payment made at 00:30 Budapest
- * time would show on the previous day's receipt.
+ * Unlike a `date` column, which has no time to get wrong, a `timestamptz` must
+ * pick a zone. UTC would be the bug rather than the fix here: a payment made at
+ * 00:30 Budapest time would show on the previous day's receipt.
  */
-export function formatMoment(iso: string): string {
-  return HU_MOMENT.format(new Date(iso))
+export function formatMoment(iso: string, zone = EVENT_TIME_ZONE): string {
+  return memoFormatter(
+    MOMENT_CACHE,
+    zone,
+    (tz) =>
+      new Intl.DateTimeFormat('hu-HU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        timeZone: tz,
+      }),
+  ).format(new Date(iso))
 }
 
-const HU_DEADLINE = new Intl.DateTimeFormat('hu-HU', {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-  timeZone: EVENT_TIME_ZONE,
-})
+const DEADLINE_CACHE = new Map<string, Intl.DateTimeFormat>()
 
 /**
- * `2026. aug. 29. 23:59` — an upload deadline, short enough for a table row.
+ * `2026. aug. 29. 23:59` — a capture or reveal moment, short enough for a table
+ * row.
  *
  * Same instant-in-the-event's-zone rule as `formatMoment`; the month is
  * abbreviated because this appears next to an event name in the admin list and
  * under the title on a 390px phone, where the long form pushes to a second
  * line. The year stays: a wedding booked for next January is not a hypothesis.
  */
-export function formatDeadline(iso: string): string {
-  return HU_DEADLINE.format(new Date(iso))
+export function formatDeadline(iso: string, zone = EVENT_TIME_ZONE): string {
+  return memoFormatter(
+    DEADLINE_CACHE,
+    zone,
+    (tz) =>
+      new Intl.DateTimeFormat('hu-HU', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        timeZone: tz,
+      }),
+  ).format(new Date(iso))
 }
 
 /**
@@ -197,8 +293,11 @@ export function formatDeadline(iso: string): string {
  * handed. Handing it the browser's would mean a host abroad sees a deadline an
  * hour off the one the guests are held to, so it gets the event's instead.
  */
-export function formatEventLocalInput(date: Date): string {
-  const p = eventParts(date.toISOString())
+export function formatEventLocalInput(
+  date: Date,
+  zone = EVENT_TIME_ZONE,
+): string {
+  const p = eventParts(date.toISOString(), zone)
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`
 }
 
@@ -214,10 +313,15 @@ export function formatEventLocalInput(date: Date): string {
  * boundary except within the switch hour itself — where the clock is genuinely
  * ambiguous and no answer is the right one.
  */
-export function eventLocalToIso(local: string): string | null {
+export function eventLocalToIso(
+  local: string,
+  zone = EVENT_TIME_ZONE,
+): string | null {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local)) return null
   const guess = new Date(`${local}:00Z`)
   if (Number.isNaN(guess.getTime())) return null
-  const exact = new Date(`${local}:00${eventUtcOffset(guess.toISOString())}`)
+  const exact = new Date(
+    `${local}:00${eventUtcOffset(guess.toISOString(), zone)}`,
+  )
   return Number.isNaN(exact.getTime()) ? null : exact.toISOString()
 }

@@ -3,6 +3,29 @@ name: ourfilm-supabase
 description: OurFilm's Supabase conventions — browser and server client setup with @supabase/ssr, SQL migrations via the Supabase CLI, the events and photos schema, RLS policies for anonymous guest uploads, storage bucket configuration, and Supabase Auth magic-link protection for the admin area. Use when touching the database, writing migrations, configuring RLS or storage, generating types, or wiring auth in OurFilm.
 ---
 
+> **Read this first — the disposable camera pivot changed three things below.**
+>
+> 1. **Guests hold no write access at all.** The anon insert policies on `photos`
+>    and `storage.objects` are gone. Every guest write is a server action calling
+>    a `service_role`-only RPC (`join_event`, `reserve_shot`, `commit_shot`,
+>    `release_shot`), because the httpOnly session cookie is the only thing that
+>    identifies a participant and only the server holds it.
+> 2. **`revoke all … from public` is not enough.** Supabase grants execute to
+>    `anon` and `authenticated` _directly_. Always
+>    `revoke all on function … from anon, authenticated` by name — see
+>    `20260825080000_lock_down_capture_rpcs.sql`, which exists because a test
+>    caught `reserve_shot` callable with the browser's anon key.
+> 3. **The `event-photos` bucket is private.** Reads are signed server-side
+>    (`lib/photo-urls.ts`, batched per grid); uploads go to signed upload URLs
+>    minted by `reserve_shot`. The absence of an anon _select_ policy still
+>    matters and is still deliberate.
+>
+> The rest of this file — RLS reasoning, the security-definer trap, migration
+> workflow, client factories, `getUser()` over `getSession()` — is unchanged and
+> still correct. Two corrections: the DB tests are now
+> `pnpm test:db` (vitest, `tests/db/`), not `supabase/tests/*.py`; and the Next 16
+> proxy matcher export is `config`, not `proxyConfig` (verify in `proxy.ts`).
+
 # OurFilm Supabase
 
 Postgres + Storage + Auth. Guests are **anonymous** (never signed in); only the host signs in, via magic link, to reach `/admin`.

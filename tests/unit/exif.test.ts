@@ -1,7 +1,7 @@
 /**
  * Regression test for `lib/exif.ts`.
  *
- *     pnpm test:exif
+ *     pnpm test
  *
  * Runs offline against fixtures built here in memory — no database, no network,
  * nothing to clean up, unlike the tests under `supabase/tests/`.
@@ -15,8 +15,10 @@
  * *here*, not the one Apple writes. A real iPhone HEIC is still the only thing
  * that can confirm that path — see the open ticket in `docs/mvp-backlog.md`.
  */
-import { exifDateSegment, withExifDate } from '../lib/exif-write.ts'
-import { readCaptureTime } from '../lib/exif.ts'
+import { describe, expect, it } from 'vitest'
+
+import { exifDateSegment, withExifDate } from '@/lib/exif-write'
+import { readCaptureTime } from '@/lib/exif'
 
 const n16 = (v: number, le: boolean) =>
   le ? [v & 0xff, (v >> 8) & 0xff] : [(v >> 8) & 0xff, v & 0xff]
@@ -286,17 +288,9 @@ cases.push(
   ],
 )
 
-let failed = 0
-console.log(`\n  lib/exif.ts — TZ=${process.env.TZ ?? '(system)'}\n`)
-for (const [name, file, expected] of cases) {
-  const got = await readCaptureTime(file)
-  const actual = got ? got.toISOString() : null
-  const ok = actual === expected
-  if (!ok) failed++
-  console.log(
-    `  ${ok ? 'ok  ' : 'FAIL'} ${name.padEnd(38)} ${actual ?? 'null'}` +
-      (ok ? '' : `   expected ${expected ?? 'null'}`),
-  )
-}
-console.log(`\n  ${cases.length - failed}/${cases.length} passed\n`)
-process.exit(failed === 0 ? 0 : 1)
+describe('readCaptureTime', () => {
+  it.each(cases)('%s', async (_name, file, expected) => {
+    const got = await readCaptureTime(file)
+    expect(got ? got.toISOString() : null).toBe(expected)
+  })
+})

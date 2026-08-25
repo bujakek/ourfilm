@@ -62,9 +62,12 @@ const asciiz = (text: string) => [...text].map((c) => c.charCodeAt(0)).concat(0)
  * reads the first, some desktop tools only ever look at the last. Each gets its
  * matching offset tag, so the wall clock is not left to be guessed at.
  */
-export function exifDateSegment(iso: string): Uint8Array {
-  const stamp = asciiz(eventStamp(iso)) // "2026:08:15 14:32:10"
-  const zone = asciiz(eventUtcOffset(iso)) // "+02:00"
+export function exifDateSegment(iso: string, timeZone?: string): Uint8Array {
+  // The event's own zone, not the server's. A capture stamp and its offset are
+  // the two halves of one fact, so both read from the same zone or the file
+  // claims a time that disagrees with the offset beside it.
+  const stamp = asciiz(eventStamp(iso, timeZone)) // "2026:08:15 14:32:10"
+  const zone = asciiz(eventUtcOffset(iso, timeZone)) // "+02:00"
 
   // Little-endian TIFF. IFD0 carries DateTime and the sub-IFD pointer; the
   // sub-IFD carries the two capture stamps and all three offsets.

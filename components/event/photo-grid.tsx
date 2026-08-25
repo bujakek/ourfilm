@@ -1,13 +1,11 @@
 'use client'
 
-import { GUEST_FALLBACK_NAME } from '@/lib/guest-name'
-import type { GalleryPhoto } from '@/lib/photos'
-import { photoPublicUrl } from '@/lib/storage'
+import type { GalleryTile } from '@/lib/photos'
 import Image from 'next/image'
 import { useState } from 'react'
 import { Lightbox } from './lightbox'
 
-export function PhotoGrid({ photos }: { photos: GalleryPhoto[] }) {
+export function PhotoGrid({ photos }: { photos: GalleryTile[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
@@ -25,12 +23,12 @@ export function PhotoGrid({ photos }: { photos: GalleryPhoto[] }) {
                 // into a 180px box would mean a guest pulling well over a
                 // gigabyte to scroll a full album — and blowing the storage
                 // egress budget along the way.
-                src={photoPublicUrl(photo.thumb_path)}
-                alt={
-                  photo.uploader_name
-                    ? `${photo.uploader_name} fotója`
-                    : 'Egy vendég fotója'
-                }
+                //
+                // The URL is signed and short-lived: the bucket is private, so
+                // this is a capability the server handed over rather than an
+                // address anyone can build.
+                src={photo.thumbUrl}
+                alt={`${photo.uploaderName} fotója`}
                 fill
                 sizes="(max-width: 640px) 50vw, 33vw"
                 // Already sized and compressed on the phone that produced it.
@@ -45,7 +43,7 @@ export function PhotoGrid({ photos }: { photos: GalleryPhoto[] }) {
                 className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pt-6 pb-1.5 text-left"
               >
                 <span className="block truncate text-[11px] font-medium text-white/90">
-                  {photo.uploader_name || GUEST_FALLBACK_NAME}
+                  {photo.uploaderName}
                 </span>
               </span>
             </button>

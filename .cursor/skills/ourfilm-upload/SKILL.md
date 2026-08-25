@@ -3,6 +3,30 @@ name: ourfilm-upload
 description: OurFilm's client-side photo upload pipeline — HEIC to JPEG conversion with heic-to, resizing to a 4096px bounding box at 92% JPEG quality, direct browser-to-Supabase-Storage upload, per-file progress states, and manual retry. Use when building or debugging the guest upload flow, the file picker, image compression, EXIF handling, or mobile browser upload issues in OurFilm.
 ---
 
+> **Read this first — the disposable camera pivot changed the entry point.**
+>
+> The **compression policy below is unchanged and still authoritative**: 4096px
+> at q0.92, HEIC converted in the browser with `heic-to`, three renders per
+> photo, decoding kept strictly sequential.
+>
+> What changed is everything around it:
+>
+> - **There is no upload queue and no file picker.** The guest surface is a
+>   camera (`components/event/camera-view.tsx`): live `getUserMedia`, one
+>   shutter, no preview, no retake. A `capture` file input exists only as a
+>   fallback when the live camera is refused or unavailable.
+> - **A live frame skips the decode.** `prepareFromBitmap()` takes the
+>   `ImageBitmap` grabbed off `<video>`; `prepareForUpload()` (file → bitmap →
+>   renders) is now only the fallback path. Encoding a frame to JPEG just to
+>   decode it again would be a wasted round trip on the shutter path.
+> - **Uploads go to signed URLs, not to the bucket directly.** The sequence is
+>   `reserve_shot` (server action, atomic, returns three signed upload URLs) →
+>   PUT the three renders → `commit_shot`. Bytes still never pass through a
+>   Vercel function.
+> - **`taken_at` comes from the shutter press** on the live path — a camera frame
+>   carries no EXIF. The "read EXIF before the canvas touches it" rule still
+>   applies to the file fallback, and it is still a one-way door.
+
 # OurFilm Upload Pipeline
 
 Guests upload from a phone browser on congested venue wifi, straight to Supabase Storage — the file **never** passes through a Next.js route. Everything below runs in the browser.

@@ -19,7 +19,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
@@ -48,7 +48,11 @@ const supabase = createClient<Database>(url, serviceKey, {
   auth: { persistSession: false },
 })
 
-const UPLOADERS = ['Réka', 'Máté', 'Nagymama', null, 'Bence', 'Zsófi']
+/** Participant names. No null any more: joining requires a name, so every
+ *  photo in a real event has one and the seed should not pretend otherwise. */
+const UPLOADERS = ['Réka', 'Máté', 'Nagymama', 'Bence', 'Zsófi']
+
+const HOUR_MS = 60 * 60 * 1000
 
 async function main() {
   // --- host -----------------------------------------------------------------
@@ -97,8 +101,18 @@ async function main() {
       .insert({
         slug: generateEventSlug(EVENT_NAME),
         event_name: EVENT_NAME,
-        event_date: '2026-06-13',
         owner_id: host.id,
+        // A camera that is open right now and stays open for a week, revealing
+        // instantly. The point of a dev event is that every screen is
+        // reachable without waiting or editing a timestamp — a seeded event
+        // whose window has not opened would render the "not started yet" state
+        // and nothing else.
+        capture_start_at: new Date(Date.now() - HOUR_MS).toISOString(),
+        capture_end_at: new Date(Date.now() + 7 * 24 * HOUR_MS).toISOString(),
+        reveal_mode: 'instant',
+        reveal_at: new Date(Date.now() - HOUR_MS).toISOString(),
+        shots_per_participant: 24,
+        guests_can_view: true,
       })
       .select('id, slug')
       .single()
@@ -106,6 +120,36 @@ async function main() {
     ;({ id: eventId, slug } = created)
     console.log(`created event ${slug}`)
   }
+
+  // --- participants ---------------------------------------------------------
+  //
+  // Seeded directly rather than through `join_event`, because that RPC takes a
+  // session token hash and there is no browser here to hold the cookie. The
+  // hashes below are of throwaway strings and match nothing a real device would
+  // present — a seeded participant is a row to look at, not a session to
+  // resume.
+  const participantIds: string[] = []
+
+  for (const name of UPLOADERS) {
+    const { data: participant, error: participantError } = await supabase
+      .from('participants')
+      .upsert(
+        {
+          event_id: eventId,
+          display_name: name,
+          session_token_hash: createHash('sha256')
+            .update(`seed:${eventId}:${name}`)
+            .digest('hex'),
+        },
+        { onConflict: 'event_id,session_token_hash' },
+      )
+      .select('id')
+      .single()
+    if (participantError) throw participantError
+    participantIds.push(participant.id)
+  }
+
+  console.log(`seeded ${participantIds.length} participants`)
 
   // --- photos ---------------------------------------------------------------
   const { count } = await supabase
@@ -181,10 +225,14 @@ async function main() {
     const { error: rowError } = await supabase.from('photos').insert({
       id: photoId,
       event_id: eventId,
+      // Every photo belongs to a participant now. The seed spreads them across
+      // the fixtures so the gallery shows more than one name and the shot
+      // counter is exercised on more than one roll.
+      participant_id: participantIds[i % participantIds.length],
+      status: 'ready',
       storage_path: fullPath,
       thumb_path: thumbPath,
       view_path: viewPath,
-      uploader_name: UPLOADERS[i] ?? null,
       width: meta.width ?? null,
       height: meta.height ?? null,
       byte_size: full.byteLength,
