@@ -10,11 +10,20 @@ import { publicSupabaseEnv } from './env'
  * with it as though the policies did not exist, because for this client they
  * do not.
  *
- * There is exactly one caller: the Stripe webhook. It has no user session to
- * act on behalf of (Stripe is the caller, not the host), and it has to write
+ * Two kinds of caller, and both are things no user session can stand in for.
+ *
+ * The Stripe webhook: Stripe is the caller, not the host, and it has to write
  * `purchases.status = 'paid'`, which no policy grants to anyone. That gap is
- * deliberate: a host who could write that column could hand themselves a paid
+ * deliberate — a host who could write that column could hand themselves a paid
  * album for free.
+ *
+ * The guest capture path (`lib/participants.ts`, `lib/capture.ts`): guests are
+ * anonymous, so there is no session to scope them by, and the thing that must
+ * be protected is the shot limit. The four write RPCs are granted to
+ * `service_role` alone precisely so the only way to reach them is from a server
+ * action holding the httpOnly session cookie. Granting them to `anon` would
+ * make the token hash sufficient on its own, and a hash is a value that can be
+ * observed.
  *
  * Deliberately not used by the ZIP export or the delete path, which both look
  * like candidates. Those run on the host's own session, and
@@ -31,10 +40,11 @@ export function createAdminClient() {
 
   if (!serviceKey) {
     throw new Error(
-      'Missing SUPABASE_SERVICE_ROLE_KEY. The Stripe webhook needs it to ' +
-        'record payments — no RLS policy allows any user to mark a purchase ' +
-        'paid. Copy it from the Supabase dashboard; see the Local env ' +
-        'section of CLAUDE.md.',
+      'Missing SUPABASE_SERVICE_ROLE_KEY. The guest capture path and the ' +
+        'Stripe webhook both need it: the shot-limit RPCs and ' +
+        'purchases.status are granted to service_role alone, on purpose. ' +
+        'Copy it from the Supabase dashboard; see the Local env section of ' +
+        'CLAUDE.md.',
     )
   }
 

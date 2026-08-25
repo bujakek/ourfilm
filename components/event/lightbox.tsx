@@ -1,7 +1,6 @@
 'use client'
 
-import type { GalleryPhoto } from '@/lib/photos'
-import { photoPublicUrl } from '@/lib/storage'
+import type { GalleryTile } from '@/lib/photos'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef } from 'react'
@@ -14,7 +13,7 @@ export function Lightbox({
   onClose,
   onNavigate,
 }: {
-  photos: GalleryPhoto[]
+  photos: GalleryTile[]
   index: number
   onClose: () => void
   onNavigate: (next: number) => void
@@ -58,9 +57,9 @@ export function Lightbox({
 
   if (!photo) return null
 
-  const caption = photo.uploader_name
-    ? `${photo.uploader_name} fotója`
-    : 'Egy vendég fotója'
+  // Every photo has a participant now, and joining requires a name, so the
+  // credit is always a real one rather than a maybe.
+  const caption = `${photo.uploaderName} fotója`
 
   return (
     <dialog
@@ -97,13 +96,12 @@ export function Lightbox({
         <div className="relative min-h-0 flex-1">
           <Image
             key={photo.id}
-            // The ~1600px render, not the print master. Showing `storage_path`
+            // The ~1600px render, not the print master. Showing the master
             // here meant decoding 12.6 megapixels — roughly 50MB of bitmap —
             // on the phone for every swipe, to fill a screen that is about
-            // 1200px across. `view_path` is null only for photos uploaded
-            // before that render existed, which fall back to the old
-            // behaviour rather than to a broken tile.
-            src={photoPublicUrl(photo.view_path ?? photo.storage_path)}
+            // 1200px across. Which render this is was resolved server-side,
+            // along with the signature that makes it fetchable at all.
+            src={photo.viewUrl}
             alt={caption}
             fill
             sizes="100vw"

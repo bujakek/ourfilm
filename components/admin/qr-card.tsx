@@ -14,7 +14,17 @@ import { QRCodeSVG } from 'qrcode.react'
  * more modules, and a denser code is harder for an older phone camera to read
  * across a dim room, which is the likelier failure at a wedding.
  */
-export function QrCard({ name, url }: { name: string; url: string }) {
+export function QrCard({
+  name,
+  url,
+  shots,
+}: {
+  name: string
+  url: string
+  /** Frames each guest gets. Printed on the card so the rule is visible before
+   *  anyone scans. */
+  shots: number
+}) {
   return (
     <>
       <div className="print-card glass-strong mx-auto w-full max-w-sm rounded-[2rem] p-3">
@@ -23,7 +33,7 @@ export function QrCard({ name, url }: { name: string; url: string }) {
             {name}
           </p>
           <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-black/50">
-            KÖZÖS FOTÓALBUM
+            ELDOBHATÓ KAMERA
           </p>
 
           <div className="my-7 flex justify-center">
@@ -38,9 +48,12 @@ export function QrCard({ name, url }: { name: string; url: string }) {
             </div>
           </div>
 
+          {/* The shot count is the whole idea, so it belongs on the card that
+              sits on the table — a guest decides how to use the camera before
+              they ever open it. */}
           <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
-            Olvasd be a QR-kódot, és töltsd fel a képeidet — app és regisztráció
-            nélkül.
+            Olvasd be a QR-kódot, és {shots} képet készíthetsz — app és
+            regisztráció nélkül.
           </p>
           <div className="mt-6 border-t border-black/10 pt-4">
             <p className="truncate text-xs font-medium text-black/50">

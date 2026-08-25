@@ -1,18 +1,22 @@
 # OurFilm MVP backlog
 
-Ordered build plan for the pilot. Derived from the build order and MVP scope in
-`CLAUDE.md`; the technical detail for each area lives in `.cursor/skills/`.
+> **HISTORICAL — superseded by the disposable camera pivot (2026-08-25).**
+>
+> This file plans the _shared photo album_ product. OurFilm is now a private
+> digital disposable camera: a fixed roll of shots per guest, a capture window,
+> and a host-controlled reveal. Phases 2–5 below describe routes, a data model
+> and an upload flow that no longer exist, and the Once review's rejection of
+> per-guest shot scarcity is exactly what the pivot reversed.
+>
+> **Still true and worth reading:** D1 (slug shape), D2 (region and the storage
+> ceiling), D3 (ownership scoping, not multi-tenancy), D4 (self-serve delete),
+> and the open pre-pilot items — real-phone testing, the deployment still behind
+> Vercel SSO, custom SMTP, and the privacy policy.
+>
+> **Do not work the phase list.** `CLAUDE.md` is the current description of the
+> product; the pivot's own build order is summarised there.
 
-- **Goal of the pilot:** answer one question — do guests actually use the QR to
-  upload? Anything that does not serve that question is out of scope.
-- **Status:** D1–D4 settled, **Phases 1–5 complete**, all verified against
-  the live database. **Phase 7 (payments + roles) is written but not live** —
-  two migrations unpushed, no Stripe account. Run `pnpm seed` for a working event to develop against; it
-  prints the URL. Next
-  is Phase 6 (pre-pilot). Guest journey and admin both work end to end. Nothing
-  has been exercised on a real phone yet (6.7), and the deployment is still
-  behind Vercel SSO on a domain that does not resolve (6.7b, 6.7c).
-- **Last updated:** 2026-08-13
+---
 
 Work the phases in order. Within a phase, respect the stated dependencies;
 otherwise order is flexible.

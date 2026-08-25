@@ -1,6 +1,6 @@
 import { EventList } from '@/components/admin/event-list'
 import { EventListSkeleton } from '@/components/admin/skeletons'
-import { eventIsActive, getOwnedEventsWithPreviews } from '@/lib/events'
+import { captureIsOpen, getEventListItems } from '@/lib/events'
 import { CalendarPlus, LogOut, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -46,7 +46,7 @@ export default function AdminPage() {
 }
 
 async function OwnedEventList() {
-  const events = await getOwnedEventsWithPreviews()
+  const events = await getEventListItems()
 
   if (events.length === 0) {
     return (
@@ -56,7 +56,7 @@ async function OwnedEventList() {
         </span>
         <p className="text-lg font-semibold">Még nincs eseményed</p>
         <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground">
-          Hozd létre az első közös albumot, és máris megkapod a megosztható
+          Hozd létre az első eldobható kamerát, és máris megkapod a megosztható
           QR-kódot és meghívólinket.
         </p>
         <Link
@@ -72,8 +72,8 @@ async function OwnedEventList() {
 
   return (
     <EventList
-      active={events.filter(eventIsActive)}
-      closed={events.filter((e) => !eventIsActive(e))}
+      active={events.filter(captureIsOpen)}
+      closed={events.filter((e) => !captureIsOpen(e))}
     />
   )
 }

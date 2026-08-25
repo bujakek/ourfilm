@@ -1,10 +1,37 @@
 'use server'
 
-import { eventLocalToIso } from '@/lib/format'
-import { PHOTO_BUCKET } from '@/lib/storage'
-import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+
+import { isRevealMode, isShotOption, resolveRevealAt } from '@/lib/camera'
+import { eventLocalToIso } from '@/lib/format'
+import { getOwnedEventBySlug } from '@/lib/events'
+import { PHOTO_BUCKET } from '@/lib/storage'
+import { createClient } from '@/lib/supabase/server'
+
+/**
+ * Everything a host can change about a running camera.
+ *
+ * All of these write through the host's own session, so ownership RLS is the
+ * check — there is no `if (event.owner_id === user.id)` anywhere below because
+ * a policy already answered it, and an update that matches zero rows is how a
+ * refusal arrives.
+ *
+ * Which is exactly why every one of them inspects the returned row count. An
+ * UPDATE has to SELECT the row first, so a missing or non-matching policy
+ * returns zero rows with no error at all — checking the count is the difference
+ * between "saved" and "silently did nothing".
+ */
+
+/** The paths any change to an event can invalidate. Guests read the event on
+ *  every screen, so a settings change that skipped these would leave a phone
+ *  showing an old capture window until something else happened to refresh it. */
+function revalidateEvent(slug: string) {
+  revalidatePath(`/admin/events/${slug}`)
+  revalidatePath(`/admin/events/${slug}/settings`)
+  revalidatePath('/admin')
+  revalidatePath(`/e/${slug}`, 'layout')
+}
 
 /**
  * Hide or restore a single photo.
@@ -13,9 +40,10 @@ import { redirect } from 'next/navigation'
  * an unflattering shot at 1am should not be able to destroy a guest's photo
  * permanently by tapping the wrong tile.
  *
- * Note the object itself stays fetchable at its public URL for anyone who
- * already has it, and public objects are CDN-cached. Hiding removes a photo
- * from the album, which is what moderation means here; it is not erasure.
+ * Hiding does **not** give the guest their frame back. `participant_shots_used`
+ * counts every photo regardless of `hidden_at`, because the object still exists
+ * and still cost them a shot — and because refunding on hide would make
+ * moderation a way to hand out extra film.
  */
 export async function setPhotoHidden(
   slug: string,
@@ -31,9 +59,6 @@ export async function setPhotoHidden(
     .select('id')
 
   if (error) throw error
-  // An UPDATE has to SELECT the row first, so a missing or non-matching read
-  // policy returns zero rows with no error at all. Checking the count is the
-  // difference between "moderated" and "silently did nothing".
   if (!data || data.length === 0) {
     throw new Error('A kép nem módosult — lehet, hogy nincs jogosultságod.')
   }
@@ -42,64 +67,167 @@ export async function setPhotoHidden(
   revalidatePath(`/e/${slug}/gallery`)
 }
 
-/** Close the gallery to guests, or reopen it. Uploads continue either way. */
-export async function setGalleryHidden(slug: string, hidden: boolean) {
+/** Let guests open the developed gallery, or keep it to the host alone.
+ *  Capture is unaffected either way — guests keep shooting into an album they
+ *  cannot browse, which is a legitimate way to run a wedding. */
+export async function setGuestsCanView(slug: string, canView: boolean) {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('events')
-    .update({ gallery_hidden_at: hidden ? new Date().toISOString() : null })
+    .update({ guests_can_view: canView })
     .eq('slug', slug)
     .select('id')
 
   if (error) throw error
-  if (!data || data.length === 0) {
-    throw new Error('Az esemény nem módosult.')
-  }
+  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
 
-  // The toggle lives on the settings page; the event page is revalidated too
-  // because it links to it and shares the same event read.
-  revalidatePath(`/admin/events/${slug}/settings`)
-  revalidatePath(`/admin/events/${slug}`)
-  revalidatePath(`/e/${slug}`)
+  revalidateEvent(slug)
   revalidatePath(`/e/${slug}/gallery`)
 }
 
 /**
- * Move the moment uploads stop.
+ * Move the capture window.
  *
- * Every event has one — it is required at creation — so this only ever moves
- * it, never clears it. There is no "leave it open forever" here on purpose:
- * that was the old default, and it is what this change exists to remove.
+ * Both ends arrive as `datetime-local` strings and are read as the event's own
+ * wall clock. Setting the end in the past is allowed and is the supported way
+ * to stop a camera early — a host standing in the room at the end of the night
+ * should not have to compute a future timestamp to close it now.
  *
- * The value arrives as a `datetime-local` string and is read as the event's
- * wall clock, the same as at creation. Moving it into the past is allowed and
- * is the fastest way to close an album early — a host standing in the room at
- * the end of the night should not have to compute a future timestamp to stop
- * uploads now.
+ * The reveal follows automatically for an `event_end` event: the database
+ * trigger recomputes `reveal_at` on every update, so moving the end moves the
+ * reveal with it and no caller has to remember.
  */
-export async function setUploadDeadline(slug: string, local: string) {
-  const closesAt = eventLocalToIso(local)
-  if (!closesAt) throw new Error('Add meg, mikor záruljon a feltöltés.')
+export async function setCaptureWindow(
+  slug: string,
+  startLocal: string,
+  endLocal: string,
+) {
+  const event = await getOwnedEventBySlug(slug)
+  if (!event) throw new Error('Nincs ilyen esemény.')
+
+  const startIso = eventLocalToIso(startLocal, event.time_zone)
+  const endIso = eventLocalToIso(endLocal, event.time_zone)
+  if (!startIso || !endIso) {
+    throw new Error('Add meg, mikortól meddig lehet fotózni.')
+  }
+  if (new Date(endIso) <= new Date(startIso)) {
+    throw new Error('A befejezés legyen későbbi a kezdésnél.')
+  }
+
+  // Extending the window past an already-passed reveal is allowed on purpose.
+  // A host whose party runs long has an album that is already open and guests
+  // who are still shooting into it — which is coherent, and refusing it would
+  // block the more urgent action to protect the tidier invariant.
 
   const supabase = await createClient()
-
   const { data, error } = await supabase
     .from('events')
-    .update({ uploads_close_at: closesAt })
+    .update({ capture_start_at: startIso, capture_end_at: endIso })
     .eq('slug', slug)
     .select('id')
 
   if (error) throw error
-  if (!data || data.length === 0) {
-    throw new Error('Az esemény nem módosult.')
+  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+
+  revalidateEvent(slug)
+  revalidatePath(`/e/${slug}/gallery`)
+}
+
+/** Change when the album develops. `reveal_at` is recomputed by the trigger for
+ *  the two pinned modes; only `custom` carries its own instant. */
+export async function setReveal(
+  slug: string,
+  mode: string,
+  customLocal: string | null,
+) {
+  if (!isRevealMode(mode)) throw new Error('Ismeretlen leleplezési mód.')
+
+  const event = await getOwnedEventBySlug(slug)
+  if (!event) throw new Error('Nincs ilyen esemény.')
+
+  const customIso = customLocal
+    ? eventLocalToIso(customLocal, event.time_zone)
+    : null
+
+  if (mode === 'custom') {
+    if (!customIso) throw new Error('Add meg a leleplezés időpontját.')
+    if (new Date(customIso) < new Date(event.capture_end_at)) {
+      throw new Error('A leleplezés nem lehet korábbi a fotózás végénél.')
+    }
   }
 
-  revalidatePath(`/admin/events/${slug}/settings`)
-  revalidatePath(`/admin/events/${slug}`)
-  revalidatePath('/admin')
-  revalidatePath(`/e/${slug}`)
+  const revealAt = resolveRevealAt({
+    mode,
+    captureStartAt: new Date(event.capture_start_at),
+    captureEndAt: new Date(event.capture_end_at),
+    customRevealAt: customIso ? new Date(customIso) : null,
+  })
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('events')
+    .update({ reveal_mode: mode, reveal_at: revealAt.toISOString() })
+    .eq('slug', slug)
+    .select('id')
+
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+
+  revalidateEvent(slug)
   revalidatePath(`/e/${slug}/gallery`)
+}
+
+/**
+ * Open the gallery now.
+ *
+ * Writes a real reveal instant rather than flipping a display flag, so it
+ * survives a refresh, a redeploy, and anybody else's session. The mode becomes
+ * `custom` because that is what it now is — an instant the host chose.
+ *
+ * Guests see the album only if `guests_can_view` is also on. That is why the
+ * confirmation says "amennyiben a vendéggaléria engedélyezve van" rather than
+ * promising something this action cannot deliver on its own.
+ */
+export async function revealNow(slug: string) {
+  const supabase = await createClient()
+  const now = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from('events')
+    .update({ reveal_mode: 'custom', reveal_at: now })
+    .eq('slug', slug)
+    .select('id')
+
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+
+  revalidateEvent(slug)
+  revalidatePath(`/e/${slug}/gallery`)
+}
+
+/**
+ * Change how many frames each guest gets.
+ *
+ * Lowering it never deletes anything. A participant already past the new limit
+ * keeps every photo they took and simply cannot take more — `reserve_shot`
+ * compares their count against whatever the column says now, so the change
+ * takes effect on the next shutter press and not retroactively.
+ */
+export async function setShotsPerParticipant(slug: string, shots: number) {
+  if (!isShotOption(shots)) throw new Error('Válassz egy érvényes értéket.')
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('events')
+    .update({ shots_per_participant: shots })
+    .eq('slug', slug)
+    .select('id')
+
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+
+  revalidateEvent(slug)
 }
 
 /** One page of a Storage listing. `list()` returns a page, not a total — the
@@ -202,7 +330,7 @@ export async function deleteEvent(slug: string) {
     }
   }
 
-  // Uploads stay open throughout, so a guest can land a photo after the
+  // Capture stays open throughout, so a guest can land a photo after the
   // listing above and before the rows go. Confirm the folder is empty instead
   // of assuming it — this is the last moment at which an object left behind is
   // still findable.

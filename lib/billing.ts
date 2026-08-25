@@ -42,72 +42,46 @@ export function formatAmount(
 }
 
 export type EventQuota = {
-  /** How many photos the free tier allows per event. */
-  photoLimit: number
-  /** How many are still allowed, or null when the event has no cap. */
-  remaining: number | null
+  /** How many distinct participants the free tier allows per event. */
+  participantLimit: number
+  /** How many have joined so far. */
+  participantCount: number
+  /** True when the event is paid for, or owned by an admin. */
   unlimited: boolean
 }
 
 /**
  * How much room is left in an event.
  *
- * Goes through the `event_upload_quota` RPC because guests need it too and
- * guests cannot read `photos` — the same reason every other guest-facing read
- * in this codebase is a `security definer` function.
+ * The free tier is a **participant** cap, not a photo cap. That is the whole
+ * commercial shape of the disposable camera: every guest gets the host's chosen
+ * roll of 5/10/16/24/36 frames whether or not the event is paid for, and what
+ * paying buys is more guests. Five friends shooting 36 frames each is a
+ * legitimately free event; the sixth guest is what asks for money.
  *
- * Note the cast. The generator types a table-returning function's columns as
- * non-nullable, so it claims `remaining: number` when the function genuinely
- * returns null for an unlimited event. `event_by_slug` has the same wrinkle
- * with `event_date`; the honest type is asserted here so no caller inherits
- * the lie.
+ * Host-only, unlike the photo quota it replaces. A guest turned away by the cap
+ * is deliberately not shown a checkout — a wedding guest holding a phone is not
+ * the person who can fix it, and asking them to pay for the couple's album is
+ * the wrong sentence to put on that screen. `event_participant_quota` is
+ * granted to `authenticated` only.
  */
 export const getEventQuota = cache(
   async (eventId: string): Promise<EventQuota> => {
     const supabase = await createClient()
     const { data, error } = await supabase
-      .rpc('event_upload_quota', { p_event_id: eventId })
+      .rpc('event_participant_quota', { p_event_id: eventId })
       .maybeSingle()
 
     if (error) throw error
     if (!data) throw new Error('Az esemény kvótája nem elérhető.')
 
-    const remaining = data.remaining as number | null
-
     return {
-      photoLimit: data.photo_limit,
-      remaining: data.unlimited ? null : (remaining ?? 0),
+      participantLimit: data.participant_limit,
+      participantCount: data.participant_count,
       unlimited: data.unlimited,
     }
   },
 )
-
-/**
- * `getEventQuota`, but never fatal.
- *
- * Billing is the newest thing in this codebase and the least important thing
- * on the page it appears on. An album is worth more than a paywall: if the
- * quota cannot be read — the migration is not pushed yet, Postgres is having a
- * moment — the guest page must still render and guests must still be able to
- * upload. Returning null makes the UI behave as though there were no cap,
- * which is also the truth in the specific case that will actually happen: a
- * database without `event_upload_quota` is a database whose
- * `event_accepts_uploads` has no cap in it either.
- *
- * Loud in the log, quiet in the UI. The admin side deliberately does not use
- * this — a host looking at their billing card deserves to be told when it is
- * broken.
- */
-export async function getEventQuotaOrNull(
-  eventId: string,
-): Promise<EventQuota | null> {
-  try {
-    return await getEventQuota(eventId)
-  } catch (e) {
-    console.error('Could not read upload quota; treating as uncapped', e)
-    return null
-  }
-}
 
 /**
  * The purchase record that best describes an event's billing state.
@@ -126,7 +100,10 @@ export async function getEventQuotaOrNull(
  *
  * This is for showing the host what happened. Whether the cap is lifted is not
  * decided here — `getEventQuota().unlimited` is, because it also answers the
- * admin-owned case that no purchase row will ever describe.
+ * admin-owned case that no purchase row will ever describe. And neither is what
+ * the *database* enforces: `event_is_full_plan()` re-derives it inside
+ * `join_event`, so a client that could somehow lie about this would still be
+ * refused the sixth participant.
  */
 export const getEventPurchase = cache(
   async (eventId: string): Promise<Purchase | null> => {

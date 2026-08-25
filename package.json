@@ -10,13 +10,14 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "pnpm typecheck && pnpm lint && pnpm build",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
     "types:gen": "supabase gen types typescript --linked > lib/supabase/database.types.ts",
     "types:check": "supabase gen types typescript --linked | diff -u lib/supabase/database.types.ts - && echo 'types match the remote schema'",
     "seed": "node --env-file=.env.local --experimental-strip-types scripts/seed.ts",
-    "seed:demo": "node --env-file=.env.local --experimental-strip-types scripts/seed-demo.ts",
     "emails:push": "node --env-file=.env.local --experimental-strip-types scripts/push-auth-emails.ts",
-    "test:exif": "node --experimental-strip-types tests/exif.ts"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "OURFILM_TEST_SUITE=db node --env-file=.env.local node_modules/vitest/vitest.mjs run"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -60,6 +61,7 @@
     "sharp": "^0.35.3",
     "supabase": "^2.114.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.11"
   }
 }

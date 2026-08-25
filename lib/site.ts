@@ -28,22 +28,3 @@ export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '')
  * before the pages are indexed.
  */
 export const CONTACT_EMAIL = 'hello@ourfilm.app'
-
-/**
- * The public sample album linked from the landing page.
- *
- * A fixed slug, deliberately breaking the rule `generateEventSlug()` enforces
- * for every real event. That rule exists because the URL is the only lock on a
- * private album — this album is meant to be found, so the lock is the thing we
- * do not want. `scripts/seed-demo.ts` imports this constant rather than
- * hardcoding its own copy, so the page and the row cannot drift apart.
- *
- * Seeded with uploads closed: a writable album linked from the homepage is
- * exactly the anonymous-upload exposure backlog item 6.6 is still open about.
- */
-export const DEMO_EVENT_SLUG = 'bemutato-album'
-
-/** Absolute URL of the sample album — what the landing page's QR encodes. */
-export function demoEventUrl() {
-  return eventUrl(DEMO_EVENT_SLUG)
-}

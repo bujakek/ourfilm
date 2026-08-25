@@ -1,33 +1,25 @@
 'use client'
 
-import { dismissUpsell, hasUploadedTo, upsellDismissed } from '@/lib/guest-name'
+import { dismissUpsell, upsellDismissed } from '@/lib/guest-prefs'
 import { useGuestState } from '@/lib/use-guest-state'
 import { Sparkles, X } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
 /**
- * Invites a guest who has just contributed to host their own event next time.
+ * Invites a guest who has seen an album to host their own event next time.
  *
- * Shown only after this device has actually uploaded here — pitching an album
- * to someone who has not yet used the one they were handed is both premature
- * and in the way. Dismissal is global and permanent: a guest who says no
- * should not be asked again at the next wedding.
+ * Rendered only from the gallery, and only once it has developed — so the
+ * person reading it has just watched the product do the thing it promises,
+ * which is the one moment the pitch is not in the way. It used to key off a
+ * localStorage marker for "has uploaded here"; reaching a revealed gallery is
+ * both a stronger signal and one the server already established.
  *
- * `alwaysShow` skips the upload check for the post-upload success panel, where
- * the upload that qualifies them has just happened in this same session.
+ * Dismissal is global and permanent: a guest who says no should not be asked
+ * again at the next wedding.
  */
-export function CreateOwnAlbum({
-  eventId,
-  alwaysShow = false,
-}: {
-  eventId: string
-  alwaysShow?: boolean
-}) {
-  const eligible = useGuestState(
-    () => !upsellDismissed() && (alwaysShow || hasUploadedTo(eventId)),
-    false,
-  )
+export function CreateOwnAlbum() {
+  const eligible = useGuestState(() => !upsellDismissed(), false)
   // localStorage is not reactive, so dismissing needs local state to re-render.
   const [dismissed, setDismissed] = useState(false)
 

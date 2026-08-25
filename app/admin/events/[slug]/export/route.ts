@@ -1,8 +1,8 @@
 import { getOwnedEventBySlug } from '@/lib/events'
 import { exifDateSegment, withExifDate } from '@/lib/exif-write'
 import { eventWallClock, formatFileStamp } from '@/lib/format'
-import { getAllEventPhotos } from '@/lib/photos'
-import { photoPublicUrl } from '@/lib/storage'
+import { getAllEventPhotos, photoUploaderName } from '@/lib/photos'
+import { signPhotoUrls } from '@/lib/photo-urls'
 import { downloadZip } from 'client-zip'
 import { NextResponse } from 'next/server'
 
@@ -56,6 +56,21 @@ export async function GET(
   )
   const missing: string[] = []
 
+  // Filenames and ZIP entry dates are rendered in the *event's* zone, not the
+  // server's. Vercel runs UTC, so an event set up in Budapest would otherwise
+  // name a photo taken at 14:32 as 1232.
+  const zone = event.time_zone
+
+  // The bucket is private, so every master needs a signature. Signed in one
+  // batch up front rather than per entry: the entries are pulled one at a time
+  // on purpose, and a round trip to Storage between each would add a whole
+  // latency hop per photo to an export that already streams for minutes.
+  //
+  // The one-hour expiry bounds how long an export may take to *start*, not how
+  // long it may run — the URLs are redeemed as each entry is pulled, and a
+  // signature checked at redemption is only checked once.
+  const signed = await signPhotoUrls(ordered.map((p) => p.storage_path))
+
   // An async generator rather than an array of promises: client-zip pulls one
   // entry at a time, so exactly one object is in flight at any moment. Kicking
   // off 500 fetches up front would open 500 connections and defeat the point of
@@ -63,19 +78,22 @@ export async function GET(
   async function* entries() {
     for (const [index, photo] of ordered.entries()) {
       const n = String(index + 1).padStart(3, '0')
-      const who = photo.uploader_name
-        ? `-${photo.uploader_name.replace(/[^\p{L}\p{N}]+/gu, '-')}`
-        : ''
+      const who = `-${photoUploaderName(photo).replace(/[^\p{L}\p{N}]+/gu, '-')}`
       // Hidden photos ship too, but in their own folder: the host keeps
       // everything without a moderated shot turning up among the rest.
       const folder = photo.hidden_at ? 'rejtett/' : ''
       // The capture time goes in the name too, not only in `lastModified`: a
       // file dragged out of the folder keeps its place in the day, and the
       // couple can still tell when a shot was taken years from now.
-      const stamp = photo.taken_at ? `-${formatFileStamp(photo.taken_at)}` : ''
+      const stamp = photo.taken_at
+        ? `-${formatFileStamp(photo.taken_at, zone)}`
+        : ''
       const name = `${folder}${n}${stamp}${who}.jpg`
 
-      const response = await fetch(photoPublicUrl(photo.storage_path))
+      const url = signed.get(photo.storage_path)
+      const response = url
+        ? await fetch(url)
+        : new Response(null, { status: 404 })
       if (!response.ok || !response.body) {
         // Aborting here would truncate an archive the host is already
         // downloading. Skip, and account for it at the end instead.
@@ -90,7 +108,7 @@ export async function GET(
       // imported. Untouched when the capture time is unknown.
       const input =
         photo.taken_at && response.body
-          ? withExifDate(response.body, exifDateSegment(photo.taken_at))
+          ? withExifDate(response.body, exifDateSegment(photo.taken_at, zone))
           : response
 
       yield {
@@ -99,7 +117,7 @@ export async function GET(
         // every photo in the album with the morning someone got round to it,
         // and a bare `new Date` would render it in the server's zone — UTC on
         // Vercel — rather than the event's.
-        lastModified: eventWallClock(photo.taken_at ?? photo.created_at),
+        lastModified: eventWallClock(photo.taken_at ?? photo.created_at, zone),
         input,
       }
     }

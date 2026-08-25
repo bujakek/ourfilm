@@ -13,19 +13,25 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-/** A week out, end of day. Hosts create the event to print the QR-kód, which
- *  happens days before the party rather than at it, so "tonight" would be the
- *  wrong guess far more often than this is. It is a starting point for the
- *  picker, not a recommendation — every host is expected to move it. */
+/** A week out. Hosts create the event to print the QR code, which happens days
+ *  before the party rather than at it, so "tonight" would be the wrong guess
+ *  far more often than this is. A starting point for the picker, not a
+ *  recommendation — every host is expected to move both ends. */
 const SUGGESTED_DAYS = 7
+
+/** 16:00 to 23:59 on the suggested day. A party rather than a working day, and
+ *  a window whose two ends are already in the right order, so the first thing a
+ *  host sees on the step is a valid answer instead of a validation error. */
+const SUGGESTED_START_HOUR = '16:00'
+const SUGGESTED_END_HOUR = '23:59'
 
 export default function NewEventPage() {
   const now = new Date()
   const week = new Date(now.getTime() + SUGGESTED_DAYS * 24 * 60 * 60 * 1000)
-  // Both rendered on the server, in the event's zone, and handed down as
+  // Rendered on the server, in the default event zone, and handed down as
   // props: computing them in the client component instead would either flash
   // an empty field until hydration or mismatch the server's markup.
-  const suggested = `${formatEventLocalInput(week).slice(0, 10)}T23:59`
+  const day = formatEventLocalInput(week).slice(0, 10)
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
@@ -40,8 +46,8 @@ export default function NewEventPage() {
         Új esemény
       </h1>
       <NewEventForm
-        suggestedCloses={suggested}
-        earliestCloses={formatEventLocalInput(now)}
+        defaultStart={`${day}T${SUGGESTED_START_HOUR}`}
+        defaultEnd={`${day}T${SUGGESTED_END_HOUR}`}
       />
     </main>
   )

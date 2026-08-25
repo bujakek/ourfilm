@@ -1,7 +1,6 @@
 'use client'
 
-import type { HostPhoto } from '@/lib/photos'
-import { photoPublicUrl } from '@/lib/storage'
+import type { ModerationTile } from '@/lib/photos'
 import { cn } from '@/lib/utils'
 import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
@@ -23,7 +22,7 @@ function Tile({
   slug,
   onToggle,
 }: {
-  photo: HostPhoto
+  photo: ModerationTile
   slug: string
   onToggle: (photoId: string) => void
 }) {
@@ -40,12 +39,11 @@ function Tile({
         )}
       >
         <Image
-          src={photoPublicUrl(photo.thumb_path)}
-          alt={
-            photo.uploader_name
-              ? `${photo.uploader_name} fotója`
-              : 'Egy vendég fotója'
-          }
+          // Signed server-side: the bucket is private, so the URL is a
+          // short-lived capability rather than an address this component could
+          // have built for itself.
+          src={photo.thumbUrl}
+          alt={`${photo.uploaderName} fotója`}
           fill
           sizes="(max-width: 640px) 50vw, 200px"
           unoptimized
@@ -95,7 +93,7 @@ export function ModerationGrid({
   photos,
   slug,
 }: {
-  photos: HostPhoto[]
+  photos: ModerationTile[]
   slug: string
 }) {
   // Held for the whole grid rather than per tile so the "N rejtve" counter

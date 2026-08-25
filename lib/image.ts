@@ -230,7 +230,28 @@ export async function prepareForUpload(file: File): Promise<PreparedPhoto> {
   const takenAt = await readCaptureTime(file)
 
   const bitmap = await decode(file)
+  return prepareFromBitmap(bitmap, takenAt)
+}
 
+/**
+ * The same three renders, from a bitmap the caller already holds.
+ *
+ * This is the live camera's entry point. A frame grabbed off `<video>` is
+ * already decoded pixels, so routing it through `prepareForUpload` would mean
+ * encoding it to a JPEG only to decode that JPEG straight back — one wasted
+ * encode/decode round trip per shutter press, on a phone, in the one
+ * interaction the product exists to make feel instant.
+ *
+ * A live frame carries no EXIF, so `takenAt` is passed in: the camera knows
+ * when the shutter was pressed, which is a better answer than null and the same
+ * answer a file's EXIF would have given.
+ *
+ * Takes ownership of the bitmap and closes it.
+ */
+export async function prepareFromBitmap(
+  bitmap: ImageBitmap,
+  takenAt: Date | null,
+): Promise<PreparedPhoto> {
   try {
     const { width, height } = scaledSize(bitmap, MAX_EDGE)
 
@@ -238,9 +259,9 @@ export async function prepareForUpload(file: File): Promise<PreparedPhoto> {
     //
     // Passing the guest's file through untouched to save bytes looks like a
     // free win and is not: the canvas round trip is what strips EXIF, and EXIF
-    // is where the GPS coordinates live. The bucket is public and object URLs
-    // are shareable, so an untouched original means a guest can hand over
-    // where they were standing along with the photo.
+    // is where the GPS coordinates live. Object URLs are shareable and the
+    // ZIP export hands every master to the host, so an untouched original
+    // means a guest hands over where they were standing along with the photo.
     //
     // This is the common case, not an edge one — a phone JPEG at 4032px is
     // under the cap, so nothing is resized, and re-encoding an already
