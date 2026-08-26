@@ -1,25 +1,26 @@
-import { getRelatedPosts } from '@/lib/blog/posts'
-import type { BlogPost } from '@/lib/blog/types'
+import { getRelatedDocs } from '@/lib/content/docs'
+import type { ContentDoc } from '@/lib/content/types'
 import type { Locale } from '@/lib/i18n'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
 const HEADING: Record<Locale, string> = {
-  hu: 'Kapcsolódó írások',
+  hu: 'Kapcsolódó oldalak',
 }
 
 /**
  * "Read next", driven by the `related` ids in frontmatter.
  *
- * Ids rather than URLs, so a link keeps working when the article is translated
- * and its slug changes language. Resolution is same-locale only — a Hungarian
- * reader is never sent to an English page.
+ * Ids rather than URLs, so a link keeps working when the page is translated
+ * and its slug changes language — and so a guide can point at a landing page
+ * without either of them knowing the other's directory. Resolution is
+ * same-locale only: a Hungarian reader is never sent to an English page.
  */
-export function RelatedPosts({ post }: { post: BlogPost }) {
-  const related = getRelatedPosts(post)
+export function RelatedDocs({ doc }: { doc: ContentDoc }) {
+  const related = getRelatedDocs(doc)
   if (related.length === 0) return null
 
-  const locale = post.locale as Locale
+  const locale = doc.locale as Locale
 
   return (
     <section className="mt-16 border-t border-border pt-10">
@@ -28,7 +29,7 @@ export function RelatedPosts({ post }: { post: BlogPost }) {
       </h2>
       <ul className="mt-4 space-y-3">
         {related.map((item) => (
-          <li key={item.slug}>
+          <li key={item.href}>
             <Link
               href={item.href}
               className="glass glass-hover group flex items-center justify-between gap-4 rounded-2xl px-5 py-4"

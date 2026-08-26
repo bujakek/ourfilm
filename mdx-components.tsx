@@ -1,4 +1,4 @@
-import { Comparison, Cta, Faq } from '@/components/blog/mdx-blocks'
+import { Comparison, Cta, Faq } from '@/components/content/mdx-blocks'
 import type { MDXComponents } from 'mdx/types'
 import Link from 'next/link'
 
