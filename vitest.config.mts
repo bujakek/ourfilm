@@ -19,6 +19,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('.', import.meta.url)),
+      // See tests/stubs/server-only.ts — without this the content layer cannot
+      // be imported into a test at all.
+      'server-only': fileURLToPath(
+        new URL('./tests/stubs/server-only.ts', import.meta.url),
+      ),
     },
   },
   test: {
