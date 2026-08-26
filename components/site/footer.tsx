@@ -52,10 +52,21 @@ const columns: FooterColumn[] = [
     ],
   },
   {
+    // The content library's three hubs. Deliberately here and not in the
+    // navbar: sixty-nine pages behind one header link would turn a simple nav
+    // into a sitemap, and a reader who wants a guide is not the reader the
+    // header is for.
+    heading: 'Tudásbázis',
+    links: [
+      { label: 'Blog', href: '/blog' },
+      { label: 'Alternatívák', href: '/alternativak' },
+      { label: 'Összehasonlítás', href: '/osszehasonlitas' },
+    ],
+  },
+  {
     heading: 'Cég',
     links: [
       { label: 'Rólunk', href: '/rolunk' },
-      { label: 'Blog', href: '/blog' },
       { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
       { label: 'Általános Szerződési Feltételek', href: '/aszf' },
     ],
@@ -98,7 +109,7 @@ export function Footer({ locale }: { locale: Locale }) {
 
             <nav
               aria-label="Lábléc"
-              className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:gap-12"
+              className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5 lg:gap-10"
             >
               {columns.map((column) => (
                 <div key={column.heading}>

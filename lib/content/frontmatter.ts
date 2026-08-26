@@ -1,16 +1,17 @@
 import { isKnownLocale } from '@/lib/i18n'
 import { z } from 'zod'
 
-import type { BlogFrontmatter } from './types'
+import { isTopic } from './topics'
+import type { ContentFrontmatter } from './types'
 
 /**
  * The frontmatter contract, enforced rather than assumed.
  *
- * An article is a file someone hand-writes and opens a PR with, which makes it
+ * A page is a file someone hand-writes and opens a PR with, which makes it
  * exactly the kind of input that is wrong occasionally: a missing date, a slug
- * with a capital letter in it, `related` pointing at an article that was
+ * with a capital letter in it, `related` pointing at a document that was
  * renamed. Every one of those fails silently without a check here — a post
- * that vanishes from the index, or a link that 404s — so the build stops
+ * page that vanishes from its hub, or a link that 404s — so the build stops
  * instead, naming the file and the field.
  *
  * The schema deliberately avoids zod's newer sugar (`z.iso.date()`,
@@ -26,7 +27,7 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
  *
  * The round-trip is the whole check. `new Date('2026-02-31')` does not fail —
  * it silently rolls over to 2026-03-03, so an impossible date would publish an
- * article three days after the one its author wrote down, and sort it there
+ * page three days after the one its author wrote down, and sort it there
  * too. Comparing the parsed date back to the input is what catches that.
  */
 function isRealDate(value: string): boolean {
@@ -61,13 +62,19 @@ const schema = z.object({
     .startsWith('/', 'image must be a site-absolute path')
     .optional(),
   related: z
-    .array(z.string().regex(SLUG, 'related entries must be article ids'))
+    .array(z.string().regex(SLUG, 'related entries must be document ids'))
+    .optional(),
+  // Blog shelving. Refined rather than `z.enum` for the same zod-version
+  // reason the locale field is: a refine behaves identically on zod 3 and 4.
+  topic: z
+    .string()
+    .refine(isTopic, 'topic is not one of the known topics')
     .optional(),
   draft: z.boolean().optional(),
 })
 
 /**
- * Validates one article's frontmatter.
+ * Validates one document's frontmatter.
  *
  * Throws with the file path in the message: a zod error on its own says
  * `slug: Invalid`, which is useless when the build is compiling forty files.
@@ -75,7 +82,7 @@ const schema = z.object({
 export function parseFrontmatter(
   data: unknown,
   filePath: string,
-): BlogFrontmatter {
+): ContentFrontmatter {
   const result = schema.safeParse(data)
 
   if (!result.success) {
@@ -85,5 +92,5 @@ export function parseFrontmatter(
     throw new Error(`Invalid frontmatter in ${filePath}:\n${problems}`)
   }
 
-  return result.data as BlogFrontmatter
+  return result.data as ContentFrontmatter
 }

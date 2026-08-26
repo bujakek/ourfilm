@@ -1,40 +1,26 @@
+import { DocList } from '@/components/content/doc-list'
+import { HubLinks } from '@/components/content/hub-links'
 import { PageHeader } from '@/components/site/page-header'
-import { getPosts } from '@/lib/blog/posts'
-import { formatPostDate } from '@/lib/format'
-import { isLocale, type Locale, localePath } from '@/lib/i18n'
+import { hubCopy } from '@/lib/content/copy'
+import { getDocsByTopic } from '@/lib/content/docs'
+import { topicLabel, topicOrder } from '@/lib/content/topics'
+import { isLocale, localePath } from '@/lib/i18n'
 import { canonicalUrl } from '@/lib/seo'
-import { ArrowRight } from 'lucide-react'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 type Props = { params: Promise<{ locale: string }> }
-
-/** Copy per locale, so the index needs no dictionary infrastructure for what
- *  is currently four strings. When a third locale arrives this is the thing to
- *  promote into one. */
-const COPY: Record<
-  Locale,
-  { title: string; eyebrow: string; lead: string; empty: string; more: string }
-> = {
-  hu: {
-    eyebrow: 'BLOG',
-    title: 'Gyakorlati tippek eseményekhez',
-    lead: 'Gyakorlati ötletek ahhoz, hogy a vendégeid fotói egy közös albumba kerüljenek.',
-    empty: 'Még nincs bejegyzés. Hamarosan.',
-    more: 'Elolvasom',
-  },
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   if (!isLocale(locale)) return {}
 
   const path = localePath(locale, '/blog')
+  const copy = hubCopy[locale].blog
 
   return {
-    title: `${COPY[locale].title} — OurFilm`,
-    description: COPY[locale].lead,
+    title: `${copy.title} — OurFilm`,
+    description: copy.lead,
     alternates: {
       canonical: canonicalUrl(path),
       types: {
@@ -44,12 +30,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * Shelved by topic rather than listed by date.
+ *
+ * Forty-odd guides in one reverse-chronological column is a column nobody
+ * reads past the fold of, and the newest article is rarely the one a reader
+ * arrived for. The shelves come from each article's own `topic`, so the index
+ * needs no registry — see `lib/content/topics.ts`.
+ */
 export default async function BlogIndexPage({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
 
-  const posts = getPosts(locale)
-  const copy = COPY[locale]
+  const shelves = getDocsByTopic(locale)
+  const copy = hubCopy[locale].blog
 
   return (
     <>
@@ -57,42 +51,27 @@ export default async function BlogIndexPage({ params }: Props) {
 
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
-          {posts.length === 0 ? (
+          {shelves.size === 0 ? (
             <p className="mt-12 leading-relaxed text-muted-foreground">
-              {copy.empty}
+              Még nincs bejegyzés. Hamarosan.
             </p>
           ) : (
-            <ul className="mt-12 space-y-4">
-              {posts.map((post) => (
-                <li key={post.slug}>
-                  <Link
-                    href={post.href}
-                    className="glass glass-hover group flex flex-col rounded-3xl p-7"
-                  >
-                    <time
-                      dateTime={post.publishedAt}
-                      className="text-xs tracking-wide text-muted-foreground"
-                    >
-                      {formatPostDate(post.publishedAt, locale)}
-                    </time>
-                    <h2 className="mt-3 text-xl font-semibold text-balance">
-                      {post.title}
-                    </h2>
-                    <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-                      {post.description}
-                    </p>
-                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-accent">
-                      {copy.more}
-                      <ArrowRight
-                        className="size-4 transition-transform group-hover:translate-x-0.5"
-                        aria-hidden="true"
-                      />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            topicOrder
+              .filter((topic) => shelves.has(topic))
+              .map((topic) => (
+                <section key={topic} className="mt-14 first:mt-8">
+                  <h2 className="text-2xl font-semibold tracking-tight text-balance">
+                    {topicLabel[topic].title}
+                  </h2>
+                  <p className="mt-2 leading-relaxed text-pretty text-muted-foreground">
+                    {topicLabel[topic].lead}
+                  </p>
+                  <DocList docs={shelves.get(topic) ?? []} locale={locale} />
+                </section>
+              ))
           )}
+
+          <HubLinks locale={locale} current="blog" />
         </div>
       </section>
     </>
