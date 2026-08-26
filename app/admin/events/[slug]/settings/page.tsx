@@ -1,5 +1,5 @@
 import { BillingCard } from '@/components/admin/billing-card'
-import { CaptureWindowCard } from '@/components/admin/capture-window-card'
+import { CaptureEndCard } from '@/components/admin/capture-end-card'
 import { DangerZone } from '@/components/admin/danger-zone'
 import { GuestsToggle } from '@/components/admin/guests-toggle'
 import { RevealCard } from '@/components/admin/reveal-card'
@@ -92,17 +92,13 @@ export default async function AdminEventSettingsPage({
         Beállítások
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Itt állíthatod be, mikor lehet fotózni, mikor jelenjenek meg a képek,
+        Itt állíthatod be, meddig lehet fotózni, mikor jelenjenek meg a képek,
         hányat készíthet egy vendég — és itt törölheted az eseményt.
       </p>
 
       <div className="mt-8 flex flex-col gap-4">
-        <CaptureWindowCard
+        <CaptureEndCard
           slug={event.slug}
-          startValue={formatEventLocalInput(
-            new Date(event.capture_start_at),
-            zone,
-          )}
           endValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
           timeZone={zone}
           state={windowState}

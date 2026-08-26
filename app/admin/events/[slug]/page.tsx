@@ -148,10 +148,9 @@ export default async function AdminEventPage({ params }: Props) {
           A kamera beállításai
         </h2>
         <dl className="glass flex flex-col gap-3 rounded-2xl px-5 py-4 text-sm">
-          <Row
-            label="Fotózás kezdete"
-            value={formatDeadline(event.capture_start_at, zone)}
-          />
+          {/* No "Fotózás kezdete" row. The camera opens when the event is
+              created, so it is the one line here that could never say anything
+              a host did not already know. */}
           <Row
             label="Fotózás vége"
             value={formatDeadline(event.capture_end_at, zone)}

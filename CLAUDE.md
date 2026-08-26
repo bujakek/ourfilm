@@ -218,7 +218,13 @@ and the CTA pinned to the bottom.
 - **The camera opens the moment the event is created.** `capture_start_at` is
   stamped by the server action, not sent from the browser, so there is no clock
   skew between the phone that filled the form and the row that gets inserted.
-  The host is only ever asked when it _ends_.
+  The host is only ever asked when it _ends_ — and `capture_start_at` is
+  therefore never shown or edited anywhere in the admin either. Settings offers
+  `capture-end-card.tsx` alone, `setCaptureEnd` reads the start off the row to
+  validate against, and the event page's summary has no "kezdete" line. A start
+  field would be a second date to keep straight for a value that is always "when
+  I pressed the button", and reopening a closed camera is what moving the _end_
+  forwards already does.
 - **The timezone is never asked.** It is read off the browser
   (`browserTimeZone()`) and stored with the event, so every later screen still
   formats in the event's own zone. The zone reaches the client one render late,
@@ -254,7 +260,7 @@ revert on their own — none carries hand-written rollback code.
   is visible at a glance, so showing it immediately cannot mislead.
 
 **The two date cards are deliberately _not_ optimistic.**
-`capture-window-card.tsx` and `reveal-card.tsx` show a saved/failed state
+`capture-end-card.tsx` and `reveal-card.tsx` show a saved/failed state
 instead. A field that displays the typed text while the stored answer is an hour
 off would be lying about the one value guests are held to — and unlike a boolean,
 there is no way to glance at it and notice.

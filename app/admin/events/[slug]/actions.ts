@@ -87,32 +87,34 @@ export async function setGuestsCanView(slug: string, canView: boolean) {
 }
 
 /**
- * Move the capture window.
+ * Move the moment the camera closes.
  *
- * Both ends arrive as `datetime-local` strings and are read as the event's own
- * wall clock. Setting the end in the past is allowed and is the supported way
- * to stop a camera early — a host standing in the room at the end of the night
- * should not have to compute a future timestamp to close it now.
+ * **The end only.** `capture_start_at` is stamped once, when the event is
+ * created, and nothing offers to change it — so it is read off the row here
+ * rather than accepted from the caller. The check constraint on the table wants
+ * `end > start` either way, and refusing that with a sentence beats letting
+ * Postgres refuse it with a constraint name.
+ *
+ * The value arrives as a `datetime-local` string and is read as the event's own
+ * wall clock. Setting the end in the past is allowed and is the supported way to
+ * stop a camera early — a host standing in the room at the end of the night
+ * should not have to compute a future timestamp to close it now. Only "before
+ * the event existed" is out of bounds.
  *
  * The reveal follows automatically for an `event_end` event: the database
  * trigger recomputes `reveal_at` on every update, so moving the end moves the
  * reveal with it and no caller has to remember.
  */
-export async function setCaptureWindow(
-  slug: string,
-  startLocal: string,
-  endLocal: string,
-) {
+export async function setCaptureEnd(slug: string, endLocal: string) {
   const event = await getOwnedEventBySlug(slug)
   if (!event) throw new Error('Nincs ilyen esemény.')
 
-  const startIso = eventLocalToIso(startLocal, event.time_zone)
   const endIso = eventLocalToIso(endLocal, event.time_zone)
-  if (!startIso || !endIso) {
-    throw new Error('Add meg, mikortól meddig lehet fotózni.')
+  if (!endIso) {
+    throw new Error('Add meg, meddig lehet fotózni.')
   }
-  if (new Date(endIso) <= new Date(startIso)) {
-    throw new Error('A befejezés legyen későbbi a kezdésnél.')
+  if (new Date(endIso) <= new Date(event.capture_start_at)) {
+    throw new Error('A fotózás vége nem lehet korábbi az esemény kezdeténél.')
   }
 
   // Extending the window past an already-passed reveal is allowed on purpose.
@@ -123,7 +125,7 @@ export async function setCaptureWindow(
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('events')
-    .update({ capture_start_at: startIso, capture_end_at: endIso })
+    .update({ capture_end_at: endIso })
     .eq('slug', slug)
     .select('id')
 
