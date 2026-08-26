@@ -56,6 +56,7 @@ export function OnboardingShell({
   cta,
   ctaDisabled = false,
   ctaPending = false,
+  ctaFullWidth = false,
   onNext,
   error = null,
   note = null,
@@ -70,6 +71,13 @@ export function OnboardingShell({
   cta: string
   ctaDisabled?: boolean
   ctaPending?: boolean
+  /** Stacks the CTA under the progress dots at full width.
+   *
+   *  Set on the last screen, where the paid label is the legally required
+   *  "Fizetési kötelezettséggel járó megrendelés" — a sentence, not a word.
+   *  Beside the dots it would wrap to three lines and push the footer off a
+   *  390px screen; under them it reads as the one thing it is. */
+  ctaFullWidth?: boolean
   onNext?: () => void
   error?: string | null
   /** A line under the question, above the footer. Used for the one sentence
@@ -165,7 +173,13 @@ export function OnboardingShell({
             "Tovább a fizetéshez", and an absolutely-centred row of dots behind
             it would be underneath the button rather than beside it. The dots
             centre in whatever the button leaves. */}
-        <footer className="mt-6 grid min-h-14 grid-cols-[1fr_auto] items-center gap-3">
+        <footer
+          className={
+            ctaFullWidth
+              ? 'mt-6 flex flex-col gap-3'
+              : 'mt-6 grid min-h-14 grid-cols-[1fr_auto] items-center gap-3'
+          }
+        >
           <ol
             aria-label="Lépések"
             className="pointer-events-none flex justify-center gap-2"
@@ -193,7 +207,9 @@ export function OnboardingShell({
               spent.current = step
               onNext?.()
             }}
-            className="btn-shine inline-flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-primary px-6 text-base font-semibold text-primary-foreground transition-opacity disabled:opacity-30"
+            className={`btn-shine inline-flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-primary px-6 text-base font-semibold text-primary-foreground transition-opacity disabled:opacity-30 ${
+              ctaFullWidth ? 'w-full justify-center text-center' : ''
+            }`}
           >
             {ctaPending ? (
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />

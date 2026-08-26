@@ -2,6 +2,7 @@
 
 import { getEventQuota } from '@/lib/billing'
 import { getOwnedEventBySlug } from '@/lib/events'
+import { recordHostAcceptance } from '@/lib/legal/acceptance'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { createClient } from '@/lib/supabase/server'
@@ -33,6 +34,20 @@ export async function startEventCheckout(
   const slug = String(formData.get('slug') ?? '').trim()
   if (!slug) return { error: 'Hiányzó esemény.' }
 
+  // The two declarations that stand immediately before the paid action, and
+  // the refusal that makes the disabled button more than decoration. Same
+  // pair, same wording and same server-side re-check as the create flow.
+  const acceptedTerms = formData.get('accept_terms') === 'on'
+  const acceptedEarlyPerformance =
+    formData.get('accept_early_performance') === 'on'
+
+  if (!acceptedTerms || !acceptedEarlyPerformance) {
+    return {
+      error:
+        'A megrendeléshez fogadd el az Általános Szerződési Feltételeket, és kérd a teljesítés megkezdését.',
+    }
+  }
+
   if (!stripeIsConfigured()) {
     return {
       error:
@@ -60,6 +75,16 @@ export async function startEventCheckout(
   if (quota.unlimited) {
     return { error: 'Ez az esemény már korlátlan — nincs mit fizetni.' }
   }
+
+  // Recorded before the redirect. A host who closes the tab on Stripe's page
+  // still made these declarations, and the webhook that marks the purchase
+  // paid has no browser to read them from.
+  await recordHostAcceptance({
+    userId: user.id,
+    eventId: event.id,
+    eventSlug: event.slug,
+    documents: ['host_terms', 'early_performance'],
+  })
 
   let checkoutUrl: string
   try {

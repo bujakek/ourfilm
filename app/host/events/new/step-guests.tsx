@@ -3,11 +3,13 @@
 import { Check } from 'lucide-react'
 
 import { AccountNotice } from '@/components/host/onboarding/account-notice'
+import { LegalConsent } from '@/components/host/legal-consent'
 import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
 import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
+import { CHECKOUT_COPY } from '@/lib/legal/copy/forms'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 
@@ -35,6 +37,10 @@ export function StepGuests({
   setShots,
   guestsCanView,
   setGuestsCanView,
+  acceptedTerms,
+  setAcceptedTerms,
+  acceptedEarlyPerformance,
+  setAcceptedEarlyPerformance,
   paymentsEnabled,
   pending,
 }: {
@@ -45,6 +51,16 @@ export function StepGuests({
   setShots: (value: ShotOption) => void
   guestsCanView: boolean
   setGuestsCanView: (value: boolean) => void
+  /** The ÁSZF declaration. Never restored from the stored draft: a resumed
+   *  draft that arrived with this already ticked would be a pre-ticked consent,
+   *  which is not one. */
+  acceptedTerms: boolean
+  setAcceptedTerms: (value: boolean) => void
+  /** The express request to begin performance inside the 14-day window. The
+   *  camera opens the instant the event is created, so this is a statement of
+   *  what actually happens rather than a formality. */
+  acceptedEarlyPerformance: boolean
+  setAcceptedEarlyPerformance: (value: boolean) => void
   /** Whether Stripe is switched on in this environment. When it is not, the
    *  paid tier is not offered — a price on a button that cannot charge is a
    *  worse answer than not showing the button. */
@@ -60,9 +76,27 @@ export function StepGuests({
       // different journeys: one ends on the host's own event, the other on
       // Stripe. A host who is about to be asked for a card should read that on
       // the button, not discover it after pressing it.
-      cta={plan === 'full' ? 'Tovább a fizetéshez' : 'Létrehozás'}
+      //
+      // The paid label is not a choice: 45/2014. (II. 26.) Korm. rendelet
+      // requires the button that triggers a payment obligation to say so in as
+      // many words, and "Tovább a fizetéshez" does not. The free path keeps its
+      // own label — nothing is being ordered for money there.
+      cta={plan === 'full' ? CHECKOUT_COPY.paidSubmit : 'Létrehozás'}
       ctaPending={pending}
-      note={<AccountNotice />}
+      ctaDisabled={!acceptedTerms || !acceptedEarlyPerformance}
+      ctaFullWidth
+      note={
+        <div className="mt-5 flex flex-col gap-3">
+          <LegalConsent
+            acceptedTerms={acceptedTerms}
+            setAcceptedTerms={setAcceptedTerms}
+            acceptedEarlyPerformance={acceptedEarlyPerformance}
+            setAcceptedEarlyPerformance={setAcceptedEarlyPerformance}
+            disabled={pending}
+          />
+          <AccountNotice />
+        </div>
+      }
     >
       {/* Top-aligned, not centred: three stacked sections read as a list that
           starts under the question, and centring them leaves a gap above as

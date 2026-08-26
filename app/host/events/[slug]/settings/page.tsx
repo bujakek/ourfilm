@@ -3,6 +3,7 @@ import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
 import { GuestsToggle } from '@/components/host/guests-toggle'
 import { RevealCard } from '@/components/host/reveal-card'
+import { RetentionCard } from '@/components/host/retention-card'
 import { RevealNowButton } from '@/components/host/reveal-now-button'
 import { ShotsCard } from '@/components/host/shots-card'
 import {
@@ -15,7 +16,10 @@ import {
 import { captureWindowState, type ShotOption } from '@/lib/camera'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
+import { createLegalClient } from '@/lib/legal/db'
+import { retentionNotice } from '@/lib/legal/copy/retention'
 import { getAllEventPhotos } from '@/lib/photos'
+import { retentionDates, retentionState } from '@/lib/retention'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -128,6 +132,14 @@ export default async function AdminEventSettingsPage({
 
         <GuestsToggle slug={event.slug} canView={event.guests_can_view} />
 
+        <Suspense fallback={null}>
+          <EventRetention
+            eventId={event.id}
+            captureEndAt={event.capture_end_at}
+            timeZone={zone}
+          />
+        </Suspense>
+
         <Suspense fallback={<BillingCardSkeleton />}>
           <EventBilling
             slug={event.slug}
@@ -228,5 +240,66 @@ async function EventDangerZone({
   const photos = await getAllEventPhotos(eventId)
   return (
     <DangerZone slug={slug} eventName={eventName} photoCount={photos.length} />
+  )
+}
+
+/**
+ * The retention state of one event.
+ *
+ * Reads `legal_hold_at` through the compliance client because that column is
+ * not in the generated `Database` type yet — see `lib/legal/database.types.ts`.
+ * Ownership was already established by `getOwnedEventBySlug` above; this is a
+ * lookup by id on a row the caller has been shown.
+ *
+ * Contained in its own Suspense boundary and failing to nothing: a host who
+ * came here to delete an event must not be blocked by a card that only tells
+ * them a date.
+ */
+async function EventRetention({
+  eventId,
+  captureEndAt,
+  timeZone,
+}: {
+  eventId: string
+  captureEndAt: string
+  timeZone: string
+}) {
+  let legalHoldAt: string | null = null
+  let legalHoldReason: string | null = null
+
+  try {
+    const { data } = await createLegalClient()
+      .from('events')
+      .select('legal_hold_at, legal_hold_reason')
+      .eq('id', eventId)
+      .maybeSingle()
+    legalHoldAt = data?.legal_hold_at ?? null
+    legalHoldReason = data?.legal_hold_reason ?? null
+  } catch (e) {
+    console.error('Could not read the legal hold state', e)
+  }
+
+  const end = new Date(captureEndAt)
+  const { activeUntil, deleteAfter } = retentionDates(end)
+  const state = retentionState({
+    now: new Date(),
+    captureEndAt: end,
+    legalHoldAt: legalHoldAt ? new Date(legalHoldAt) : null,
+  })
+
+  const notice = retentionNotice({
+    state,
+    activeUntilIso: activeUntil.toISOString(),
+    deleteAfterIso: deleteAfter.toISOString(),
+    timeZone,
+    legalHoldReason,
+  })
+
+  return (
+    <RetentionCard
+      heading={notice.heading}
+      detail={notice.detail}
+      urgent={state === 'grace' || state === 'due'}
+    />
   )
 }

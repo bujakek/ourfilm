@@ -155,6 +155,17 @@ function OnboardingFlow({
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
   const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
 
+  // The two declarations that turn this form into an order.
+  //
+  // Deliberately **not** part of `draft`. They start false on every mount, are
+  // never written to `localStorage` and are never restored from it — a resumed
+  // draft that came back with the ÁSZF box already ticked would be a
+  // pre-ticked consent, and the whole point of a consent is that the person
+  // ticked it. The server re-checks both before it inserts a row.
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptedEarlyPerformance, setAcceptedEarlyPerformance] =
+    useState(false)
+
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
   // apart between the calendar and the time pill. Null means "not chosen yet",
   // and the suggested end is re-derived from the server's instant in whatever
@@ -250,6 +261,8 @@ function OnboardingFlow({
         plan,
         guestsCanView,
         creationKey: initialCreationKey,
+        acceptedTerms,
+        acceptedEarlyPerformance,
       })
 
       if (result.ok) {
@@ -337,6 +350,10 @@ function OnboardingFlow({
           setShots={setShots}
           guestsCanView={guestsCanView}
           setGuestsCanView={setGuestsCanView}
+          acceptedTerms={acceptedTerms}
+          setAcceptedTerms={setAcceptedTerms}
+          acceptedEarlyPerformance={acceptedEarlyPerformance}
+          setAcceptedEarlyPerformance={setAcceptedEarlyPerformance}
           paymentsEnabled={paymentsEnabled}
           pending={pending}
         />

@@ -5,6 +5,9 @@ import Image from 'next/image'
 import { useActionState, useState } from 'react'
 
 import { joinEventAction, type JoinState } from '@/app/e/[slug]/actions'
+import { GUEST_ACK_COPY } from '@/lib/legal/copy/forms'
+
+import { PrivacyNoticeLine } from './legal-links'
 
 const initial: JoinState = { error: null }
 
@@ -134,6 +137,13 @@ export function JoinForm({
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
           {shotsPerParticipant} képet készíthetsz ezen az eseményen.
         </p>
+
+        {/* The name in the field above is the first thing this product ever
+            sends to a server on a guest's behalf, so the notice belongs here
+            rather than one screen later. It is a link, not a checkbox: a
+            privacy notice is read, and asking someone to "accept" one would
+            misdescribe the legal basis the processing actually rests on. */}
+        <PrivacyNoticeLine text={GUEST_ACK_COPY.privacy} />
       </form>
     </main>
   )

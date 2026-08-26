@@ -3,7 +3,7 @@
 // error instead, mirroring `server-only` on the query modules.
 import 'client-only'
 
-import { readCaptureTime } from './exif'
+import { readCaptureTime, readJpegMetadata } from './exif'
 
 /**
  * Browser-side photo pipeline. Everything here runs on a guest's phone, on
@@ -286,6 +286,14 @@ export async function prepareFromBitmap(
       THUMB_QUALITY,
     )
 
+    // The privacy notice says the system removes EXIF, including any location
+    // it carried, before the photo is stored durably. This is the check that
+    // makes that a property rather than a belief — the canvas round trip above
+    // is what does the stripping, and a browser that ever stopped honouring it
+    // would otherwise be an invisible regression that ships GPS coordinates to
+    // a shared album.
+    await assertNoExifMetadata(full)
+
     return { full, thumb, view, width, height, takenAt }
   } finally {
     // Phones are memory-tight and the next file is queued right behind this
@@ -293,3 +301,35 @@ export async function prepareFromBitmap(
     bitmap.close()
   }
 }
+
+/**
+ * Refuse to upload a render that still carries metadata.
+ *
+ * Only the master is checked. All three come out of the same encoder in the
+ * same way, so a metadata-carrying thumbnail would mean a metadata-carrying
+ * master — and reading three blobs on the shutter path to prove the same thing
+ * three times is latency a guest feels.
+ *
+ * Only the header is read: EXIF lives in a JPEG's APP1 segment, which is in
+ * the first few hundred bytes, so this never touches the pixel data. On a
+ * canvas-encoded JPEG there is no APP1 at all and the walk stops at the first
+ * segment.
+ *
+ * Throws rather than stripping. A render that arrived here with EXIF did not
+ * come from `encodeAt`, and quietly repairing it would hide the thing worth
+ * knowing about.
+ */
+export async function assertNoExifMetadata(render: Blob): Promise<void> {
+  const head = new Uint8Array(await render.slice(0, HEADER_SNIFF).arrayBuffer())
+  const metadata = readJpegMetadata(head)
+  if (!metadata.hasExif) return
+
+  throw new Error(
+    metadata.hasGps
+      ? 'Encoded render still carries EXIF including GPS; refusing to upload.'
+      : 'Encoded render still carries EXIF; refusing to upload.',
+  )
+}
+
+/** A JPEG APP1 cannot exceed 64KB, and it sits ahead of the pixel data. */
+const HEADER_SNIFF = 128 * 1024

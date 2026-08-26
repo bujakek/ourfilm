@@ -4,6 +4,8 @@ import {
   type CheckoutState,
   startEventCheckout,
 } from '@/app/host/events/[slug]/billing-actions'
+import { LegalConsent } from '@/components/host/legal-consent'
+import { CHECKOUT_COPY } from '@/lib/legal/copy/forms'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
@@ -47,6 +49,14 @@ export function BillingCard({
   checkout,
 }: BillingCardProps) {
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
+
+  // Unticked on every render, and never restored from anywhere. This is the
+  // second of the two places a host can enter into a paid contract, and it
+  // carries exactly the declarations the first one does — the wording lives in
+  // `LegalConsent` precisely so the two cannot drift.
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptedEarlyPerformance, setAcceptedEarlyPerformance] =
+    useState(false)
 
   // Stripe redirects the host back the instant checkout finishes, which is
   // often before the webhook that records it has landed. Without this the
@@ -134,11 +144,38 @@ export function BillingCard({
       {stripeReady ? (
         <form action={submit} className="mt-4">
           <input type="hidden" name="slug" value={slug} />
+          {/* Submitted as ordinary form fields so the action re-checks what the
+              browser claims, rather than trusting a button that was enabled. */}
+          <input
+            type="hidden"
+            name="accept_terms"
+            value={acceptedTerms ? 'on' : ''}
+          />
+          <input
+            type="hidden"
+            name="accept_early_performance"
+            value={acceptedEarlyPerformance ? 'on' : ''}
+          />
+
+          {/* Immediately before the paid action, which is the only place they
+              mean anything. */}
+          <LegalConsent
+            acceptedTerms={acceptedTerms}
+            setAcceptedTerms={setAcceptedTerms}
+            acceptedEarlyPerformance={acceptedEarlyPerformance}
+            setAcceptedEarlyPerformance={setAcceptedEarlyPerformance}
+            disabled={pending}
+          />
+
+          <p className="mt-4 text-center text-sm font-medium">
+            {EVENT_PRICE_LABEL} — korlátlan résztvevő, egyszeri fizetéssel.
+          </p>
+
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !acceptedTerms || !acceptedEarlyPerformance}
             aria-busy={pending}
-            className="btn-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            className="btn-shine mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
           >
             {pending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -149,13 +186,11 @@ export function BillingCard({
                 aria-hidden="true"
               />
             )}
-            {pending
-              ? 'Átirányítás…'
-              : `Teljes esemény feloldása – ${EVENT_PRICE_LABEL}`}
+            {/* The label is prescribed, not chosen: a button that triggers a
+                payment obligation has to say so. The price moved to the line
+                above it rather than being dropped. */}
+            {pending ? 'Átirányítás…' : CHECKOUT_COPY.paidSubmit}
           </button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Korlátlan résztvevő, egyszeri fizetéssel.
-          </p>
         </form>
       ) : (
         // Honest about the state of the world rather than offering a button

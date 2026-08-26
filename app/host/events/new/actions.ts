@@ -1,6 +1,7 @@
 'use server'
 
 import { getEventQuota } from '@/lib/billing'
+import { recordHostAcceptance } from '@/lib/legal/acceptance'
 import { isRevealMode, isShotOption, validateEventDraft } from '@/lib/camera'
 import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import {
@@ -30,6 +31,13 @@ export type EventDraftInput = {
    *  created instead of a second one. Optional: a flow with no draft behind it
    *  has nothing to be idempotent about. */
   creationKey?: string | null
+  /** The ÁSZF declaration, as ticked on the screen that submitted this. */
+  acceptedTerms?: boolean
+  /** The express request to begin performance inside the 14-day withdrawal
+   *  window. Separate from the ÁSZF: one is agreeing to the contract, the
+   *  other is a declaration that shortens a consumer right, and bundling them
+   *  into a single tick is what makes such a declaration unenforceable. */
+  acceptedEarlyPerformance?: boolean
 }
 
 export type CreateEventResult =
@@ -40,8 +48,9 @@ export type CreateEventResult =
       /** `auth` — nobody is signed in, so the browser should ask for an
        *  account and try again. `end` — the chosen end has gone by while the
        *  draft sat there, and the flow should reopen the date screen with
-       *  every other answer intact. */
-      reason?: 'auth' | 'end'
+       *  every other answer intact. `consent` — one of the two declarations
+       *  was not made, which the screen prevents and this re-checks. */
+      reason?: 'auth' | 'end' | 'consent'
     }
 
 const SLUG_ATTEMPTS = 5
@@ -148,6 +157,19 @@ export async function createEventFromDraft(
     }
   }
 
+  // Re-checked here and not only on the screen, for the same reason every
+  // other field is: the caller is a browser. A disabled button is a courtesy;
+  // this is the refusal. Both declarations are required before a row exists,
+  // because the row *is* the contract — the camera opens the moment it lands.
+  if (input.acceptedTerms !== true || input.acceptedEarlyPerformance !== true) {
+    return {
+      ok: false,
+      error:
+        'Az esemény létrehozásához fogadd el az Általános Szerződési Feltételeket, és kérd a teljesítés megkezdését.',
+      reason: 'consent',
+    }
+  }
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -244,6 +266,18 @@ export async function createEventFromDraft(
       error: 'Nem sikerült egyedi linket generálni. Próbáld újra.',
     }
   }
+
+  // Evidence, written once the thing it is evidence *of* exists. Recorded
+  // before the checkout redirect so a host who pays has both declarations on
+  // file regardless of what Stripe does next; the idempotent-return paths
+  // above skip it deliberately, because the first attempt already wrote it and
+  // a second row would claim two declarations where there was one.
+  await recordHostAcceptance({
+    userId: user.id,
+    eventId,
+    eventSlug: slug,
+    documents: ['host_terms', 'early_performance'],
+  })
 
   // Where the host lands, which is the only thing the plan choice decides.
   //

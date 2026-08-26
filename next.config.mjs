@@ -25,6 +25,15 @@ const nextConfig = {
       '/aszf',
       '/adatvedelem',
       '/blog',
+      // The rest of the legal set. Listed here for the same reason as /aszf:
+      // these paths get pasted into an email, a Stripe dashboard field or a
+      // printed card without the locale prefix, and a 404 on the withdrawal
+      // route is the worst possible one to serve.
+      '/impresszum',
+      '/vendegfeltetelek',
+      '/adatfeldolgozasi-melleklet',
+      '/elallas',
+      '/jogserto-tartalom-bejelentese',
     ]
 
     return [

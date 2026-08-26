@@ -10,6 +10,7 @@ import {
   reserveShotAction,
 } from '@/app/e/[slug]/actions'
 import { prepareForUpload, prepareFromBitmap } from '@/lib/image'
+import { CAMERA_COPY } from '@/lib/legal/copy/forms'
 import { uploadShotRenders } from '@/lib/upload-shot'
 
 /**
@@ -46,15 +47,20 @@ export function CameraView({
   eventId,
   slug,
   initialShotsRemaining,
+  shotsPerParticipant,
   canViewGallery,
-  revealLabel,
+  revealLine,
 }: {
   eventId: string
   slug: string
   initialShotsRemaining: number
+  /** The host's chosen roll length. Named in the empty state, because "you are
+   *  out" is only useful next to "out of how many". */
+  shotsPerParticipant: number
   canViewGallery: boolean
-  /** Rendered when the roll runs out and the album has not developed yet. */
-  revealLabel: string | null
+  /** The reveal rule as one sentence, resolved on the server so the camera and
+   *  the gallery cannot disagree about when the album opens. */
+  revealLine: string
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -245,8 +251,9 @@ export function CameraView({
     return (
       <OutOfShots
         slug={slug}
+        shotsPerParticipant={shotsPerParticipant}
         canViewGallery={canViewGallery}
-        revealLabel={revealLabel}
+        revealLine={revealLine}
       />
     )
   }
@@ -261,7 +268,15 @@ export function CameraView({
         aria-live="polite"
         className="text-center text-sm font-medium text-muted-foreground"
       >
-        {remaining === 1 ? '1 kép maradt' : `${remaining} kép maradt`}
+        {CAMERA_COPY.remaining(remaining)}
+      </p>
+
+      {/* The reveal rule sits under the counter and stays there while
+          shooting. A guest deciding what to point the camera at is deciding
+          under an assumption about who will see it, and finding that out only
+          after the roll runs out is finding it out too late. */}
+      <p className="mt-1 text-center text-xs text-pretty text-muted-foreground">
+        {revealLine}
       </p>
 
       <div className="relative mt-4 flex-1 overflow-hidden rounded-3xl bg-background-secondary">
@@ -356,9 +371,9 @@ function refusalMessage(refusal: string): string {
     case 'not_started':
       return 'A kamera még nem nyílt meg.'
     case 'ended':
-      return 'Véget ért a fotózás.'
+      return `${CAMERA_COPY.closedHeading}.`
     case 'no_shots':
-      return 'Elfogytak a képeid.'
+      return `${CAMERA_COPY.emptyHeading}.`
     case 'no_session':
       return 'Lejárt a munkameneted. Frissítsd az oldalt.'
     default:
@@ -433,12 +448,14 @@ function FallbackShutter({
 
 function OutOfShots({
   slug,
+  shotsPerParticipant,
   canViewGallery,
-  revealLabel,
+  revealLine,
 }: {
   slug: string
+  shotsPerParticipant: number
   canViewGallery: boolean
-  revealLabel: string | null
+  revealLine: string
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-2 py-10 text-center">
@@ -447,15 +464,17 @@ function OutOfShots({
       </span>
 
       <h2 className="mt-6 text-2xl font-semibold tracking-tight text-balance">
-        Elfogytak a képeid
+        {CAMERA_COPY.emptyHeading}
       </h2>
 
       <p className="mt-3 text-sm leading-relaxed text-pretty text-muted-foreground">
+        {CAMERA_COPY.emptyBody(shotsPerParticipant)}
+      </p>
+
+      <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
         {canViewGallery
           ? 'Megnézheted az eddig elkészült képeket.'
-          : revealLabel
-            ? `A galéria ${revealLabel} nyílik meg.`
-            : 'A képeket csak a szervező láthatja.'}
+          : revealLine}
       </p>
 
       {canViewGallery ? (

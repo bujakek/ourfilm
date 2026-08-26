@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { isRevealMode, isShotOption, resolveRevealAt } from '@/lib/camera'
 import { eventLocalToIso } from '@/lib/format'
 import { getOwnedEventBySlug } from '@/lib/events'
-import { PHOTO_BUCKET } from '@/lib/storage'
+import { purgeEventObjects } from '@/lib/event-purge'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -232,28 +232,12 @@ export async function setShotsPerParticipant(slug: string, shots: number) {
   revalidateEvent(slug)
 }
 
-/** One page of a Storage listing. `list()` returns a page, not a total — the
- *  API caps what it will hand back however large a `limit` you ask for, so the
- *  loop below is what makes the enumeration complete, not this number. */
-const LIST_PAGE = 100
-
-/** Bound on the paging loop. 20k objects is an order of magnitude past any
- *  real album, so reaching it means `offset` is not advancing rather than that
- *  someone shot ten thousand photos — and without the bound that is an
- *  infinite loop. Treated as a failure, never as "done". */
-const MAX_LIST_PAGES = 200
-
-/** `remove()` carries every path in one request body, so a large album goes in
- *  batches rather than a single enormous call. */
-const REMOVE_BATCH = 100
-
 /**
  * Erase an event: every object, every row, permanently.
  *
- * This is the one destructive path in the product, and the only thing behind
- * the FAQ's promise that a host can delete an event and its contents. It also
- * covers a GDPR erasure request, which is why it removes objects rather than
- * only rows.
+ * This is the one destructive path a host can reach, and the thing behind the
+ * promise that an event and its contents can be deleted. It also covers a GDPR
+ * erasure request, which is why it removes objects rather than only rows.
  *
  * Like the export, it runs on the host's own session rather than the service
  * key: the storage policies already scope object writes to folders the caller
@@ -261,19 +245,13 @@ const REMOVE_BATCH = 100
  *
  * Order matters. Objects first, rows second — deleting the event cascades the
  * photo rows away, and without them there is no record of which objects to
- * remove. Reversed, the files would be orphaned in the bucket forever, still
- * fetchable at their public URLs, which is precisely what an erasure request
- * is asking you not to do.
+ * remove. Reversed, the files would be orphaned in the bucket, which is
+ * precisely what an erasure request is asking you not to do.
  *
- * That last paragraph is also why every step below is verified rather than
- * assumed. A single unpaginated `list()` sees one page — about 500 photos,
- * since each is two objects — and everything past it would be orphaned in a
- * *public* bucket with the only record of its existence cascaded away. Erasure
- * that silently half-succeeds is worse than erasure that fails, because the
- * host is told the photos are gone. So: page until the listing is exhausted,
- * check that every removal actually removed, and confirm the folder is empty
- * before the rows go. Any doubt throws with the rows still intact, which keeps
- * the objects findable for a retry.
+ * The paging, the removal and the emptiness check all live in
+ * `lib/event-purge.ts`, shared with the retention run so the two cannot drift.
+ * It throws rather than half-succeeding, which leaves the rows intact and the
+ * objects findable for a retry.
  */
 export async function deleteEvent(slug: string) {
   const supabase = await createClient()
@@ -286,63 +264,7 @@ export async function deleteEvent(slug: string) {
   if (eventError) throw eventError
   if (!event) throw new Error('Nincs ilyen esemény.')
 
-  // Collect every path first, remove second. Deleting inside the paging loop
-  // would shift the offsets out from under it and skip whole pages.
-  const paths: string[] = []
-  let listingComplete = false
-
-  for (let page = 0; page < MAX_LIST_PAGES; page++) {
-    const { data: listed, error: listError } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .list(event.id, {
-        limit: LIST_PAGE,
-        offset: paths.length,
-        // Explicit, so the ordering the offsets index into cannot change
-        // between one page and the next.
-        sortBy: { column: 'name', order: 'asc' },
-      })
-    if (listError) throw listError
-
-    // Advance by what came back, not by LIST_PAGE, and stop only on an empty
-    // page. A short page must not end the loop: the API is free to return
-    // fewer objects than asked for, and treating that as the end is exactly
-    // the bug that left albums half-deleted.
-    if (!listed || listed.length === 0) {
-      listingComplete = true
-      break
-    }
-    paths.push(...listed.map((object) => `${event.id}/${object.name}`))
-  }
-
-  if (!listingComplete) {
-    throw new Error('Nem sikerült végigolvasni a képeket. Próbáld újra.')
-  }
-
-  for (let i = 0; i < paths.length; i += REMOVE_BATCH) {
-    const batch = paths.slice(i, i + REMOVE_BATCH)
-    const { data: removed, error: removeError } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .remove(batch)
-    if (removeError) throw removeError
-    // `remove()` reports what it deleted and silently omits what it could not,
-    // so the count is the only signal that a path survived. Throwing here
-    // leaves the rows in place, so a retry can still find the stragglers.
-    if (!removed || removed.length !== batch.length) {
-      throw new Error('Nem sikerült minden képet törölni. Próbáld újra.')
-    }
-  }
-
-  // Capture stays open throughout, so a guest can land a photo after the
-  // listing above and before the rows go. Confirm the folder is empty instead
-  // of assuming it — this is the last moment at which an object left behind is
-  // still findable.
-  const { data: leftover, error: leftoverError } = await supabase.storage
-    .from(PHOTO_BUCKET)
-    .list(event.id, { limit: 1 })
-  if (leftoverError) throw leftoverError
-  if (leftover && leftover.length > 0) {
-    throw new Error('Közben új kép érkezett. Indítsd újra a törlést.')
-  }
+  await purgeEventObjects(supabase.storage, event.id)
 
   // Cascades the photo rows.
   const { data: deleted, error: deleteError } = await supabase

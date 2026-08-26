@@ -105,6 +105,27 @@ that UI honest.
 Provision production with `vercel integration add stripe` — it is the
 Marketplace provider for `payments` and wires the production variables itself.
 
+The compliance surface adds four more, all server-only. None is set anywhere
+yet, and each degrades in a stated way rather than silently:
+
+```bash
+RESEND_API_KEY=                 # re_…, Resend's HTTP API — NOT the SMTP creds
+LEGAL_EMAIL_FROM=               # the verified From: address
+LEGAL_IP_SALT=                  # per-deployment salt for the stored IP hashes
+RETENTION_CRON_SECRET=          # bearer token for POST /api/retention/run
+```
+
+- **`RESEND_API_KEY` is not the Supabase SMTP configuration.** Those
+  credentials belong to Supabase Auth and send the magic links; application
+  code cannot reach them. Without this pair, `sendDurableEmail` still writes
+  the message to `outbound_emails` and records that it could not be delivered
+  — the durable copy is the guarantee, the delivery is what may fail.
+- **Without `LEGAL_IP_SALT` the stored hashes are unsalted**, which is still
+  not an address but is enumerable. A launch blocker, not an optimisation.
+- **Without `RETENTION_CRON_SECRET` the retention endpoint refuses every
+  request** (503). It fails closed on purpose: an endpoint that permanently
+  deletes albums must not run unauthenticated in development.
+
 **`vercel env pull` does not work on this project — don't reach for it.** The Vercel–Supabase integration created all 16 of its variables as _Sensitive_, which on Vercel means write-only: the value cannot be read back by the CLI, the API or the dashboard, and a pull returns the literal string `[SENSITIVE]` for every one. This is a property of the Sensitive flag, not of the environment scope, so re-scoping them to Development does not help either. Copy the three values from the Supabase dashboard instead.
 
 The integration's other variables are irrelevant here: the `POSTGRES_*` ones are connection strings for direct SQL clients, and `supabase-js` talks over HTTP. It also provisions Supabase's newer `publishable`/`secret` keys alongside the legacy `anon`/`service_role` pair — the code expects the legacy names; migrating is a deliberate choice, not something to drift into.
@@ -603,11 +624,85 @@ points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
 `app/host/events/[slug]/billing-actions.ts`,
 `components/host/billing-card.tsx`, `app/host/events/new/step-guests.tsx`.
 
-**`/hu/arak` is knowingly out of date.** It still advertises a "5 feltöltött
-fotó" free tier and "Korlátlan fotó" on the paid one, neither of which is true
-after the pivot. Marketing copy is a separate later phase, and the page is
-`noindex` while `hasRealCompanyDetails` is false, so it is not reachable from
-search. Fix it in that phase, not by halves.
+**`/hu/arak` has been corrected.** It advertised a "5 feltöltött fotó" free
+tier and "Korlátlan fotó" on the paid one, neither of which survived the pivot.
+Both tiers now name the participant cap and the per-guest roll, and the price
+and the free limit are read from `legalConfig.service` and
+`FREE_PARTICIPANT_LIMIT` rather than typed again. The rest of the marketing
+copy is still a later phase. The page stays `noindex` while
+`hasCompleteLegalConfig()` is false — a price a stranger can find in Google is
+an offer, and an offer cannot lawfully be made while the mandatory identifiers
+are missing.
+
+## Legal and compliance (settled)
+
+**`lib/legal/config.ts` is the single source of every fact the legal pages
+state about the business**, and `LEGAL_VERSION` (`2026-08-26`) is stamped on
+every acceptance record and printed on every page. A value nobody has supplied
+is the `MISSING` symbol, not a plausible string: it renders as `HIÁNYZÓ
+KÖTELEZŐ ADAT` and appears in `legalBlockers()`, which is what
+`hasCompleteLegalConfig()` reads and what keeps all five documents and `/arak`
+out of search. `lib/company.ts` is gone — it asked a narrower version of the
+same question.
+
+- **Six documents, two forms.** `/hu/impresszum`, `/hu/aszf`,
+  `/hu/adatvedelem`, `/hu/vendegfeltetelek`,
+  `/hu/adatfeldolgozasi-melleklet` are information and become indexable when
+  the blockers clear; `/hu/elallas` and `/hu/jogserto-tartalom-bejelentese`
+  are transactional and stay `noindex`. Addresses live in
+  `lib/legal/routes.ts`.
+- **The copy is data, not JSX.** `lib/legal/copy/*.ts` export `LegalDocument`
+  objects that `components/site/legal-document.tsx` renders without adding a
+  word — section numbers are part of the approved title strings. That is what
+  makes `tests/unit/legal-copy.test.ts` meaningful: what it reads is what a
+  visitor sees.
+- **Four passages are chosen by the implementation, not by an author** —
+  which event spends a frame, whether a guest may retake, where the camera
+  image goes, what happens to EXIF. Each reads a constant from
+  `lib/legal/facts.ts`, where the evidence is written down, and each is
+  asserted in the copy test. Changing the capture pipeline without revisiting
+  those constants fails a test rather than publishing a false statement.
+- **Notices are read; only contracts are accepted.** There is no
+  `privacy_notice` value in `legal_document_kind` and no checkbox next to a
+  privacy link anywhere — recording an "acceptance" of a notice would
+  misdescribe the legal basis. The three that are recorded are `host_terms`,
+  `early_performance` and `guest_terms`.
+- **The two host declarations are never carried in the draft.** They start
+  false on every mount, are not written to `localStorage`, and the
+  magic-link resume screen (`/auth/event-complete`) asks again rather than
+  replaying a consent nobody made at the moment the contract formed. The
+  server re-checks both before inserting a row.
+- **The paid button says `Fizetési kötelezettséggel járó megrendelés`**, in
+  both places a host can order. The label is prescribed by 45/2014. (II. 26.)
+  Korm. rendelet, which is why `OnboardingShell` grew a `ctaFullWidth` mode —
+  the sentence does not fit beside the progress dots.
+- **A guest acknowledges the guest terms once per event and legal version,
+  before their first shot.** It is a gate, not a banner: the camera is not
+  rendered behind it. Evidence is the participant id and their chosen name —
+  nothing is collected solely so there would be something to keep.
+- **`legal_acceptances`, `withdrawal_requests`, `content_reports` and
+  `outbound_emails` are service-role only.** RLS on, no policies at all, plus
+  an explicit `revoke … from anon, authenticated` — same lesson as
+  `20260825080000` on the capture RPCs. Nothing renders them to a browser.
+  They are reached through `lib/legal/db.ts`, a second typed client, because
+  the generated `Database` type has not seen this migration.
+- **Neither form ever acts.** No refund, no deletion, no hiding — a form on
+  the open internet that could move money or destroy a wedding album is an
+  abuse channel, not a remedy. Each produces a row with a status an operator
+  advances by hand.
+- **Retention is 6 months + a warning + 30 days of grace, then permanent
+  deletion.** The rule is `lib/retention.ts` (pure, takes `now`), the run is
+  `lib/legal/retention-run.ts`, the trigger is `POST /api/retention/run`
+  behind `RETENTION_CRON_SECRET`, and `vercel.json` schedules it daily. The
+  warning is claimed with an `update … where retention_warned_at is null …
+returning`, which is the whole idempotency mechanism. The purge is
+  `lib/event-purge.ts`, shared with the host's own delete so the paging and
+  the verification cannot drift.
+- **EXIF stripping is checked, not asserted.** `assertNoExifMetadata()` on the
+  upload path refuses a render that still carries an APP1, and
+  `tests/unit/exif-strip.test.ts` runs it against a real JPEG carrying
+  DateTimeOriginal and GPS. The privacy notice says an automated test verifies
+  this; that is the test.
 
 ## MVP scope
 

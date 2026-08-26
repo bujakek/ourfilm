@@ -46,7 +46,7 @@ export interface Occasion {
  *
  * The copy below is final, so the pages no longer show a draft banner. What
  * this still holds back is indexing: these pages link to /arak, which stays
- * out of search results until `hasRealCompanyDetails` is true. Flip to false
+ * out of search results until `hasCompleteLegalConfig()` is true. Flip to false
  * when the occasion pages are meant to be found; nothing else needs editing.
  */
 export const OCCASIONS_ARE_DRAFT = true

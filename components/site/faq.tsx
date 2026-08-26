@@ -1,5 +1,7 @@
 'use client'
 
+import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
+import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
@@ -37,7 +39,7 @@ const faqs = [
   },
   {
     q: 'Meddig maradnak meg a képek?',
-    a: 'Addig maradnak az albumodban, amíg nem törlöd az eseményt.',
+    a: 'Az album az esemény végétől számított 6 hónapig aktívan elérhető. Utána e-mailben szólunk, és további 30 napod van letölteni a képeket — a türelmi idő lejárta után az esemény véglegesen törlődik. Bármikor törölheted magad is.',
   },
   {
     q: 'Elrejthetem a nem kívánt képeket?',
@@ -45,7 +47,7 @@ const faqs = [
   },
   {
     q: 'Mennyibe kerül?',
-    a: '5 fotóig ingyen, bankkártya nélkül kipróbálhatod. A teljes album egyszeri 12 900 Ft, korlátlan vendéggel és korlátlan fotóval.',
+    a: `${FREE_PARTICIPANT_LIMIT} résztvevőig ingyen, bankkártya nélkül kipróbálhatod. A teljes esemény egyszeri ${EVENT_PRICE_LABEL}, korlátlan résztvevővel. A képek száma résztvevőnként a te választásodon múlik.`,
   },
   {
     q: 'Hogyan kezelitek a fotókat?',

@@ -1,5 +1,6 @@
 import { captureWindowState, guestGalleryIsOpen } from './camera'
 import { formatDeadline } from './format'
+import { CAMERA_COPY } from './legal/copy/forms'
 
 /**
  * The Hungarian a guest reads about an event's state.
@@ -29,7 +30,9 @@ export function captureStateHeading(timing: EventTiming): string | null {
     case 'before':
       return 'A kamera még nem nyílt meg'
     case 'after':
-      return 'Véget ért a fotózás'
+      // The approved wording, shared with the camera's own copy so the closed
+      // camera and the closed-window screen cannot say two different things.
+      return CAMERA_COPY.closedHeading
     default:
       return null
   }
@@ -47,7 +50,7 @@ export function captureStateDetail(timing: EventTiming): string | null {
       // Whether they can look at anything is the gallery's question, answered
       // separately below — the camera closing and the album opening are two
       // different permissions and the copy keeps them apart.
-      return null
+      return CAMERA_COPY.closedBody
     default:
       return `Fotózhatsz ${formatDeadline(
         timing.captureEndAt.toISOString(),
@@ -69,7 +72,7 @@ export function joinStateLabel(
     )}-kor kezdődik. Addig is csatlakozhatsz.`
   }
   if (state === 'after') {
-    return 'A fotózás véget ért.'
+    return `${CAMERA_COPY.closedHeading}.`
   }
   return `Most lehet fotózni — ${shotsPerParticipant} kép a tiéd.`
 }
@@ -125,4 +128,16 @@ export function revealModeLabel(
     default:
       return 'Később'
   }
+}
+
+/** The line the camera prints under the shot counter.
+ *
+ *  Two answers, not one: an album that will open at a moment, and an album
+ *  guests will never see. Collapsing them would tell someone to wait for a
+ *  gallery that is never coming. */
+export function revealHelperLine(timing: EventTiming): string {
+  const label = revealLabel(timing)
+  return label
+    ? CAMERA_COPY.revealHelper(label)
+    : 'A képeket csak a szervező láthatja'
 }

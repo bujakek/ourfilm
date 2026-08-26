@@ -10,6 +10,8 @@ import {
   type ShotRefusal,
   type SignedUpload,
 } from '@/lib/capture'
+import { getGuestEventState } from '@/lib/events'
+import { recordGuestAcceptance } from '@/lib/legal/acceptance'
 import {
   joinEvent,
   newParticipantSession,
@@ -177,4 +179,36 @@ export async function releaseShotAction(photoId: string): Promise<void> {
   const tokenHash = await readParticipantTokenHash()
   if (!tokenHash) return
   await releaseShot({ photoId, tokenHash })
+}
+
+export type AcceptGuestTermsResult = { ok: true } | { ok: false; error: string }
+
+/**
+ * Record that this guest has acknowledged the guest terms for this event.
+ *
+ * The participant is resolved from the httpOnly cookie, never from an argument
+ * — the only thing the browser sends is the slug, which it already knows. So
+ * there is no id to forge and nothing to acknowledge on someone else's behalf.
+ *
+ * Revalidates rather than redirects: the camera page re-renders on the server,
+ * finds the acceptance and swaps the notice for the shutter. A redirect back to
+ * the same URL would be a no-op the client could not act on.
+ */
+export async function acceptGuestTermsAction(
+  slug: string,
+): Promise<AcceptGuestTermsResult> {
+  const event = await getGuestEventState(slug)
+  if (!event?.participant_id) {
+    return { ok: false, error: 'Lejárt a munkameneted. Frissítsd az oldalt.' }
+  }
+
+  await recordGuestAcceptance({
+    participantId: event.participant_id,
+    eventId: event.id,
+    eventSlug: slug,
+    displayName: event.display_name,
+  })
+
+  revalidatePath(`/e/${slug}/camera`)
+  return { ok: true }
 }

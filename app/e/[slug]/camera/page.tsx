@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 
 import { CameraView } from '@/components/event/camera-view'
+import { GuestAcknowledgement } from '@/components/event/guest-acknowledgement'
 import {
   captureStateDetail,
   captureStateHeading,
+  revealHelperLine,
   revealLabel,
 } from '@/lib/event-copy'
 import {
@@ -12,6 +14,7 @@ import {
   getPublicEventBySlug,
   hasJoined,
 } from '@/lib/events'
+import { hasGuestAcceptance } from '@/lib/legal/acceptance'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +60,15 @@ export default async function CameraPage({ params }: Props) {
 
   const heading = captureStateHeading(timing)
 
+  // Asked once per event and per legal version, and asked *before* the shutter
+  // exists rather than beside it. Only while the camera is actually open: a
+  // guest arriving after the event ended has nothing to acknowledge, and
+  // putting a consent screen in front of a closed camera is noise.
+  const acknowledged =
+    heading !== null || !event.participant_id
+      ? true
+      : await hasGuestAcceptance(event.participant_id)
+
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8 sm:py-12">
       <header className="mb-6 text-center">
@@ -80,14 +92,17 @@ export default async function CameraPage({ params }: Props) {
           canViewGallery={event.can_guest_view_gallery}
           revealDate={revealLabel(timing)}
         />
-      ) : (
+      ) : acknowledged ? (
         <CameraView
           eventId={event.id}
           slug={slug}
           initialShotsRemaining={event.shots_remaining}
+          shotsPerParticipant={event.shots_per_participant}
           canViewGallery={event.can_guest_view_gallery}
-          revealLabel={revealLabel(timing)}
+          revealLine={revealHelperLine(timing)}
         />
+      ) : (
+        <GuestAcknowledgement slug={slug} />
       )}
     </main>
   )

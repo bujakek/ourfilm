@@ -4,6 +4,7 @@ import { CONTACT_EMAIL } from '@/lib/site'
 import { Aperture } from 'lucide-react'
 import Link from 'next/link'
 
+import { LEGAL_PATHS } from '@/lib/legal/routes'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 
 interface FooterColumn {
@@ -56,8 +57,22 @@ const columns: FooterColumn[] = [
     links: [
       { label: 'Rólunk', href: '/rolunk' },
       { label: 'Blog', href: '/blog' },
-      { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
-      { label: 'Általános Szerződési Feltételek', href: '/aszf' },
+    ],
+  },
+  {
+    // Ordinary footer links, not a "legal centre". Every one of these is a
+    // route a visitor may need to reach without being logged in and without
+    // asking anyone: the two contracts, the two notices, and the two forms
+    // that exist because something has already gone wrong.
+    heading: 'Jogi',
+    links: [
+      { label: 'Impresszum', href: LEGAL_PATHS.imprint },
+      { label: 'Általános Szerződési Feltételek', href: LEGAL_PATHS.terms },
+      { label: 'Adatkezelési tájékoztató', href: LEGAL_PATHS.privacy },
+      { label: 'Vendégfelhasználási feltételek', href: LEGAL_PATHS.guestTerms },
+      { label: 'Adatfeldolgozási melléklet', href: LEGAL_PATHS.processing },
+      { label: 'Elállás / felmondás', href: LEGAL_PATHS.withdrawal },
+      { label: 'Jogsértő tartalom bejelentése', href: LEGAL_PATHS.report },
     ],
   },
 ]
@@ -98,7 +113,7 @@ export function Footer({ locale }: { locale: Locale }) {
 
             <nav
               aria-label="Lábléc"
-              className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:gap-12"
+              className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5 lg:gap-12"
             >
               {columns.map((column) => (
                 <div key={column.heading}>

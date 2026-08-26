@@ -1,6 +1,8 @@
 import { getPosts, getTranslations } from '@/lib/blog/posts'
 import { type Locale, localePath, locales } from '@/lib/i18n'
 import { OCCASIONS_ARE_DRAFT, occasions } from '@/lib/occasions'
+import { hasCompleteLegalConfig } from '@/lib/legal/config'
+import { INDEXABLE_LEGAL_ROUTES, LEGAL_PATHS } from '@/lib/legal/routes'
 import { canonicalUrl, languageAlternates } from '@/lib/seo'
 import type { MetadataRoute } from 'next'
 
@@ -51,6 +53,21 @@ function localeEntries(locale: Locale): MetadataRoute.Sitemap {
         })),
       ]
 
+  // The five legal documents, and only once they carry real identifiers.
+  // Listing a noindex URL sends crawlers two contradictory instructions, and
+  // `hasCompleteLegalConfig()` is the same predicate their `robots` metadata
+  // reads — so the two cannot drift.
+  //
+  // The two form routes are never here: they stay noindex regardless, being
+  // transactional rather than informational.
+  const legal: MetadataRoute.Sitemap = hasCompleteLegalConfig()
+    ? INDEXABLE_LEGAL_ROUTES.map((route) => ({
+        url: canonicalUrl(localePath(locale, LEGAL_PATHS[route])),
+        changeFrequency: 'yearly' as const,
+        priority: 0.3,
+      }))
+    : []
+
   const posts = getPosts(locale)
 
   const blog: MetadataRoute.Sitemap =
@@ -81,7 +98,7 @@ function localeEntries(locale: Locale): MetadataRoute.Sitemap {
           }),
         ]
 
-  return [...home, ...occasionPages, ...blog]
+  return [...home, ...occasionPages, ...legal, ...blog]
 }
 
 /** Frontmatter dates are calendar days; pin to UTC so the sitemap does not

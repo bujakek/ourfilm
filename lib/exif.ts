@@ -397,3 +397,66 @@ export async function readCaptureTime(file: Blob): Promise<Date | null> {
     return null
   }
 }
+
+/** GPS IFD pointer in IFD0. Its presence is what "this photo knows where it
+ *  was taken" looks like on the wire. */
+const TAG_GPS_IFD = 0x8825
+
+export type JpegMetadata = {
+  /** A JPEG APP1 segment carrying an `Exif\0\0` TIFF block. */
+  hasExif: boolean
+  /** IFD0 carries a GPS sub-IFD pointer. */
+  hasGps: boolean
+}
+
+/**
+ * What metadata a JPEG's header actually carries.
+ *
+ * The counterpart to `readCaptureTime`, and written for a different job: that
+ * one is looking for one value and is happy to give up, this one is asked
+ * whether *anything* is there. It exists so the invariant the privacy notice
+ * states — "a rendszer a tartós tárolás előtt eltávolítja az EXIF-metaadatokat,
+ * ideértve az esetlegesen rögzített helyadatokat is" — can be checked rather
+ * than asserted: by `assertNoExifMetadata()` on the upload path, and by
+ * `tests/unit/exif-strip.test.ts` against a real JPEG carrying GPS.
+ *
+ * JPEG only, which is the whole surface it needs: every render this product
+ * uploads comes out of a canvas as `image/jpeg`, and a HEIC is converted long
+ * before this point.
+ *
+ * A malformed header reports "no metadata". That is the safe direction for the
+ * one caller: it uses this to *refuse* an upload, so the failure mode is
+ * letting an unreadable file through rather than blocking a clean one.
+ */
+export function readJpegMetadata(bytes: Uint8Array): JpegMetadata {
+  const none: JpegMetadata = { hasExif: false, hasGps: false }
+
+  try {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    const at = jpegTiff(view)
+    if (!at) return none
+
+    const order = view.getUint16(at.tiff)
+    const le = order === 0x4949
+    if (!le && order !== 0x4d4d) return none
+    if (view.getUint16(at.tiff + 2, le) !== 0x002a) return none
+
+    return { hasExif: true, hasGps: hasGpsPointer(view, at.tiff, le) }
+  } catch {
+    return none
+  }
+}
+
+/** IFD0 only: the GPS pointer lives there and nowhere else. */
+function hasGpsPointer(view: DataView, tiff: number, le: boolean): boolean {
+  const base = tiff + view.getUint32(tiff + 4, le)
+  const count = view.getUint16(base, le)
+  // Same sanity bound as `readIfd`: a real IFD holds tens of entries, and a
+  // huge count means the offset was wrong and these bytes are not an IFD.
+  if (count > 512) return false
+
+  for (let i = 0; i < count; i++) {
+    if (view.getUint16(base + 2 + i * 12, le) === TAG_GPS_IFD) return true
+  }
+  return false
+}
