@@ -1,4 +1,4 @@
-import { getPosts } from '@/lib/blog/posts'
+import { getDocs } from '@/lib/content/docs'
 import {
   isLocale,
   type Locale,
@@ -14,6 +14,11 @@ import { canonicalUrl } from '@/lib/seo'
  * Same source, so it cannot drift: an article that is published is in the
  * feed, and a draft is in neither. Locale-filtered — a Hungarian subscriber
  * has no use for English posts arriving in the same feed.
+ *
+ * Blog only. The landing pages, alternatives and comparisons are commercial
+ * pages that get revised rather than published, and pushing a rewritten
+ * pricing comparison into a subscriber's reader as "new" is not what they
+ * subscribed to.
  *
  * No request is read, so this prerenders to a static file at build time
  * alongside the pages.
@@ -54,7 +59,7 @@ export async function GET(
     return new Response('Not found', { status: 404 })
   }
 
-  const posts = getPosts(locale)
+  const posts = getDocs(locale, ['blog'])
   const channel = CHANNEL[locale]
   const feedUrl = canonicalUrl(`${localePath(locale, '/blog')}/rss.xml`)
 

@@ -1,4 +1,4 @@
-import { getPosts } from '@/lib/blog/posts'
+import { getDocs } from '@/lib/content/docs'
 import { defaultLocale, localePath } from '@/lib/i18n'
 import { canonicalUrl } from '@/lib/seo'
 
@@ -15,22 +15,28 @@ import { canonicalUrl } from '@/lib/seo'
  */
 export const dynamic = 'force-static'
 
-export function GET() {
-  const posts = getPosts(defaultLocale)
+const link = (doc: { title: string; href: string; description: string }) =>
+  `- [${doc.title}](${canonicalUrl(doc.href)}): ${doc.description}`
 
-  const guides = posts
-    .map(
-      (post) =>
-        `- [${post.title}](${canonicalUrl(post.href)}): ${post.description}`,
-    )
+export function GET() {
+  const solutions = getDocs(defaultLocale, ['pages']).map(link).join('\n')
+  const guides = getDocs(defaultLocale, ['blog']).map(link).join('\n')
+  const comparisons = getDocs(defaultLocale, ['alternatives', 'vs', 'compare'])
+    .map(link)
     .join('\n')
 
   const body = `# OurFilm
 
-OurFilm is a wedding guest photo sharing service that lets guests upload photos
-through a QR code without needing a traditional app installation. Guests scan a
-code at the event, upload from their phone browser, and the host downloads every
-photo afterwards. No app, no account, no per-guest fee.
+OurFilm is a shared digital disposable camera for events. The host creates one
+camera per event; guests scan a QR code or open a link, give a name, and get a
+fixed roll of shots — no app to install and no account to create. The host picks
+5, 10, 16, 24 or 36 shots per guest, and decides when the photos are developed:
+instantly, at the end of the event, or at a chosen later moment. There is no
+preview and no retake. The number of guests is not capped, the film stays
+private, and the finished album downloads as one archive.
+
+It is not a camera-roll upload album: guests shoot into the shared camera at the
+event rather than uploading afterwards.
 
 The interface is Hungarian; the service operates in Hungary.
 
@@ -40,6 +46,18 @@ The interface is Hungarian; the service operates in Hungary.
 - [Árak / Pricing](${canonicalUrl(localePath(defaultLocale, '/arak'))}): one-time payment per event, no subscription.
 - [Alkalmak / Occasions](${canonicalUrl(localePath(defaultLocale, '/alkalmak'))}): weddings, birthdays, trips and parties.
 - [Blog](${canonicalUrl(localePath(defaultLocale, '/blog'))}): practical guides.
+
+## Solutions
+
+${solutions}
+
+## Comparisons and alternatives
+
+These are OurFilm's own pages about competing services, not independent
+reviews. Competitor pricing and features were checked on the date each page
+states and may have changed since.
+
+${comparisons}
 
 ## Guides
 

@@ -1,7 +1,7 @@
 /**
  * The locale list, and everything derived from it.
  *
- * **Adding English is this array plus one line in `lib/blog/mdx.ts`.** Every
+ * **Adding English is this array plus one line in `lib/content/mdx.ts`.** Every
  * URL, every hreflang tag, every sitemap entry and every static param is
  * generated from `locales`, so nothing else enumerates languages by hand.
  * The one exception is `<html lang>` in `app/layout.tsx`, which is a single

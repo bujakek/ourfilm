@@ -1,4 +1,5 @@
-import { getPosts, getTranslations } from '@/lib/blog/posts'
+import { getDocs, getTranslations } from '@/lib/content/docs'
+import { hubKinds, hubs } from '@/lib/content/kinds'
 import { type Locale, localePath, locales } from '@/lib/i18n'
 import { OCCASIONS_ARE_DRAFT, occasions } from '@/lib/occasions'
 import { canonicalUrl, languageAlternates } from '@/lib/seo'
@@ -19,9 +20,11 @@ import type { MetadataRoute } from 'next'
  * removes its noindex and its DraftNotice.
  *
  * The occasion routes need no such bookkeeping: they come and go with
- * `OCCASIONS_ARE_DRAFT`, which is the same flag their pages read. Articles
- * need none either — they are read from `content/blog/`, so publishing a post
- * adds its URL here and removing the file takes it away again.
+ * `OCCASIONS_ARE_DRAFT`, which is the same flag their pages read. Content
+ * pages need none either — they are read from `content/`, so publishing one
+ * adds its URL here and removing the file takes it away again. Every one of
+ * them is `index, follow`, which is what makes listing them all correct: this
+ * function has no way to emit a URL that a page then tells crawlers to ignore.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   return locales.flatMap(localeEntries)
@@ -51,41 +54,48 @@ function localeEntries(locale: Locale): MetadataRoute.Sitemap {
         })),
       ]
 
-  const posts = getPosts(locale)
+  // Every content page, whatever kind — one loop, so a new kind cannot be
+  // served and quietly left out of the sitemap.
+  const content: MetadataRoute.Sitemap = getDocs(locale).map((doc) => {
+    const alternates = languageAlternates(getTranslations(doc.id))
+    return {
+      url: canonicalUrl(doc.href),
+      lastModified: lastModifiedOf(doc),
+      changeFrequency: 'yearly' as const,
+      // Landing pages first: they are the ones a commercial query should
+      // reach, and everything else exists to feed them.
+      priority: doc.kind === 'pages' ? 0.9 : 0.7,
+      // `languageAlternates` returns nothing until a page genuinely exists in
+      // two languages, so this is empty today and fills in by itself when a
+      // translation lands.
+      ...(Object.keys(alternates).length > 0
+        ? { alternates: { languages: alternates } }
+        : {}),
+    }
+  })
 
-  const blog: MetadataRoute.Sitemap =
-    posts.length === 0
-      ? []
-      : [
-          {
-            url: canonicalUrl(localePath(locale, '/blog')),
-            // The index changes whenever the newest article does.
-            lastModified: lastModifiedOf(posts[0]),
-            changeFrequency: 'weekly',
-            priority: 0.8,
-          },
-          ...posts.map((post) => {
-            const alternates = languageAlternates(getTranslations(post.id))
-            return {
-              url: canonicalUrl(post.href),
-              lastModified: lastModifiedOf(post),
-              changeFrequency: 'yearly' as const,
-              priority: 0.7,
-              // `languageAlternates` returns nothing until an article
-              // genuinely exists in two languages, so this is empty today and
-              // fills in by itself when a translation lands.
-              ...(Object.keys(alternates).length > 0
-                ? { alternates: { languages: alternates } }
-                : {}),
-            }
-          }),
-        ]
+  // A hub is listed only while it has something on it — an empty listing page
+  // is a URL worth crawling exactly once and never worth ranking.
+  const hubPages: MetadataRoute.Sitemap = hubs.flatMap((hub) => {
+    const listed = getDocs(locale, hubKinds[hub])
+    if (listed.length === 0) return []
 
-  return [...home, ...occasionPages, ...blog]
+    return [
+      {
+        url: canonicalUrl(localePath(locale, `/${hub}`)),
+        // A hub changes whenever its newest page does.
+        lastModified: lastModifiedOf(listed[0]),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      },
+    ]
+  })
+
+  return [...home, ...occasionPages, ...hubPages, ...content]
 }
 
 /** Frontmatter dates are calendar days; pin to UTC so the sitemap does not
- *  claim a different day than the article does. */
-function lastModifiedOf(post: { publishedAt: string; updatedAt?: string }) {
-  return new Date(`${post.updatedAt ?? post.publishedAt}T00:00:00Z`)
+ *  claim a different day than the page does. */
+function lastModifiedOf(doc: { publishedAt: string; updatedAt?: string }) {
+  return new Date(`${doc.updatedAt ?? doc.publishedAt}T00:00:00Z`)
 }

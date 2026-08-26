@@ -1,5 +1,7 @@
-import type { BlogPost, Translations } from '@/lib/blog/types'
-import { defaultLocale, localeTag } from '@/lib/i18n'
+import { kindDefinitions } from '@/lib/content/kinds'
+import type { FaqEntry } from '@/lib/content/faq'
+import type { ContentDoc, Translations } from '@/lib/content/types'
+import { defaultLocale, type Locale, localePath, localeTag } from '@/lib/i18n'
 import { SITE_URL } from '@/lib/site'
 
 /**
@@ -18,7 +20,7 @@ export function canonicalUrl(path: string): string {
 /**
  * `alternates` for a page that exists in more than one language.
  *
- * Only locales with a real article are listed: an `hreflang` pointing at a URL
+ * Only locales with a real page are listed: an `hreflang` pointing at a URL
  * that 404s is worse than no `hreflang` at all — and with `locales = ['hu']`
  * there is nothing to relate, so the map comes back empty.
  *
@@ -50,36 +52,103 @@ export function languageAlternates(translations: Translations) {
 }
 
 /**
- * `BlogPosting` JSON-LD for one article.
+ * JSON-LD for one content page.
  *
- * Every value comes from the article's own frontmatter. `dateModified` falls
- * back to `datePublished` rather than to today: a build date would tell search
- * engines the article changes every deploy, which is both untrue and the kind
- * of signal that gets discounted.
+ * The `@type` comes from the kind, not from the caller: an OurFilm-versus
+ * page argues for a product we sell, and typing it `BlogPosting` would dress a
+ * landing page up as journalism. See `lib/content/kinds.ts`.
+ *
+ * Every value comes from the page's own frontmatter. `dateModified` falls back
+ * to `datePublished` rather than to today: a build date would tell search
+ * engines the page changes every deploy, which is both untrue and the kind of
+ * signal that gets discounted. Nothing here emits a rating, a review or an
+ * offer — we have none of the three, and inventing them is the fastest way to
+ * a manual action.
  */
-export function blogPostingJsonLd(post: BlogPost) {
-  return {
+export function contentJsonLd(doc: ContentDoc) {
+  const url = canonicalUrl(doc.href)
+  const type = kindDefinitions[doc.kind].schemaType
+
+  const common = {
     '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: post.title,
-    description: post.description,
-    datePublished: post.publishedAt,
-    dateModified: post.updatedAt ?? post.publishedAt,
-    inLanguage: localeTag[post.locale],
-    author: {
-      '@type': 'Organization',
-      name: post.author ?? 'OurFilm',
-      url: SITE_URL,
-    },
+    '@type': type,
+    name: doc.title,
+    description: doc.description,
+    inLanguage: localeTag[doc.locale],
+    url,
+    ...(doc.image ? { image: canonicalUrl(doc.image) } : {}),
     publisher: {
       '@type': 'Organization',
       name: 'OurFilm',
       url: SITE_URL,
     },
-    ...(post.image ? { image: canonicalUrl(post.image) } : {}),
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': canonicalUrl(post.href),
+  }
+
+  if (type === 'WebPage') {
+    return {
+      ...common,
+      datePublished: doc.publishedAt,
+      dateModified: doc.updatedAt ?? doc.publishedAt,
+      isPartOf: { '@type': 'WebSite', name: 'OurFilm', url: SITE_URL },
+    }
+  }
+
+  return {
+    ...common,
+    headline: doc.title,
+    datePublished: doc.publishedAt,
+    dateModified: doc.updatedAt ?? doc.publishedAt,
+    author: {
+      '@type': 'Organization',
+      name: doc.author ?? 'OurFilm',
+      url: SITE_URL,
     },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+  }
+}
+
+/** One crumb: what it is called, and the locale-relative path it points at. */
+export interface Crumb {
+  name: string
+  path: string
+}
+
+/**
+ * `BreadcrumbList` for a trail that ends on the current page.
+ *
+ * The last crumb still carries its own `item`, which is what lets the page
+ * self-identify in the trail rather than dangling.
+ */
+export function breadcrumbJsonLd(locale: Locale, crumbs: Crumb[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: crumbs.map((crumb, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: crumb.name,
+      item: canonicalUrl(localePath(locale, crumb.path)),
+    })),
+  }
+}
+
+/**
+ * `FAQPage` for questions that are visibly on the page.
+ *
+ * Fed only by `lib/content/faq.ts`, which parses the rendered body — so this
+ * cannot describe a question the reader does not see. Returns `null` when
+ * there is nothing to describe, and the caller renders no block at all.
+ */
+export function faqJsonLd(entries: FaqEntry[]) {
+  if (entries.length === 0) return null
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: entries.map((entry) => ({
+      '@type': 'Question',
+      name: entry.question,
+      acceptedAnswer: { '@type': 'Answer', text: entry.answer },
+    })),
   }
 }

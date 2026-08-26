@@ -1,4 +1,4 @@
-import type { Translations } from '@/lib/blog/types'
+import type { Translations } from '@/lib/content/types'
 import { type Locale, localeLabel } from '@/lib/i18n'
 import Link from 'next/link'
 
