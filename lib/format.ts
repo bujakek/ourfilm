@@ -51,53 +51,17 @@ export function formatPostDate(date: string, locale: KnownLocale): string {
  * labelling a photo taken at 14:32 as 12:32. Vercel runs UTC, so the server's
  * own zone is no help either.
  *
- * Every event now carries its own `time_zone`, so this is only the default the
- * create wizard pre-selects and the fallback for anything not tied to one
- * event. Pass the event's zone wherever you have it: a host who sets up a
- * camera for a wedding abroad has told us which clock the guests are on, and
- * rendering their deadline in Budapest time would be ignoring the answer.
+ * Every event carries its own `time_zone`, read off the host's browser when the
+ * event is created, so this is only the server-render default and the fallback
+ * for anything not tied to one event. Pass the event's zone wherever you have
+ * it: a host who sets up a camera for a wedding abroad is on that clock, and
+ * rendering their deadline in Budapest time would be ignoring it.
+ *
+ * There is deliberately no list of offered zones and no label map any more. The
+ * flow never asks, and the admin never shows the answer — a host reads times in
+ * the wall clock they typed, which is the only one they were ever thinking in.
  */
 export const EVENT_TIME_ZONE = 'Europe/Budapest'
-
-/**
- * The zones the create wizard offers.
- *
- * A short list rather than the full IANA database: the product is Hungarian and
- * the realistic answers are "here" or "the country we are getting married in".
- * A 400-entry select on a 390px phone is a worse question than a wrong default.
- * The column takes any IANA name, so widening this is copy, not schema.
- */
-export const EVENT_TIME_ZONES = [
-  'Europe/Budapest',
-  'Europe/London',
-  'Europe/Lisbon',
-  'Europe/Athens',
-  'Europe/Istanbul',
-  'Atlantic/Canary',
-  'America/New_York',
-  'America/Los_Angeles',
-  'Asia/Dubai',
-  'Asia/Tokyo',
-] as const
-
-/** Hungarian labels for the zones above. A guest never sees these; a host picks
- *  one once, so it reads as a place rather than an offset. */
-export const EVENT_TIME_ZONE_LABELS: Record<string, string> = {
-  'Europe/Budapest': 'Budapest',
-  'Europe/London': 'London',
-  'Europe/Lisbon': 'Lisszabon',
-  'Europe/Athens': 'Athén',
-  'Europe/Istanbul': 'Isztambul',
-  'Atlantic/Canary': 'Kanári-szigetek',
-  'America/New_York': 'New York',
-  'America/Los_Angeles': 'Los Angeles',
-  'Asia/Dubai': 'Dubaj',
-  'Asia/Tokyo': 'Tokió',
-}
-
-export function eventTimeZoneLabel(zone: string): string {
-  return EVENT_TIME_ZONE_LABELS[zone] ?? zone
-}
 
 /** Whether a string is a zone this runtime can actually format in. The value
  *  reaches us from a form, and an unknown zone makes `Intl` throw at render

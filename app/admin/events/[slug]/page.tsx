@@ -20,7 +20,7 @@ import { getEventQuota } from '@/lib/billing'
 import { captureWindowState } from '@/lib/camera'
 import { revealModeLabel } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
-import { eventTimeZoneLabel, formatDeadline } from '@/lib/format'
+import { formatDeadline } from '@/lib/format'
 import { signPhotoUrl } from '@/lib/photo-urls'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
@@ -171,7 +171,6 @@ export default async function AdminEventPage({ params }: Props) {
             label="Vendégek galériája"
             value={event.guests_can_view ? 'Megnyithatják' : 'Csak te látod'}
           />
-          <Row label="Időzóna" value={eventTimeZoneLabel(zone)} />
         </dl>
       </section>
 

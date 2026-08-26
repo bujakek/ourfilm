@@ -100,7 +100,6 @@ export default async function AdminEventSettingsPage({
         <CaptureEndCard
           slug={event.slug}
           endValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
-          timeZone={zone}
           state={windowState}
         />
 
@@ -108,7 +107,6 @@ export default async function AdminEventSettingsPage({
           slug={event.slug}
           mode={event.reveal_mode}
           customValue={formatEventLocalInput(new Date(event.reveal_at), zone)}
-          timeZone={zone}
           minValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
         />
 

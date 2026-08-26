@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react'
 
 import { setCaptureEnd } from '@/app/admin/events/[slug]/actions'
-import { eventTimeZoneLabel } from '@/lib/format'
 
 /**
  * Moves the moment the camera closes.
@@ -27,12 +26,10 @@ import { eventTimeZoneLabel } from '@/lib/format'
 export function CaptureEndCard({
   slug,
   endValue,
-  timeZone,
   state,
 }: {
   slug: string
   endValue: string
-  timeZone: string
   state: 'before' | 'open' | 'after'
 }) {
   const [end, setEnd] = useState(endValue)
@@ -48,8 +45,7 @@ export function CaptureEndCard({
           ? 'A kamera még nem nyílt meg.'
           : state === 'open'
             ? 'A vendégek most fotózhatnak.'
-            : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}{' '}
-        Időzóna: {eventTimeZoneLabel(timeZone)}.
+            : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
       </p>
 
       {/* No visible label: the card's own heading is the question, and with one

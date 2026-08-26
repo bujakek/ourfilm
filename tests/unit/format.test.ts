@@ -4,7 +4,6 @@ import {
   EVENT_TIME_ZONE,
   eventLocalToIso,
   eventStamp,
-  eventTimeZoneLabel,
   eventUtcOffset,
   eventWallClock,
   formatDeadline,
@@ -166,16 +165,12 @@ describe('timezone validation', () => {
   })
 
   it('refuses a zone Intl cannot format in', () => {
-    // The value reaches us from a select, and an unknown zone would otherwise
-    // throw at render time rather than at the point it was accepted.
+    // The value reaches us from a hidden form field carrying whatever the
+    // browser reported, and an unknown zone would otherwise throw at render
+    // time rather than at the point it was accepted.
     for (const bad of ['', 'Mars/Olympus', 'Budapest', 'UTC+2']) {
       expect(isValidTimeZone(bad)).toBe(false)
     }
-  })
-
-  it('labels a known zone and falls back to the raw name', () => {
-    expect(eventTimeZoneLabel('Europe/Budapest')).toBe('Budapest')
-    expect(eventTimeZoneLabel('Pacific/Auckland')).toBe('Pacific/Auckland')
   })
 })
 

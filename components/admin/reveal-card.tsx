@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 
 import { setReveal } from '@/app/admin/events/[slug]/actions'
 import type { RevealMode } from '@/lib/camera'
-import { eventTimeZoneLabel } from '@/lib/format'
 
 const CHOICES: { mode: RevealMode; title: string; detail: string }[] = [
   {
@@ -39,13 +38,11 @@ export function RevealCard({
   slug,
   mode: savedMode,
   customValue,
-  timeZone,
   minValue,
 }: {
   slug: string
   mode: RevealMode
   customValue: string
-  timeZone: string
   /** The capture end — a custom reveal may not precede it. */
   minValue: string
 }) {
@@ -61,9 +58,6 @@ export function RevealCard({
   return (
     <div className="glass rounded-2xl px-5 py-4">
       <p className="font-medium">Képek megjelenése</p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        Időzóna: {eventTimeZoneLabel(timeZone)}.
-      </p>
 
       <fieldset className="mt-4 flex flex-col gap-2">
         <legend className="sr-only">Leleplezés időpontja</legend>
