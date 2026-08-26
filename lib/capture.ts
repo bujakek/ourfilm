@@ -148,9 +148,8 @@ export async function commitShot({
       p_height: height,
       p_byte_size: byteSize,
       // The generator types every function argument as non-nullable, but this
-      // one genuinely takes null: a frame from the live camera carries no EXIF,
-      // and a photo with no capture time falls back to `created_at` everywhere
-      // that reads it.
+      // one genuinely takes null: a native camera file does not always carry a
+      // readable EXIF timestamp, and those photos fall back to `created_at`.
       p_taken_at: takenAt as string,
     })
     .maybeSingle()

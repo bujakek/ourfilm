@@ -1,6 +1,6 @@
 ---
 name: ourfilm-upload
-description: OurFilm's client-side photo upload pipeline — HEIC to JPEG conversion with heic-to, resizing to a 4096px bounding box at 92% JPEG quality, direct browser-to-Supabase-Storage upload, per-file progress states, and manual retry. Use when building or debugging the guest upload flow, the file picker, image compression, EXIF handling, or mobile browser upload issues in OurFilm.
+description: OurFilm's client-side native-camera upload pipeline — capture input behavior, HEIC conversion, 4096px JPEG rendering, signed uploads and capture metadata. Use when building or debugging guest photography, image processing or mobile browser uploads in OurFilm.
 ---
 
 > **Read this first — the disposable camera pivot changed the entry point.**
@@ -11,21 +11,19 @@ description: OurFilm's client-side photo upload pipeline — HEIC to JPEG conver
 >
 > What changed is everything around it:
 >
-> - **There is no upload queue and no file picker.** The guest surface is a
->   camera (`components/event/camera-view.tsx`): live `getUserMedia`, one
->   shutter, no preview, no retake. A `capture` file input exists only as a
->   fallback when the live camera is refused or unavailable.
-> - **A live frame skips the decode.** `prepareFromBitmap()` takes the
->   `ImageBitmap` grabbed off `<video>`; `prepareForUpload()` (file → bitmap →
->   renders) is now only the fallback path. Encoding a frame to JPEG just to
->   decode it again would be a wasted round trip on the shutter path.
+> - **There is no custom web camera or separate camera page.** The highlighted
+>   camera action on `components/event/guest-event-view.tsx` activates one
+>   hidden file input with `capture="environment"`, so a phone opens its native
+>   camera UI. The input accepts one image and never advertises gallery upload.
+> - **The returned camera file follows the regular decode path.**
+>   `prepareForUpload()` reads its capture time before the canvas strips EXIF,
+>   decodes once and produces all three renders.
 > - **Uploads go to signed URLs, not to the bucket directly.** The sequence is
 >   `reserve_shot` (server action, atomic, returns three signed upload URLs) →
 >   PUT the three renders → `commit_shot`. Bytes still never pass through a
 >   Vercel function.
-> - **`taken_at` comes from the shutter press** on the live path — a camera frame
->   carries no EXIF. The "read EXIF before the canvas touches it" rule still
->   applies to the file fallback, and it is still a one-way door.
+> - **`taken_at` comes from the native camera file's EXIF when available.** Read
+>   it before the canvas touches the file; that re-encode is a one-way door.
 
 # OurFilm Upload Pipeline
 

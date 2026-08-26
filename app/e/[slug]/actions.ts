@@ -90,7 +90,7 @@ export async function joinEventAction(
   // the action is unambiguous and terminal.
   revalidatePath(`/e/${slug}`, 'layout')
   // Outside any try/catch: redirect() signals by throwing.
-  redirect(`/e/${slug}/camera`)
+  redirect(`/e/${slug}`)
 }
 
 export type ReserveState =
@@ -158,10 +158,10 @@ export async function commitShotAction({
     takenAt,
   })
 
-  // The gallery may already be open — an instant-reveal event shows photos as
-  // they arrive — so its cache has to drop. The camera page itself does not:
-  // it is driven by the count this call returns.
-  if (result.committed) revalidatePath(`/e/${slug}/gallery`)
+  // The unified event page may already show the instant-reveal gallery, so its
+  // server render has to drop. The client still uses the authoritative count
+  // returned below immediately.
+  if (result.committed) revalidatePath(`/e/${slug}`)
 
   return result
 }
