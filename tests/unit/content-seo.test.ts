@@ -75,6 +75,12 @@ describe('page metadata', () => {
       // `index, follow`. An explicit key here would be the bug.
       expect(meta.robots, doc.filePath).toBeUndefined()
       expect(meta.title, doc.filePath).toContain(doc.title)
+      // The brand belongs in a title once. Eight alternative pages are titled
+      // "… : OurFilm" already, and the suffix used to double it.
+      expect(
+        String(meta.title).match(/OurFilm/gi)?.length ?? 0,
+        doc.filePath,
+      ).toBe(1)
       expect(meta.openGraph?.description, doc.filePath).toBe(doc.description)
     }
   })

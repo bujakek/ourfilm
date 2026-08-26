@@ -47,7 +47,18 @@ export default async function ComparisonHubPage({ params }: Props) {
 
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
-          <section className="mt-8">
+          {/* Said once, at the top of the shelf. The five
+              competitor-versus-competitor pages state their sources and the
+              date they were checked, but none of them says whose site this is
+              — and that is a template's job rather than a reason to rewrite
+              copy that is otherwise final. */}
+          <p className="glass rounded-2xl px-6 py-4 text-sm leading-relaxed text-muted-foreground">
+            Ezek az összevetések az OurFilm oldalán jelennek meg, nem független
+            tesztek. A versenytársak nyilvános adatait a megjelölt napon
+            ellenőriztük; az árak és a funkciók azóta változhattak.
+          </p>
+
+          <section className="mt-14">
             <h2 className="text-2xl font-semibold tracking-tight text-balance">
               Az OurFilm a többiekhez képest
             </h2>

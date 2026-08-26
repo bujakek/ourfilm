@@ -21,8 +21,17 @@ export function contentMetadata(doc: ContentDoc): Metadata {
   const url = canonicalUrl(doc.href)
   const isArticle = doc.kind === 'blog' || doc.kind === 'compare'
 
+  // The alternative pages are titled "Once alternatíva esküvőre: OurFilm", so
+  // appending the brand unconditionally gave eight pages a `<title>` ending
+  // "OurFilm — OurFilm". A title tag has about sixty characters of usable
+  // width; spending nine of them saying the same word twice is worse than
+  // spending none.
+  const title = /OurFilm/i.test(doc.title)
+    ? doc.title
+    : `${doc.title} — OurFilm`
+
   return {
-    title: `${doc.title} — OurFilm`,
+    title,
     description: doc.description,
     alternates: {
       // Each language canonicalises to itself. Pointing one at the other is
