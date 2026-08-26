@@ -4,6 +4,7 @@ import {
   type CheckoutState,
   startEventCheckout,
 } from '@/app/admin/events/[slug]/billing-actions'
+import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -34,7 +35,7 @@ export type BillingCardProps = {
  * more guests. So the question this card answers is "can another friend join",
  * which is also the only way a host ever runs into the limit.
  *
- * No per-guest price and no tiers anywhere: one event, one payment, 12 900 Ft.
+ * No per-guest price and no tiers anywhere: one event, one payment.
  */
 export function BillingCard({
   slug,
@@ -148,7 +149,9 @@ export function BillingCard({
                 aria-hidden="true"
               />
             )}
-            {pending ? 'Átirányítás…' : 'Teljes esemény feloldása – 12 900 Ft'}
+            {pending
+              ? 'Átirányítás…'
+              : `Teljes esemény feloldása – ${EVENT_PRICE_LABEL}`}
           </button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Korlátlan résztvevő, egyszeri fizetéssel.

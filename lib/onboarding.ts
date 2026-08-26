@@ -72,3 +72,28 @@ export function eventNameSuggestions(firstName: string | null): string[] {
     : ['A nagy bulink', 'Születésnapi buli']
   return [...opening, 'Az esküvőnk', 'Az évfordulónk', 'A mi kis bulink']
 }
+
+/**
+ * Which tier the host picks on the last screen.
+ *
+ * Not a column. The free tier is a participant cap enforced inside
+ * `join_event`, and `unlimited` is lifted by a paid `purchases` row — so this
+ * only decides where the host lands after the event is created: on their new
+ * event, or on Stripe. An abandoned checkout leaves an ordinary free event,
+ * which is exactly what the ledger already models with a `pending` row.
+ */
+export type EventPlan = 'free' | 'unlimited'
+
+export function isEventPlan(value: unknown): value is EventPlan {
+  return value === 'free' || value === 'unlimited'
+}
+
+/**
+ * The number the last screen prints next to "Legfeljebb".
+ *
+ * Mirrors `public.free_participant_limit()`, which is the one that actually
+ * turns a sixth guest away. Duplicated here so the screen can name the limit
+ * before the event exists — and kept as a bare constant so the day the database
+ * function changes, the grep for it lands on this line.
+ */
+export const FREE_PARTICIPANT_LIMIT = 5

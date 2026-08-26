@@ -211,9 +211,14 @@ than their own.
 
 `/admin/events/new` asks four things, one per screen, in a shared shell
 (`components/admin/onboarding/*`): the name, when the event ends, when the
-photos appear, and how long a roll is. Modelled closely on Once's onboarding —
-full-bleed dark screens, one question each, a back arrow top-left, progress dots
-and the CTA pinned to the bottom.
+photos appear, and — sharing the last screen — how many guests, how long a roll
+is, and who may look. Modelled closely on Once's onboarding: full-bleed dark
+screens, one question each, a back arrow top-left, progress dots and the CTA
+pinned to the bottom.
+
+The last screen carries three controls rather than three screens because they
+are the same decision from three sides: how big is this party and how much film
+does it need. Neither of the other two depends on the first being answered.
 
 - **The camera opens the moment the event is created.** `capture_start_at` is
   stamped by the server action, not sent from the browser, so there is no clock
@@ -233,8 +238,26 @@ and the CTA pinned to the bottom.
 - **The delayed reveal is counted in days** (1–30), resolved as
   `capture_end_at + n * 24h` by `revealAfterDelay()` in `lib/onboarding.ts`. The
   form posts the day count, not an instant, and the action recomputes it.
-- **`guests_can_view` is no longer a question** — new events are created with it
-  on, and the switch that turns it off lives in settings.
+- **The guest count is a plan, not a setting.** There is no `max_participants`
+  column and nothing about the inserted row differs between the two choices:
+  the free tier is `free_participant_limit()` distinct participants enforced
+  inside `join_event`'s row lock, and only a paid `purchases` row lifts it. So
+  picking **Korlátlan** on the last screen only changes where the host lands —
+  Stripe Checkout instead of their new event — and an abandoned checkout leaves
+  an ordinary free event, which is what the ledger's `pending` row already
+  describes. `FREE_PARTICIPANT_LIMIT` in `lib/onboarding.ts` mirrors the
+  database function so the screen can name the limit before the row exists.
+- **Onboarding can start a checkout, and the guest cap still cannot.** The paid
+  tier is offered to the _host_, at the one moment they are thinking about how
+  many people are coming. A guest turned away mid-party is still shown no
+  checkout — that rule is about who is holding the phone, not about where the
+  button lives. When `stripeIsConfigured()` is false the paid tile is disabled
+  and reads "Hamarosan" rather than a price, the same honesty
+  `components/admin/billing-card.tsx` keeps.
+- **`createEventCheckoutUrl` (`lib/stripe/checkout.ts`) is shared** by the
+  billing card and the create action. Session metadata, the success and cancel
+  URLs and the `pending` ledger row all live in one place, because every one of
+  them is silently wrong when two copies drift.
 - **There is no cover picker in the flow any more**, and nothing else offers
   one. `cover_path` stays nullable and every surface already renders an event
   without a cover; the upload branch in `createEvent` still works and is waiting
@@ -498,8 +521,9 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
 - **A capped guest is shown no checkout.** They get "Az esemény elérte a
   résztvevői keretet" and are told to ask the organizer. A wedding guest holding
   a phone cannot fix this, and asking them to pay for the couple's album is the
-  wrong sentence to put in front of them. The upgrade lives on the host's
-  dashboard.
+  wrong sentence to put in front of them. The upgrade is the host's, and they
+  reach it in two places: the billing card in settings, and the plan choice on
+  the last onboarding screen. Both go through `createEventCheckoutUrl`.
 - **Checkout is a redirect** to Stripe's hosted page (`mode: 'payment'`). No card
   data touches this app — the difference between SAQ A and a compliance project.
 - **Only the webhook marks a purchase paid.** `?checkout=success` proves nothing:
@@ -516,9 +540,11 @@ Nothing about the Stripe integration changed in the pivot — only the predicate
 gates. `event_upload_quota` (photos) became `event_participant_quota`
 (participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
 
-Key files: `lib/stripe/*`, `lib/billing.ts`, `lib/roles.ts`,
-`app/api/stripe/webhook/route.ts`, `app/admin/events/[slug]/billing-actions.ts`,
-`components/admin/billing-card.tsx`.
+Key files: `lib/stripe/*` (`checkout.ts` builds the session for both entry
+points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
+`lib/roles.ts`, `app/api/stripe/webhook/route.ts`,
+`app/admin/events/[slug]/billing-actions.ts`,
+`components/admin/billing-card.tsx`, `app/admin/events/new/step-guests.tsx`.
 
 **`/hu/arak` is knowingly out of date.** It still advertises a "5 feltöltött
 fotó" free tier and "Korlátlan fotó" on the paid one, neither of which is true

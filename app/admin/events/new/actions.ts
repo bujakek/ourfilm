@@ -2,10 +2,17 @@
 
 import { redirect } from 'next/navigation'
 
+import { getEventQuota } from '@/lib/billing'
 import { isRevealMode, isShotOption, validateEventDraft } from '@/lib/camera'
 import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
-import { clampRevealDelayDays, revealAfterDelay } from '@/lib/onboarding'
+import {
+  clampRevealDelayDays,
+  isEventPlan,
+  revealAfterDelay,
+} from '@/lib/onboarding'
 import { generateEventSlug } from '@/lib/slug'
+import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
+import { stripeIsConfigured } from '@/lib/stripe/env'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 
@@ -56,6 +63,10 @@ export async function createEvent(
   const revealModeRaw = String(formData.get('reveal_mode') ?? '')
   const delayDays = clampRevealDelayDays(formData.get('reveal_delay_days'))
   const shots = Number(formData.get('shots_per_participant'))
+  const planRaw = String(formData.get('plan') ?? 'free')
+  // Absent means off: an unchecked switch posts nothing, which is how an HTML
+  // form has always spelled false.
+  const guestsCanView = formData.get('guests_can_view') === 'on'
 
   if (!captureEndIso) {
     return { error: 'Add meg, mikor érjen véget az esemény.' }
@@ -65,6 +76,9 @@ export async function createEvent(
   }
   if (!isShotOption(shots)) {
     return { error: 'Válaszd ki, hány képet készíthet egy vendég.' }
+  }
+  if (!isEventPlan(planRaw)) {
+    return { error: 'Válaszd ki, hány vendég csatlakozhat.' }
   }
 
   const captureEndAt = new Date(captureEndIso)
@@ -128,11 +142,7 @@ export async function createEvent(
         reveal_mode: revealModeRaw,
         reveal_at: revealAt,
         shots_per_participant: shots,
-        // Not a question the flow asks. Guests seeing the album after it
-        // develops is the product; a host who wants it private has the switch
-        // in settings, and putting it in onboarding meant every host answering
-        // a question almost none of them have.
-        guests_can_view: true,
+        guests_can_view: guestsCanView,
       })
       .select('id')
       .maybeSingle()
@@ -184,7 +194,47 @@ export async function createEvent(
     }
   }
 
+  // Where the host lands, which is the only thing the plan choice decides.
+  //
+  // `unlimited` is not a column and nothing about the row above is different
+  // for it: the free tier is a participant cap enforced inside `join_event`,
+  // and only a paid `purchases` row lifts it. So the paid choice means "and
+  // now go pay", and an abandoned checkout leaves an ordinary free event —
+  // which is what the ledger's `pending` row already describes.
+  let destination = `/admin/events/${slug}`
+
+  if (planRaw === 'unlimited') {
+    // Settings, not the event page, whenever the payment cannot be started
+    // here: that is where the billing card is, and it explains the situation
+    // in a sentence — payments not switched on, or try again — better than a
+    // silent landing on the QR code would.
+    destination = `/admin/events/${slug}/settings`
+    if (stripeIsConfigured()) {
+      try {
+        // An admin's own events are already unlimited, so there is nothing to
+        // sell them. Same predicate the billing card reads, for the same
+        // reason: it answers from the database rather than from a purchase row.
+        const quota = await getEventQuota(eventId)
+        if (quota.unlimited) {
+          destination = `/admin/events/${slug}`
+        } else {
+          destination = await createEventCheckoutUrl({
+            eventId,
+            slug,
+            ownerId: user.id,
+            ownerEmail: user.email ?? null,
+          })
+        }
+      } catch (e) {
+        // The event exists and works. Failing to start a checkout is not a
+        // reason to lose it, so this is logged and the host lands on the card
+        // that can retry.
+        console.error('Could not start checkout for a new event', e)
+      }
+    }
+  }
+
   // Outside any try/catch on purpose: redirect() signals by throwing, so
   // catching around it would swallow the navigation.
-  redirect(`/admin/events/${slug}`)
+  redirect(destination)
 }

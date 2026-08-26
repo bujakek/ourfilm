@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { eventNameSuggestions } from '@/lib/onboarding'
+import { stripeIsConfigured } from '@/lib/stripe/env'
 import { NewEventForm } from './new-event-form'
 
 // Both the suggested deadline and the earliest selectable day are computed from
@@ -54,6 +55,9 @@ export default function NewEventPage() {
       nowIso={now.toISOString()}
       defaultEndIso={end.toISOString()}
       suggestions={eventNameSuggestions(null)}
+      // Reads three environment variables — no await, so the segment still does
+      // not suspend. See the note above.
+      paymentsEnabled={stripeIsConfigured()}
     />
   )
 }

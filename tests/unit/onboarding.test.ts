@@ -7,6 +7,8 @@ import {
   clampRevealDelayDays,
   eventNameSuggestions,
   formatDelayDays,
+  FREE_PARTICIPANT_LIMIT,
+  isEventPlan,
   revealAfterDelay,
 } from '@/lib/onboarding'
 
@@ -121,5 +123,24 @@ describe('eventNameSuggestions', () => {
     const tail = ['Az esküvőnk', 'Az évfordulónk', 'A mi kis bulink']
     expect(eventNameSuggestions(null).slice(2)).toEqual(tail)
     expect(eventNameSuggestions('Anna').slice(2)).toEqual(tail)
+  })
+})
+
+describe('event plan', () => {
+  it('knows the two tiers and nothing else', () => {
+    expect(isEventPlan('free')).toBe(true)
+    expect(isEventPlan('unlimited')).toBe(true)
+    // The value arrives in a FormData, so anything at all can turn up here —
+    // and an unrecognised plan must be refused rather than quietly treated as
+    // free, which would be a paid choice silently downgraded.
+    for (const bad of ['', 'FREE', 'paid', '5', null, undefined, 0, {}]) {
+      expect(isEventPlan(bad)).toBe(false)
+    }
+  })
+
+  it('names the same free limit the database enforces', () => {
+    // Mirrors public.free_participant_limit(). If that migration changes and
+    // this does not, the last onboarding screen advertises the wrong number.
+    expect(FREE_PARTICIPANT_LIMIT).toBe(5)
   })
 })

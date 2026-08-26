@@ -10,17 +10,19 @@ import {
   DEFAULT_REVEAL_DELAY_DAYS,
   clampRevealDelayDays,
   revealAfterDelay,
+  type EventPlan,
 } from '@/lib/onboarding'
 import { createEvent, type CreateEventState } from './actions'
 import { StepEnd } from './step-end'
+import { StepGuests } from './step-guests'
 import { StepName } from './step-name'
 import { StepReveal } from './step-reveal'
-import { StepShots } from './step-shots'
 
 const initial: CreateEventState = { error: null }
 
-/** Four questions: name, end, reveal, roll length. The dots at the bottom of
- *  every screen count these, so anything added here is a dot a host sees. */
+/** Four questions: name, end, reveal, and the party's size — guests, roll
+ *  length and who may look, which share the last screen. The dots at the bottom
+ *  count these, so anything added here is a dot a host sees. */
 const STEP_COUNT = 4
 const LAST_STEP = STEP_COUNT - 1
 
@@ -33,23 +35,26 @@ const LAST_STEP = STEP_COUNT - 1
  * the dashboard, the QR code and the participant cap would all have to
  * understand.
  *
- * Three things the host is never asked, because there is only one sane answer:
+ * Two things the host is never asked, because there is only one sane answer:
  * **when the camera opens** (now — the server stamps it, so no clock skew
- * between the phone that filled the form and the machine that inserts the row),
- * **which timezone** (the one the browser is in), and **whether guests may see
- * the gallery** (yes; the switch that turns it off lives in settings, where a
- * host who wants it has a reason).
+ * between the phone that filled the form and the machine that inserts the row)
+ * and **which timezone** (the one the browser is in).
  */
 export function NewEventForm({
   nowIso,
   defaultEndIso,
   suggestions,
+  paymentsEnabled,
 }: {
   nowIso: string
   defaultEndIso: string
   /** The five ÖTLETEK titles, resolved on the server because two of them are
    *  personalised with the host's own name. */
   suggestions: string[]
+  /** Whether Stripe is switched on here, read on the server. Deployed
+   *  environments have no `STRIPE_*` variables, so the paid tier is not offered
+   *  there. */
+  paymentsEnabled: boolean
 }) {
   const [state, action, pending] = useActionState(createEvent, initial)
   const [step, setStep] = useState(0)
@@ -58,6 +63,8 @@ export function NewEventForm({
   const [revealMode, setRevealMode] = useState<RevealMode>('event_end')
   const [delayDays, setDelayDays] = useState(DEFAULT_REVEAL_DELAY_DAYS)
   const [shots, setShots] = useState<ShotOption>(DEFAULT_SHOTS)
+  const [plan, setPlan] = useState<EventPlan>('free')
+  const [guestsCanView, setGuestsCanView] = useState(true)
 
   const timeZone = useBrowserTimeZone()
 
@@ -121,6 +128,10 @@ export function NewEventForm({
       <input type="hidden" name="reveal_mode" value={revealMode} />
       <input type="hidden" name="reveal_delay_days" value={delayDays} />
       <input type="hidden" name="shots_per_participant" value={shots} />
+      <input type="hidden" name="plan" value={plan} />
+      {guestsCanView ? (
+        <input type="hidden" name="guests_can_view" value="on" />
+      ) : null}
 
       {step === 0 ? (
         <StepName
@@ -157,10 +168,15 @@ export function NewEventForm({
       ) : null}
 
       {step === LAST_STEP ? (
-        <StepShots
+        <StepGuests
           nav={nav({ onNext: undefined })}
+          plan={plan}
+          setPlan={setPlan}
           shots={shots}
           setShots={setShots}
+          guestsCanView={guestsCanView}
+          setGuestsCanView={setGuestsCanView}
+          paymentsEnabled={paymentsEnabled}
           pending={pending}
         />
       ) : null}
