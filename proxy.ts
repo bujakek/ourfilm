@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  *
  * Next 16 renamed middleware: this file must be `proxy.ts` and the handler must
  * be `proxy`. A `middleware.ts` here would be silently ignored — no warning, no
- * error — leaving /admin open while looking guarded in the source tree.
+ * error — leaving /host open while looking guarded in the source tree.
  *
  * The matcher export is still `config`, **not** `proxyConfig`. Getting that
  * wrong is worse than it sounds: the matcher is ignored and the proxy runs on
@@ -27,16 +27,16 @@ import { NextResponse, type NextRequest } from 'next/server'
  * Admin paths a signed-out visitor may open, matched exactly.
  *
  * Exact equality, never `startsWith`. A prefix here would open every child of
- * the path as well, and `/admin/events/new` is one segment away from routes
+ * the path as well, and `/host/events/new` is one segment away from routes
  * that list and mutate real events.
  *
  * The screen that finishes the creation after signing up is deliberately **not**
  * here: it lives at `/auth/event-complete`, outside this matcher entirely. A
- * Server Action posts to the path of the page that owns it, so an `/admin/**`
+ * Server Action posts to the path of the page that owns it, so an `/host/**`
  * path would mean this gate answering `createEventFromDraft`'s own POST with a
  * redirect and discarding the call. Its own page comment has the rest.
  */
-const PUBLIC_ADMIN_PATHS = new Set(['/admin/events/new'])
+const PUBLIC_ADMIN_PATHS = new Set(['/host/events/new'])
 export async function proxy(request: NextRequest) {
   const { url, anonKey } = publicSupabaseEnv()
 
@@ -70,12 +70,12 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const path = request.nextUrl.pathname
-  const isLoginRoute = path.startsWith('/admin/login')
+  const isLoginRoute = path.startsWith('/host/login')
   const isPublicRoute = PUBLIC_ADMIN_PATHS.has(path)
 
   if (!user && !isLoginRoute && !isPublicRoute) {
     const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = '/admin/login'
+    redirectTo.pathname = '/host/login'
     redirectTo.search = ''
     return NextResponse.redirect(redirectTo)
   }
@@ -85,7 +85,7 @@ export async function proxy(request: NextRequest) {
   // difference is that they are not asked for an account at the end.
   if (user && isLoginRoute) {
     const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = '/admin'
+    redirectTo.pathname = '/host'
     redirectTo.search = ''
     return NextResponse.redirect(redirectTo)
   }
@@ -94,5 +94,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/host/:path*'],
 }

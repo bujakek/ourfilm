@@ -41,8 +41,8 @@ export async function createEventCheckoutUrl({
     // that explains the outcome lives there. That holds for a host arriving
     // straight from onboarding too — the sentence they need after paying is
     // "this album is unlimited", not the QR code.
-    success_url: `${origin}/admin/events/${slug}/settings?checkout=success`,
-    cancel_url: `${origin}/admin/events/${slug}/settings?checkout=cancelled`,
+    success_url: `${origin}/host/events/${slug}/settings?checkout=success`,
+    cancel_url: `${origin}/host/events/${slug}/settings?checkout=cancelled`,
     // Both, and not by accident. `metadata` is what the webhook reads;
     // `client_reference_id` is what shows up in the Stripe dashboard's search,
     // which is where you will be looking at 2am when a host says they paid and

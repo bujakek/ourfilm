@@ -5,7 +5,7 @@ import { Pencil } from 'lucide-react'
 import {
   OnboardingShell,
   type OnboardingNav,
-} from '@/components/admin/onboarding/onboarding-shell'
+} from '@/components/host/onboarding/onboarding-shell'
 
 /**
  * Question one: what is this film called?

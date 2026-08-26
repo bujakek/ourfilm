@@ -9,7 +9,7 @@ const nextConfig = {
    * The old unprefixed URLs, kept alive.
    *
    * Every source is spelled out. A catch-all like `/:path*` would swallow
-   * `/e/…` and `/admin` — the two route trees that must never move, because
+   * `/e/…` and `/host` — the two route trees that must never move, because
    * QR codes are printed with the first and `proxy.ts` guards the second by
    * exact path.
    *
@@ -41,6 +41,20 @@ const nextConfig = {
         permanent: true,
       },
       { source: '/blog/:slug', destination: '/hu/blog/:slug', permanent: true },
+      // The host area was `/admin` until the route was renamed. Kept because
+      // the word collided with `profiles.role = 'admin'`, which is the operator
+      // who sees every event — not the couple whose wedding this is. Existing
+      // bookmarks and any link already sent to a host still work.
+      //
+      // Safe as a catch-all in a way the marketing ones are not: `/admin` has
+      // no siblings it could swallow, unlike a bare `/:path*` which would eat
+      // `/e/` and every printed QR code with it.
+      { source: '/admin', destination: '/host', permanent: true },
+      {
+        source: '/admin/:path*',
+        destination: '/host/:path*',
+        permanent: true,
+      },
     ]
   },
   images: {

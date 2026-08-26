@@ -48,12 +48,12 @@ export async function isAdmin(): Promise<boolean> {
 /**
  * Guard for a page or action that only an operator may reach.
  *
- * Sends a non-admin to `/admin` rather than to the login screen: they are
+ * Sends a non-admin to `/host` rather than to the login screen: they are
  * probably signed in and simply do not have the role, and bouncing a
  * legitimately signed-in host to a login form is a confusing way to say no.
  */
 export async function requireAdmin(): Promise<void> {
   const role = await getCurrentRole()
   if (role === 'admin') return
-  redirect(role ? '/admin' : '/admin/login')
+  redirect(role ? '/host' : '/host/login')
 }

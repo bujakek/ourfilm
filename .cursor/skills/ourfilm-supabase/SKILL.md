@@ -28,7 +28,7 @@ description: OurFilm's Supabase conventions — browser and server client setup 
 
 # OurFilm Supabase
 
-Postgres + Storage + Auth. Guests are **anonymous** (never signed in); only the host signs in, via magic link, to reach `/admin`.
+Postgres + Storage + Auth. Guests are **anonymous** (never signed in); only the host signs in, via magic link, to reach `/host`.
 
 ## Install — done
 
@@ -153,7 +153,7 @@ All three are `security definer`, `stable`, and `set search_path = ''` (so fully
 
 Why the rest is shaped this way:
 
-- Guests get **insert only**. No update, no delete — a guest can't edit or remove someone else's photo, and can't un-hide a moderated one (`hidden_at is null` is enforced in `with check`). The insert policies are `to anon, authenticated`, not `anon` alone: a leftover `/admin` session (iOS Camera opens a scanned QR in Safari, which shares those cookies) must not refuse a guest-shaped upload.
+- Guests get **insert only**. No update, no delete — a guest can't edit or remove someone else's photo, and can't un-hide a moderated one (`hidden_at is null` is enforced in `with check`). The insert policies are `to anon, authenticated`, not `anon` alone: a leftover `/host` session (iOS Camera opens a scanned QR in Safari, which shares those cookies) must not refuse a guest-shaped upload.
 - **An insert must not ask for the row back.** `supabase-js` `.insert()` alone sends `Prefer: return=minimal` and succeeds; chaining `.select()` asks to read what it just wrote, which guests have no policy for.
 - **RLS makes anon `update` and `delete` no-ops, not errors.** They return `204` having matched zero rows. When testing, assert on the row's state afterwards — a status code alone will convince you the table is wide open when it isn't.
 - `events.gallery_hidden_at` closes the gallery to guests while uploads continue; `event_photos()` returns nothing while it is set, and `event_by_slug()` exposes it as `gallery_private` so the UI can explain the state instead of showing an empty album. Host-togglable both ways.
@@ -181,7 +181,7 @@ create table public.profiles (
 - `public.is_admin()` **must** be `security definer`, for a sharper version of the reason `event_accepts_uploads()` is. Inside `profiles`' own policy an inline `exists (select … from profiles)` recurses; inside `events`' policy it is filtered by `profiles`' policy. Reading a role has to bypass RLS.
 - **No self-update policy on `profiles`.** A user may read their role and may not write it — otherwise `role = 'admin'` is one PATCH away for anyone with the anon key and a session, which is everyone. Promote through another admin, or through the SQL editor for the first one.
 - The admin bypass is OR'd into the existing host policies on `events`, `photos` and `storage.objects`. The bucket check stays _outside_ the OR: an admin session must not become a general key to buckets this app never created.
-- Consequence to expect on first login as an admin: `owned_events_with_previews()` is `security invoker`, so `/admin` lists **every** event in the system.
+- Consequence to expect on first login as an admin: `owned_events_with_previews()` is `security invoker`, so `/host` lists **every** event in the system.
 
 ## Billing
 
@@ -247,7 +247,7 @@ Two files, two purposes. Never import the server client from a Client Component.
 
 `lib/supabase/client.ts` — two browser helpers:
 
-- `createClient()` — `createBrowserClient` from `@supabase/ssr`. Reads the auth cookies. Use this for `/admin` sign-in and anything that should see the host session.
+- `createClient()` — `createBrowserClient` from `@supabase/ssr`. Reads the auth cookies. Use this for `/host` sign-in and anything that should see the host session.
 - `createGuestClient()` — `@supabase/supabase-js` with `persistSession: false`. Always the anon key, no cookies. **Guest uploads must use this**, so a leftover admin session on the phone cannot change the role Storage sees. The QR-opened page and the shared-link page then hit the API as the same role.
 
 ```ts
@@ -351,19 +351,19 @@ Magic link, guarded by **`proxy.ts`**. Next.js 16 renamed middleware:
 > **Email delivery is the weak link.** Supabase's built-in service only delivers
 > to project team members and allows 2 messages per hour, with no SLA — it is
 > documented as unsuitable for production. Magic link is the only way into
-> `/admin`, so configure custom SMTP before launch (ticket 6.7d — Resend:
+> `/host`, so configure custom SMTP before launch (ticket 6.7d — Resend:
 > `smtp.resend.com`, user `resend`, password = API key). Note that Resend's SMTP
 > needs a **verified domain**, so it cannot be set up before `ourfilm.app` resolves.
-> To sign in without waiting on mail, `POST /auth/v1/admin/generate_link` with
+> To sign in without waiting on mail, `POST /auth/v1/host/generate_link` with
 > the service key returns a usable link directly; that is how the auth flow is
 > tested here.
 
 ```ts
-// proxy.ts at the repo root — refresh the session and gate /admin
+// proxy.ts at the repo root — refresh the session and gate /host
 export function proxy(request: NextRequest) {
   /* … */
 }
-export const proxyConfig = { matcher: ['/admin/:path*'] }
+export const proxyConfig = { matcher: ['/host/:path*'] }
 ```
 
 |        | Next 14–15      | **Next 16 (this project)** |
@@ -372,7 +372,7 @@ export const proxyConfig = { matcher: ['/admin/:path*'] }
 | Export | `middleware()`  | `proxy()`                  |
 | Config | `config`        | `proxyConfig`              |
 
-This matters more than a rename usually would: a `middleware.ts` in a Next 16 project is **silently ignored**. There is no warning and no error — the file simply never runs, and `/admin` ends up completely unguarded while looking protected in the source tree. Verify the gate by actually requesting `/admin` while signed out.
+This matters more than a rename usually would: a `middleware.ts` in a Next 16 project is **silently ignored**. There is no warning and no error — the file simply never runs, and `/host` ends up completely unguarded while looking protected in the source tree. Verify the gate by actually requesting `/host` while signed out.
 
 Inside `proxy()`, create a server client bound to the request/response cookies, call `supabase.auth.getUser()`, and redirect to the login route when there's no user. Use `getUser()` for authorization decisions — never trust `getSession()` on the server, since it reads unverified cookie data.
 

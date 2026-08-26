@@ -3,7 +3,7 @@
 import { Check } from 'lucide-react'
 import { useOptimistic, useState, useTransition } from 'react'
 
-import { setShotsPerParticipant } from '@/app/admin/events/[slug]/actions'
+import { setShotsPerParticipant } from '@/app/host/events/[slug]/actions'
 import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
 
 /**

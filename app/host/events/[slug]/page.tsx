@@ -13,9 +13,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
-import { ModerationGrid } from '@/components/admin/moderation-grid'
-import { QrCard } from '@/components/admin/qr-card'
-import { ModerationGridSkeleton } from '@/components/admin/skeletons'
+import { ModerationGrid } from '@/components/host/moderation-grid'
+import { QrCard } from '@/components/host/qr-card'
+import { ModerationGridSkeleton } from '@/components/host/skeletons'
 import { getEventQuota } from '@/lib/billing'
 import { captureWindowState } from '@/lib/camera'
 import { revealModeLabel } from '@/lib/event-copy'
@@ -68,7 +68,7 @@ export default async function AdminEventPage({ params }: Props) {
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
       <Link
-        href="/admin"
+        href="/host"
         className="print-hidden inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
@@ -90,7 +90,7 @@ export default async function AdminEventPage({ params }: Props) {
         </div>
 
         <Link
-          href={`/admin/events/${event.slug}/settings`}
+          href={`/host/events/${event.slug}/settings`}
           aria-label="Beállítások"
           title="Beállítások"
           className="glass glass-hover inline-flex size-11 shrink-0 items-center justify-center rounded-full"
@@ -256,7 +256,7 @@ async function EventStanding({
 
       {!quota.unlimited ? (
         <Link
-          href={`/admin/events/${slug}/settings`}
+          href={`/host/events/${slug}/settings`}
           className="glass glass-hover mt-3 flex items-center justify-between gap-4 rounded-2xl px-5 py-4"
         >
           <span className="min-w-0">
@@ -320,7 +320,7 @@ async function AlbumDownload({
         </button>
       ) : (
         <a
-          href={`/admin/events/${slug}/export`}
+          href={`/host/events/${slug}/export`}
           className="btn-shine inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground"
         >
           <Download className="size-5" strokeWidth={1.8} />

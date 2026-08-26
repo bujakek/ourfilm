@@ -3,14 +3,14 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
-import { AuthDialog } from '@/components/admin/onboarding/auth-dialog'
-import { DraftRestoreDialog } from '@/components/admin/onboarding/draft-restore-dialog'
-import type { OnboardingNav } from '@/components/admin/onboarding/onboarding-shell'
-import { useBrowserTimeZone } from '@/components/admin/onboarding/use-browser-time-zone'
+import { AuthDialog } from '@/components/host/onboarding/auth-dialog'
+import { DraftRestoreDialog } from '@/components/host/onboarding/draft-restore-dialog'
+import type { OnboardingNav } from '@/components/host/onboarding/onboarding-shell'
+import { useBrowserTimeZone } from '@/components/host/onboarding/use-browser-time-zone'
 import {
   invalidateStoredDraft,
   useStoredDraft,
-} from '@/components/admin/onboarding/use-stored-draft'
+} from '@/components/host/onboarding/use-stored-draft'
 import type { RevealMode, ShotOption } from '@/lib/camera'
 import {
   clearDraft,
@@ -285,7 +285,7 @@ function OnboardingFlow({
   const nav = (extra?: Partial<OnboardingNav>): OnboardingNav => ({
     step,
     stepCount: STEP_COUNT,
-    backHref: step === 0 ? '/admin' : undefined,
+    backHref: step === 0 ? '/host' : undefined,
     onBack: step === 0 ? undefined : () => setStep((s) => s - 1),
     onNext: () => setStep((s) => Math.min(LAST_STEP, s + 1)),
     error,

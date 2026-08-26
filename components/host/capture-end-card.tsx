@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 
-import { setCaptureEnd } from '@/app/admin/events/[slug]/actions'
+import { setCaptureEnd } from '@/app/host/events/[slug]/actions'
 
 /**
  * Moves the moment the camera closes.

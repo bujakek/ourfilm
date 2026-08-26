@@ -37,7 +37,7 @@ export async function completeMagicLink({
       : { error: new Error('Hiányzó belépési kód') }
 
   if (error) {
-    redirect('/admin/login?error=link', RedirectType.replace)
+    redirect('/host/login?error=link', RedirectType.replace)
   }
 
   redirect(safeNext(next, await requestOrigin()), RedirectType.replace)

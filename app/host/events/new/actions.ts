@@ -178,7 +178,7 @@ export async function createEventFromDraft(
       .eq('creation_key', creationKey)
       .maybeSingle()
     if (existing) {
-      return { ok: true, destination: `/admin/events/${existing.slug}` }
+      return { ok: true, destination: `/host/events/${existing.slug}` }
     }
   }
 
@@ -225,7 +225,7 @@ export async function createEventFromDraft(
           .eq('creation_key', creationKey)
           .maybeSingle()
         if (raced)
-          return { ok: true, destination: `/admin/events/${raced.slug}` }
+          return { ok: true, destination: `/host/events/${raced.slug}` }
         return { ok: false, error: 'Nem sikerült létrehozni. Próbáld újra.' }
       }
       // Otherwise it is a slug collision, which a fresh random suffix clears.
@@ -252,21 +252,21 @@ export async function createEventFromDraft(
   // only a paid `purchases` row lifts it. So the paid choice means "and now go
   // pay" — a draft that says `full` buys nothing on its own, and an abandoned
   // checkout leaves an ordinary free event.
-  let destination = `/admin/events/${slug}`
+  let destination = `/host/events/${slug}`
 
   if (planRaw === 'full') {
     // Settings, not the event page, whenever the payment cannot be started
     // here: that is where the billing card is, and it explains the situation —
     // payments not switched on, or try again — better than a silent landing on
     // the QR code would.
-    destination = `/admin/events/${slug}/settings`
+    destination = `/host/events/${slug}/settings`
     if (stripeIsConfigured()) {
       try {
         // An admin's own events are already unlimited, so there is nothing to
         // sell them. Same predicate the billing card reads.
         const quota = await getEventQuota(eventId)
         if (quota.unlimited) {
-          destination = `/admin/events/${slug}`
+          destination = `/host/events/${slug}`
         } else {
           destination = await createEventCheckoutUrl({
             eventId,

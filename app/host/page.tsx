@@ -1,5 +1,5 @@
-import { EventList } from '@/components/admin/event-list'
-import { EventListSkeleton } from '@/components/admin/skeletons'
+import { EventList } from '@/components/host/event-list'
+import { EventListSkeleton } from '@/components/host/skeletons'
 import { captureIsOpen, getEventListItems } from '@/lib/events'
 import { CalendarPlus, LogOut, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -20,7 +20,7 @@ export default function AdminPage() {
         <h1 className="text-3xl font-semibold tracking-tight">Eseményeid</h1>
         <div className="flex items-center gap-2">
           <Link
-            href="/admin/events/new"
+            href="/host/events/new"
             className="btn-shine inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
           >
             <Plus className="size-4" strokeWidth={2.2} />
@@ -60,7 +60,7 @@ async function OwnedEventList() {
           QR-kódot és meghívólinket.
         </p>
         <Link
-          href="/admin/events/new"
+          href="/host/events/new"
           className="btn-shine mt-3 inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground"
         >
           <Plus className="size-4" strokeWidth={2.2} />

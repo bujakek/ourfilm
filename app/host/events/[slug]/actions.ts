@@ -27,9 +27,9 @@ import { createClient } from '@/lib/supabase/server'
  *  every screen, so a settings change that skipped these would leave a phone
  *  showing an old capture window until something else happened to refresh it. */
 function revalidateEvent(slug: string) {
-  revalidatePath(`/admin/events/${slug}`)
-  revalidatePath(`/admin/events/${slug}/settings`)
-  revalidatePath('/admin')
+  revalidatePath(`/host/events/${slug}`)
+  revalidatePath(`/host/events/${slug}/settings`)
+  revalidatePath('/host')
   revalidatePath(`/e/${slug}`, 'layout')
 }
 
@@ -63,7 +63,7 @@ export async function setPhotoHidden(
     throw new Error('A kép nem módosult — lehet, hogy nincs jogosultságod.')
   }
 
-  revalidatePath(`/admin/events/${slug}`)
+  revalidatePath(`/host/events/${slug}`)
   revalidatePath(`/e/${slug}/gallery`)
 }
 
@@ -355,6 +355,6 @@ export async function deleteEvent(slug: string) {
     throw new Error('Az esemény nem törlődött.')
   }
 
-  revalidatePath('/admin')
-  redirect('/admin')
+  revalidatePath('/host')
+  redirect('/host')
 }

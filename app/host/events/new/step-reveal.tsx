@@ -2,12 +2,12 @@
 
 import { CalendarClock, Clock, Hourglass } from 'lucide-react'
 
-import { DelayStepper } from '@/components/admin/onboarding/delay-stepper'
+import { DelayStepper } from '@/components/host/onboarding/delay-stepper'
 import {
   OnboardingShell,
   type OnboardingNav,
-} from '@/components/admin/onboarding/onboarding-shell'
-import { RevealPreview } from '@/components/admin/onboarding/reveal-preview'
+} from '@/components/host/onboarding/onboarding-shell'
+import { RevealPreview } from '@/components/host/onboarding/reveal-preview'
 import type { RevealMode } from '@/lib/camera'
 import { formatRevealBadge } from '@/lib/format'
 

@@ -48,7 +48,7 @@ function EventRow({ event }: { event: EventListItem }) {
   return (
     <li>
       <Link
-        href={`/admin/events/${event.slug}`}
+        href={`/host/events/${event.slug}`}
         className="glass glass-hover block rounded-2xl px-5 py-4"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-x-4">

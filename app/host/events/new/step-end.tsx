@@ -1,10 +1,10 @@
 'use client'
 
-import { MonthCalendar } from '@/components/admin/onboarding/month-calendar'
+import { MonthCalendar } from '@/components/host/onboarding/month-calendar'
 import {
   OnboardingShell,
   type OnboardingNav,
-} from '@/components/admin/onboarding/onboarding-shell'
+} from '@/components/host/onboarding/onboarding-shell'
 
 /**
  * Question two: when does the party end?

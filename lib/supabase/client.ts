@@ -10,7 +10,7 @@ import { publicSupabaseEnv } from './env'
  *
  * Guest *writes* must not use this. `createBrowserClient` reads the auth
  * cookies, so a host who scanned the table QR in the same Safari that is
- * signed into `/admin` would upload as `authenticated`. The guest insert
+ * signed into `/host` would upload as `authenticated`. The guest insert
  * policies used to be `to anon` only, and even after they accept both roles,
  * an expired leftover session would still 401 a wedding guest's upload.
  */

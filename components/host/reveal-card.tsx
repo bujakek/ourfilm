@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 
-import { setReveal } from '@/app/admin/events/[slug]/actions'
+import { setReveal } from '@/app/host/events/[slug]/actions'
 import type { RevealMode } from '@/lib/camera'
 
 const CHOICES: { mode: RevealMode; title: string; detail: string }[] = [

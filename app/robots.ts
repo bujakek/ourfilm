@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
       // means the noindex on /e/ routes is actually read and honoured, so a
       // leak self-corrects. Privacy comes from the unguessable slug, not from
       // asking crawlers politely.
-      disallow: '/admin',
+      disallow: '/host',
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   }

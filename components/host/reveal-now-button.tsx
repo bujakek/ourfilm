@@ -3,7 +3,7 @@
 import { Eye, Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState, useTransition } from 'react'
 
-import { revealNow } from '@/app/admin/events/[slug]/actions'
+import { revealNow } from '@/app/host/events/[slug]/actions'
 
 /**
  * Open the gallery now, ahead of whatever the reveal was set to.

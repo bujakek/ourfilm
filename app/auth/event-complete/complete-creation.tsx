@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { LoadingStatus } from '@/components/loading-status'
 import { clearDraft, loadDraft, saveDraft } from '@/lib/event-draft'
-import { createEventFromDraft } from '@/app/admin/events/new/actions'
+import { createEventFromDraft } from '@/app/host/events/new/actions'
 
 /**
  * What this screen can end up showing. Success is not among them: it navigates
@@ -53,7 +53,7 @@ async function run(): Promise<Outcome> {
   // form. Nothing was asked for, so nothing is created — back to the flow,
   // where the restore prompt will offer it.
   if (!draft.pendingCreate) {
-    window.location.replace('/admin/events/new')
+    window.location.replace('/host/events/new')
     return { kind: 'working' }
   }
 
@@ -98,7 +98,7 @@ async function run(): Promise<Outcome> {
   if (result.reason === 'auth') {
     // The session did not survive the round trip. The flow asks again, with the
     // draft intact.
-    window.location.replace('/admin/events/new')
+    window.location.replace('/host/events/new')
     return { kind: 'working' }
   }
 
@@ -132,7 +132,7 @@ export function CompleteCreation() {
         <Outcome
           title="Nem találtuk az esemény piszkozatát"
           detail="A piszkozat csak abban a böngészőben érhető el, ahol elkezdted az eseményt."
-          href="/admin/events/new"
+          href="/host/events/new"
           cta="Új esemény létrehozása"
         />
       )
@@ -143,7 +143,7 @@ export function CompleteCreation() {
           detail="A korábban kiválasztott időpont már elmúlt. Válassz egy új befejezési időpontot."
           // `resume=end` reopens the flow on the date screen with every other
           // answer still in place, rather than starting over.
-          href="/admin/events/new?resume=end"
+          href="/host/events/new?resume=end"
           cta="Időpont választása"
         />
       )
@@ -152,7 +152,7 @@ export function CompleteCreation() {
         <Outcome
           title="Nem sikerült létrehozni"
           detail={outcome.message}
-          href="/admin/events/new"
+          href="/host/events/new"
           cta="Vissza a beállításokhoz"
         />
       )

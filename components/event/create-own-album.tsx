@@ -56,7 +56,7 @@ export function CreateOwnAlbum() {
       </p>
 
       <Link
-        href="/admin/login"
+        href="/host/login"
         className="btn-shine mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
       >
         Saját album indítása — ingyen

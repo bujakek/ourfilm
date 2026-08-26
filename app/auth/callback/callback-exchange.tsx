@@ -27,9 +27,9 @@ export function CallbackExchange() {
     }).catch((error) => {
       // `redirect()` reports itself by throwing, and a Server Action re-throws
       // that on the client — so the success path arrives here too. Treating it
-      // as a failure sent every sign-in to `/admin/login?error=link`, which the
-      // proxy then bounced to `/admin` because the session was by then real.
-      // That looked correct for years of ordinary logins, because `/admin` is
+      // as a failure sent every sign-in to `/host/login?error=link`, which the
+      // proxy then bounced to `/host` because the session was by then real.
+      // That looked correct for years of ordinary logins, because `/host` is
       // where they were going anyway; it only became visible when a link
       // carried a `next` and the destination was silently discarded.
       if (isRedirect(error)) return
@@ -39,7 +39,7 @@ export function CallbackExchange() {
       // navigation cannot strand a remount on the spinner with retries
       // permanently disabled.
       started = false
-      window.location.replace('/admin/login?error=link')
+      window.location.replace('/host/login?error=link')
     })
   }, [])
 

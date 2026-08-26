@@ -62,7 +62,7 @@ export function formatDelayDays(days: number): string {
  * never is — a magic-link signup carries only an email, and reading the account
  * on the create page would make that segment suspend into the admin loading
  * boundary, which is a hydration bug rather than a nicety (see the note on
- * `app/admin/events/new/page.tsx`). So every caller passes null for now, and
+ * `app/host/events/new/page.tsx`). So every caller passes null for now, and
  * the generic pair is what a host actually sees.
  */
 export function eventNameSuggestions(firstName: string | null): string[] {

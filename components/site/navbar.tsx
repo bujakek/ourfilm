@@ -4,6 +4,8 @@ import { type Locale, localePath } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { Aperture, Menu, X } from 'lucide-react'
 import Link from 'next/link'
+
+import { CREATE_EVENT_PATH, LOGIN_PATH } from '@/lib/routes'
 import { useEffect, useState } from 'react'
 
 /**
@@ -89,7 +91,7 @@ export function Navbar({ locale }: { locale: Locale }) {
         </ul>
 
         <Link
-          href="/admin/login"
+          href={LOGIN_PATH}
           className={cn(
             'hidden shrink-0 rounded-full text-foreground/80 transition-all duration-200 hover:text-foreground md:inline-flex',
             scrolled ? 'px-2.5 py-1.5 text-[13px]' : 'px-3 py-2 text-sm',
@@ -99,7 +101,7 @@ export function Navbar({ locale }: { locale: Locale }) {
         </Link>
 
         <Link
-          href="/admin/login"
+          href={CREATE_EVENT_PATH}
           className={cn(
             'btn-shine hidden shrink-0 rounded-full bg-primary font-semibold text-primary-foreground transition-all duration-200 hover:scale-[1.03] md:inline-flex',
             scrolled ? 'px-3.5 py-1.5 text-[13px]' : 'px-4 py-2 text-sm',
@@ -148,14 +150,14 @@ export function Navbar({ locale }: { locale: Locale }) {
             </Link>
           ))}
           <Link
-            href="/admin/login"
+            href={LOGIN_PATH}
             onClick={() => setOpen(false)}
             className="rounded-2xl px-5 py-4 text-lg font-medium text-foreground/90 transition-colors hover:bg-white/5"
           >
             Belépés
           </Link>
           <Link
-            href="/admin/login"
+            href={CREATE_EVENT_PATH}
             onClick={() => setOpen(false)}
             className="btn-shine mt-2 rounded-2xl bg-primary px-5 py-4 text-center text-lg font-semibold text-primary-foreground"
           >

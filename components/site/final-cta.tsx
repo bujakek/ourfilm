@@ -3,6 +3,8 @@ import Image from 'next/image'
 import { Reveal } from './reveal'
 import Link from 'next/link'
 
+import { CREATE_EVENT_PATH } from '@/lib/routes'
+
 const floatingPhotos = [
   {
     src: '/images/wedding-dance.webp',
@@ -81,7 +83,7 @@ export function FinalCta() {
               </p>
               <div className="mt-9 flex justify-center">
                 <Link
-                  href="/admin/login"
+                  href={CREATE_EVENT_PATH}
                   className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
                 >
                   Próbáld ki ingyen

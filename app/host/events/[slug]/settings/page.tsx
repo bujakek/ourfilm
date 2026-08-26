@@ -1,10 +1,10 @@
-import { BillingCard } from '@/components/admin/billing-card'
-import { CaptureEndCard } from '@/components/admin/capture-end-card'
-import { DangerZone } from '@/components/admin/danger-zone'
-import { GuestsToggle } from '@/components/admin/guests-toggle'
-import { RevealCard } from '@/components/admin/reveal-card'
-import { RevealNowButton } from '@/components/admin/reveal-now-button'
-import { ShotsCard } from '@/components/admin/shots-card'
+import { BillingCard } from '@/components/host/billing-card'
+import { CaptureEndCard } from '@/components/host/capture-end-card'
+import { DangerZone } from '@/components/host/danger-zone'
+import { GuestsToggle } from '@/components/host/guests-toggle'
+import { RevealCard } from '@/components/host/reveal-card'
+import { RevealNowButton } from '@/components/host/reveal-now-button'
+import { ShotsCard } from '@/components/host/shots-card'
 import {
   type EventQuota,
   formatAmount,
@@ -81,7 +81,7 @@ export default async function AdminEventSettingsPage({
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
       <Link
-        href={`/admin/events/${event.slug}`}
+        href={`/host/events/${event.slug}`}
         className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" />

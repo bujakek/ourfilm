@@ -2,11 +2,11 @@
 
 import { Check } from 'lucide-react'
 
-import { AccountNotice } from '@/components/admin/onboarding/account-notice'
+import { AccountNotice } from '@/components/host/onboarding/account-notice'
 import {
   OnboardingShell,
   type OnboardingNav,
-} from '@/components/admin/onboarding/onboarding-shell'
+} from '@/components/host/onboarding/onboarding-shell'
 import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'

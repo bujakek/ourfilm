@@ -33,7 +33,7 @@ const HALF_HOUR_MS = 30 * 60 * 1000
  * account is asked for when there is finally something to save. Nothing here
  * reads or writes a row.
  *
- * **This component must stay synchronous.** `app/admin/loading.tsx` puts a
+ * **This component must stay synchronous.** `app/host/loading.tsx` puts a
  * Suspense boundary around every admin segment, and an `async` page here makes
  * this segment suspend into it — at which point the boundary never completes on
  * the client and the whole flow is served as unhydrated markup: the suggestions
@@ -42,7 +42,7 @@ const HALF_HOUR_MS = 30 * 60 * 1000
  * A/B (remove the loading file and it hydrates, restore it and it does not).
  *
  * That is why the host's account is not read here. `proxy.ts` already gates
- * `/admin/:path*`, so there is nothing to check — and the only thing an
+ * `/host/:path*`, so there is nothing to check — and the only thing an
  * `await supabase.auth.getUser()` would add is a first name for two of the five
  * ÖTLETEK. Magic-link signups carry no name, so every account today falls back
  * anyway; `eventNameSuggestions` takes one the day a provider supplies it, and

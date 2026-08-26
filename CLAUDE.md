@@ -165,7 +165,7 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   and drop the Resend SMTP settings. Details in
   `supabase/templates/README.md`.
 
-- `lib/slug.ts` holds the canonical `slugify()` — admin and the QR preview must both use it so printed QR codes never disagree.
+- `lib/slug.ts` holds the canonical `slugify()` — the host area and the QR preview must both use it so printed QR codes never disagree.
 - `vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
   (Zurich) and Vercel's default is `iad1` (Washington DC), so every query on
   the guest path was crossing the Atlantic twice. Frankfurt is the closest
@@ -176,10 +176,10 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
 
 `app/auth/callback/callback-exchange.tsx` calls `completeMagicLink` and used to
 treat any rejection as a transport failure, sending the browser to
-`/admin/login?error=link`. But `redirect()` reports itself **by throwing**, and a
+`/host/login?error=link`. But `redirect()` reports itself **by throwing**, and a
 Server Action re-throws that on the client — so the success path arrived in the
 same `catch`. The proxy then bounced the by-then-signed-in visitor from the login
-route to `/admin`, which is where an ordinary login was going anyway. It looked
+route to `/host`, which is where an ordinary login was going anyway. It looked
 correct for every login this product has ever done, and only became visible when
 a link carried a `next`: the destination was silently discarded.
 
@@ -223,8 +223,8 @@ than their own.
 
 ## The create flow is four full-screen questions (settled)
 
-`/admin/events/new` asks four things, one per screen, in a shared shell
-(`components/admin/onboarding/*`): the name, when the event ends, when the
+`/host/events/new` asks four things, one per screen, in a shared shell
+(`components/host/onboarding/*`): the name, when the event ends, when the
 photos appear, and — sharing the last screen — how many guests, how long a roll
 is, and who may look. Modelled closely on Once's onboarding: full-bleed dark
 screens, one question each, a back arrow top-left, progress dots and the CTA
@@ -248,7 +248,7 @@ does it need. Neither of the other two depends on the first being answered.
   (`browserTimeZone()`) and stored with the event, so every later screen still
   formats in the event's own zone. The zone reaches the client one render late,
   through `useSyncExternalStore` rather than an effect — see
-  `components/admin/onboarding/use-browser-time-zone.ts`.
+  `components/host/onboarding/use-browser-time-zone.ts`.
 - **The delayed reveal is counted in days** (1–30), resolved as
   `capture_end_at + n * 24h` by `revealAfterDelay()` in `lib/onboarding.ts`. The
   form posts the day count, not an instant, and the action recomputes it.
@@ -267,7 +267,7 @@ does it need. Neither of the other two depends on the first being answered.
   checkout — that rule is about who is holding the phone, not about where the
   button lives. When `stripeIsConfigured()` is false the paid tile is disabled
   and reads "Hamarosan" rather than a price, the same honesty
-  `components/admin/billing-card.tsx` keeps.
+  `components/host/billing-card.tsx` keeps.
 - **`createEventCheckoutUrl` (`lib/stripe/checkout.ts`) is shared** by the
   billing card and the create action. Session metadata, the success and cancel
   URLs and the `pending` ledger row all live in one place, because every one of
@@ -276,8 +276,8 @@ does it need. Neither of the other two depends on the first being answered.
   one. `cover_path` stays nullable and every surface already renders an event
   without a cover; the upload branch in `createEvent` still works and is waiting
   for whatever surfaces the picker next.
-- **`app/admin/events/new/page.tsx` must stay synchronous.** `app/admin/loading.tsx`
-  wraps every admin segment in a Suspense boundary, and an `async` page here
+- **`app/host/events/new/page.tsx` must stay synchronous.** `app/host/loading.tsx`
+  wraps every host segment in a Suspense boundary, and an `async` page here
   suspends into it — after which the boundary never completes on the client and
   the whole flow is served as unhydrated markup. Same Next 16.3 failure as the
   `loading.tsx` note on `app/e/[slug]`, reproduced here by A/B.
@@ -288,7 +288,7 @@ Nobody is asked for an account before they have seen what they are signing up
 for. The whole flow is a form; the account is asked for on the last screen, when
 there is finally something to save.
 
-- **`/admin/events/new` is in `PUBLIC_ADMIN_PATHS`** (`proxy.ts`), matched
+- **`/host/events/new` is in `PUBLIC_ADMIN_PATHS`** (`proxy.ts`), matched
   exactly — never by prefix, because it is one segment away from routes that
   list and mutate real events.
 - **The answers live in `localStorage`** under `ourfilm:event-draft:v1`
@@ -302,7 +302,7 @@ there is finally something to save.
   made the restore prompt stop appearing, and `use-stored-draft.ts` primes its
   snapshot at module load to win the same race from the other side.
 - **`/auth/event-complete` is where the magic link comes back to**, and it is
-  under `/auth` for two independent reasons. Under `/admin` it never hydrated
+  under `/auth` for two independent reasons. Under `/host` it never hydrated
   (the `loading.tsx` trap again) so it silently did nothing; and a Server Action
   posts to the path of the page that owns it, so the proxy answered
   `createEventFromDraft`'s own POST with a redirect and discarded the call.
@@ -317,16 +317,16 @@ there is finally something to save.
 
 ## Optimistic updates (settled)
 
-Three admin controls show the result before the server has confirmed it. All
+Three host-area controls show the result before the server has confirmed it. All
 revert on their own — none carries hand-written rollback code.
 
-- **`components/admin/moderation-grid.tsx`** — `useOptimistic` is held on the
+- **`components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
   **grid**, not the tile, so the "N rejtve" counter moves with the photo it
   describes. Per-tile state would flip the tile instantly and leave the count a
   round trip behind, which reads as a bug.
-- **`components/admin/guests-toggle.tsx`** — same reasoning, one boolean. A
+- **`components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
-- **`components/admin/shots-card.tsx`** — a five-way choice whose selected value
+- **`components/host/shots-card.tsx`** — a five-way choice whose selected value
   is visible at a glance, so showing it immediately cannot mislead.
 
 **The two date cards are deliberately _not_ optimistic.**
@@ -354,17 +354,25 @@ because a client-side counter is a display and the database is the count.
 | `/e/[slug]`                                                                                | Join screen guests land on from the QR code. Redirects to the camera once they have joined |
 | `/e/[slug]/camera`                                                                         | The camera. Where shots are taken                                                          |
 | `/e/[slug]/gallery`                                                                        | Shared gallery, reveal-gated                                                               |
-| `/admin`                                                                                   | Host/admin area, Supabase Auth magic link                                                  |
+| `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                        |
 
-**Public pages are locale-prefixed; the product is not.** `/e/`, `/admin`,
+**Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
 with the first, and `proxy.ts` guards the second by the exact path
-`/admin/:path*`. Putting a locale in front of either would silently break a
+`/host/:path*`. Putting a locale in front of either would silently break a
 printed code or an auth gate.
+
+**The host area was `/admin` until it was renamed**, and the reason is worth
+keeping: `profiles.role = 'admin'` is a real role — the operator who sees every
+event — so the route was spending that word on the couple whose wedding it is.
+`/host` is the product's own vocabulary and the exact counterpart of the guest
+side's `/e/`. `next.config.mjs` 308s `/admin` and `/admin/:path*` across; safe as
+a catch-all in a way a bare one is not, because `/admin` has no siblings to
+swallow. The **role** stays `admin` — only the route moved.
 
 Every pre-prefix URL (`/arak`, `/blog/:slug`, …) 308s to its `/hu` twin from
 `next.config.mjs`. Those redirects are spelled out one by one — a catch-all
-would swallow `/e/` and `/admin`.
+would swallow `/e/` and `/host`.
 
 Plus one machine endpoint: `POST /api/stripe/webhook`, which is the only thing
 that marks a purchase paid. Under `/api/` rather than the Hungarian namespace
@@ -429,7 +437,7 @@ JS function.
 5. **`<html lang>`.** It is fixed at `hu` in the single root layout, which is
    correct only while Hungarian is the only locale. Making it vary means
    splitting into two root layouts (`app/(site)/[locale]/layout.tsx` for
-   marketing, `app/(product)/layout.tsx` for `/e/` and `/admin`) and deleting
+   marketing, `app/(product)/layout.tsx` for `/e/` and `/host`) and deleting
    `app/layout.tsx`. That also forces the global 404 onto
    `experimental.globalNotFound`, which is why it was deferred rather than done
    up front.
@@ -444,8 +452,8 @@ inert — unread and unvalidated — until step 1.
   film has to belong to somebody, and the gallery credits each photo to the
   person who took it. Everything past that is the participant session
   (`lib/participants.ts`).
-- **Host/admin: Supabase Auth magic link.** Only the admin area is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
-- **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/admin` to list **every** event once you promote an account.
+- **Host: Supabase Auth magic link.** Only `/host` is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
+- **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/host` to list **every** event once you promote an account.
 - Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Slugs therefore carry a random suffix (`anna-peter-k3f9x7`); `slugify()` stays deterministic for the QR preview, and `generateEventSlug()` is what real events get. Never create an event with a bare `slugify()` result.
 
 ## Data model (settled)
@@ -516,7 +524,7 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
   refunding on hide would make hiding a way to shoot forever.
 
-**Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); admin reads the tables directly under ownership policies. Details in the Supabase skill.
+**Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); the host area reads the tables directly under ownership policies. Details in the Supabase skill.
 
 - **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `created_at`. One row per account, written by a trigger at signup. Read it through `lib/roles.ts`, never inline.
 
@@ -592,8 +600,8 @@ gates. `event_upload_quota` (photos) became `event_participant_quota`
 Key files: `lib/stripe/*` (`checkout.ts` builds the session for both entry
 points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
 `lib/roles.ts`, `app/api/stripe/webhook/route.ts`,
-`app/admin/events/[slug]/billing-actions.ts`,
-`components/admin/billing-card.tsx`, `app/admin/events/new/step-guests.tsx`.
+`app/host/events/[slug]/billing-actions.ts`,
+`components/host/billing-card.tsx`, `app/host/events/new/step-guests.tsx`.
 
 **`/hu/arak` is knowingly out of date.** It still advertises a "5 feltöltött
 fotó" free tier and "Korlátlan fotó" on the paid one, neither of which is true
@@ -610,7 +618,7 @@ search. Fix it in that phase, not by halves.
    front/back switch, a `capture` file-input fallback when the live camera is
    refused or unavailable. No preview, no retake.
 3. Gallery `/e/[slug]/gallery` — reveal-gated, hidden photos excluded
-4. Admin `/admin` — four-step create flow, QR, moderation, early reveal,
+4. Admin `/host` — four-step create flow, QR, moderation, early reveal,
    **ZIP download of the whole album**
 5. QR code generated from the final event URL
 
@@ -688,7 +696,7 @@ the Hungarian copy in the same change.
 
 ## Conventions
 
-- `components/site/*` marketing sections · `components/event/*` guest-facing event UI · `components/admin/*` admin UI · `components/ui/*` shadcn primitives
+- `components/site/*` marketing sections · `components/event/*` guest-facing event UI · `components/host/*` host-area UI · `components/ui/*` shadcn primitives
 - Files kebab-case; components named exports (`export function EventHeader()`), no default exports except App Router pages/layouts
 - Server Components by default; add `'use client'` only for state, refs, or browser APIs
 - Shared logic in `lib/` (`lib/slug.ts`, `lib/supabase/*`); never duplicate a helper across components

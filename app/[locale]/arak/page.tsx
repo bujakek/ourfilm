@@ -3,6 +3,8 @@ import { hasRealCompanyDetails } from '@/lib/company'
 import { Check } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+
+import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
@@ -153,7 +155,7 @@ export default async function ArakPage({ params }: Props) {
                   href={
                     tier.name === 'Partnereknek'
                       ? localePath(locale, '/kapcsolat')
-                      : '/admin/login'
+                      : CREATE_EVENT_PATH
                   }
                   className={`mt-8 inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold transition-transform hover:scale-[1.03] ${
                     tier.featured

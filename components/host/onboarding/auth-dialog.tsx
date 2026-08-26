@@ -14,7 +14,7 @@ const INITIAL: Result = { status: 'idle' }
 /**
  * Asks for an account at the end of the flow, not the start.
  *
- * The same magic link `/admin/login` sends, and deliberately the same
+ * The same magic link `/host/login` sends, and deliberately the same
  * `signInWithOtp` call with `shouldCreateUser` — one link both signs up and
  * signs in, so there is no "register or log in?" fork to put in front of
  * someone who has already answered four questions. No new provider was added
