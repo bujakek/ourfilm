@@ -52,6 +52,9 @@ const draftSchema = z.object({
   ),
   plan: z.enum(['free', 'full']),
   guestsCanView: z.boolean(),
+  /** Required on the final screen. Persisted so the explicit choice survives
+   *  the magic-link round trip together with the rest of the draft. */
+  legalAccepted: z.boolean(),
   /** Which screen to reopen on. Clamped by the form, not here — the number of
    *  steps is the form's business. */
   step: z.number().int().min(0).max(10),
@@ -89,6 +92,7 @@ export function emptyDraft(
     shots: DEFAULT_SHOTS,
     plan: 'free',
     guestsCanView: true,
+    legalAccepted: false,
     step: 0,
     creationKey,
     pendingCreate: false,

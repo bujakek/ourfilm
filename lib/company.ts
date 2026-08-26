@@ -118,8 +118,15 @@ export const PAYMENT_PROCESSOR = {
 /** Who sends the magic-link emails. Named as a processor in the privacy notice. */
 export const EMAIL_PROVIDER = 'Resend'
 
-/** Shown at the foot of both legal pages. Update when their text changes. */
-export const LAST_UPDATED = '2026. augusztus 21.'
+/**
+ * Version recorded on Stripe Checkout Sessions when a host starts a paid
+ * order. Keep this stable until the terms materially change; a display date is
+ * not a useful audit trail on its own.
+ */
+export const LEGAL_VERSION = '2026-08-26'
+
+/** Shown at the foot of the legal pages. Update when their text changes. */
+export const LAST_UPDATED = '2026. augusztus 26.'
 
 /**
  * Flips the legal pages *and* the price page out of draft: hides the

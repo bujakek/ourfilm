@@ -67,8 +67,14 @@ const columns: FooterColumn[] = [
     heading: 'Cég',
     links: [
       { label: 'Rólunk', href: '/rolunk' },
+      { label: 'Impresszum', href: '/impresszum' },
       { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
       { label: 'Általános Szerződési Feltételek', href: '/aszf' },
+      { label: 'Elállás', href: '/elallas' },
+      {
+        label: 'Jogsértő tartalom bejelentése',
+        href: '/jogserto-tartalom-bejelentese',
+      },
     ],
   },
 ]

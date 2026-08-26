@@ -13,121 +13,97 @@ import {
   LAST_UPDATED,
   PAYMENT_PROCESSOR,
 } from '@/lib/company'
+import { isLocale } from '@/lib/i18n'
+import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { CONTACT_EMAIL } from '@/lib/site'
 import type { Metadata } from 'next'
-import { isLocale } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'ÁSZF — OurFilm',
   description:
     'Az OurFilm általános szerződési feltételei házigazdák és vendégek számára.',
-  // Indexable as soon as the company details are real; see lib/company.ts.
   ...(hasRealCompanyDetails ? {} : { robots: { index: false, follow: true } }),
 }
 
-// Built against 45/2014. (II. 26.) Korm. rendelet and the Elker tv. rather
-// than a competitor's terms — none of the comparable services are Hungarian.
-// The mandatory identifiers come from lib/company.ts; everything else is
-// written to match what the product actually does.
+// Lean pilot terms. They describe the service that exists today and avoid
+// promises which would require a moderation back office, a retention worker or
+// a separate enterprise contract process.
 const sections: LegalSection[] = [
   {
-    title: 'A szolgáltató',
+    title: 'Szolgáltató és kapcsolat',
     body: [
-      `Név: ${COMPANY.name}. Székhely: ${COMPANY.seat}. Nyilvántartási szám: ${COMPANY.registryNumber}, nyilvántartó hatóság: ${REGISTRY}. Adószám: ${COMPANY.taxNumber}. A szolgáltató egyéni vállalkozó.`,
-      `Telefonszám: ${COMPANY.phone}. E-mail: ${CONTACT_EMAIL}. Szakmai kamara: ${COMPANY.chamber}.`,
-      `Tárhelyszolgáltató: ${HOSTING_PROVIDER}.`,
+      `Szolgáltató: ${COMPANY.name} egyéni vállalkozó. Székhely: ${COMPANY.seat}. Nyilvántartási szám: ${COMPANY.registryNumber}; nyilvántartó: ${REGISTRY}. Adószám: ${COMPANY.taxNumber}.`,
+      `E-mail: ${CONTACT_EMAIL}. Telefonszám: ${COMPANY.phone}. Szakmai kamara: ${COMPANY.chamber}. Tárhelyszolgáltató: ${HOSTING_PROVIDER}.`,
     ],
   },
   {
-    title: 'Mire jó a szolgáltatás',
+    title: 'Az OurFilm szolgáltatás',
     body: [
-      'A házigazda létrehoz egy eseményt, és kap hozzá egy QR-kódot és egy linket. A vendégek beolvassák, és a telefonjuk böngészőjéből feltöltik a fotóikat egy közös albumba. A házigazda az albumot megnézheti, moderálhatja, és egyben letöltheti.',
-      'A vendégeknek nem kell alkalmazást telepíteniük és nem kell regisztrálniuk. A csatlakozáskor egy nevet adnak meg, amely a feltöltött képeik mellett jelenik meg.',
-      'A szolgáltatás böngészőn keresztül érhető el. Nem vállaljuk, hogy minden böngésző minden verziójában működik, de a jelenleg támogatott mobil böngészők legfrissebb változataira tervezzük.',
+      'Az OurFilm egy eseményhez használható digitális eldobható fényképezőgép. A házigazda létrehozza az eseményt, beállítja a fotózási időszakot, a vendégenkénti képszámot és a képek felfedésének időpontját, majd QR-kódot vagy linket oszt meg a vendégekkel.',
+      'A vendég alkalmazás és fiók nélkül, a mobilböngésző kamerájával készít képeket. Nincs előnézet és újrafotózás. A képek a beállított felfedési szabály szerint válnak láthatóvá. A házigazda az esemény képeit megtekintheti, elrejtheti, letöltheti, az eseményt pedig törölheti.',
+      'A szolgáltatás használatához megfelelő eszköz, internetkapcsolat, támogatott böngésző és kameraengedély szükséges. Folyamatos, hibamentes elérhetőséget nem garantálunk.',
     ],
   },
   {
-    title: 'A szerződés létrejötte',
+    title: 'Szerződéskötés és a használat feltételei',
     body: [
-      'A szerződés akkor jön létre, amikor a házigazda a belépési linkkel azonosítja magát és létrehozza az első eseményét. A szerződés magyar nyelven jön létre, nem minősül írásba foglalt szerződésnek, és nem iktatjuk.',
-      'Az ÁSZF elfogadása a szolgáltatás használatának feltétele.',
+      'A házigazda a feltételek elfogadásával és az esemény létrehozásával köt szerződést a szolgáltatóval. A fizetős esemény feloldására vonatkozó megrendelés a Stripe fizetési oldalán történő fizetéssel válik véglegessé. A szerződés magyar nyelven jön létre, nem minősül írásba foglalt szerződésnek, és külön nem iktatjuk.',
+      'A vendég a csatlakozással elfogadja a rá vonatkozó használati szabályokat, és tudomásul veszi az Adatkezelési tájékoztatót. A vendégtől nem kérünk díjat.',
+      'A megrendelés előtt a házigazda a böngésző vissza gombjával vagy az OurFilm felületén módosíthatja a megadott adatokat. Az adatbeviteli hibákat a rendszer a létrehozás előtt jelzi.',
     ],
   },
   {
-    title: 'A házigazda felelőssége',
+    title: 'Díj és fizetés',
     body: [
-      'A házigazda dönti el, kivel osztja meg a QR-kódot és a linket. Aki megkapja, feltölthet és megnézheti az albumot. Az album címe véletlen karaktereket tartalmaz és a keresők elől ki van zárva, de aki a linket megkapta, továbbadhatja.',
-      'A házigazda felel azért, hogy a vendégek és a fotókon szereplő személyek tudjanak róla, hogy a képek közös albumba kerülnek. Ehhez a nyomtatható QR-kártya tájékoztató szövege adja a legegyszerűbb eszközt, de a meghívóban is jelezhető.',
-      'A házigazda moderálhatja az albumot: bármelyik fotót elrejtheti, és az egész eseményt véglegesen törölheti.',
-      'Az esemény fotói tekintetében a házigazda az adatkezelő, a szolgáltató pedig az adatfeldolgozó. A részleteket az Adatkezelési tájékoztató tartalmazza.',
+      `Az ingyenes eseményhez legfeljebb 5 külön vendég csatlakozhat. A teljes esemény egyszeri díja ${EVENT_PRICE_LABEL}; ez az adott eseménynél feloldja a résztvevői korlátot. Nem előfizetés, és nem jelent vendégenkénti díjat. ${VAT_STATUS.priceNote}`,
+      `A fizetést a ${PAYMENT_PROCESSOR.name} (${PAYMENT_PROCESSOR.address}) kezeli a saját fizetési oldalán. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A fizetés után a Stripe visszaigazolást küld, az esemény feloldását pedig a fizetési visszaigazolás alapján aktiváljuk.`,
+      'A fizetésről a szolgáltató elektronikus számlát állít ki és küld a házigazda által megadott e-mail-címre. A számlázás éles bekapcsolása a fizetős szolgáltatás indulásának feltétele.',
     ],
   },
   {
-    title: 'A feltöltött tartalom',
+    title: 'Elállás fogyasztóként',
     body: [
-      'A fotók szerzői joga a feltöltőt illeti. A feltöltéssel a felhasználó azt a nem kizárólagos engedélyt adja meg, amely a képek tárolásához, az albumban való megjelenítéséhez és a letöltés biztosításához szükséges. Ezen túl semmilyen felhasználási jogot nem szerzünk: a képeket nem használjuk marketingre, nem adjuk tovább és nem értékesítjük.',
-      'Tilos olyan tartalmat feltölteni, amely jogszabályt sért, mások jogait sérti, erőszakos, gyűlöletkeltő vagy szexuális tartalmú, illetve amelynek feltöltésére a felhasználónak nincs joga.',
-      'A jogsértő tartalmat bejelentés esetén eltávolítjuk, és súlyos vagy ismételt esetben az eseményt felfüggeszthetjük.',
+      'A fogyasztó a fizetős szerződés megkötésétől számított 14 napon belül indokolás nélkül elállhat. Nyilatkozatát az Elállás oldalon vagy a szolgáltató e-mail-címén közölheti.',
+      'Ha a fogyasztó kéri, hogy a szolgáltatás a 14 napos határidő vége előtt megkezdődjön, elállás esetén a nyilatkozat közléséig arányosan teljesített szolgáltatás ellenértéke felszámítható. Az elállási jog csak a szolgáltatás teljes egészének elvégzése után szűnik meg, ha a teljesítés a fogyasztó kifejezett előzetes kérésével kezdődött, és tudomásul vette e következményt.',
+      'Érvényes elállás esetén a visszajáró összeget legkésőbb 14 napon belül, az eredeti fizetési móddal térítjük vissza, kivéve, ha a fogyasztó más módhoz kifejezetten hozzájárul.',
     ],
   },
   {
-    title: 'Elérhetőség és korlátozások',
+    title: 'A házigazda és a vendég felelőssége',
     body: [
-      'A szolgáltatás folyamatos elérhetőségére törekszünk, de nem vállalunk üzemidő-garanciát. Karbantartás miatti szünetről lehetőség szerint előre értesítünk.',
-      'A feltölthető fájlok mérete és formátuma korlátozott. A rendeltetésszerű használatot jelentősen meghaladó terhelés esetén jogosultak vagyunk a feltöltést átmenetileg korlátozni.',
-      'Jogosultak vagyunk a szolgáltatást felfüggeszteni, ha a használat jogszabályt vagy jelen ÁSZF-et sért.',
+      'A házigazda felel azért, hogy a QR-kódot vagy eseménylinket csak a kívánt körrel ossza meg, és az esemény résztvevőit megfelelően tájékoztassa a közös fotózásról. A link birtokosa továbbadhatja azt, ezért az nem helyettesít külön hozzáférés-kezelést.',
+      'Csak olyan képet szabad készíteni vagy feltölteni, amelynek elkészítésére és megosztására a felhasználó jogosult. Tilos a jogellenes, más jogát sértő, gyűlöletkeltő, súlyosan erőszakos vagy szexuális tartalom, valamint a szolgáltatás rendeltetésellenes használata.',
+      'A felhasználó a kép szerzői vagy egyéb jogait nem ruházza át. A jogosult az OurFilmnek csak a szolgáltatás működtetéséhez szükséges, nem kizárólagos engedélyt adja a kép tárolására, megjelenítésére és letölthetővé tételére.',
     ],
   },
   {
-    title: 'Díjak és fizetés',
+    title: 'Jogsértő tartalom és korlátozás',
     body: [
-      `A mindenkori díjakat az Árak oldal tartalmazza. ${VAT_STATUS.priceNote}`,
-      'Az esemény létrehozása, a QR-kód, a közös album és az album letöltése díjmentes, és díjmentesen tölthető fel az albumba az Árak oldalon megadott számú kép is. A díj azt a korlátot oldja fel: kifizetése után az adott eseményhez korlátlan számú kép tölthető fel. A díj eseményenként egyszeri, nem előfizetés, és a vendégek soha nem fizetnek semmit.',
-      'A díj akkor esedékes, amikor a házigazda a korlát feloldását megrendeli. A feloldás az adott eseményre szól, és nem jár le.',
-      `A fizetést a ${PAYMENT_PROCESSOR.name} (${PAYMENT_PROCESSOR.address}) mint fizetési szolgáltató bonyolítja. A fizetés a Stripe saját, biztonságos oldalán történik: a bankkártya adatait nem látjuk, nem kezeljük és nem tároljuk. Nálunk csak a tranzakció azonosítója, az összeg, a pénznem és a fizetés állapota marad meg.`,
-      `A fizetésről számlát állítunk ki, amelyet e-mailben küldünk meg. A számla az ${VAT_STATUS.code} (${VAT_STATUS.label}) jelölést tartalmazza, mert a szolgáltató áfát nem számít fel.`,
-      'A már megkezdett esemény díja nem kerül visszatérítésre, kivéve az alábbi elállási jogot és a hibás teljesítés eseteit.',
+      'Jogsértőnek vélt kép a Jogsértő tartalom bejelentése oldalon leírt módon jelenthető. A kellően pontos bejelentést megvizsgáljuk, és szükség esetén a tartalmat elérhetetlenné tesszük vagy eltávolítjuk. A döntésről a megadott elektronikus elérhetőségen tájékoztatást adunk.',
+      'A házigazda bármely képet elrejthet. Súlyos vagy ismételt jogsértés, biztonsági kockázat vagy a szolgáltatás működését veszélyeztető használat esetén az érintett tartalmat vagy eseményt korlátozhatjuk.',
     ],
   },
   {
-    title: 'Elállási jog',
+    title: 'Adatok, rendelkezésre állás és felelősség',
     body: [
-      'A fogyasztót a szerződéskötéstől számított 14 napon belül indokolás nélküli elállási jog illeti meg.',
-      'A szolgáltatás nem tárgyi adathordozón nyújtott digitális szolgáltatás. Ha a fogyasztó kifejezetten kéri a teljesítés 14 napon belüli megkezdését, és egyidejűleg nyilatkozik arról, hogy tudomásul veszi: a teljesítés megkezdése után az elállási jogát elveszíti, akkor a szolgáltatás igénybevételének megkezdésével az elállási jog megszűnik. Erről a megrendelés során külön nyilatkozni kell.',
-      'Elállás esetén a díjat legkésőbb 14 napon belül visszatérítjük, ugyanolyan fizetési módon, ahogyan érkezett.',
-      `Az elállást a ${CONTACT_EMAIL} címre küldött nyilatkozattal lehet közölni.`,
+      'Az OurFilm nem helyettesíti a saját biztonsági mentést. A házigazdának érdemes az esemény után letöltenie a képeket. Az esemény törlése végleges.',
+      'A szolgáltató a jogszabályok szerint felel a hibás teljesítésért és az általa okozott károkért. Nem felel az ellenőrzési körén kívüli internet-, eszköz- vagy külső szolgáltatói hibáért, illetve a felhasználó jogellenes tartalmáért. A kötelező fogyasztói jogokat jelen feltételek nem korlátozzák.',
+      'A személyes adatok kezelését az Adatkezelési tájékoztató ismerteti.',
     ],
   },
   {
-    title: 'Felelősség és adatvesztés',
+    title: 'Panasz és jogorvoslat',
     body: [
-      'A szolgáltatás nem helyettesíti a fotók saját biztonsági mentését. Javasoljuk, hogy a házigazda az esemény után töltse le az albumot, és tárolja saját másolatban.',
-      'Nem felelünk a felhasználók által feltöltött tartalomért, sem azért a kárért, amely a link vagy a QR-kód harmadik személynek való továbbadásából ered.',
-      'Felelősségünk a szándékosan okozott, valamint az emberi életet, testi épséget vagy egészséget megkárosító szerződésszegésért fennálló felelősség kivételével a szolgáltatásért fizetett díj összegére korlátozódik.',
+      `Panasz a ${CONTACT_EMAIL} címen, postai úton a székhelyen vagy a fenti telefonszámon tehető. Az írásbeli panaszt 30 napon belül érdemben, írásban megválaszoljuk.`,
+      'A fogyasztó a lakóhelye vagy tartózkodási helye szerint illetékes békéltető testülethez fordulhat; az elérhetőségek a bekeltetes.hu oldalon találhatók. A szolgáltató a békéltető testületi eljárásban együttműködik. Fogyasztóvédelmi ügyben a fogyasztóvédelmi hatósághoz, jogvita esetén bírósághoz is lehet fordulni.',
     ],
   },
   {
-    title: 'Panaszkezelés és jogorvoslat',
+    title: 'Módosítás és irányadó jog',
     body: [
-      `Panaszt a ${CONTACT_EMAIL} címen vagy a fenti telefonszámon lehet bejelenteni. A panaszt 30 napon belül kivizsgáljuk és írásban megválaszoljuk.`,
-      'Ha a panaszt elutasítjuk, a fogyasztó a lakóhelye szerint illetékes békéltető testülethez fordulhat. A testületek elérhetősége a bekeltetes.hu oldalon található. Kijelentjük, hogy a békéltető testületi eljárásban együttműködünk.',
-      'A fogyasztó a fogyasztóvédelmi hatósághoz is fordulhat: a járási hivatalok látják el ezt a feladatot, elérhetőségük a jarasinfo.gov.hu oldalon található.',
-      'Online vitarendezésre az Európai Bizottság platformja is igénybe vehető.',
-    ],
-  },
-  {
-    title: 'A feltételek módosítása',
-    body: [
-      'Az ÁSZF módosításáról a hatálybalépés előtt legalább 15 nappal e-mailben értesítjük a házigazdákat. Ha a módosítást nem fogadja el, a szerződést a hatálybalépésig felmondhatja.',
-      'A már létrehozott eseményekre a létrehozáskor hatályos feltételek maradnak irányadók.',
-    ],
-  },
-  {
-    title: 'Egyéb rendelkezések',
-    body: [
-      'A jelen ÁSZF-ben nem szabályozott kérdésekben a magyar jog, különösen a Polgári Törvénykönyv, az Elker tv. (2001. évi CVIII. törvény) és a 45/2014. (II. 26.) Korm. rendelet rendelkezései irányadók.',
-      'Az adatkezelésre vonatkozó szabályokat az Adatkezelési tájékoztató tartalmazza.',
+      'A feltételek módosítását ezen az oldalon, az új frissítési dátummal tesszük közzé. A már kifizetett eseményre a megrendeléskor elfogadott változat irányadó, kivéve, ha jogszabály vagy a felhasználó számára kedvezőbb módosítás másként indokolja.',
+      'A jelen ÁSZF-ben nem rendezett kérdésekre a magyar jog, különösen a Polgári Törvénykönyv, a 2001. évi CVIII. törvény és a 45/2014. (II. 26.) Korm. rendelet irányadó.',
     ],
   },
 ]
@@ -143,19 +119,17 @@ export default async function AszfPage({ params }: Props) {
       locale={locale}
       eyebrow="ÁSZF"
       title="Általános szerződési feltételek"
-      lead="Mit vállalunk, mit vársz el tőlünk, és mi az, amiért a házigazda felel."
+      lead="Röviden és a mostani termékhez igazítva: mit nyújt az OurFilm, hogyan fizetsz, és miért felelnek a résztvevők."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
           {hasRealCompanyDetails ? null : (
             <DraftNotice>
               <strong className="font-semibold text-foreground">
-                Hiányoznak a vállalkozás adatai.
+                Indulás előtt töltsd ki a szolgáltató adatait.
               </strong>{' '}
-              A szöveg kész, de a szögletes zárójeles helyek ([NÉV],
-              [NYILVÁNTARTÁSI SZÁM], [ADÓSZÁM] és társaik) valódi adatra
-              cserélendők a <code>lib/company.ts</code> fájlban. Amíg ez nem
-              történik meg, az oldal nem jelenik meg a keresőkben.
+              A <code>lib/company.ts</code> TODO értékei még nem valódi adatok,
+              ezért ez az oldal jelenleg nincs indexelve.
             </DraftNotice>
           )}
 

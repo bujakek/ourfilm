@@ -2,6 +2,7 @@
 
 import { Check } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import Link from 'next/link'
 
 import { AccountNotice } from '@/components/host/onboarding/account-notice'
 import {
@@ -20,6 +21,8 @@ export function StepGuests({
   setShots,
   guestsCanView,
   setGuestsCanView,
+  legalAccepted,
+  setLegalAccepted,
   paymentsEnabled,
   pending,
 }: {
@@ -30,6 +33,11 @@ export function StepGuests({
   setShots: (value: ShotOption) => void
   guestsCanView: boolean
   setGuestsCanView: (value: boolean) => void
+  legalAccepted: boolean
+  setLegalAccepted: (value: boolean) => void
+  /** Whether Stripe is switched on in this environment. When it is not, the
+   *  paid tier is not offered — a price on a button that cannot charge is a
+   *  worse answer than not showing the button. */
   paymentsEnabled: boolean
   pending: boolean
 }) {
@@ -41,6 +49,7 @@ export function StepGuests({
       title="Hány vendéged lesz?"
       detail="Mindenki kapjon esélyt, hogy elkapja a pillanatot."
       cta={plan === 'full' ? 'Tovább a fizetéshez' : 'Létrehozás'}
+      ctaDisabled={!legalAccepted}
       ctaPending={pending}
       note={<AccountNotice />}
     >
@@ -165,6 +174,53 @@ export function StepGuests({
             </AnimatePresence>
           </button>
         </div>
+
+        <label className="flex cursor-pointer items-start gap-3 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={legalAccepted}
+            onChange={(event) => setLegalAccepted(event.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+          />
+          <span>
+            {plan === 'full' ? (
+              <>
+                Elfogadom az{' '}
+                <Link
+                  href="/hu/aszf"
+                  target="_blank"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  ÁSZF-et
+                </Link>
+                , és kérem, hogy a szolgáltatás a 14 napos elállási határidő
+                lejárta előtt megkezdődjön. Tudomásul veszem az ÁSZF-ben leírt
+                elállási következményeket.
+              </>
+            ) : (
+              <>
+                Elfogadom az{' '}
+                <Link
+                  href="/hu/aszf"
+                  target="_blank"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  ÁSZF-et
+                </Link>
+                .
+              </>
+            )}{' '}
+            Az{' '}
+            <Link
+              href="/hu/adatvedelem"
+              target="_blank"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              adatkezelési tájékoztató
+            </Link>{' '}
+            ismerteti az adatok kezelését.
+          </span>
+        </label>
       </div>
     </OnboardingShell>
   )

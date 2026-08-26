@@ -2,6 +2,7 @@ import 'server-only'
 
 import { requestOrigin } from '@/lib/request-origin'
 import { createClient } from '@/lib/supabase/server'
+import { LEGAL_VERSION } from '@/lib/company'
 
 import { getStripe } from './client'
 import { stripeEnv } from './env'
@@ -26,11 +27,14 @@ export async function createEventCheckoutUrl({
   slug,
   ownerId,
   ownerEmail,
+  termsAcceptedAt,
 }: {
   eventId: string
   slug: string
   ownerId: string
   ownerEmail: string | null
+  /** Server timestamp created only after the explicit checkbox was checked. */
+  termsAcceptedAt: string
 }): Promise<string> {
   const origin = await requestOrigin()
 
@@ -48,12 +52,24 @@ export async function createEventCheckoutUrl({
     // which is where you will be looking at 2am when a host says they paid and
     // the album is still capped.
     client_reference_id: eventId,
-    metadata: { event_id: eventId, owner_id: ownerId },
+    metadata: {
+      event_id: eventId,
+      owner_id: ownerId,
+      legal_version: LEGAL_VERSION,
+      terms_accepted_at: termsAcceptedAt,
+      early_performance_requested: 'true',
+    },
     // Copied onto the PaymentIntent as well, because a refund webhook carries a
     // charge rather than a session and would otherwise have no route back to
     // the event.
     payment_intent_data: {
-      metadata: { event_id: eventId, owner_id: ownerId },
+      metadata: {
+        event_id: eventId,
+        owner_id: ownerId,
+        legal_version: LEGAL_VERSION,
+        terms_accepted_at: termsAcceptedAt,
+        early_performance_requested: 'true',
+      },
     },
     customer_email: ownerEmail ?? undefined,
     locale: 'hu',

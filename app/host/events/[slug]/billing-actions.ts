@@ -32,6 +32,9 @@ export async function startEventCheckout(
 ): Promise<CheckoutState> {
   const slug = String(formData.get('slug') ?? '').trim()
   if (!slug) return { error: 'Hiányzó esemény.' }
+  if (formData.get('legal_acceptance') !== 'on') {
+    return { error: 'A fizetéshez fogadd el az ÁSZF-et.' }
+  }
 
   if (!stripeIsConfigured()) {
     return {
@@ -68,6 +71,7 @@ export async function startEventCheckout(
       slug: event.slug,
       ownerId: user.id,
       ownerEmail: user.email ?? null,
+      termsAcceptedAt: new Date().toISOString(),
     })
   } catch (e) {
     console.error('Stripe checkout session failed', e)
