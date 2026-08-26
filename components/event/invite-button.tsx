@@ -23,10 +23,10 @@ export function InviteButton({ url }: { url: string }) {
       try {
         await navigator.share({ url })
         return
-      } catch {
-        // Cancelling the share sheet rejects with AbortError, which is a
-        // normal outcome and must not surface as a failure. Anything else
-        // (no permission, unsupported payload) falls through to the copy path.
+      } catch (error) {
+        // Closing the native sheet is a complete, normal outcome. Only a real
+        // share failure falls through to the clipboard fallback.
+        if (error instanceof DOMException && error.name === 'AbortError') return
       }
     }
 
