@@ -25,7 +25,7 @@ export function Hero() {
         <div className="reveal is-visible max-w-xl">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-muted-foreground">
             <span className="size-1.5 rounded-full bg-accent" />
-            Közös fotóalbum eseményekhez
+            Digitális eldobható fényképezőgép esküvőre
           </span>
 
           {/* The two spans are separated by a real space, not a <br />: a
@@ -33,15 +33,15 @@ export function Hero() {
               read as one joined word to screen readers and to anything else
               parsing the heading. `text-balance` handles the wrap. */}
           <h1 className="mt-6 text-[2rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl xl:text-[3.5rem]">
-            <span className="text-gradient">A napod,</span>{' '}
+            <span className="text-gradient">Az esküvőtök,</span>{' '}
             <span className="text-gradient-accent">
-              ahogy a vendégeid látták.
+              ahogy a vendégeitek látták.
             </span>
           </h1>
 
           <p className="mt-7 max-w-lg text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            Egy QR-kód, és minden vendégfotó egy közös albumba kerül. App és
-            regisztráció nélkül.
+            A vendégek beolvassák a QR-kódot, megkapják a saját tekercsüket, és
+            fotóznak. A képeket később együtt nézitek meg.
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -49,21 +49,18 @@ export function Hero() {
               href={CREATE_EVENT_PATH}
               className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              Próbáld ki ingyen
+              Hozd létre ingyen
             </Link>
             <a
-              href="#live-demo"
+              href="#how-it-works"
               className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"
             >
-              Nézd meg működés közben
+              Így működik
             </a>
           </div>
 
-          {/* True today: creating an event, the QR-kód and the first five
-              photos cost nothing, and checkout is only ever reached from the
-              host's own settings page. */}
-          <p className="mt-10 text-sm text-muted-foreground">
-            5 fotóig ingyen, bankkártya nélkül.
+          <p className="mt-5 text-sm text-muted-foreground">
+            Nincs app. Nincs vendégregisztráció.
           </p>
         </div>
 
@@ -80,7 +77,7 @@ export function Hero() {
                         Anna &amp; Péter
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        Közös album
+                        Közös galéria
                       </p>
                     </div>
                     <span className="size-6 rounded-full bg-gradient-to-br from-accent to-accent-blue" />
@@ -152,7 +149,7 @@ export function Hero() {
                   />
                 </div>
                 <p className="mt-2 text-center text-[9px] font-medium text-muted-foreground">
-                  Olvasd be, és töltsd fel a képeidet.
+                  Olvasd be, és fotózz velünk.
                 </p>
                 {/* scan line */}
                 <span className="absolute inset-x-3 top-3 h-8 animate-float-slow rounded-lg bg-gradient-to-b from-accent/40 to-transparent" />

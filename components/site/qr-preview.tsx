@@ -18,20 +18,20 @@ export function QrPreview() {
   const displayName = name.trim() || 'Az esemény neve'
 
   return (
-    <section className="relative px-4 py-24 sm:px-6 lg:py-32">
+    <section id="qr-code" className="relative px-4 py-24 sm:px-6 lg:py-32">
       <div className="mx-auto max-w-6xl">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           {/* Copy + input */}
           <Reveal>
             <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
-              QR-KÓD
+              EGYETLEN QR-KÓD
             </span>
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              Egy QR-kód az egész eseményre
+              A kamera már várja a vendégeket.
             </h2>
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              Tedd ki az asztalokra, a bejárathoz vagy a bárpulthoz. Minden
-              feltöltött kép ugyanabba az albumba érkezik.
+              Tedd ki az asztalokra, a bejárathoz vagy a bárpulthoz. A vendégek
+              beolvassák, és már fotózhatnak is.
             </p>
 
             <div className="mt-8 max-w-md">
@@ -57,7 +57,7 @@ export function QrPreview() {
                 </code>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                A saját eseményedhez egyedi QR-kódot és meghívólinket kapsz.
+                A saját eseményedhez egyedi QR-kódot és linket kapsz.
               </p>
             </div>
           </Reveal>
@@ -70,7 +70,7 @@ export function QrPreview() {
                   {displayName}
                 </p>
                 <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-black/50">
-                  KÖZÖS FOTÓALBUM
+                  DIGITÁLIS ELDOBHATÓ KAMERA
                 </p>
 
                 <div className="my-7 flex justify-center">
@@ -86,7 +86,8 @@ export function QrPreview() {
                 </div>
 
                 <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
-                  Olvasd be a QR-kódot, és töltsd fel a képeidet.
+                  Olvasd be a QR-kódot, és fotózd le az estét úgy, ahogy te
+                  látod.
                 </p>
                 <div className="mt-6 border-t border-black/10 pt-4">
                   <p className="truncate text-xs font-medium text-black/50">
