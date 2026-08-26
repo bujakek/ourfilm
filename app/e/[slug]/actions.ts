@@ -202,12 +202,20 @@ export async function acceptGuestTermsAction(
     return { ok: false, error: 'Lejárt a munkameneted. Frissítsd az oldalt.' }
   }
 
-  await recordGuestAcceptance({
+  const recorded = await recordGuestAcceptance({
     participantId: event.participant_id,
     eventId: event.id,
     eventSlug: slug,
     displayName: event.display_name,
   })
+
+  // The acknowledgement gates the camera, so a write that failed and was only
+  // logged would leave the guest tapping the same button forever. Say it
+  // instead — and note that this is what a missing migration looks like from
+  // the guest's side, which is the fastest way anyone will find out.
+  if (!recorded) {
+    return { ok: false, error: 'Most nem sikerült elmenteni. Próbáld újra.' }
+  }
 
   revalidatePath(`/e/${slug}/camera`)
   return { ok: true }

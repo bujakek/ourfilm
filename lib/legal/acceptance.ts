@@ -62,6 +62,15 @@ export async function recordHostAcceptance(
   if (error) console.error('Could not record host legal acceptance', error)
 }
 
+/**
+ * Returns whether the row was written, unlike the host path above.
+ *
+ * The asymmetry is deliberate. A host acceptance that fails to record leaves
+ * an event that exists and works, so it is logged and the creation proceeds —
+ * losing the event would be far worse. A guest acceptance is a *gate*: the
+ * camera is not rendered until one exists, so a silent failure is an infinite
+ * loop of the same screen. The caller has to be able to say so.
+ */
 export async function recordGuestAcceptance({
   participantId,
   eventId,
@@ -72,7 +81,7 @@ export async function recordGuestAcceptance({
   eventId: string
   eventSlug: string
   displayName: string | null
-}): Promise<void> {
+}): Promise<boolean> {
   const meta = await readRequestMeta()
   const db = createLegalClient()
 
@@ -88,7 +97,11 @@ export async function recordGuestAcceptance({
     user_agent: meta.userAgent,
   })
 
-  if (error) console.error('Could not record guest legal acceptance', error)
+  if (error) {
+    console.error('Could not record guest legal acceptance', error)
+    return false
+  }
+  return true
 }
 
 /**
