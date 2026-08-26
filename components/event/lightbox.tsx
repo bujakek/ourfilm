@@ -2,6 +2,7 @@
 
 import type { GalleryTile } from '@/lib/photos'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef } from 'react'
 
@@ -30,16 +31,13 @@ export function Lightbox({
     [index, photos.length, onNavigate],
   )
 
-  // A native <dialog> opened with showModal() gives us the focus trap, the
-  // inert background and Escape-to-close for free. Rebuilding those by hand is
-  // where homegrown lightboxes usually get accessibility wrong.
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
     if (!dialog.open) dialog.showModal()
 
     const onCancel = (e: Event) => {
-      e.preventDefault() // skip the browser's own close so state stays in sync
+      e.preventDefault()
       onClose()
     }
     dialog.addEventListener('cancel', onCancel)
@@ -57,8 +55,6 @@ export function Lightbox({
 
   if (!photo) return null
 
-  // Every photo has a participant now, and joining requires a name, so the
-  // credit is always a real one rather than a maybe.
   const caption = `${photo.uploaderName} fotója`
 
   return (
@@ -78,65 +74,77 @@ export function Lightbox({
         if (Math.abs(dx) > SWIPE_THRESHOLD) go(dx > 0 ? -1 : 1)
       }}
     >
-      <div className="fixed inset-0 flex flex-col">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.985 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.99 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed inset-0 flex flex-col"
+      >
         <div className="flex items-center justify-between px-4 py-3">
           <p className="text-sm text-white/70">
             {index + 1} / {photos.length}
           </p>
-          <button
+          <motion.button
             type="button"
             onClick={onClose}
+            whileTap={{ scale: 0.9 }}
             aria-label="Bezárás"
             className="glass flex size-11 items-center justify-center rounded-full text-white"
           >
             <X className="size-5" />
-          </button>
+          </motion.button>
         </div>
 
-        <div className="relative min-h-0 flex-1">
-          <Image
-            key={photo.id}
-            // The ~1600px render, not the print master. Showing the master
-            // here meant decoding 12.6 megapixels — roughly 50MB of bitmap —
-            // on the phone for every swipe, to fill a screen that is about
-            // 1200px across. Which render this is was resolved server-side,
-            // along with the signature that makes it fetchable at all.
-            src={photo.viewUrl}
-            alt={caption}
-            fill
-            sizes="100vw"
-            // Already compressed to spec on the guest's phone; re-optimising
-            // costs Vercel quota and adds latency for no visible gain.
-            unoptimized
-            className="object-contain"
-            priority
-          />
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={photo.id}
+              initial={{ opacity: 0, scale: 0.99 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.01 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0"
+            >
+              <Image
+                src={photo.viewUrl}
+                alt={caption}
+                fill
+                sizes="100vw"
+                unoptimized
+                className="object-contain"
+                priority
+              />
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         <div className="flex items-center justify-between gap-4 px-4 py-4">
-          <button
+          <motion.button
             type="button"
             onClick={() => go(-1)}
             disabled={index === 0}
+            whileTap={index === 0 ? undefined : { scale: 0.9 }}
             aria-label="Előző kép"
             className="glass flex size-12 items-center justify-center rounded-full text-white disabled:opacity-30"
           >
             <ChevronLeft className="size-6" />
-          </button>
+          </motion.button>
           <p className="min-w-0 truncate text-center text-sm text-white/70">
             {caption}
           </p>
-          <button
+          <motion.button
             type="button"
             onClick={() => go(1)}
             disabled={index === photos.length - 1}
+            whileTap={index === photos.length - 1 ? undefined : { scale: 0.9 }}
             aria-label="Következő kép"
             className="glass flex size-12 items-center justify-center rounded-full text-white disabled:opacity-30"
           >
             <ChevronRight className="size-6" />
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
     </dialog>
   )
 }
