@@ -37,7 +37,7 @@ export function isKnownLocale(value: string): value is KnownLocale {
 /** Prefixes an app-absolute path with the locale: `/arak` → `/hu/arak`.
  *
  *  Pass paths with a leading slash, or `'/'` for the locale home. Paths that
- *  are not locale-scoped — `/admin`, `/e/…` — must not go through here. */
+ *  are not locale-scoped — `/host`, `/e/…` — must not go through here. */
 export function localePath(locale: Locale, path: string): string {
   if (path === '/') return `/${locale}`
   return `/${locale}${path}`

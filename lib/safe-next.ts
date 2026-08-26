@@ -17,7 +17,7 @@
  * that.
  */
 export function safeNext(raw: string | null, origin: string): string {
-  const fallback = '/admin'
+  const fallback = '/host'
   if (!raw) return fallback
 
   try {

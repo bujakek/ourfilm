@@ -4,12 +4,15 @@ import {
   EVENT_TIME_ZONE,
   eventLocalToIso,
   eventStamp,
-  eventTimeZoneLabel,
   eventUtcOffset,
   eventWallClock,
   formatDeadline,
   formatEventLocalInput,
   formatFileStamp,
+  formatHuCalendarDay,
+  formatHuMonthYear,
+  formatRevealBadge,
+  HU_WEEKDAYS_SHORT,
   isValidTimeZone,
 } from '@/lib/format'
 
@@ -162,15 +165,49 @@ describe('timezone validation', () => {
   })
 
   it('refuses a zone Intl cannot format in', () => {
-    // The value reaches us from a select, and an unknown zone would otherwise
-    // throw at render time rather than at the point it was accepted.
+    // The value reaches us from a hidden form field carrying whatever the
+    // browser reported, and an unknown zone would otherwise throw at render
+    // time rather than at the point it was accepted.
     for (const bad of ['', 'Mars/Olympus', 'Budapest', 'UTC+2']) {
       expect(isValidTimeZone(bad)).toBe(false)
     }
   })
+})
 
-  it('labels a known zone and falls back to the raw name', () => {
-    expect(eventTimeZoneLabel('Europe/Budapest')).toBe('Budapest')
-    expect(eventTimeZoneLabel('Pacific/Auckland')).toBe('Pacific/Auckland')
+describe('the onboarding calendar', () => {
+  it('labels the columns Monday-first and unambiguously', () => {
+    // hu-HU's own narrow weekdays are `V H K Sz Cs P Sz` — szerda and szombat
+    // collide, which is why these are written out rather than derived.
+    expect(HU_WEEKDAYS_SHORT).toEqual(['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'])
+    expect(new Set(HU_WEEKDAYS_SHORT).size).toBe(7)
+  })
+
+  it('heads a month in Hungarian, from a bare year and month', () => {
+    expect(formatHuMonthYear(2026, 7)).toBe('2026. augusztus')
+    expect(formatHuMonthYear(2026, 0)).toBe('2026. január')
+    expect(formatHuMonthYear(2027, 11)).toBe('2027. december')
+  })
+
+  it('gives a cell an accessible name a screen reader can act on', () => {
+    expect(formatHuCalendarDay('2026-08-24')).toBe('2026. augusztus 24., hétfő')
+  })
+})
+
+describe('formatRevealBadge', () => {
+  it('drops the year that formatDeadline keeps', () => {
+    // Same instant, one badge wide enough for two photos on a 390px phone.
+    expect(formatRevealBadge('2026-08-25T22:30:00Z')).toBe('aug. 26. 00:30')
+    expect(formatDeadline('2026-08-25T22:30:00Z')).toBe('2026. aug. 26. 00:30')
+  })
+
+  it("renders in the event's own zone, never the server's", () => {
+    expect(formatRevealBadge('2026-08-25T22:30:00Z', 'America/New_York')).toBe(
+      'aug. 25. 18:30',
+    )
+  })
+
+  it('uses a 24-hour clock', () => {
+    expect(formatRevealBadge('2026-08-25T18:00:00Z')).toBe('aug. 25. 20:00')
+    expect(formatRevealBadge('2026-08-25T22:00:00Z')).toBe('aug. 26. 00:00')
   })
 })

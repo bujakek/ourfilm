@@ -8,7 +8,7 @@ difference is whether the address already has an account:
 | `magic-link.html`     | Magic Link        | a host who has signed in before      |
 | `confirm-signup.html` | Confirm signup    | a host signing in for the first time |
 
-`signInWithOtp({ shouldCreateUser: true })` in `app/admin/login/login-form.tsx`
+`signInWithOtp({ shouldCreateUser: true })` in `app/host/login/login-form.tsx`
 is what sends them, and it picks between the two itself: a new address is signed
 up first, and a signup sends the **Confirm signup** template even though the
 caller asked for a magic link. Supabase's own docs do not mention this — it is

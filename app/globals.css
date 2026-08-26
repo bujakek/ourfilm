@@ -17,6 +17,7 @@
   --color-accent: var(--accent);
   --color-accent-blue: var(--accent-blue);
   --color-accent-silver: var(--accent-silver);
+  --color-destructive: var(--destructive);
   --color-ring: var(--ring);
 
   --font-sans:
@@ -52,6 +53,14 @@
   --accent: #c3b6ff;
   --accent-blue: #9db4ff;
   --accent-silver: #d8dae5;
+  /* The only warm colour in an otherwise lilac-on-near-black palette, and it is
+     used for exactly one thing: telling a host that what they typed will not be
+     accepted. `text-destructive` was already spelled out in the admin, the
+     login form and the create flow before this token existed, which meant
+     Tailwind generated no rule for it and every one of those messages rendered
+     in body text. Muted enough not to glare on a dark screen, red enough to
+     read as a refusal. */
+  --destructive: #ff8a8a;
   --ring: rgba(195, 182, 255, 0.5);
   --radius: 1.25rem;
 }

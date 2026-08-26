@@ -84,7 +84,7 @@ export function captureWindowState({
  *
  * Two conditions, and both are the host's: the reveal has arrived, and the host
  * left guest access switched on. A host who turns guests off keeps their own
- * access — that read never comes through here, it goes through `/admin` under
+ * access — that read never comes through here, it goes through `/host` under
  * ownership RLS.
  */
 export function guestGalleryIsOpen({

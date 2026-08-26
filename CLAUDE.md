@@ -165,12 +165,26 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   and drop the Resend SMTP settings. Details in
   `supabase/templates/README.md`.
 
-- `lib/slug.ts` holds the canonical `slugify()` — admin and the QR preview must both use it so printed QR codes never disagree.
+- `lib/slug.ts` holds the canonical `slugify()` — the host area and the QR preview must both use it so printed QR codes never disagree.
 - `vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
   (Zurich) and Vercel's default is `iad1` (Washington DC), so every query on
   the guest path was crossing the Atlantic twice. Frankfurt is the closest
   Vercel region. If the Supabase project ever moves, move this with it —
   nothing else in the code notices, and the symptom is a uniformly slow app.
+
+## `redirect()` from a Server Action rejects on the client (settled)
+
+`app/auth/callback/callback-exchange.tsx` calls `completeMagicLink` and used to
+treat any rejection as a transport failure, sending the browser to
+`/host/login?error=link`. But `redirect()` reports itself **by throwing**, and a
+Server Action re-throws that on the client — so the success path arrived in the
+same `catch`. The proxy then bounced the by-then-signed-in visitor from the login
+route to `/host`, which is where an ordinary login was going anyway. It looked
+correct for every login this product has ever done, and only became visible when
+a link carried a `next`: the destination was silently discarded.
+
+`isRedirect()` in that file recognises the `NEXT_REDIRECT` digest. Any new
+`.catch` around a Server Action that redirects needs the same guard.
 
 ## The guest gate is in the pages, not the layout (settled — learned the hard way)
 
@@ -207,22 +221,116 @@ impersonates that participant, and album privacy rests on the unguessable slug.
 What it is, is the thing that stops a guest spending someone else's film, or more
 than their own.
 
+## The create flow is four full-screen questions (settled)
+
+`/host/events/new` asks four things, one per screen, in a shared shell
+(`components/host/onboarding/*`): the name, when the event ends, when the
+photos appear, and — sharing the last screen — how many guests, how long a roll
+is, and who may look. Modelled closely on Once's onboarding: full-bleed dark
+screens, one question each, a back arrow top-left, progress dots and the CTA
+pinned to the bottom.
+
+The last screen carries three controls rather than three screens because they
+are the same decision from three sides: how big is this party and how much film
+does it need. Neither of the other two depends on the first being answered.
+
+- **The camera opens the moment the event is created.** `capture_start_at` is
+  stamped by the server action, not sent from the browser, so there is no clock
+  skew between the phone that filled the form and the row that gets inserted.
+  The host is only ever asked when it _ends_ — and `capture_start_at` is
+  therefore never shown or edited anywhere in the admin either. Settings offers
+  `capture-end-card.tsx` alone, `setCaptureEnd` reads the start off the row to
+  validate against, and the event page's summary has no "kezdete" line. A start
+  field would be a second date to keep straight for a value that is always "when
+  I pressed the button", and reopening a closed camera is what moving the _end_
+  forwards already does.
+- **The timezone is never asked.** It is read off the browser
+  (`browserTimeZone()`) and stored with the event, so every later screen still
+  formats in the event's own zone. The zone reaches the client one render late,
+  through `useSyncExternalStore` rather than an effect — see
+  `components/host/onboarding/use-browser-time-zone.ts`.
+- **The delayed reveal is counted in days** (1–30), resolved as
+  `capture_end_at + n * 24h` by `revealAfterDelay()` in `lib/onboarding.ts`. The
+  form posts the day count, not an instant, and the action recomputes it.
+- **The guest count is a plan, not a setting.** There is no `max_participants`
+  column and nothing about the inserted row differs between the two choices:
+  the free tier is `free_participant_limit()` distinct participants enforced
+  inside `join_event`'s row lock, and only a paid `purchases` row lifts it. So
+  picking **Korlátlan** on the last screen only changes where the host lands —
+  Stripe Checkout instead of their new event — and an abandoned checkout leaves
+  an ordinary free event, which is what the ledger's `pending` row already
+  describes. `FREE_PARTICIPANT_LIMIT` in `lib/onboarding.ts` mirrors the
+  database function so the screen can name the limit before the row exists.
+- **Onboarding can start a checkout, and the guest cap still cannot.** The paid
+  tier is offered to the _host_, at the one moment they are thinking about how
+  many people are coming. A guest turned away mid-party is still shown no
+  checkout — that rule is about who is holding the phone, not about where the
+  button lives. When `stripeIsConfigured()` is false the paid tile is disabled
+  and reads "Hamarosan" rather than a price, the same honesty
+  `components/host/billing-card.tsx` keeps.
+- **`createEventCheckoutUrl` (`lib/stripe/checkout.ts`) is shared** by the
+  billing card and the create action. Session metadata, the success and cancel
+  URLs and the `pending` ledger row all live in one place, because every one of
+  them is silently wrong when two copies drift.
+- **There is no cover picker in the flow any more**, and nothing else offers
+  one. `cover_path` stays nullable and every surface already renders an event
+  without a cover; the upload branch in `createEvent` still works and is waiting
+  for whatever surfaces the picker next.
+- **`app/host/events/new/page.tsx` must stay synchronous.** `app/host/loading.tsx`
+  wraps every host segment in a Suspense boundary, and an `async` page here
+  suspends into it — after which the boundary never completes on the client and
+  the whole flow is served as unhydrated markup. Same Next 16.3 failure as the
+  `loading.tsx` note on `app/e/[slug]`, reproduced here by A/B.
+
+### It is filled in signed out (settled)
+
+Nobody is asked for an account before they have seen what they are signing up
+for. The whole flow is a form; the account is asked for on the last screen, when
+there is finally something to save.
+
+- **`/host/events/new` is in `PUBLIC_ADMIN_PATHS`** (`proxy.ts`), matched
+  exactly — never by prefix, because it is one segment away from routes that
+  list and mutate real events.
+- **The answers live in `localStorage`** under `ourfilm:event-draft:v1`
+  (`lib/event-draft.ts`), zod-validated on read, expiring after seven days. That
+  is the trade the feature is built on: **no anonymous rows in the database, no
+  lost answers in the browser.** Nothing in the store is an entitlement — a
+  `plan` of `full` there is a wish, and only a paid `purchases` row lifts a cap.
+  The server re-validates every field.
+- **The flow must not write the draft on mount.** It skips the first save
+  deliberately: writing the untouched defaults over the stored draft is what
+  made the restore prompt stop appearing, and `use-stored-draft.ts` primes its
+  snapshot at module load to win the same race from the other side.
+- **`/auth/event-complete` is where the magic link comes back to**, and it is
+  under `/auth` for two independent reasons. Under `/host` it never hydrated
+  (the `loading.tsx` trap again) so it silently did nothing; and a Server Action
+  posts to the path of the page that owns it, so the proxy answered
+  `createEventFromDraft`'s own POST with a redirect and discarded the call.
+- **Idempotency is a database constraint, not a disabled button.** The draft
+  carries a `creationKey`, and `events` has a unique index on
+  `(owner_id, creation_key)`. A double tap, a reloaded callback, a second tab
+  and a re-opened magic link all land on the event the first attempt made.
+- **The draft is cleared only after the row exists**, and only by the code that
+  saw it exist. That is why `createEventFromDraft` returns a destination instead
+  of redirecting — a `redirect()` would navigate away before the browser could
+  clear the one copy of those answers.
+
 ## Optimistic updates (settled)
 
-Three admin controls show the result before the server has confirmed it. All
+Three host-area controls show the result before the server has confirmed it. All
 revert on their own — none carries hand-written rollback code.
 
-- **`components/admin/moderation-grid.tsx`** — `useOptimistic` is held on the
+- **`components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
   **grid**, not the tile, so the "N rejtve" counter moves with the photo it
   describes. Per-tile state would flip the tile instantly and leave the count a
   round trip behind, which reads as a bug.
-- **`components/admin/guests-toggle.tsx`** — same reasoning, one boolean. A
+- **`components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
-- **`components/admin/shots-card.tsx`** — a five-way choice whose selected value
+- **`components/host/shots-card.tsx`** — a five-way choice whose selected value
   is visible at a glance, so showing it immediately cannot mislead.
 
 **The two date cards are deliberately _not_ optimistic.**
-`capture-window-card.tsx` and `reveal-card.tsx` show a saved/failed state
+`capture-end-card.tsx` and `reveal-card.tsx` show a saved/failed state
 instead. A field that displays the typed text while the stored answer is an hour
 off would be lying about the one value guests are held to — and unlike a boolean,
 there is no way to glance at it and notice.
@@ -242,20 +350,29 @@ because a client-side counter is a display and the database is the count.
 | `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                         |
 | `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                     |
 | `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                             |
+| `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft   |
 | `/e/[slug]`                                                                                | Join screen guests land on from the QR code. Redirects to the camera once they have joined |
 | `/e/[slug]/camera`                                                                         | The camera. Where shots are taken                                                          |
 | `/e/[slug]/gallery`                                                                        | Shared gallery, reveal-gated                                                               |
-| `/admin`                                                                                   | Host/admin area, Supabase Auth magic link                                                  |
+| `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                        |
 
-**Public pages are locale-prefixed; the product is not.** `/e/`, `/admin`,
+**Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
 with the first, and `proxy.ts` guards the second by the exact path
-`/admin/:path*`. Putting a locale in front of either would silently break a
+`/host/:path*`. Putting a locale in front of either would silently break a
 printed code or an auth gate.
+
+**The host area was `/admin` until it was renamed**, and the reason is worth
+keeping: `profiles.role = 'admin'` is a real role — the operator who sees every
+event — so the route was spending that word on the couple whose wedding it is.
+`/host` is the product's own vocabulary and the exact counterpart of the guest
+side's `/e/`. `next.config.mjs` 308s `/admin` and `/admin/:path*` across; safe as
+a catch-all in a way a bare one is not, because `/admin` has no siblings to
+swallow. The **role** stays `admin` — only the route moved.
 
 Every pre-prefix URL (`/arak`, `/blog/:slug`, …) 308s to its `/hu` twin from
 `next.config.mjs`. Those redirects are spelled out one by one — a catch-all
-would swallow `/e/` and `/admin`.
+would swallow `/e/` and `/host`.
 
 Plus one machine endpoint: `POST /api/stripe/webhook`, which is the only thing
 that marks a purchase paid. Under `/api/` rather than the Hungarian namespace
@@ -320,7 +437,7 @@ JS function.
 5. **`<html lang>`.** It is fixed at `hu` in the single root layout, which is
    correct only while Hungarian is the only locale. Making it vary means
    splitting into two root layouts (`app/(site)/[locale]/layout.tsx` for
-   marketing, `app/(product)/layout.tsx` for `/e/` and `/admin`) and deleting
+   marketing, `app/(product)/layout.tsx` for `/e/` and `/host`) and deleting
    `app/layout.tsx`. That also forces the global 404 onto
    `experimental.globalNotFound`, which is why it was deferred rather than done
    up front.
@@ -335,8 +452,8 @@ inert — unread and unvalidated — until step 1.
   film has to belong to somebody, and the gallery credits each photo to the
   person who took it. Everything past that is the participant session
   (`lib/participants.ts`).
-- **Host/admin: Supabase Auth magic link.** Only the admin area is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
-- **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/admin` to list **every** event once you promote an account.
+- **Host: Supabase Auth magic link.** Only `/host` is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
+- **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/host` to list **every** event once you promote an account.
 - Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Slugs therefore carry a random suffix (`anna-peter-k3f9x7`); `slugify()` stays deterministic for the QR preview, and `generateEventSlug()` is what real events get. Never create an event with a bare `slugify()` result.
 
 ## Data model (settled)
@@ -350,7 +467,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   `reveal_mode` (`instant | event_end | custom`), `reveal_at`,
   `shots_per_participant` (`5 | 10 | 16 | 24 | 36`, default 24, enforced by a
   check constraint), `guests_can_view`, `owner_id` (→ `auth.users`),
-  `created_at`, `updated_at`
+  `creation_key` (nullable uuid; unique per owner where present — the create
+  flow's idempotency key, see below), `created_at`, `updated_at`
 
   **`reveal_at` is materialised, never computed per read.** A trigger
   (`events_resolve_reveal_at`) resolves it on every write: `instant` →
@@ -406,7 +524,7 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
   refunding on hide would make hiding a way to shoot forever.
 
-**Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); admin reads the tables directly under ownership policies. Details in the Supabase skill.
+**Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); the host area reads the tables directly under ownership policies. Details in the Supabase skill.
 
 - **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `created_at`. One row per account, written by a trigger at signup. Read it through `lib/roles.ts`, never inline.
 
@@ -460,8 +578,9 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
 - **A capped guest is shown no checkout.** They get "Az esemény elérte a
   résztvevői keretet" and are told to ask the organizer. A wedding guest holding
   a phone cannot fix this, and asking them to pay for the couple's album is the
-  wrong sentence to put in front of them. The upgrade lives on the host's
-  dashboard.
+  wrong sentence to put in front of them. The upgrade is the host's, and they
+  reach it in two places: the billing card in settings, and the plan choice on
+  the last onboarding screen. Both go through `createEventCheckoutUrl`.
 - **Checkout is a redirect** to Stripe's hosted page (`mode: 'payment'`). No card
   data touches this app — the difference between SAQ A and a compliance project.
 - **Only the webhook marks a purchase paid.** `?checkout=success` proves nothing:
@@ -478,9 +597,11 @@ Nothing about the Stripe integration changed in the pivot — only the predicate
 gates. `event_upload_quota` (photos) became `event_participant_quota`
 (participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
 
-Key files: `lib/stripe/*`, `lib/billing.ts`, `lib/roles.ts`,
-`app/api/stripe/webhook/route.ts`, `app/admin/events/[slug]/billing-actions.ts`,
-`components/admin/billing-card.tsx`.
+Key files: `lib/stripe/*` (`checkout.ts` builds the session for both entry
+points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
+`lib/roles.ts`, `app/api/stripe/webhook/route.ts`,
+`app/host/events/[slug]/billing-actions.ts`,
+`components/host/billing-card.tsx`, `app/host/events/new/step-guests.tsx`.
 
 **`/hu/arak` is knowingly out of date.** It still advertises a "5 feltöltött
 fotó" free tier and "Korlátlan fotó" on the paid one, neither of which is true
@@ -497,7 +618,7 @@ search. Fix it in that phase, not by halves.
    front/back switch, a `capture` file-input fallback when the live camera is
    refused or unavailable. No preview, no retake.
 3. Gallery `/e/[slug]/gallery` — reveal-gated, hidden photos excluded
-4. Admin `/admin` — six-step create wizard, QR, moderation, early reveal,
+4. Admin `/host` — four-step create flow, QR, moderation, early reveal,
    **ZIP download of the whole album**
 5. QR code generated from the final event URL
 
@@ -536,7 +657,7 @@ now, in the order it was built:
 4. `lib/` domain layer: `camera.ts`, `participants.ts`, `capture.ts`,
    `photo-urls.ts`, `event-copy.ts`
 5. Guest surface: join → camera → gallery
-6. Admin: create wizard, dashboard, settings, early reveal
+6. Admin: create flow, dashboard, settings, early reveal
 7. Tests, then real-phone testing and QR printing
 
 ## Photo quality policy (settled — the landing page depends on it)
@@ -575,7 +696,7 @@ the Hungarian copy in the same change.
 
 ## Conventions
 
-- `components/site/*` marketing sections · `components/event/*` guest-facing event UI · `components/admin/*` admin UI · `components/ui/*` shadcn primitives
+- `components/site/*` marketing sections · `components/event/*` guest-facing event UI · `components/host/*` host-area UI · `components/ui/*` shadcn primitives
 - Files kebab-case; components named exports (`export function EventHeader()`), no default exports except App Router pages/layouts
 - Server Components by default; add `'use client'` only for state, refs, or browser APIs
 - Shared logic in `lib/` (`lib/slug.ts`, `lib/supabase/*`); never duplicate a helper across components

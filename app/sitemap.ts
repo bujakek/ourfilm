@@ -10,7 +10,7 @@ import type { MetadataRoute } from 'next'
  * Event routes must never appear here. A sitemap is a public, machine-readable
  * list of every URL worth visiting — publishing album addresses in one would
  * hand away the only thing keeping them private, and would undo the random
- * slug suffix entirely. Nothing under /e/ or /admin ever belongs here.
+ * slug suffix entirely. Nothing under /e/ or /host ever belongs here.
  *
  * The draft marketing pages are excluded for a different reason: /arak,
  * /rolunk, /kapcsolat, /adatvedelem and /aszf all still carry

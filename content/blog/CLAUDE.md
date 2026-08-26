@@ -97,7 +97,7 @@ Internal links are **locale-prefixed and written in full**: `/hu/arak`,
 prefixing inside an article — a bare `/arak` will 308-redirect, which works but
 wastes a round trip and looks careless in a `<link>` audit.
 
-`/admin/login` is the one internal link with **no** locale prefix — the admin
+`/host/login` is the one internal link with **no** locale prefix — the admin
 area sits outside the locale tree.
 
 Any `/`-rooted link is routed through `next/link` automatically; anything else

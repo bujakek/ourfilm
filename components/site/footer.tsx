@@ -4,6 +4,8 @@ import { CONTACT_EMAIL } from '@/lib/site'
 import { Aperture } from 'lucide-react'
 import Link from 'next/link'
 
+import { CREATE_EVENT_PATH } from '@/lib/routes'
+
 interface FooterColumn {
   heading: string
   links: { label: string; href: string; external?: boolean }[]
@@ -18,9 +20,9 @@ interface FooterColumn {
  * renders on /arak, /rolunk and the rest, where a bare fragment points at
  * nothing.
  *
- * Every href is written locale-relative and prefixed at render. The one
- * exception is `/admin/login`, which is flagged `external` here: the admin area
- * sits outside the locale tree, and `proxy.ts` guards it by that exact path.
+ * Every href is written locale-relative and prefixed at render. The exception
+ * is anything under `/host`, flagged `external` here: that area sits outside
+ * the locale tree, and `proxy.ts` matches it by exact path.
  */
 const columns: FooterColumn[] = [
   {
@@ -46,7 +48,7 @@ const columns: FooterColumn[] = [
     links: [
       { label: 'Gyakori kérdések', href: '/#faq' },
       { label: 'Kapcsolat', href: '/kapcsolat' },
-      { label: 'Próbáld ki ingyen', href: '/admin/login', external: true },
+      { label: 'Próbáld ki ingyen', href: CREATE_EVENT_PATH, external: true },
     ],
   },
   {

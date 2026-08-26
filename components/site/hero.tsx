@@ -2,6 +2,8 @@ import { QrCode, ScanLine } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
+import { CREATE_EVENT_PATH } from '@/lib/routes'
+
 const galleryImages = [
   {
     src: '/images/wedding-dance.webp',
@@ -44,7 +46,7 @@ export function Hero() {
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
-              href="/admin/login"
+              href={CREATE_EVENT_PATH}
               className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
               Próbáld ki ingyen

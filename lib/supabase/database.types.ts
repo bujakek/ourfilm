@@ -45,6 +45,7 @@ export type Database = {
           capture_start_at: string
           cover_path: string | null
           created_at: string
+          creation_key: string | null
           event_name: string
           guests_can_view: boolean
           id: string
@@ -61,6 +62,7 @@ export type Database = {
           capture_start_at: string
           cover_path?: string | null
           created_at?: string
+          creation_key?: string | null
           event_name: string
           guests_can_view?: boolean
           id?: string
@@ -77,6 +79,7 @@ export type Database = {
           capture_start_at?: string
           cover_path?: string | null
           created_at?: string
+          creation_key?: string | null
           event_name?: string
           guests_can_view?: boolean
           id?: string

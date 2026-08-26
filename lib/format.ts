@@ -51,53 +51,17 @@ export function formatPostDate(date: string, locale: KnownLocale): string {
  * labelling a photo taken at 14:32 as 12:32. Vercel runs UTC, so the server's
  * own zone is no help either.
  *
- * Every event now carries its own `time_zone`, so this is only the default the
- * create wizard pre-selects and the fallback for anything not tied to one
- * event. Pass the event's zone wherever you have it: a host who sets up a
- * camera for a wedding abroad has told us which clock the guests are on, and
- * rendering their deadline in Budapest time would be ignoring the answer.
+ * Every event carries its own `time_zone`, read off the host's browser when the
+ * event is created, so this is only the server-render default and the fallback
+ * for anything not tied to one event. Pass the event's zone wherever you have
+ * it: a host who sets up a camera for a wedding abroad is on that clock, and
+ * rendering their deadline in Budapest time would be ignoring it.
+ *
+ * There is deliberately no list of offered zones and no label map any more. The
+ * flow never asks, and the admin never shows the answer — a host reads times in
+ * the wall clock they typed, which is the only one they were ever thinking in.
  */
 export const EVENT_TIME_ZONE = 'Europe/Budapest'
-
-/**
- * The zones the create wizard offers.
- *
- * A short list rather than the full IANA database: the product is Hungarian and
- * the realistic answers are "here" or "the country we are getting married in".
- * A 400-entry select on a 390px phone is a worse question than a wrong default.
- * The column takes any IANA name, so widening this is copy, not schema.
- */
-export const EVENT_TIME_ZONES = [
-  'Europe/Budapest',
-  'Europe/London',
-  'Europe/Lisbon',
-  'Europe/Athens',
-  'Europe/Istanbul',
-  'Atlantic/Canary',
-  'America/New_York',
-  'America/Los_Angeles',
-  'Asia/Dubai',
-  'Asia/Tokyo',
-] as const
-
-/** Hungarian labels for the zones above. A guest never sees these; a host picks
- *  one once, so it reads as a place rather than an offset. */
-export const EVENT_TIME_ZONE_LABELS: Record<string, string> = {
-  'Europe/Budapest': 'Budapest',
-  'Europe/London': 'London',
-  'Europe/Lisbon': 'Lisszabon',
-  'Europe/Athens': 'Athén',
-  'Europe/Istanbul': 'Isztambul',
-  'Atlantic/Canary': 'Kanári-szigetek',
-  'America/New_York': 'New York',
-  'America/Los_Angeles': 'Los Angeles',
-  'Asia/Dubai': 'Dubaj',
-  'Asia/Tokyo': 'Tokió',
-}
-
-export function eventTimeZoneLabel(zone: string): string {
-  return EVENT_TIME_ZONE_LABELS[zone] ?? zone
-}
 
 /** Whether a string is a zone this runtime can actually format in. The value
  *  reaches us from a form, and an unknown zone makes `Intl` throw at render
@@ -324,4 +288,91 @@ export function eventLocalToIso(
     `${local}:00${eventUtcOffset(guess.toISOString(), zone)}`,
   )
   return Number.isNaN(exact.getTime()) ? null : exact.toISOString()
+}
+
+/**
+ * `H K Sze Cs P Szo V` — the onboarding calendar's column headers, Monday-first.
+ *
+ * Written out rather than derived from `Intl`: hu-HU's narrow weekdays are
+ * `V H K Sz Cs P Sz`, where szerda and szombat are both `Sz`. A calendar header
+ * whose two columns carry the same label is not a header.
+ */
+export const HU_WEEKDAYS_SHORT = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V']
+
+const HU_MONTH_YEAR = new Intl.DateTimeFormat('hu-HU', {
+  year: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+})
+
+/**
+ * `2026. augusztus` — the calendar's month heading.
+ *
+ * Takes the year and a 0-indexed month rather than a `Date`, because a calendar
+ * grid is a calendar, not an instant: the month being drawn has no timezone to
+ * get wrong. Formatted in UTC for the same reason `formatEventDate` is.
+ */
+export function formatHuMonthYear(year: number, month: number): string {
+  return HU_MONTH_YEAR.format(new Date(Date.UTC(year, month, 1)))
+}
+
+const HU_LONG_DAY = new Intl.DateTimeFormat('hu-HU', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  weekday: 'long',
+  timeZone: 'UTC',
+})
+
+/** `2026. augusztus 24., hétfő` — the accessible name of one calendar cell.
+ *  A screen reader user tabbing the grid gets the whole date; the visible
+ *  label is only ever the number. */
+export function formatHuCalendarDay(day: string): string {
+  return HU_LONG_DAY.format(new Date(`${day}T00:00:00Z`))
+}
+
+const REVEAL_BADGE_CACHE = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * `aug. 24. 20:42` — the reveal badge over the onboarding photo preview.
+ *
+ * `formatDeadline` with the year dropped. The year is load-bearing in the admin
+ * list, where a wedding booked for next January sits next to one from last
+ * week; here the moment is always within a month or so of a date the host has
+ * just picked two screens earlier, and the year only costs width on a badge
+ * that has to fit across two photos on a 390px phone.
+ */
+export function formatRevealBadge(iso: string, zone = EVENT_TIME_ZONE): string {
+  return memoFormatter(
+    REVEAL_BADGE_CACHE,
+    zone,
+    (tz) =>
+      new Intl.DateTimeFormat('hu-HU', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        timeZone: tz,
+      }),
+  ).format(new Date(iso))
+}
+
+/**
+ * The IANA zone this browser is in, or the event default when it cannot be
+ * read.
+ *
+ * Onboarding never asks for a zone: the host picks a wall clock and means the
+ * one on the phone in their hand. Resolving it here rather than showing a
+ * select is the whole difference between one question and two — but it can only
+ * happen in the browser, so callers read it in an effect and start from
+ * `EVENT_TIME_ZONE` for the server render.
+ */
+export function browserTimeZone(): string {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return zone && isValidTimeZone(zone) ? zone : EVENT_TIME_ZONE
+  } catch {
+    return EVENT_TIME_ZONE
+  }
 }
