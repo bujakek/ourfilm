@@ -11,28 +11,16 @@ export function PhotoGrid({ photos }: { photos: GalleryTile[] }) {
 
   return (
     <>
-      <motion.ul
-        initial="hidden"
-        animate="visible"
-        variants={{
-          hidden: {},
-          visible: {
-            transition: { staggerChildren: 0.035, delayChildren: 0.04 },
-          },
-        }}
-        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-      >
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {photos.map((photo, i) => (
           <motion.li
             key={photo.id}
-            variants={{
-              hidden: { opacity: 0, y: 10, scale: 0.985 },
-              visible: {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-                transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
-              },
+            initial={{ opacity: 0, y: 10, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{
+              duration: 0.28,
+              delay: Math.min(i, 10) * 0.025,
+              ease: [0.16, 1, 0.3, 1],
             }}
           >
             <motion.button
@@ -60,7 +48,7 @@ export function PhotoGrid({ photos }: { photos: GalleryTile[] }) {
             </motion.button>
           </motion.li>
         ))}
-      </motion.ul>
+      </ul>
 
       <AnimatePresence>
         {openIndex !== null ? (
