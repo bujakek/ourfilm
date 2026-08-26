@@ -14,7 +14,29 @@ import { NextResponse, type NextRequest } from 'next/server'
  * every request, so an unauthenticated visitor is redirected to the login page
  * from the marketing homepage, the guest event pages and robots.txt alike.
  * Silently, again. Verify by requesting `/` signed out — it must return 200.
+ *
+ * `PUBLIC_ADMIN_PATHS` is the one hole in the gate, and it is deliberate: the
+ * create flow is filled in *before* anyone has an account. Nothing behind it
+ * reads or writes a row — it is a form that keeps its answers in
+ * `localStorage` and asks for an account at the end, when there is finally
+ * something to save. Every route that touches data stays gated, including the
+ * one that finishes the creation.
  */
+
+/**
+ * Admin paths a signed-out visitor may open, matched exactly.
+ *
+ * Exact equality, never `startsWith`. A prefix here would open every child of
+ * the path as well, and `/admin/events/new` is one segment away from routes
+ * that list and mutate real events.
+ *
+ * The screen that finishes the creation after signing up is deliberately **not**
+ * here: it lives at `/auth/event-complete`, outside this matcher entirely. A
+ * Server Action posts to the path of the page that owns it, so an `/admin/**`
+ * path would mean this gate answering `createEventFromDraft`'s own POST with a
+ * redirect and discarding the call. Its own page comment has the rest.
+ */
+const PUBLIC_ADMIN_PATHS = new Set(['/admin/events/new'])
 export async function proxy(request: NextRequest) {
   const { url, anonKey } = publicSupabaseEnv()
 
@@ -47,15 +69,20 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isLoginRoute = request.nextUrl.pathname.startsWith('/admin/login')
+  const path = request.nextUrl.pathname
+  const isLoginRoute = path.startsWith('/admin/login')
+  const isPublicRoute = PUBLIC_ADMIN_PATHS.has(path)
 
-  if (!user && !isLoginRoute) {
+  if (!user && !isLoginRoute && !isPublicRoute) {
     const redirectTo = request.nextUrl.clone()
     redirectTo.pathname = '/admin/login'
     redirectTo.search = ''
     return NextResponse.redirect(redirectTo)
   }
 
+  // A signed-in host opening the login page is bounced to their events. The
+  // public create flow is not: it works the same either way, and the only
+  // difference is that they are not asked for an account at the end.
   if (user && isLoginRoute) {
     const redirectTo = request.nextUrl.clone()
     redirectTo.pathname = '/admin'

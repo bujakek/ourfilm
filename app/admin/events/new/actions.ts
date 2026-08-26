@@ -1,7 +1,5 @@
 'use server'
 
-import { redirect } from 'next/navigation'
-
 import { getEventQuota } from '@/lib/billing'
 import { isRevealMode, isShotOption, validateEventDraft } from '@/lib/camera'
 import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
@@ -16,35 +14,67 @@ import { stripeIsConfigured } from '@/lib/stripe/env'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 
-export type CreateEventState = { error: string | null }
+/** What the browser sends. Every field is re-derived or re-checked below — it
+ *  comes out of `localStorage`, which is a JSON blob any visitor can edit. */
+export type EventDraftInput = {
+  name: string
+  /** `YYYY-MM-DDTHH:mm`, read as wall clock in `timeZone`. */
+  endLocal: string
+  timeZone: string
+  revealMode: string
+  delayDays: number
+  shots: number
+  plan: string
+  guestsCanView: boolean
+  /** Per-draft uuid. Makes a repeat attempt land on the event the first one
+   *  created instead of a second one. Optional: a flow with no draft behind it
+   *  has nothing to be idempotent about. */
+  creationKey?: string | null
+}
+
+export type CreateEventResult =
+  | { ok: true; destination: string }
+  | {
+      ok: false
+      error: string
+      /** `auth` — nobody is signed in, so the browser should ask for an
+       *  account and try again. `end` — the chosen end has gone by while the
+       *  draft sat there, and the flow should reopen the date screen with
+       *  every other answer intact. */
+      reason?: 'auth' | 'end'
+    }
 
 const SLUG_ATTEMPTS = 5
 const UNIQUE_VIOLATION = '23505'
+const CREATION_KEY_INDEX = 'events_owner_creation_key_idx'
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * Create one disposable camera.
+ * Create one disposable camera, and say where the host should go next.
  *
- * The flow collects four answers in the browser and posts them all at once.
- * That is deliberate: a draft row per abandoned wizard would be a second event
- * state to reason about everywhere — the dashboard, the QR, the participant cap
- * — for a form that takes forty seconds to fill in.
+ * **Returns rather than redirects.** The browser owns one thing the server
+ * cannot see — the `localStorage` draft — and it must not clear it until the
+ * event actually exists. A `redirect()` here would navigate away before the
+ * client could, which is how a host ends up with an event and a stale draft
+ * offering to recreate it.
  *
- * Everything below is re-validated here even though the wizard already refused
- * it. A disabled button is a courtesy; this is a server action and the FormData
- * arriving at it is whatever the caller decided to send.
+ * Everything below is re-validated even though the form already refused it.
+ * The draft is client-side JSON: a plan of `full` in it is a *wish*, the shot
+ * count is whatever someone typed in devtools, and the end date was chosen at
+ * some point in the last week. None of it is an entitlement and none of it is
+ * fresh.
  */
-export async function createEvent(
-  _prev: CreateEventState,
-  formData: FormData,
-): Promise<CreateEventState> {
-  const name = String(formData.get('event_name') ?? '').trim()
+export async function createEventFromDraft(
+  input: EventDraftInput,
+): Promise<CreateEventResult> {
+  const name = String(input.name ?? '').trim()
 
-  // Read off the browser rather than chosen from a list. Still validated: the
-  // value reaches us from a form, and an unknown zone makes `Intl` throw at
-  // render time rather than at the point it was accepted.
-  const timeZone = String(formData.get('time_zone') ?? '').trim()
+  // Read off the host's browser rather than chosen from a list. Still checked:
+  // an unknown zone makes `Intl` throw at render time rather than at the point
+  // it was accepted.
+  const timeZone = String(input.timeZone ?? '').trim()
   if (!isValidTimeZone(timeZone)) {
-    return { error: 'Nem sikerült megállapítani az időzónádat. Próbáld újra.' }
+    return { ok: false, error: 'Nem sikerült megállapítani az időzónádat.' }
   }
 
   // **The camera opens now.** Stamped here rather than sent from the browser:
@@ -53,38 +83,31 @@ export async function createEvent(
   // compares `now()` against.
   const captureStartAt = new Date()
 
-  // A datetime-local value carries no zone, so it is read as the *event's* wall
-  // clock rather than the server's — Vercel runs UTC, which would move every
-  // window two hours from what the host picked.
-  const captureEndIso = eventLocalToIso(
-    String(formData.get('capture_end_at') ?? '').trim(),
-    timeZone,
-  )
-  const revealModeRaw = String(formData.get('reveal_mode') ?? '')
-  const delayDays = clampRevealDelayDays(formData.get('reveal_delay_days'))
-  const shots = Number(formData.get('shots_per_participant'))
-  const planRaw = String(formData.get('plan') ?? 'free')
-  // Absent means off: an unchecked switch posts nothing, which is how an HTML
-  // form has always spelled false.
-  const guestsCanView = formData.get('guests_can_view') === 'on'
+  const captureEndIso = eventLocalToIso(String(input.endLocal ?? ''), timeZone)
+  const revealModeRaw = String(input.revealMode ?? '')
+  const delayDays = clampRevealDelayDays(input.delayDays)
+  const shots = Number(input.shots)
+  const planRaw = String(input.plan ?? 'free')
+  const guestsCanView = input.guestsCanView === true
 
   if (!captureEndIso) {
-    return { error: 'Add meg, mikor érjen véget az esemény.' }
+    return {
+      ok: false,
+      error: 'Add meg, mikor érjen véget az esemény.',
+      reason: 'end',
+    }
   }
   if (!isRevealMode(revealModeRaw)) {
-    return { error: 'Válaszd ki, mikor jelenjenek meg a képek.' }
+    return { ok: false, error: 'Válaszd ki, mikor jelenjenek meg a képek.' }
   }
   if (!isShotOption(shots)) {
-    return { error: 'Válaszd ki, hány képet készíthet egy vendég.' }
+    return { ok: false, error: 'Válaszd ki, hány képet készíthet egy vendég.' }
   }
   if (!isEventPlan(planRaw)) {
-    return { error: 'Válaszd ki, hány vendég csatlakozhat.' }
+    return { ok: false, error: 'Válaszd ki, hány vendég csatlakozhat.' }
   }
 
   const captureEndAt = new Date(captureEndIso)
-  // "Later" is counted in whole days from the moment the camera closes. The
-  // browser showed the host this exact instant on the badge two screens back,
-  // so it is recomputed the same way here rather than trusted from the form.
   const customRevealAt =
     revealModeRaw === 'custom'
       ? revealAfterDelay(captureEndAt, delayDays)
@@ -100,29 +123,65 @@ export async function createEvent(
   })
 
   if (problems.includes('name_required')) {
-    return { error: 'Adj nevet az eseménynek.' }
+    return { ok: false, error: 'Adj nevet az eseménynek.' }
   }
   if (problems.includes('window_backwards')) {
     // The camera starts now, so the only way to fail this is an end that has
-    // gone by while the form was open.
-    return { error: 'Ez az időpont már elmúlt. Válassz későbbit.' }
+    // gone by — which is the common case for a draft resumed a day later, and
+    // why it is worth its own reason code rather than a sentence.
+    return {
+      ok: false,
+      error: 'Ez az időpont már elmúlt. Válassz későbbit.',
+      reason: 'end',
+    }
   }
   if (problems.includes('reveal_before_end')) {
-    return { error: 'A leleplezés nem lehet korábbi a fotózás végénél.' }
+    return {
+      ok: false,
+      error: 'A leleplezés nem lehet korábbi a fotózás végénél.',
+    }
   }
   if (problems.length > 0) {
-    return { error: 'Nem sikerült létrehozni. Nézd át a beállításokat.' }
+    return {
+      ok: false,
+      error: 'Nem sikerült létrehozni. Nézd át a beállításokat.',
+    }
   }
 
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: 'Lejárt a munkameneted. Lépj be újra.' }
+  // The one thing the create flow does not do signed out. Everything up to
+  // here is a form; this is a row with an owner.
+  if (!user) {
+    return {
+      ok: false,
+      error: 'Az esemény mentéséhez lépj be.',
+      reason: 'auth',
+    }
+  }
 
-  // `reveal_at` is resolved by a trigger for the two pinned modes, so what is
-  // sent here only matters for `custom`. Sending the capture end as a
-  // placeholder keeps the column's NOT NULL satisfied either way.
+  const creationKey =
+    typeof input.creationKey === 'string' && UUID.test(input.creationKey)
+      ? input.creationKey
+      : null
+
+  // Idempotency, first pass: the common case is a resumed draft whose event
+  // already exists — a reloaded callback URL, a second tab, a back button. One
+  // indexed lookup is cheaper than an insert that has to fail.
+  if (creationKey) {
+    const { data: existing } = await supabase
+      .from('events')
+      .select('slug')
+      .eq('owner_id', user.id)
+      .eq('creation_key', creationKey)
+      .maybeSingle()
+    if (existing) {
+      return { ok: true, destination: `/admin/events/${existing.slug}` }
+    }
+  }
+
   const revealAt = (customRevealAt ?? captureEndAt).toISOString()
 
   let slug: string | null = null
@@ -143,77 +202,68 @@ export async function createEvent(
         reveal_at: revealAt,
         shots_per_participant: shots,
         guests_can_view: guestsCanView,
+        creation_key: creationKey,
       })
-      .select('id')
+      .select('id, slug')
       .maybeSingle()
 
     if (!error && data) {
-      slug = candidate
+      slug = data.slug
       eventId = data.id
       break
     }
-    // Only a slug collision is worth retrying — a fresh random suffix clears
-    // it. Anything else is a real failure and should surface.
-    if (error && error.code !== UNIQUE_VIOLATION) {
+
+    if (error?.code === UNIQUE_VIOLATION) {
+      // Two different unique indexes can raise this, and they mean opposite
+      // things. A creation-key collision is the race the key exists to win:
+      // another request beat us to it, so the correct answer is *its* event.
+      if (error.message.includes(CREATION_KEY_INDEX) && creationKey) {
+        const { data: raced } = await supabase
+          .from('events')
+          .select('slug')
+          .eq('owner_id', user.id)
+          .eq('creation_key', creationKey)
+          .maybeSingle()
+        if (raced)
+          return { ok: true, destination: `/admin/events/${raced.slug}` }
+        return { ok: false, error: 'Nem sikerült létrehozni. Próbáld újra.' }
+      }
+      // Otherwise it is a slug collision, which a fresh random suffix clears.
+      continue
+    }
+
+    if (error) {
       console.error('Could not create event', error)
-      return { error: 'Nem sikerült létrehozni. Próbáld újra.' }
+      return { ok: false, error: 'Nem sikerült létrehozni. Próbáld újra.' }
     }
   }
 
   if (!slug || !eventId) {
-    return { error: 'Nem sikerült egyedi linket generálni. Próbáld újra.' }
-  }
-
-  // Kept working, but nothing posts a cover any more: the Once-shaped flow asks
-  // one question per screen and a cover picker is not one of the four. The
-  // column is nullable and every surface already renders an event without one.
-  // Whatever surfaces the picker next — most likely the settings page — posts
-  // to this same field.
-  //
-  // Deliberately not fatal, either. The cover has no folder to live in until
-  // the event id exists, and a host whose cover upload fails should land on a
-  // working event they can add a picture to later, not lose the whole thing
-  // over a decorative image.
-  const cover = formData.get('cover')
-  if (cover instanceof File && cover.size > 0) {
-    const { error: coverError } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .upload(coverStoragePath(eventId), cover, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      })
-
-    if (coverError) {
-      console.error('Could not upload cover image', coverError)
-    } else {
-      const { error: patchError } = await supabase
-        .from('events')
-        .update({ cover_path: coverStoragePath(eventId) })
-        .eq('id', eventId)
-      if (patchError) console.error('Could not record cover path', patchError)
+    return {
+      ok: false,
+      error: 'Nem sikerült egyedi linket generálni. Próbáld újra.',
     }
   }
 
   // Where the host lands, which is the only thing the plan choice decides.
   //
-  // `unlimited` is not a column and nothing about the row above is different
-  // for it: the free tier is a participant cap enforced inside `join_event`,
-  // and only a paid `purchases` row lifts it. So the paid choice means "and
-  // now go pay", and an abandoned checkout leaves an ordinary free event —
-  // which is what the ledger's `pending` row already describes.
+  // `full` is not a column and nothing about the row above is different for
+  // it: the free tier is a participant cap enforced inside `join_event`, and
+  // only a paid `purchases` row lifts it. So the paid choice means "and now go
+  // pay" — a draft that says `full` buys nothing on its own, and an abandoned
+  // checkout leaves an ordinary free event.
   let destination = `/admin/events/${slug}`
 
-  if (planRaw === 'unlimited') {
+  if (planRaw === 'full') {
     // Settings, not the event page, whenever the payment cannot be started
-    // here: that is where the billing card is, and it explains the situation
-    // in a sentence — payments not switched on, or try again — better than a
-    // silent landing on the QR code would.
+    // here: that is where the billing card is, and it explains the situation —
+    // payments not switched on, or try again — better than a silent landing on
+    // the QR code would.
     destination = `/admin/events/${slug}/settings`
     if (stripeIsConfigured()) {
       try {
         // An admin's own events are already unlimited, so there is nothing to
-        // sell them. Same predicate the billing card reads, for the same
-        // reason: it answers from the database rather than from a purchase row.
+        // sell them. Same predicate the billing card reads.
         const quota = await getEventQuota(eventId)
         if (quota.unlimited) {
           destination = `/admin/events/${slug}`
@@ -234,7 +284,32 @@ export async function createEvent(
     }
   }
 
-  // Outside any try/catch on purpose: redirect() signals by throwing, so
-  // catching around it would swallow the navigation.
-  redirect(destination)
+  return { ok: true, destination }
+}
+
+/**
+ * Attaches a cover image to an event that already exists.
+ *
+ * Nothing calls this yet: the create flow has no cover picker, because it is
+ * filled in signed out and a chosen image cannot ride through an auth round
+ * trip in `localStorage` — a base64 photo in a 5MB store is exactly what that
+ * store is not for. Kept because the storage path, the bucket policy and the
+ * `cover_path` write are the fiddly half, and the picker that will eventually
+ * live in settings needs all three.
+ */
+export async function attachEventCover(eventId: string, cover: File) {
+  const supabase = await createClient()
+  const { error } = await supabase.storage
+    .from(PHOTO_BUCKET)
+    .upload(coverStoragePath(eventId), cover, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    })
+  if (error) throw error
+
+  const { error: patchError } = await supabase
+    .from('events')
+    .update({ cover_path: coverStoragePath(eventId) })
+    .eq('id', eventId)
+  if (patchError) throw patchError
 }

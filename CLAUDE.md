@@ -172,6 +172,20 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   Vercel region. If the Supabase project ever moves, move this with it —
   nothing else in the code notices, and the symptom is a uniformly slow app.
 
+## `redirect()` from a Server Action rejects on the client (settled)
+
+`app/auth/callback/callback-exchange.tsx` calls `completeMagicLink` and used to
+treat any rejection as a transport failure, sending the browser to
+`/admin/login?error=link`. But `redirect()` reports itself **by throwing**, and a
+Server Action re-throws that on the client — so the success path arrived in the
+same `catch`. The proxy then bounced the by-then-signed-in visitor from the login
+route to `/admin`, which is where an ordinary login was going anyway. It looked
+correct for every login this product has ever done, and only became visible when
+a link carried a `next`: the destination was silently discarded.
+
+`isRedirect()` in that file recognises the `NEXT_REDIRECT` digest. Any new
+`.catch` around a Server Action that redirects needs the same guard.
+
 ## The guest gate is in the pages, not the layout (settled — learned the hard way)
 
 `readParticipantTokenHash()` (`lib/participants.ts`) reads the httpOnly cookie,
@@ -268,6 +282,39 @@ does it need. Neither of the other two depends on the first being answered.
   the whole flow is served as unhydrated markup. Same Next 16.3 failure as the
   `loading.tsx` note on `app/e/[slug]`, reproduced here by A/B.
 
+### It is filled in signed out (settled)
+
+Nobody is asked for an account before they have seen what they are signing up
+for. The whole flow is a form; the account is asked for on the last screen, when
+there is finally something to save.
+
+- **`/admin/events/new` is in `PUBLIC_ADMIN_PATHS`** (`proxy.ts`), matched
+  exactly — never by prefix, because it is one segment away from routes that
+  list and mutate real events.
+- **The answers live in `localStorage`** under `ourfilm:event-draft:v1`
+  (`lib/event-draft.ts`), zod-validated on read, expiring after seven days. That
+  is the trade the feature is built on: **no anonymous rows in the database, no
+  lost answers in the browser.** Nothing in the store is an entitlement — a
+  `plan` of `full` there is a wish, and only a paid `purchases` row lifts a cap.
+  The server re-validates every field.
+- **The flow must not write the draft on mount.** It skips the first save
+  deliberately: writing the untouched defaults over the stored draft is what
+  made the restore prompt stop appearing, and `use-stored-draft.ts` primes its
+  snapshot at module load to win the same race from the other side.
+- **`/auth/event-complete` is where the magic link comes back to**, and it is
+  under `/auth` for two independent reasons. Under `/admin` it never hydrated
+  (the `loading.tsx` trap again) so it silently did nothing; and a Server Action
+  posts to the path of the page that owns it, so the proxy answered
+  `createEventFromDraft`'s own POST with a redirect and discarded the call.
+- **Idempotency is a database constraint, not a disabled button.** The draft
+  carries a `creationKey`, and `events` has a unique index on
+  `(owner_id, creation_key)`. A double tap, a reloaded callback, a second tab
+  and a re-opened magic link all land on the event the first attempt made.
+- **The draft is cleared only after the row exists**, and only by the code that
+  saw it exist. That is why `createEventFromDraft` returns a destination instead
+  of redirecting — a `redirect()` would navigate away before the browser could
+  clear the one copy of those answers.
+
 ## Optimistic updates (settled)
 
 Three admin controls show the result before the server has confirmed it. All
@@ -303,6 +350,7 @@ because a client-side counter is a display and the database is the count.
 | `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                         |
 | `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                     |
 | `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                             |
+| `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft   |
 | `/e/[slug]`                                                                                | Join screen guests land on from the QR code. Redirects to the camera once they have joined |
 | `/e/[slug]/camera`                                                                         | The camera. Where shots are taken                                                          |
 | `/e/[slug]/gallery`                                                                        | Shared gallery, reveal-gated                                                               |
@@ -411,7 +459,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   `reveal_mode` (`instant | event_end | custom`), `reveal_at`,
   `shots_per_participant` (`5 | 10 | 16 | 24 | 36`, default 24, enforced by a
   check constraint), `guests_can_view`, `owner_id` (→ `auth.users`),
-  `created_at`, `updated_at`
+  `creation_key` (nullable uuid; unique per owner where present — the create
+  flow's idempotency key, see below), `created_at`, `updated_at`
 
   **`reveal_at` is materialised, never computed per read.** A trigger
   (`events_resolve_reveal_at`) resolves it on every write: `instant` →

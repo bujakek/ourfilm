@@ -1,0 +1,154 @@
+'use client'
+
+import { Check, Loader2, Mail } from 'lucide-react'
+import { useActionState, useRef, useState } from 'react'
+
+import { createClient } from '@/lib/supabase/client'
+
+import { OnboardingDialog } from './onboarding-dialog'
+
+type Result = { status: 'idle' | 'sent' | 'error'; message?: string }
+
+const INITIAL: Result = { status: 'idle' }
+
+/**
+ * Asks for an account at the end of the flow, not the start.
+ *
+ * The same magic link `/admin/login` sends, and deliberately the same
+ * `signInWithOtp` call with `shouldCreateUser` — one link both signs up and
+ * signs in, so there is no "register or log in?" fork to put in front of
+ * someone who has already answered four questions. No new provider was added
+ * for this.
+ *
+ * What is different is where the link comes back to: `returnTo` carries the
+ * resume route, so the callback lands on the screen that reads the draft and
+ * finishes the creation rather than on the events list.
+ *
+ * The mail has to be opened **in this browser**. The draft lives in
+ * `localStorage`, which no other device can see — the resume route says so in
+ * as many words when it finds nothing, and the confirmation below says it
+ * before that happens.
+ */
+export function AuthDialog({
+  open,
+  onClose,
+  returnTo,
+}: {
+  open: boolean
+  onClose: () => void
+  /** Path the magic link should land on, already carrying whatever the resume
+   *  route needs. Passed through `safeNext` on the way back. */
+  returnTo: string
+}) {
+  const [result, submit, pending] = useActionState(sendLink, INITIAL)
+  const [existing, setExisting] = useState(false)
+  const sendingRef = useRef(false)
+
+  async function sendLink(previous: Result, formData: FormData) {
+    const email = String(formData.get('email') ?? '').trim()
+    if (!email) return INITIAL
+
+    // React queues concurrent dispatches rather than dropping them, so
+    // `pending` alone still allows a fast double-tap to send twice — and each
+    // new magic link invalidates the previous one, so the second mail would
+    // kill the link in the first.
+    if (sendingRef.current) return previous
+    sendingRef.current = true
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}`,
+        shouldCreateUser: true,
+      },
+    })
+
+    if (error) {
+      sendingRef.current = false
+      return {
+        status: 'error' as const,
+        message: 'Nem sikerült elküldeni. Próbáld újra egy kicsit később.',
+      }
+    }
+    return { status: 'sent' as const }
+  }
+
+  if (result.status === 'sent') {
+    return (
+      <OnboardingDialog
+        open={open}
+        onClose={onClose}
+        closeLabel="Bezárás"
+        title="Elküldtük a linket"
+        detail="Nézd meg a postaládádat, és koppints a linkre. Ugyanebben a böngészőben nyisd meg — az eseményed beállításai ezen az eszközön vannak elmentve."
+      >
+        <div className="flex items-center justify-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-accent/20">
+            <Check className="size-7 text-accent" strokeWidth={2.2} />
+          </span>
+        </div>
+      </OnboardingDialog>
+    )
+  }
+
+  return (
+    <OnboardingDialog
+      open={open}
+      onClose={onClose}
+      closeLabel="Bezárás"
+      title="Mentsd el az eseményed"
+      detail={
+        existing
+          ? 'Add meg az e-mail-címed, és küldünk egy belépési linket. A beállításaid már el vannak mentve.'
+          : 'Hozz létre egy ingyenes fiókot, hogy később is elérd és kezeld az eseményt. A beállításaid már el vannak mentve.'
+      }
+    >
+      <form action={submit} className="flex flex-col gap-3">
+        <input
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          disabled={pending}
+          placeholder="te@pelda.hu"
+          aria-label="E-mail-cím"
+          className="glass min-h-14 w-full rounded-2xl px-5 text-base outline-none placeholder:text-muted-foreground/50 focus:border-accent disabled:opacity-60"
+        />
+
+        {result.status === 'error' ? (
+          <p role="alert" className="text-sm text-destructive">
+            {result.message}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={pending}
+          aria-busy={pending}
+          className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-base font-semibold text-primary-foreground disabled:opacity-60"
+        >
+          {pending ? (
+            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Mail className="size-5" strokeWidth={1.8} aria-hidden="true" />
+          )}
+          {pending ? 'Küldés…' : 'Küldjétek a linket'}
+        </button>
+
+        {/* One link signs up and signs in, so this changes the wording rather
+            than the flow — but a host who already has an account needs to see
+            that they are in the right place. */}
+        {existing ? null : (
+          <button
+            type="button"
+            onClick={() => setExisting(true)}
+            className="min-h-11 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          >
+            Már van fiókod? Belépés
+          </button>
+        )}
+      </form>
+    </OnboardingDialog>
+  )
+}

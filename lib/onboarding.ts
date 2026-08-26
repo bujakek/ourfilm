@@ -77,15 +77,15 @@ export function eventNameSuggestions(firstName: string | null): string[] {
  * Which tier the host picks on the last screen.
  *
  * Not a column. The free tier is a participant cap enforced inside
- * `join_event`, and `unlimited` is lifted by a paid `purchases` row — so this
+ * `join_event`, and `full` is lifted by a paid `purchases` row — so this
  * only decides where the host lands after the event is created: on their new
  * event, or on Stripe. An abandoned checkout leaves an ordinary free event,
  * which is exactly what the ledger already models with a `pending` row.
  */
-export type EventPlan = 'free' | 'unlimited'
+export type EventPlan = 'free' | 'full'
 
 export function isEventPlan(value: unknown): value is EventPlan {
-  return value === 'free' || value === 'unlimited'
+  return value === 'free' || value === 'full'
 }
 
 /**

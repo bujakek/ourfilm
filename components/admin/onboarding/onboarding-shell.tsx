@@ -57,8 +57,8 @@ export function OnboardingShell({
   ctaDisabled = false,
   ctaPending = false,
   onNext,
-  submit = false,
   error = null,
+  note = null,
   children,
 }: {
   title: string
@@ -71,17 +71,26 @@ export function OnboardingShell({
   ctaDisabled?: boolean
   ctaPending?: boolean
   onNext?: () => void
-  submit?: boolean
   error?: string | null
+  /** A line under the question, above the footer. Used for the one sentence
+   *  that has to arrive before the CTA rather than after it. */
+  note?: ReactNode
   children: ReactNode
 }) {
   // A tap on the CTA advances a step, and a step is one render away. Two taps
   // inside that frame would advance two, skipping a question the host never
   // answered — so the click is spent, and only a new `step` re-arms it.
+  //
+  // On the last screen the CTA creates rather than advances, so `step` never
+  // changes and this would latch shut after one press. `ctaPending` re-arms it:
+  // a create that comes back with an error (or an auth prompt the host closes)
+  // clears the flag, which is exactly when pressing again should work. The real
+  // guard against duplicates is the creation key on the server — a disabled
+  // button is a courtesy, not a mechanism.
   const spent = useRef<number | null>(null)
   useEffect(() => {
     spent.current = null
-  }, [step])
+  }, [step, ctaPending])
 
   const blocked = ctaDisabled || ctaPending
 
@@ -150,10 +159,16 @@ export function OnboardingShell({
           </p>
         ) : null}
 
-        <footer className="relative mt-6 flex min-h-14 items-center justify-end">
+        {note}
+
+        {/* A grid, not a centred overlay. The last screen's CTA reads
+            "Tovább a fizetéshez", and an absolutely-centred row of dots behind
+            it would be underneath the button rather than beside it. The dots
+            centre in whatever the button leaves. */}
+        <footer className="mt-6 grid min-h-14 grid-cols-[1fr_auto] items-center gap-3">
           <ol
             aria-label="Lépések"
-            className="pointer-events-none absolute inset-x-0 flex justify-center gap-2"
+            className="pointer-events-none flex justify-center gap-2"
           >
             {Array.from({ length: stepCount }, (_, i) => (
               <li
@@ -171,18 +186,14 @@ export function OnboardingShell({
           </ol>
 
           <button
-            type={submit ? 'submit' : 'button'}
+            type="button"
             disabled={blocked}
-            onClick={
-              submit
-                ? undefined
-                : () => {
-                    if (spent.current === step) return
-                    spent.current = step
-                    onNext?.()
-                  }
-            }
-            className="btn-shine relative inline-flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-primary px-6 text-base font-semibold text-primary-foreground transition-opacity disabled:opacity-30"
+            onClick={() => {
+              if (spent.current === step) return
+              spent.current = step
+              onNext?.()
+            }}
+            className="btn-shine inline-flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-primary px-6 text-base font-semibold text-primary-foreground transition-opacity disabled:opacity-30"
           >
             {ctaPending ? (
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />

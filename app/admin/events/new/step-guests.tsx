@@ -2,6 +2,7 @@
 
 import { Check } from 'lucide-react'
 
+import { AccountNotice } from '@/components/admin/onboarding/account-notice'
 import {
   OnboardingShell,
   type OnboardingNav,
@@ -55,11 +56,13 @@ export function StepGuests({
       {...nav}
       title="Hány vendéged lesz?"
       detail="Mindenki kapjon esélyt, hogy elkapja a pillanatot."
-      // Short on purpose: the progress dots are centred on the screen behind
-      // this button, and a wide label sits on top of the last one.
-      cta="Kész"
+      // The label says what actually happens next, because the two answers are
+      // different journeys: one ends on the host's own event, the other on
+      // Stripe. A host who is about to be asked for a card should read that on
+      // the button, not discover it after pressing it.
+      cta={plan === 'full' ? 'Tovább a fizetéshez' : 'Létrehozás'}
       ctaPending={pending}
-      submit
+      note={<AccountNotice />}
     >
       {/* Top-aligned, not centred: three stacked sections read as a list that
           starts under the question, and centring them leaves a gap above as
@@ -78,7 +81,7 @@ export function StepGuests({
               detail="Ingyenes"
             />
             <PlanTile
-              value="unlimited"
+              value="full"
               plan={plan}
               setPlan={setPlan}
               title="Korlátlan"

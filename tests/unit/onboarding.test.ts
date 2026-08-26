@@ -129,11 +129,21 @@ describe('eventNameSuggestions', () => {
 describe('event plan', () => {
   it('knows the two tiers and nothing else', () => {
     expect(isEventPlan('free')).toBe(true)
-    expect(isEventPlan('unlimited')).toBe(true)
+    expect(isEventPlan('full')).toBe(true)
     // The value arrives in a FormData, so anything at all can turn up here —
     // and an unrecognised plan must be refused rather than quietly treated as
     // free, which would be a paid choice silently downgraded.
-    for (const bad of ['', 'FREE', 'paid', '5', null, undefined, 0, {}]) {
+    for (const bad of [
+      '',
+      'FREE',
+      'unlimited',
+      'paid',
+      '5',
+      null,
+      undefined,
+      0,
+      {},
+    ]) {
       expect(isEventPlan(bad)).toBe(false)
     }
   })
