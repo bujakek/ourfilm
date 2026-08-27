@@ -1,6 +1,7 @@
 'use client'
 
 import { Clock, Hourglass } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 
 import {
   OnboardingShell,
@@ -10,22 +11,11 @@ import { RevealPreview } from '@/components/host/onboarding/reveal-preview'
 import type { RevealChoice } from '@/lib/camera'
 import { formatRevealBadge } from '@/lib/format'
 
-/**
- * Two answers to one question: `instant` opens the gallery while the party is
- * still running, `event_end` pins it to the moment the camera closes.
- */
 const CHOICES: { mode: RevealChoice; label: string; Icon: typeof Clock }[] = [
   { mode: 'instant', label: 'Azonnal', Icon: Hourglass },
   { mode: 'event_end', label: 'Az esemény végén', Icon: Clock },
 ]
 
-/**
- * Question three: when does the album develop?
- *
- * The two photos above the choices are the answer rather than a decoration.
- * Sharp means a guest can open the gallery mid-party; blurred means they
- * cannot, and the badge says exactly when that changes.
- */
 export function StepReveal({
   nav,
   mode,
@@ -36,11 +26,10 @@ export function StepReveal({
   nav: OnboardingNav
   mode: RevealChoice
   setMode: (value: RevealChoice) => void
-  /** The resolved reveal instant for the current answer, or null while the
-   *  window is not yet a valid pair of dates. */
   revealIso: string | null
   timeZone: string
 }) {
+  const reduceMotion = useReducedMotion()
   const badge =
     mode === 'instant'
       ? 'A képek azonnal láthatók'
@@ -57,9 +46,6 @@ export function StepReveal({
     >
       <RevealPreview blurred={mode !== 'instant'} badge={badge} />
 
-      {/* mt-auto rather than a fixed gap: the free space collects between the
-          preview and the choices, which is where the reference puts it, and the
-          choices stay a thumb's reach from the CTA on every screen height. */}
       <fieldset className="mt-auto pt-6">
         <legend className="sr-only">A galéria megnyílásának időpontja</legend>
         <div className="grid grid-cols-2 gap-2.5">
@@ -68,15 +54,22 @@ export function StepReveal({
             return (
               <label
                 key={choice}
-                // The radio itself is sr-only, so the global :focus-visible
-                // ring has nothing visible to draw on — `has-` moves it out to
-                // the card a keyboard user is actually looking at.
-                className={`glass flex min-h-28 cursor-pointer flex-col justify-between rounded-2xl p-3.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-                  active
-                    ? 'bg-accent/10 font-semibold text-accent ring-2 ring-accent'
-                    : ''
+                className={`glass relative flex min-h-28 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl p-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                  active ? 'font-semibold text-accent' : ''
                 }`}
               >
+                {active ? (
+                  <motion.span
+                    layoutId="reveal-selection"
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-2xl bg-accent/10 ring-2 ring-inset ring-accent"
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : { type: 'spring', stiffness: 480, damping: 38 }
+                    }
+                  />
+                ) : null}
                 <input
                   type="radio"
                   name="reveal_mode_choice"
@@ -85,15 +78,18 @@ export function StepReveal({
                   onChange={() => setMode(choice)}
                   className="sr-only"
                 />
-                {/* A distinct icon per choice, and the ring and weight change
-                    with the selection — three signals, none of them colour
-                    alone. */}
-                <Icon
-                  className="size-5"
-                  strokeWidth={active ? 2 : 1.6}
-                  aria-hidden="true"
-                />
-                <span className="text-sm leading-snug text-balance">
+                <motion.span
+                  className="relative z-10 inline-flex"
+                  animate={{ scale: active ? 1.08 : 1 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.16 }}
+                >
+                  <Icon
+                    className="size-5"
+                    strokeWidth={active ? 2 : 1.6}
+                    aria-hidden="true"
+                  />
+                </motion.span>
+                <span className="relative z-10 text-sm leading-snug text-balance">
                   {label}
                 </span>
               </label>
