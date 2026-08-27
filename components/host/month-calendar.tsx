@@ -12,7 +12,7 @@ import {
 /** A `YYYY-MM-DD` day, built from a UTC instant. The grid is a calendar rather
  *  than a clock: every date in it is a bare day with no zone to get wrong, so
  *  the arithmetic runs in UTC and the zone question is settled once, by whoever
- *  hands in `today`. */
+ *  hands in `earliest`. */
 function toDay(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
@@ -47,25 +47,32 @@ function monthGrid(year: number, month: number): Date[] {
  */
 export function MonthCalendar({
   value,
-  today,
+  earliest,
   onChange,
+  label,
 }: {
   /** The selected day, `YYYY-MM-DD`. */
   value: string
-  /** The earliest selectable day, `YYYY-MM-DD` — the host's today. */
-  today: string
+  /** The earliest selectable day, `YYYY-MM-DD`. Not always today: the create
+   *  flow's floor is the host's today, and the settings card's is the day the
+   *  event started, because moving the end into the past is how a host closes a
+   *  camera early. */
+  earliest: string
   onChange: (day: string) => void
+  /** Names the region for a screen reader. Two callers ask the same question in
+   *  different words. */
+  label: string
 }) {
   const [visible, setVisible] = useState(() => monthOf(value))
 
   const cells = monthGrid(visible.year, visible.month)
   const heading = formatHuMonthYear(visible.year, visible.month)
 
-  // Nothing before today can be chosen, so a month entirely in the past holds
-  // nothing to go back to. Day 0 of the visible month is the last day of the
-  // one before it — the only day that decides this.
+  // Nothing before `earliest` can be chosen, so a month entirely before it
+  // holds nothing to go back to. Day 0 of the visible month is the last day of
+  // the one before it — the only day that decides this.
   const canGoBack =
-    toDay(new Date(Date.UTC(visible.year, visible.month, 0))) >= today
+    toDay(new Date(Date.UTC(visible.year, visible.month, 0))) >= earliest
 
   const step = (delta: number) =>
     setVisible(({ year, month }) => {
@@ -74,7 +81,7 @@ export function MonthCalendar({
     })
 
   return (
-    <section aria-label="Az esemény vége">
+    <section aria-label={label}>
       <header className="flex items-center justify-between">
         <button
           type="button"
@@ -104,8 +111,8 @@ export function MonthCalendar({
         aria-hidden="true"
         className="mt-3 grid grid-cols-7 text-center text-xs text-muted-foreground/70"
       >
-        {HU_WEEKDAYS_SHORT.map((label) => (
-          <span key={label}>{label}</span>
+        {HU_WEEKDAYS_SHORT.map((weekday) => (
+          <span key={weekday}>{weekday}</span>
         ))}
       </div>
 
@@ -113,7 +120,7 @@ export function MonthCalendar({
         {cells.map((date) => {
           const day = toDay(date)
           const outside = date.getUTCMonth() !== visible.month
-          const past = day < today
+          const past = day < earliest
           const selected = day === value
 
           return (

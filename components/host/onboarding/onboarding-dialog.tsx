@@ -51,7 +51,7 @@ export function OnboardingDialog({
         event.preventDefault()
         if (closeLabel) onClose?.()
       }}
-      className="glass-strong mx-auto mt-auto mb-0 w-full max-w-md rounded-t-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-foreground backdrop:bg-black/70 sm:my-auto sm:rounded-3xl sm:pb-6"
+      className="glass-overlay mx-auto mt-auto mb-0 w-full max-w-md rounded-t-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-foreground backdrop:bg-black/70 sm:my-auto sm:rounded-3xl sm:pb-6"
     >
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1">

@@ -87,7 +87,7 @@ export function DangerZone({
           if (e.target === dialogRef.current && !pending) setOpen(false)
         }}
         onClose={() => setOpen(false)}
-        className="glass-strong m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl p-6 text-foreground backdrop:bg-black/80 backdrop:backdrop-blur-sm"
+        className="glass-overlay m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl p-6 text-foreground backdrop:bg-black/80 backdrop:backdrop-blur-sm"
       >
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="flex size-14 items-center justify-center rounded-full bg-destructive/15">

@@ -3,7 +3,7 @@
 import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
 import { useState } from 'react'
 
-import { MonthCalendar } from '@/components/host/onboarding/month-calendar'
+import { MonthCalendar } from '@/components/host/month-calendar'
 import { OnboardingDialog } from '@/components/host/onboarding/onboarding-dialog'
 import {
   OnboardingShell,
@@ -122,7 +122,8 @@ export function StepEnd({
       >
         <MonthCalendar
           value={day}
-          today={today}
+          earliest={today}
+          label="Az esemény vége"
           onChange={(value) => {
             setDay(value)
             setCalendarOpen(false)
