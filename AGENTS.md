@@ -1,0 +1,693 @@
+# Project: OurFilm — QR-code disposable camera for events
+
+> Product name: **OurFilm**. Domain: `ourfilm.app`. (Earlier working names "Fomio", "Moments" and "Pillanatok" are deprecated — never use them in code or copy.)
+>
+> Hungarian suffixes attach directly: **az** OurFilm (vowel-initial, so `az` not `a`), OurFilm**mel** (instrumental, assimilating like _filmmel_).
+
+## Read this first
+
+OurFilm is a **private digital disposable camera**. A host creates one camera per
+event; guests scan a QR code or open a link, give a name, and get a **fixed roll
+of shots** — **no app, no account**. The camera works only inside a capture
+window, and the host decides when the photos are "developed": instantly, at the
+end of the event, or at a chosen later moment.
+
+There is no preview and no retake. You press the shutter and find out later what
+you got — that is the format, not an omission.
+
+**Phase: MVP / pilot for one real wedding.** The single question we're answering: do guests actually use the QR to shoot? Nothing else matters yet. There is no validated business model — don't build for scale, don't build for a second customer.
+
+**Language:** UI copy is **Hungarian only** today, but the routing and content
+model are locale-prefixed and English-ready — see "Locales" below. Code,
+comments, commit messages, and this doc stay in English.
+
+**Mobile-first, always.** Guests arrive almost exclusively on phones via QR or a shared link. Design and test at 390px width before anything else.
+
+## Before you say a task is done
+
+```bash
+pnpm verify   # typecheck + lint + unit tests + build. Must pass. Offline.
+pnpm format   # Prettier; run after writing files
+```
+
+`pnpm test:db` is **not** part of `verify` and is run deliberately: it talks to
+the linked remote project and mutates it (throwaway users, events and
+participants, cleaned up in a `finally`). Run it after touching any migration,
+RPC or policy — the properties it checks (a row lock holding under concurrent
+requests, a policy refusing a real anon key) do not exist anywhere but a real
+Postgres.
+
+Never use npm or yarn — this project is **pnpm**. Never re-add `typescript.ignoreBuildErrors` to `next.config.mjs`; it was removed deliberately so type errors actually fail the build.
+
+## Skills — load these instead of re-deriving conventions
+
+Project skills live in `.cursor/skills/`. Read the relevant one _before_ writing code in that area:
+
+| Skill              | Load when                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `ourfilm-ui`       | Building or restyling any page or component (glass surfaces, tokens, Hungarian copy conventions) |
+| `ourfilm-supabase` | Touching the database, migrations, RLS, storage buckets, or auth                                 |
+| `ourfilm-upload`   | Working on the photo upload pipeline (HEIC, compression, direct-to-Storage)                      |
+
+## Tech stack
+
+- **Next.js 16** (App Router, Turbopack), **React 19**, TypeScript strict
+- **pnpm**; hosted on **Vercel**
+- **Supabase** — Postgres + Storage + Auth, installed and connected (`@supabase/supabase-js`, `@supabase/ssr`). The CLI is a devDependency: `pnpm supabase …`
+- **Tailwind CSS v4** — CSS-based config via `@theme` in `app/globals.css`. There is **no `tailwind.config.js`**; don't create one
+- **shadcn/ui** (`components.json`, style `base-nova`) on `@base-ui/react`; `lucide-react` icons
+- **qrcode.react** for QR generation
+- ESLint (flat config, `eslint.config.mjs`) + Prettier (`.prettierrc.json`, no semicolons, single quotes, Tailwind class sorting)
+
+### Local env
+
+`.env.local` is gitignored and **must never be committed**. It is maintained **by hand**. Supabase needs three keys:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=       # Supabase dashboard → Project Settings → API Keys
+NEXT_PUBLIC_SUPABASE_ANON_KEY=  # the anon / public key
+SUPABASE_SERVICE_ROLE_KEY=      # service_role; server-only, Stripe webhook
+```
+
+Payments add three more, all server-only — Checkout is a redirect to Stripe's
+hosted page, so the browser never needs a publishable key:
+
+```bash
+STRIPE_SECRET_KEY=              # sk_test_… while piloting
+STRIPE_WEBHOOK_SECRET=          # whsec_…, from the endpoint or `stripe listen`
+STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
+```
+
+**The Stripe account exists and test mode is wired up locally.** All three
+are filled in in `.env.local`, so `stripeIsConfigured()` is true and the admin
+billing card offers checkout. Nothing is set on Vercel yet, so payments are
+still off in every deployed environment — `stripeIsConfigured()` is what keeps
+that UI honest.
+
+- `STRIPE_SECRET_KEY` is an **`sk_test_`** key. Live mode is not activated.
+- `STRIPE_PRICE_EVENT` is `price_1U6nve35IJWm7mht2mSfIVDO` — a test-mode
+  one-time Price, 1290000 HUF minor units (12 900 Ft), on product
+  `prod_V71zasJ11DOF1Y` ("OurFilm - korlátlan feltöltés egy eseményhez"). That
+  product name is what a host reads on Stripe's hosted checkout page, so it is
+  copy, not a label. Live mode needs its own Price; test and live objects
+  never cross.
+
+  **List before you create.** A second product/price pair with the same
+  12 900 Ft amount was created here by accident and archived again
+  (`prod_V7oYzn5uXQ8vgH`); two active identical Prices is how an account ends
+  up billing from the wrong one. `stripe products list` first.
+
+- `STRIPE_WEBHOOK_SECRET` is the one `stripe listen --print-secret` prints for
+  **this machine**. It is per-destination: a deployed endpoint has a different
+  `whsec_`, taken from that endpoint in the dashboard. Copying this one to
+  Vercel would fail every signature check.
+
+Provision production with `vercel integration add stripe` — it is the
+Marketplace provider for `payments` and wires the production variables itself.
+
+The compliance surface adds four more, all server-only. None is set anywhere
+yet, and each degrades in a stated way rather than silently:
+
+```bash
+RESEND_API_KEY=                 # re_…, Resend's HTTP API — NOT the SMTP creds
+LEGAL_EMAIL_FROM=               # the verified From: address
+LEGAL_IP_SALT=                  # per-deployment salt for the stored IP hashes
+RETENTION_CRON_SECRET=          # bearer token for POST /api/retention/run
+```
+
+- **`RESEND_API_KEY` is not the Supabase SMTP configuration.** Those
+  credentials belong to Supabase Auth and send the magic links; application
+  code cannot reach them. Without this pair, `sendDurableEmail` still writes
+  the message to `outbound_emails` and records that it could not be delivered
+  — the durable copy is the guarantee, the delivery is what may fail.
+- **Without `LEGAL_IP_SALT` the stored hashes are unsalted**, which is still
+  not an address but is enumerable. A launch blocker, not an optimisation.
+- **Without `RETENTION_CRON_SECRET` the retention endpoint refuses every
+  request** (503). It fails closed on purpose: an endpoint that permanently
+  deletes albums must not run unauthenticated in development.
+
+**`vercel env pull` does not work on this project — don't reach for it.** The Vercel–Supabase integration created all 16 of its variables as _Sensitive_, which on Vercel means write-only: the value cannot be read back by the CLI, the API or the dashboard, and a pull returns the literal string `[SENSITIVE]` for every one. This is a property of the Sensitive flag, not of the environment scope, so re-scoping them to Development does not help either. Copy the three values from the Supabase dashboard instead.
+
+The integration's other variables are irrelevant here: the `POSTGRES_*` ones are connection strings for direct SQL clients, and `supabase-js` talks over HTTP. It also provisions Supabase's newer `publishable`/`secret` keys alongside the legacy `anon`/`service_role` pair — the code expects the legacy names; migrating is a deliberate choice, not something to drift into.
+
+Deployed builds are unaffected: Vercel injects all of these at build and runtime. This is purely a local-development concern.
+
+## Current state
+
+- **`docs/mvp-backlog.md` is the historical plan for the album build.** Most of
+  it describes a product that no longer exists. Read it for the decisions that
+  still hold (slug shape, region, ownership scoping, self-serve delete) and
+  ignore the phase list.
+- **Marketing landing page** — `app/[locale]/page.tsx` composing `components/site/*` (hero, stats, how-it-works, occasions, testimonials, qr-preview, live-demo, photo-quality, faq, final-cta, footer). Originally v0-generated, now the permanent homepage at `/hu`, with `/` redirecting to it.
+- **The marketing site still describes the old album product.** Copy, the blog
+  and `/hu/arak` are a separate later phase and were deliberately not touched by
+  the pivot. `components/site/live-demo.tsx` now always renders the hardcoded
+  simulation: the seeded sample album is gone, and a permanently-open public demo
+  event would be a fourth event state existing only for the marketing page.
+- **All migrations are applied on the remote** and `pnpm types:check` matches.
+  The disposable camera schema is live: `participants`, the reveal trigger, the
+  capture RPCs and the private bucket.
+
+  **Check, never assume, which migrations are live.** This section claimed for
+  a while that roles and billing were unpushed after they had been pushed, and
+  a stale note here is worse than no note: it made an ordinary one-migration
+  deploy look like it would switch on billing as a side effect.
+  `pnpm supabase migration list` compares local against remote and is the only
+  answer worth trusting.
+
+- **The guest write RPCs are `service_role` only, and that needs an explicit
+  revoke.** `revoke all … from public` does **not** remove Supabase's grants:
+  it grants execute to `anon` and `authenticated` _directly_, so the function
+  stays wide open. `20260825080000_lock_down_capture_rpcs.sql` exists because a
+  test caught exactly that — `join_event` and `reserve_shot` were callable with
+  the anon key that ships in the browser bundle, which would have made the
+  httpOnly session cookie pointless. `20260818172146` is the same lesson on
+  `owned_events_with_previews`. Always revoke from `anon, authenticated` by name.
+
+- **`pnpm seed` needs `SEED_HOST_EMAIL`** when the project has more than one
+  account. It creates a camera that is open now, reveals instantly, and has five
+  participants with photos — every screen reachable without editing a timestamp.
+
+- **Roles are live; Stripe is live in test mode only.** `.env.local` has all
+  three `STRIPE_*` keys, so a host can run a full test checkout on a dev
+  machine. No `STRIPE_*` variable is set on Vercel, so every deployed
+  environment still says payment is not switched on. The comment in
+  `lib/stripe/env.ts` claiming there is no Stripe account is stale. See Billing.
+
+- **Auth emails are branded and live in `supabase/templates/`.** Delivery is
+  Resend over SMTP, configured in the Supabase dashboard. Two files, because
+  `signInWithOtp` picks between them: `magic-link.html` goes to a returning
+  host and `confirm-signup.html` to a first-time one, so branding only one
+  leaves half of them on the Supabase default. `config.toml` points the local
+  stack at both; the linked project is updated with `pnpm emails:push --apply`,
+  which PATCHes only the four mailer fields on the Management API. **Do not run
+  `supabase config push`** — it sends this whole file, and the auth section here
+  is otherwise stock, so it would point production's magic links at `127.0.0.1`
+  and drop the Resend SMTP settings. Details in
+  `supabase/templates/README.md`.
+
+- `lib/slug.ts` holds the canonical `slugify()` — admin and the QR preview must both use it so printed QR codes never disagree.
+- `vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
+  (Zurich) and Vercel's default is `iad1` (Washington DC), so every query on
+  the guest path was crossing the Atlantic twice. Frankfurt is the closest
+  Vercel region. If the Supabase project ever moves, move this with it —
+  nothing else in the code notices, and the symptom is a uniformly slow app.
+
+## The guest gate is in the pages, not the layout (settled — learned the hard way)
+
+`readParticipantTokenHash()` (`lib/participants.ts`) reads the httpOnly cookie,
+and **each guest page checks it and returns or redirects before fetching
+anything**. Do not move this back up into `app/e/[slug]/layout.tsx`, however
+tidier that looks:
+
+- Next renders the child segment and hands the layout the **result**. A layout
+  that declines to render `children` still lets the page run — verified: a gated
+  gallery served all seven `thumb_path`s and every uploader name in the flight
+  payload to a visitor who had typed nothing. Only an early return inside the
+  page skips the query.
+- The old localStorage check could only run after hydration, so every guest who
+  had already joined saw the gate flash on every navigation.
+
+Joining navigates once, from **inside the server action** (`redirect()` after the
+cookie is set) rather than from a client effect. An effect keyed on
+`useActionState`'s state has no stable resting point — that state is a fresh
+object on every render — so the success path would depend on render timing
+rather than on the action having succeeded.
+
+**`app/e/[slug]` has no `loading.tsx`, deliberately.** With one present, the
+Suspense boundary around the join screen never completed on the client: the
+server-rendered form stayed in the DOM unhydrated, so the submit button was
+permanently disabled while typing still showed text. Verified by A/B — remove the
+file and the page hydrates, restore it and it does not (Next 16.3, both `next dev`
+and a production build). The route is a QR landing page reached by full page
+load, so there is no prefetch for a loading boundary to enable anyway. If you add
+one back, re-test that the join form actually submits.
+
+The cookie is still **not a privacy boundary** — someone who copies it
+impersonates that participant, and album privacy rests on the unguessable slug.
+What it is, is the thing that stops a guest spending someone else's film, or more
+than their own.
+
+## Optimistic updates (settled)
+
+Three admin controls show the result before the server has confirmed it. All
+revert on their own — none carries hand-written rollback code.
+
+- **`components/admin/moderation-grid.tsx`** — `useOptimistic` is held on the
+  **grid**, not the tile, so the "N rejtve" counter moves with the photo it
+  describes. Per-tile state would flip the tile instantly and leave the count a
+  round trip behind, which reads as a bug.
+- **`components/admin/guests-toggle.tsx`** — same reasoning, one boolean. A
+  switch that sits still for a round trip is one a host taps twice.
+- **`components/admin/shots-card.tsx`** — a five-way choice whose selected value
+  is visible at a glance, so showing it immediately cannot mislead.
+
+**The two date cards are deliberately _not_ optimistic.**
+`capture-window-card.tsx` and `reveal-card.tsx` show a saved/failed state
+instead. A field that displays the typed text while the stored answer is an hour
+off would be lying about the one value guests are held to — and unlike a boolean,
+there is no way to glance at it and notice.
+
+**Nothing on the guest side is optimistic any more.** The old `recent-uploads`
+store showed a guest their own photo the instant it uploaded, drawn from the
+`blob:` URL still in memory. That is exactly what a reveal model must not do, so
+the store and its tiles are gone. The camera's shot counter is not optimistic
+either: it renders whatever `commit_shot` returned, never a local decrement,
+because a client-side counter is a display and the database is the count.
+
+## Routing (settled — QR codes get printed, so this is expensive to change)
+
+| Route                                                                                      | Purpose                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `/`                                                                                        | 308 to `/hu`. Nothing renders here.                                                        |
+| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                         |
+| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                     |
+| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                             |
+| `/e/[slug]`                                                                                | Join screen guests land on from the QR code. Redirects to the camera once they have joined |
+| `/e/[slug]/camera`                                                                         | The camera. Where shots are taken                                                          |
+| `/e/[slug]/gallery`                                                                        | Shared gallery, reveal-gated                                                               |
+| `/admin`                                                                                   | Host/admin area, Supabase Auth magic link                                                  |
+
+**Public pages are locale-prefixed; the product is not.** `/e/`, `/admin`,
+`/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
+with the first, and `proxy.ts` guards the second by the exact path
+`/admin/:path*`. Putting a locale in front of either would silently break a
+printed code or an auth gate.
+
+Every pre-prefix URL (`/arak`, `/blog/:slug`, …) 308s to its `/hu` twin from
+`next.config.mjs`. Those redirects are spelled out one by one — a catch-all
+would swallow `/e/` and `/admin`.
+
+Plus one machine endpoint: `POST /api/stripe/webhook`, which is the only thing
+that marks a purchase paid. Under `/api/` rather than the Hungarian namespace
+because no human navigates to it and the URL is pasted into Stripe's dashboard.
+
+The `/e/` prefix is what the landing page already advertises in `qr-preview.tsx` and `how-it-works.tsx`, and it keeps the root namespace free for marketing pages.
+
+## Locales and the blog (settled)
+
+`lib/i18n.ts` holds `locales = ['hu'] as const`, and everything else is derived
+from it: URLs, `generateStaticParams`, hreflang, the sitemap, RSS. Nothing else
+enumerates languages.
+
+**Articles are MDX files in `content/blog/<locale>/`.** There is no registry to
+keep in step any more — `lib/blog/posts.ts` reads the directory, validates the
+frontmatter with zod, and everything downstream follows from that. Frontmatter
+is parsed off disk with `gray-matter` rather than imported out of the MDX,
+because `@types/mdx` cannot type named exports.
+
+**`id` is the article; `slug` is its address in one language.** They are
+separate so a Hungarian URL reads Hungarian:
+`/hu/blog/eskuvoi-foto-megosztas` and `/en/blog/wedding-photo-sharing` share
+`id: wedding-photo-sharing`. Never find a translation by swapping the locale
+segment in a URL — use `getTranslations(id)`. `related` in frontmatter lists
+**ids** for the same reason.
+
+**`content/blog/AGENTS.md` is the authoring guide** — frontmatter contract,
+heading and link rules, the components available inside an article, Hungarian
+copy conventions, and what the build refuses. It sits next to the articles so
+it loads automatically when one is being written; read it before writing or
+editing a post rather than reconstructing the rules from here.
+
+### Adding an article
+
+1. Write `content/blog/hu/<slug>.mdx`. The filename **must** equal the `slug`
+   in its frontmatter; the build refuses otherwise.
+2. Frontmatter needs `id`, `locale`, `slug`, `title`, `description`,
+   `publishedAt` (`YYYY-MM-DD`). Optional: `updatedAt`, `author`, `image`,
+   `related`, `draft`.
+3. Start the body at `##` — the `<h1>` is rendered from `title`, and a second
+   one would be an SEO defect.
+4. That is all. The route, the index entry, the sitemap URL, the RSS item and
+   `/llms.txt` all follow from the file.
+
+`draft: true` renders in `next dev` and disappears from a production build —
+index, sitemap, RSS, related lists, and the URL itself 404s.
+
+Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`components/blog/mdx-blocks.tsx`)
+with no import line; they are injected through `mdx-components.tsx`. Markdown
+tables work via `remark-gfm`. **Remark plugins must be named as strings** in
+`next.config.mjs` — Turbopack runs the MDX pipeline in Rust and cannot accept a
+JS function.
+
+### Enabling English
+
+1. Add `'en'` to `locales` in `lib/i18n.ts`.
+2. Uncomment the `en` line in `lib/blog/mdx.ts`.
+3. Run `pnpm typecheck`. Every `Record<Locale, …>` of UI strings becomes a type
+   error listing exactly what needs translating — that is the checklist, and it
+   is the reason those maps are typed that way.
+4. Translate the marketing pages under `app/[locale]/`.
+5. **`<html lang>`.** It is fixed at `hu` in the single root layout, which is
+   correct only while Hungarian is the only locale. Making it vary means
+   splitting into two root layouts (`app/(site)/[locale]/layout.tsx` for
+   marketing, `app/(product)/layout.tsx` for `/e/` and `/admin`) and deleting
+   `app/layout.tsx`. That also forces the global 404 onto
+   `experimental.globalNotFound`, which is why it was deferred rather than done
+   up front.
+
+An `en` article already sits in `content/blog/en/` as a worked example. It is
+inert — unread and unvalidated — until step 1.
+
+## Access model (settled)
+
+- **Guests: a name, and nothing else.** No passcode, no login, no account. One
+  field, once per device, and it is not friction for its own sake — a roll of
+  film has to belong to somebody, and the gallery credits each photo to the
+  person who took it. Everything past that is the participant session
+  (`lib/participants.ts`).
+- **Host/admin: Supabase Auth magic link.** Only the admin area is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
+- **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/admin` to list **every** event once you promote an account.
+- Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Slugs therefore carry a random suffix (`anna-peter-k3f9x7`); `slugify()` stays deterministic for the QR preview, and `generateEventSlug()` is what real events get. Never create an event with a bare `slugify()` result.
+
+## Data model (settled)
+
+Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
+
+- **`events`** — `id`, `slug` (unique), `event_name`, `cover_path` (nullable),
+  `capture_start_at` / `capture_end_at` (the window the camera works in; both
+  required, `end > start` enforced by a check constraint), `time_zone` (IANA
+  name, stored beside the UTC instants because an offset is not a zone),
+  `reveal_mode` (`instant | event_end | custom`), `reveal_at`,
+  `shots_per_participant` (`5 | 10 | 16 | 24 | 36`, default 24, enforced by a
+  check constraint), `guests_can_view`, `owner_id` (→ `auth.users`),
+  `created_at`, `updated_at`
+
+  **`reveal_at` is materialised, never computed per read.** A trigger
+  (`events_resolve_reveal_at`) resolves it on every write: `instant` →
+  `capture_start_at`, `event_end` → `capture_end_at`, `custom` → the chosen
+  instant. So moving `capture_end_at` on an `event_end` event moves the reveal
+  with it and no caller has to remember, and every reader is a plain
+  `now() >= reveal_at`. Nothing schedules anything — the gallery opens because a
+  request arrives after that instant, which is the only mechanism Vercel offers
+  without a background worker.
+
+  There is deliberately **no constraint** forcing `reveal_at >= capture_end_at`.
+  There was one, and it silently broke "Galéria megnyitása most", which reveals
+  while the camera is still running. That rule is a _form_ validation — it lives
+  in `setReveal` and `validateEventDraft`, both of which can explain a refusal.
+
+  Both directions of the `datetime-local` conversion live in `lib/format.ts` and
+  take the **event's own zone**, never the browser's or the server's — a
+  `datetime-local` value carries no zone, and Vercel runs UTC, so resolving one
+  there would move every window two hours off what the host typed.
+
+- **`participants`** — `id`, `event_id`, `display_name`, `session_token_hash`,
+  `joined_at`, `last_seen_at`, unique on `(event_id, session_token_hash)`.
+
+  A guest's identity is a random 32-byte token in an **httpOnly** cookie; only
+  its SHA-256 is stored. `httpOnly` is the load-bearing part — the cookie decides
+  how many photos someone gets, and a value the page can read is a value the page
+  can forge. The old `ourfilm_name` cookie was written by client JS and gated
+  nothing, which is why it could be.
+
+  RLS on, **no anon policies at all**. Joining goes through `join_event`, which
+  takes `for update` on the event row before counting, so five parallel joins on
+  a free event cannot produce six participants.
+
+- **`photos`** — `id`, `event_id`, `participant_id` (**not null** — an
+  unattributed photo is one that consumed nobody's shot), `status`
+  (`pending | ready`), `idempotency_key` (unique per participant),
+  `storage_path`, `thumb_path`, `view_path`, `hidden_at` (soft delete for
+  moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type`,
+  `taken_at`, `created_at`
+
+  **The shot limit is atomic, and this is how.** `reserve_shot` takes
+  `for update` on the _participant_ row, checks the window and the count, and
+  inserts a `pending` row with all three paths. The server action then mints
+  three signed upload URLs; the browser PUTs straight to Storage; `commit_shot`
+  flips the row to `ready`. The lock is held for microseconds rather than across
+  a 2MB upload on venue wifi, and it serialises only that one guest's own
+  concurrent captures — locking the event would serialise every guest at the
+  party.
+
+  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes), so
+  a failed upload costs no frame and nothing has to be swept. Retrying with the
+  same `idempotency_key` re-claims the same frame instead of spending another.
+  Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
+  refunding on hide would make hiding a way to shoot forever.
+
+**Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); admin reads the tables directly under ownership policies. Details in the Supabase skill.
+
+- **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `created_at`. One row per account, written by a trigger at signup. Read it through `lib/roles.ts`, never inline.
+
+- **`purchases`** — `event_id`, `owner_id`, `stripe_checkout_session_id` (unique), `stripe_payment_intent_id`, `stripe_customer_id`, `amount_minor`, `currency`, `status` (`pending` | `paid` | `refunded`), `created_at`, `paid_at`, `refunded_at`. A ledger, not a flag: abandoned checkouts leave `pending` rows on purpose, which is why `getEventPurchase()` sorts on `paid_at` before `created_at`.
+
+- **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
+
+Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it, and `{event_id}/cover.jpg` for the cover. Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
+
+**The bucket is private.** It used to be public, with privacy resting on two
+unguessable uuids in the path — a fair bet for an album with no reveal and an
+untenable one now: a public object URL keeps working forever regardless of what
+the reveal predicate says, so "nobody sees these until the album develops" could
+not have been kept by a URL anyone could hold. Reads are signed server-side in
+`lib/photo-urls.ts` (one batch `createSignedUrls` per grid, 1-hour expiry);
+guests never construct a photo URL.
+
+**Guests hold no direct write access to Supabase at all.** Both anon insert
+policies — on `photos` and on `storage.objects` — are gone. Uploads go to signed
+upload URLs minted by `reserve_shot`'s server action and bound to one exact path
+the database has already agreed to, so a guest cannot choose where bytes land,
+cannot write to another event's folder, and cannot write without first being
+granted a frame. There is still deliberately **no anon select policy** on
+`storage.objects`: one scoped to the bucket would let anyone list every event id
+and photo id in the system.
+
+**Three renders, one per job. Never serve a bigger one than the job needs.** The client already holds the decoded bitmap during upload, so producing all three there costs a resize each rather than another decode.
+
+| Render         | Size          | Used by                               |
+| -------------- | ------------- | ------------------------------------- |
+| `storage_path` | 4096px / q92  | ZIP export, print. Nothing on screen. |
+| `view_path`    | ~1600px / q85 | Lightbox                              |
+| `thumb_path`   | ~400px / q80  | Gallery grid, moderation grid         |
+
+Both downscales exist because of measured cost on a phone, not tidiness. Tiling 4096px files at 200px would have one guest pull over a gigabyte to scroll a 600-photo album. And the lightbox showing the master decoded 12.6 megapixels — roughly 50MB of bitmap — per swipe, to fill a screen about 1200px across; that was the second-largest source of device heat in the product.
+
+## Billing (settled)
+
+**One-time purchase per event, 12 900 Ft.** No subscription, no per-guest fee.
+
+- **The free tier is a _participant_ cap, not a photo cap:** an event is free for
+  up to **5 distinct participants** (`public.free_participant_limit()`). Every
+  guest gets the host's chosen roll of 5/10/16/24/36 frames either way — what
+  paying buys is more guests. Five friends shooting 36 frames each is a
+  legitimately free event.
+- **Enforced in `join_event`**, under the `for update` lock on the event row, so
+  the cap holds under concurrent joins. A guest who has **already** joined is
+  never turned away once the cap fills — their session predates the limit, and
+  revoking it mid-event is the worst possible moment to tell someone the host has
+  not paid.
+- **A capped guest is shown no checkout.** They get "Az esemény elérte a
+  résztvevői keretet" and are told to ask the organizer. A wedding guest holding
+  a phone cannot fix this, and asking them to pay for the couple's album is the
+  wrong sentence to put in front of them. The upgrade lives on the host's
+  dashboard.
+- **Checkout is a redirect** to Stripe's hosted page (`mode: 'payment'`). No card
+  data touches this app — the difference between SAQ A and a compliance project.
+- **Only the webhook marks a purchase paid.** `?checkout=success` proves nothing:
+  a host can type it, and a host who closes the tab on Stripe's success page
+  still deserves their album. `purchases` has no update policy at all, so the
+  service role is the only writer of `status = 'paid'`.
+- **Admin-owned events are never capped**, which is how the operator runs the
+  pilot wedding without charging themselves.
+- **Invoicing is still on the never-start list.** A Hungarian company selling to
+  consumers must issue an invoice and report it to NAV Online Számla, and Stripe
+  does not do that for you. Flag it before the first real forint.
+
+Nothing about the Stripe integration changed in the pivot — only the predicate it
+gates. `event_upload_quota` (photos) became `event_participant_quota`
+(participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
+
+Key files: `lib/stripe/*`, `lib/billing.ts`, `lib/roles.ts`,
+`app/api/stripe/webhook/route.ts`, `app/admin/events/[slug]/billing-actions.ts`,
+`components/admin/billing-card.tsx`.
+
+**`/hu/arak` has been corrected.** It advertised a "5 feltöltött fotó" free
+tier and "Korlátlan fotó" on the paid one, neither of which survived the pivot.
+Both tiers now name the participant cap and the per-guest roll, and the price
+and the free limit are read from `legalConfig.service` and
+`FREE_PARTICIPANT_LIMIT` rather than typed again. The rest of the marketing
+copy is still a later phase. The page stays `noindex` while
+`hasCompleteLegalConfig()` is false — a price a stranger can find in Google is
+an offer, and an offer cannot lawfully be made while the mandatory identifiers
+are missing.
+
+## Legal and compliance (settled)
+
+**`lib/legal/config.ts` is the single source of every fact the legal pages
+state about the business**, and `LEGAL_VERSION` (`2026-08-26`) is stamped on
+every acceptance record and printed on every page. A value nobody has supplied
+is the `MISSING` symbol, not a plausible string: it renders as `HIÁNYZÓ
+KÖTELEZŐ ADAT` and appears in `legalBlockers()`, which is what
+`hasCompleteLegalConfig()` reads and what keeps all five documents and `/arak`
+out of search. `lib/company.ts` is gone — it asked a narrower version of the
+same question.
+
+- **Six documents, two forms.** `/hu/impresszum`, `/hu/aszf`,
+  `/hu/adatvedelem`, `/hu/vendegfeltetelek`,
+  `/hu/adatfeldolgozasi-melleklet` are information and become indexable when
+  the blockers clear; `/hu/elallas` and `/hu/jogserto-tartalom-bejelentese`
+  are transactional and stay `noindex`. Addresses live in
+  `lib/legal/routes.ts`.
+- **The copy is data, not JSX.** `lib/legal/copy/*.ts` export `LegalDocument`
+  objects that `components/site/legal-document.tsx` renders without adding a
+  word — section numbers are part of the approved title strings. That is what
+  makes `tests/unit/legal-copy.test.ts` meaningful: what it reads is what a
+  visitor sees.
+- **Four passages are chosen by the implementation, not by an author** —
+  which event spends a frame, whether a guest may retake, where the camera
+  image goes, what happens to EXIF. Each reads a constant from
+  `lib/legal/facts.ts`, where the evidence is written down, and each is
+  asserted in the copy test. Changing the capture pipeline without revisiting
+  those constants fails a test rather than publishing a false statement.
+- **Notices are read; only contracts are accepted.** There is no
+  `privacy_notice` value in `legal_document_kind` and no checkbox next to a
+  privacy link anywhere — recording an "acceptance" of a notice would
+  misdescribe the legal basis. The three that are recorded are `host_terms`,
+  `early_performance` and `guest_terms`.
+- **The two host declarations are never carried in the draft.** They start
+  false on every mount, are not written to `localStorage`, and the
+  magic-link resume screen (`/auth/event-complete`) asks again rather than
+  replaying a consent nobody made at the moment the contract formed. The
+  server re-checks both before inserting a row.
+- **The paid button says `Fizetési kötelezettséggel járó megrendelés`**, in
+  both places a host can order. The label is prescribed by 45/2014. (II. 26.)
+  Korm. rendelet, which is why `OnboardingShell` grew a `ctaFullWidth` mode —
+  the sentence does not fit beside the progress dots.
+- **A guest acknowledges the guest terms once per event and legal version,
+  before their first shot.** It is a gate, not a banner: the camera is not
+  rendered behind it. Evidence is the participant id and their chosen name —
+  nothing is collected solely so there would be something to keep.
+- **`legal_acceptances`, `withdrawal_requests`, `content_reports` and
+  `outbound_emails` are service-role only.** RLS on, no policies at all, plus
+  an explicit `revoke … from anon, authenticated` — same lesson as
+  `20260825080000` on the capture RPCs. Nothing renders them to a browser.
+  They are reached through `lib/legal/db.ts`, a second typed client, because
+  the generated `Database` type has not seen this migration.
+- **Neither form ever acts.** No refund, no deletion, no hiding — a form on
+  the open internet that could move money or destroy a wedding album is an
+  abuse channel, not a remedy. Each produces a row with a status an operator
+  advances by hand.
+- **Retention is 6 months + a warning + 30 days of grace, then permanent
+  deletion.** The rule is `lib/retention.ts` (pure, takes `now`), the run is
+  `lib/legal/retention-run.ts`, the trigger is `POST /api/retention/run`
+  behind `RETENTION_CRON_SECRET`, and `vercel.json` schedules it daily. The
+  warning is claimed with an `update … where retention_warned_at is null …
+returning`, which is the whole idempotency mechanism. The purge is
+  `lib/event-purge.ts`, shared with the host's own delete so the paging and
+  the verification cannot drift.
+- **EXIF stripping is checked, not asserted.** `assertNoExifMetadata()` on the
+  upload path refuses a render that still carries an APP1, and
+  `tests/unit/exif-strip.test.ts` runs it against a real JPEG carrying
+  DateTimeOriginal and GPS. The privacy notice says an automated test verifies
+  this; that is the test.
+
+## MVP scope
+
+**Building:**
+
+1. Join screen `/e/[slug]` — cover, event name, state, shot limit, one name field
+2. Camera `/e/[slug]/camera` — live `getUserMedia` preview, big shutter,
+   front/back switch, a `capture` file-input fallback when the live camera is
+   refused or unavailable. No preview, no retake.
+3. Gallery `/e/[slug]/gallery` — reveal-gated, hidden photos excluded
+4. Admin `/admin` — six-step create wizard, QR, moderation, early reveal,
+   **ZIP download of the whole album**
+5. QR code generated from the final event URL
+
+**Not building — flag it and ask first, never start it:**
+
+- App Clip / native app
+- Photographer or multi-tenant dashboard, per-client branding
+- Token system, revenue share, invoicing (**payments themselves are built**)
+- Guest accounts or mandatory registration
+- **Film filters / Original-Vintage-B&W selector.** Deferred deliberately, not
+  forgotten — a later phase.
+- Retake, in-camera preview, or an editor
+- Video, audio guestbook, live slideshow, RSVP
+- Leaderboard, recap, gamification, analytics, referral
+- Email notifications and lifecycle email
+- **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
+  actually writing and maintaining an English site is a separate decision.
+- Realtime gallery updates (Supabase Realtime) — guests refresh
+- Resumable/background uploads — manual retry only
+- Long-running requests, background workers, cron. The reveal is computed at
+  request time precisely so none of these is needed.
+
+**Reversed by the pivot.** Per-guest shot scarcity, delayed reveal and a
+capture-window were all on this list before, and the Once review had explicitly
+rejected the first. They are the product now. Film filters are the one item from
+that group still deferred.
+
+## Build order
+
+Phases 1–5 of the original album build are superseded by the pivot. What exists
+now, in the order it was built:
+
+1. Schema reset + `participants` + reveal trigger (`20260824174541`)
+2. Guest RPCs: join, reserve/commit/release, state, gallery (`20260824174542`)
+3. Private bucket (`20260824174543`)
+4. `lib/` domain layer: `camera.ts`, `participants.ts`, `capture.ts`,
+   `photo-urls.ts`, `event-copy.ts`
+5. Guest surface: join → camera → gallery
+6. Admin: create wizard, dashboard, settings, early reveal
+7. Tests, then real-phone testing and QR printing
+
+## Photo quality policy (settled — the landing page depends on it)
+
+Compress **client-side before upload**, in the browser, straight to Supabase Storage:
+
+- **4096px bounding box, JPEG quality 0.90–0.92.** Below ~85% JPEG drops data exponentially and skin tones go muddy in dim venues; 92% is visually indistinguishable and keeps a 48MP iPhone photo at roughly 1.5–2.2MB instead of 8MB. Print-ready for the couple, fast on congested venue wifi.
+- **HEIC must be converted in the browser.** Only Safari can read HEIC; Chrome, Edge, and desktop break on it. Use `heic-to` (lightweight, libheif 1.18) rather than `heic2any` (600KB+ of WASM), and **dynamically import it only when an HEIC file is detected**.
+
+Full pipeline in `.cursor/skills/ourfilm-upload/SKILL.md`.
+
+## Landing page promises
+
+The marketing page is live and still describes the **old album product** — the
+pivot deliberately did not touch it. Rewriting it is the next phase. Until then:
+
+Still true, and load-bearing:
+
+- **ZIP download of the whole album** (`benefits.tsx`) — works
+- **High-resolution, print-ready photos** (`photo-quality.tsx`, FAQ) — satisfied
+  by the 4096px/92% policy above. The pitch is "chat apps crush your photos, we
+  don't", which stays true; never re-add claims of literally uncompressed
+  originals
+- **Private, unindexed album** (`benefits.tsx`, FAQ) — event routes are
+  `noindex`, and the bucket is now private as well
+- **Host can hide unwanted photos** (FAQ) — `hidden_at`
+
+Knowingly false until the copy phase:
+
+- **"5 feltöltött fotó" free tier and "Korlátlan fotó"** (`/hu/arak`) — the free
+  tier is 5 _participants_, and photos are capped per guest on both plans
+- Anything describing uploading from a camera roll rather than taking a photo
+
+If a change would falsify a claim that is still true, either honor it or update
+the Hungarian copy in the same change.
+
+## Conventions
+
+- `components/site/*` marketing sections · `components/event/*` guest-facing event UI · `components/admin/*` admin UI · `components/ui/*` shadcn primitives
+- Files kebab-case; components named exports (`export function EventHeader()`), no default exports except App Router pages/layouts
+- Server Components by default; add `'use client'` only for state, refs, or browser APIs
+- Shared logic in `lib/` (`lib/slug.ts`, `lib/supabase/*`); never duplicate a helper across components
+- The camera's rules live in `lib/camera.ts` as **pure functions taking `now`** —
+  the server computes them to decide what is allowed and the client to decide
+  what to draw, and the two must never disagree. Nothing there reads a clock of
+  its own. Guest-facing Hungarian for event states lives in `lib/event-copy.ts`,
+  so the join screen, the camera and the gallery cannot describe the same event
+  differently.
+- Import alias `@/*` from the repo root
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
