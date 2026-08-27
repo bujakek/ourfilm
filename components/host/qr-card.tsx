@@ -1,10 +1,21 @@
 'use client'
 
-import { Download, QrCode, X } from 'lucide-react'
+import { Download, QrCode } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
-/** Keeps the downloadable QR available without making it the whole event page. */
+import { Sheet } from '@/components/host/sheet'
+
+/**
+ * Keeps the downloadable QR available without making it the whole event page.
+ *
+ * Drawn in the shared `Sheet` like every other host-area interruption. It used
+ * to be its own `<dialog>` with its own close button, its own backdrop-click
+ * handler and its own `glass-strong` panel — three copies of the same three
+ * decisions, and the panel was the see-through one on iOS.
+ *
+ * The sheet's heading is "QR-kód" rather than the event's name, because the
+ * ticket below already says the name in the size it will be printed at. */
 export function QrCard({
   name,
   url,
@@ -14,7 +25,7 @@ export function QrCard({
   url: string
   shots: number
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [open, setOpen] = useState(false)
   const qrRef = useRef<HTMLCanvasElement>(null)
 
   async function downloadQrCode() {
@@ -63,78 +74,65 @@ export function QrCard({
     <>
       <button
         type="button"
-        onClick={() => dialogRef.current?.showModal()}
+        onClick={() => setOpen(true)}
         className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-base font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
       >
         <QrCode className="size-5" strokeWidth={1.8} aria-hidden="true" />
         QR-kód
       </button>
 
-      <dialog
-        ref={dialogRef}
-        aria-labelledby="qr-dialog-title"
-        onClick={(event) => {
-          if (event.target === dialogRef.current) dialogRef.current?.close()
-        }}
-        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto bg-transparent p-0 text-foreground backdrop:bg-black/80"
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        closeLabel="QR-kód bezárása"
+        title="QR-kód"
       >
-        <div className="glass-strong relative rounded-[2rem] p-3 pt-14">
-          <button
-            type="button"
-            onClick={() => dialogRef.current?.close()}
-            aria-label="QR-kód bezárása"
-            className="absolute top-3 right-3 flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <X className="size-5" aria-hidden="true" />
-          </button>
+        {/* The one deliberately light surface in the product: this is the
+              thing that gets printed and stood on a table, and a dark card is
+              a dark card's worth of toner. */}
+        <div className="rounded-[1.6rem] bg-gradient-to-b from-white to-[#f2f2f5] p-8 text-center text-black">
+          <p className="text-2xl font-semibold tracking-tight text-balance">
+            {name}
+          </p>
+          <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-black/50">
+            ELDOBHATÓ KAMERA
+          </p>
 
-          <div className="rounded-[1.6rem] bg-gradient-to-b from-white to-[#f2f2f5] p-8 text-center text-black">
-            <p
-              id="qr-dialog-title"
-              className="text-2xl font-semibold tracking-tight text-balance"
-            >
-              {name}
-            </p>
-            <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-black/50">
-              ELDOBHATÓ KAMERA
-            </p>
-
-            <div className="my-7 flex justify-center">
-              <div className="rounded-2xl bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
-                <QRCodeCanvas
-                  ref={qrRef}
-                  value={url}
-                  size={1024}
-                  level="M"
-                  bgColor="#ffffff"
-                  fgColor="#050505"
-                  marginSize={4}
-                  style={{ height: 168, width: 168 }}
-                />
-              </div>
-            </div>
-
-            <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
-              Olvasd be a QR-kódot, és {shots} képet készíthetsz — app és
-              regisztráció nélkül.
-            </p>
-            <div className="mt-6 border-t border-black/10 pt-4">
-              <p className="truncate text-xs font-medium text-black/50">
-                {url.replace('https://', '')}
-              </p>
+          <div className="my-7 flex justify-center">
+            <div className="rounded-2xl bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
+              <QRCodeCanvas
+                ref={qrRef}
+                value={url}
+                size={1024}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#050505"
+                marginSize={4}
+                style={{ height: 168, width: 168 }}
+              />
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={downloadQrCode}
-            className="glass glass-hover mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold"
-          >
-            <Download className="size-4" aria-hidden="true" />
-            QR-kód letöltése
-          </button>
+          <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
+            Olvasd be a QR-kódot, és {shots} képet készíthetsz — app és
+            regisztráció nélkül.
+          </p>
+          <div className="mt-6 border-t border-black/10 pt-4">
+            <p className="truncate text-xs font-medium text-black/50">
+              {url.replace('https://', '')}
+            </p>
+          </div>
         </div>
-      </dialog>
+
+        <button
+          type="button"
+          onClick={downloadQrCode}
+          className="glass glass-hover mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold"
+        >
+          <Download className="size-4" aria-hidden="true" />
+          QR-kód letöltése
+        </button>
+      </Sheet>
     </>
   )
 }

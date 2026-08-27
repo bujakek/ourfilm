@@ -1,7 +1,7 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 /**
  * The sheet every host-area interruption is drawn in.
@@ -21,6 +21,11 @@ import { useEffect, useRef, type ReactNode } from 'react'
  * after the page and card padding, and squeezes it. `max-w-md` with `p-6`
  * gives it 342 — which is why the settings date picker opens a sheet rather
  * than expanding in place.
+ *
+ * **Three ways out, and they are one rule.** Escape, the close button and a tap
+ * on the backdrop all run `onClose`, and all three are gated on `closeLabel`.
+ * A sheet that must be answered has no third "neither" option, and a backdrop
+ * that dismisses one silently would be exactly that option.
  */
 export function Sheet({
   open,
@@ -35,11 +40,14 @@ export function Sheet({
   open: boolean
   onClose?: () => void
   title: string
-  detail: string
+  /** Omitted when the sheet's content introduces itself — the QR ticket carries
+   *  the event's name and its own instructions. */
+  detail?: string
   children: ReactNode
   closeLabel?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
 
   useEffect(() => {
     const el = ref.current
@@ -51,36 +59,55 @@ export function Sheet({
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       // Escape closes a <dialog> natively and does not run onClose, which would
       // leave the caller thinking the sheet is still open.
       onCancel={(event) => {
         event.preventDefault()
         if (closeLabel) onClose?.()
       }}
-      className="glass-overlay mx-auto mt-auto mb-0 w-full max-w-md rounded-t-3xl p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-foreground backdrop:bg-black/70 sm:my-auto sm:rounded-3xl sm:pb-6"
+      // The backdrop is not a child, so a click on it reports the <dialog>
+      // itself as the target — that identity check is the whole test, and it is
+      // why the padding lives on an inner element. With `p-6` on the dialog, a
+      // tap in the padding would also read as the dialog and dismiss a sheet
+      // the host was aiming at.
+      onClick={(event) => {
+        if (event.target === ref.current && closeLabel) onClose?.()
+      }}
+      className="glass-overlay mx-auto mt-auto mb-0 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-3xl text-foreground backdrop:bg-black/70 sm:my-auto sm:rounded-3xl"
     >
-      <div className="flex items-start gap-4">
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl font-semibold tracking-tight text-balance">
-            {title}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-            {detail}
-          </p>
+      {/* Scrolls with the content rather than pinning the header, because these
+          sheets are short enough that a sticky bar would cost more height than
+          it saves. */}
+      <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
+        <div className="flex items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <h2
+              id={titleId}
+              className="font-display text-xl font-semibold tracking-tight text-balance"
+            >
+              {title}
+            </h2>
+            {detail ? (
+              <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                {detail}
+              </p>
+            ) : null}
+          </div>
+          {closeLabel ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={closeLabel}
+              className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem]"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
-        {closeLabel ? (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={closeLabel}
-            className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem]"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </button>
-        ) : null}
-      </div>
 
-      <div className="mt-5">{children}</div>
+        <div className="mt-5">{children}</div>
+      </div>
     </dialog>
   )
 }
