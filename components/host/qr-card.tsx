@@ -1,10 +1,10 @@
 'use client'
 
-import { Printer, QrCode, X } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
+import { Download, QrCode, X } from 'lucide-react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { useRef } from 'react'
 
-/** Keeps the printable QR available without making it the whole event page. */
+/** Keeps the downloadable QR available without making it the whole event page. */
 export function QrCard({
   name,
   url,
@@ -15,6 +15,24 @@ export function QrCard({
   shots: number
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const qrRef = useRef<HTMLCanvasElement>(null)
+
+  function downloadQrCode() {
+    const canvas = qrRef.current
+    if (!canvas) return
+
+    const safeName = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+
+    const link = document.createElement('a')
+    link.download = `${safeName || 'ourfilm'}-qr-kod.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
 
   return (
     <>
@@ -45,7 +63,7 @@ export function QrCard({
             <X className="size-5" aria-hidden="true" />
           </button>
 
-          <div className="print-card rounded-[1.6rem] bg-gradient-to-b from-white to-[#f2f2f5] p-8 text-center text-black">
+          <div className="rounded-[1.6rem] bg-gradient-to-b from-white to-[#f2f2f5] p-8 text-center text-black">
             <p
               id="qr-dialog-title"
               className="text-2xl font-semibold tracking-tight text-balance"
@@ -58,12 +76,15 @@ export function QrCard({
 
             <div className="my-7 flex justify-center">
               <div className="rounded-2xl bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
-                <QRCodeSVG
+                <QRCodeCanvas
+                  ref={qrRef}
                   value={url}
-                  size={168}
+                  size={1024}
                   level="M"
                   bgColor="#ffffff"
                   fgColor="#050505"
+                  marginSize={4}
+                  className="size-[168px]"
                 />
               </div>
             </div>
@@ -81,11 +102,11 @@ export function QrCard({
 
           <button
             type="button"
-            onClick={() => window.print()}
-            className="glass glass-hover print-hidden mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold"
+            onClick={downloadQrCode}
+            className="glass glass-hover mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold"
           >
-            <Printer className="size-4" aria-hidden="true" />
-            QR-kártya nyomtatása
+            <Download className="size-4" aria-hidden="true" />
+            QR-kód letöltése
           </button>
         </div>
       </dialog>

@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * The host's compact event overview.
  *
  * Everything used during the event stays in the first viewport: status,
- * sharing, the printable QR and incoming photos. Configuration is still fully
+ * sharing, the downloadable QR and incoming photos. Configuration is still fully
  * available, but collapsed into details or the dedicated settings page so it
  * does not compete with the live event.
  */
