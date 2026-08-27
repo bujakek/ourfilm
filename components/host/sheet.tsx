@@ -23,15 +23,19 @@ import { useEffect, useId, useRef, type ReactNode } from 'react'
  * than expanding in place.
  *
  * **Three ways out, and they are one rule.** Escape, the close button and a tap
- * on the backdrop all run `onClose`, and all three are gated on `closeLabel`.
- * A sheet that must be answered has no third "neither" option, and a backdrop
- * that dismisses one silently would be exactly that option.
+ * on the backdrop all run `onClose`, and all three are gated on the same
+ * `dismissible`. A sheet that must be answered has no third "neither" option,
+ * and a backdrop that dismisses one silently would be exactly that option —
+ * which is also why `busy` has to close all three at once rather than only
+ * disabling the button.
  */
 export function Sheet({
   open,
   onClose,
   title,
   detail,
+  icon,
+  busy = false,
   children,
   /** Omitted for a sheet that must be answered — the restore prompt has two
    *  buttons and no third "neither" option. */
@@ -43,11 +47,21 @@ export function Sheet({
   /** Omitted when the sheet's content introduces itself — the QR ticket carries
    *  the event's name and its own instructions. */
   detail?: string
+  /** Sits above the heading. One caller uses it: the delete confirmation, where
+   *  the warning triangle is the fastest-read part of the sheet and worth more
+   *  than the row it costs. */
+  icon?: ReactNode
+  /** Refuses every way out while something irreversible is in flight. Distinct
+   *  from omitting `closeLabel`, which means "this sheet is never dismissable"
+   *  — here the close button stays visible and goes disabled, so it reads as
+   *  "not yet" rather than vanishing mid-action. */
+  busy?: boolean
   children: ReactNode
   closeLabel?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
+  const dismissible = Boolean(closeLabel) && !busy
 
   useEffect(() => {
     const el = ref.current
@@ -64,7 +78,7 @@ export function Sheet({
       // leave the caller thinking the sheet is still open.
       onCancel={(event) => {
         event.preventDefault()
-        if (closeLabel) onClose?.()
+        if (dismissible) onClose?.()
       }}
       // The backdrop is not a child, so a click on it reports the <dialog>
       // itself as the target — that identity check is the whole test, and it is
@@ -72,7 +86,7 @@ export function Sheet({
       // tap in the padding would also read as the dialog and dismiss a sheet
       // the host was aiming at.
       onClick={(event) => {
-        if (event.target === ref.current && closeLabel) onClose?.()
+        if (event.target === ref.current && dismissible) onClose?.()
       }}
       className="glass-overlay mx-auto mt-auto mb-0 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-3xl text-foreground backdrop:bg-black/70 sm:my-auto sm:rounded-3xl"
     >
@@ -82,6 +96,7 @@ export function Sheet({
       <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
+            {icon ? <div className="mb-3">{icon}</div> : null}
             <h2
               id={titleId}
               className="font-display text-xl font-semibold tracking-tight text-balance"
@@ -98,8 +113,9 @@ export function Sheet({
             <button
               type="button"
               onClick={onClose}
+              disabled={busy}
               aria-label={closeLabel}
-              className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem]"
+              className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem] disabled:opacity-40"
             >
               <X className="size-4" aria-hidden="true" />
             </button>
