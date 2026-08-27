@@ -25,3 +25,9 @@ next-env.d.ts
 # committed — tracking a symlink to an ignored directory just dangles on clone.
 .agents/
 .claude/skills/
+
+# Screenshot/dev-login scratch. `.dev-login-token` is a live bearer credential
+# for a host account (scripts/dev-login-token.ts); `.screenshots/` is throwaway
+# capture output.
+.dev-login-token
+.screenshots/

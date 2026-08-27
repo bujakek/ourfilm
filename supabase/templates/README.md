@@ -20,9 +20,21 @@ with an address you have never used.
 ## Applying them to the linked project
 
 ```bash
-pnpm emails:push                                    # dry run
+pnpm emails:push                                    # dry run, no token needed
+SUPABASE_ACCESS_TOKEN=sbp_… pnpm emails:push --check   # read-only: does the remote match?
 SUPABASE_ACCESS_TOKEN=sbp_… pnpm emails:push --apply
 ```
+
+**`--check` first, always, when a host reports a stock Supabase email.** It GETs
+the live auth config and says per template whether the remote is byte-identical
+to this repo, names the built-in default when it sees one, and prints the three
+settings that decide whether the Confirm signup template is ever _reached_:
+`mailer_autoconfirm` (on, and a first-time host is created and confirmed with no
+email at all), `rate_limit_email_sent`, and `smtp_host`. Nothing else in the repo
+can answer that question — a green `--apply` from months ago is not evidence
+about today's project, and the dashboard puts the two templates on separate tabs,
+so branding Magic Link and leaving Confirm signup stock looks finished from
+either one.
 
 `scripts/push-auth-emails.ts` PATCHes exactly four fields on
 `/v1/projects/{ref}/config/auth` — the two subjects and the two HTML bodies.
@@ -83,6 +95,13 @@ Email HTML is not web HTML. What these files do deliberately:
   anchor, and the copy-paste fallback's href and visible text. Keep all four in
   step; a template that renders but links nowhere looks completely fine in a
   preview.
+
+**Resend link tracking must stay off.** An external provider that rewrites
+links wraps `{{ .ConfirmationURL }}` in its own click-tracking domain, and
+Supabase's docs are explicit that the links then "won't perform as expected".
+Resend has Click Tracking and Open Tracking per domain; both off is the working
+configuration, and turning one on breaks every login link in the product without
+touching a line of this repo.
 
 The templates use `{{ .ConfirmationURL }}`, which is the default PKCE flow the
 app already handles (`?code=…`). `app/auth/callback/actions.ts` also accepts
