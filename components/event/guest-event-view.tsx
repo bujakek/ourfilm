@@ -9,6 +9,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -55,6 +56,7 @@ export function GuestEventView({
   photos: GalleryTile[]
 }) {
   const router = useRouter()
+  const reduceMotion = useReducedMotion()
   const inputRef = useRef<HTMLInputElement>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
   const [busy, setBusy] = useState(false)
@@ -146,26 +148,41 @@ export function GuestEventView({
               : `${participantCount} vendég csatlakozott`}
           </EventFact>
           <EventFact icon={Image} live>
-            {remaining === 1 ? '1 képed maradt' : `${remaining} képed maradt`}
+            <span className="relative inline-flex min-h-[1.25rem] items-center overflow-hidden">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={remaining}
+                  initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.2 }}
+                >
+                  {remaining === 1
+                    ? '1 képed maradt'
+                    : `${remaining} képed maradt`}
+                </motion.span>
+              </AnimatePresence>
+            </span>
           </EventFact>
         </dl>
 
         <div className="mt-8 grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)] gap-3">
           <InviteButton url={eventUrl} />
 
-          <button
+          <motion.button
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={!canTakePhoto}
-            className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-base font-semibold text-primary-foreground transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45"
+            whileTap={canTakePhoto && !reduceMotion ? { scale: 0.98 } : undefined}
+            className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-base font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
           >
             {busy ? (
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />
             ) : (
               <Camera className="size-5" strokeWidth={1.8} aria-hidden="true" />
             )}
-            {busy ? 'Mentés…' : 'Kamera'}
-          </button>
+            {busy ? 'Mentés…' : remaining <= 0 ? 'Elfogyott a tekercs' : 'Kamera'}
+          </motion.button>
 
           <input
             ref={inputRef}
@@ -183,18 +200,36 @@ export function GuestEventView({
           />
         </div>
 
-        {flash ? (
-          <p
-            aria-live="polite"
-            className={`mt-3 text-center text-sm ${
-              flash.kind === 'error'
-                ? 'text-destructive'
-                : 'text-muted-foreground'
-            }`}
-          >
-            {flash.message}
-          </p>
-        ) : null}
+        <AnimatePresence initial={false} mode="wait">
+          {flash ? (
+            <motion.p
+              key={`${flash.kind}-${flash.message}`}
+              aria-live="polite"
+              initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2 }}
+              className={`mt-3 text-center text-sm ${
+                flash.kind === 'error'
+                  ? 'text-destructive'
+                  : 'text-muted-foreground'
+              }`}
+            >
+              {flash.message}
+            </motion.p>
+          ) : remaining <= 0 ? (
+            <motion.p
+              key="out-of-shots"
+              aria-live="polite"
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.25 }}
+              className="mt-3 text-center text-sm font-medium text-muted-foreground"
+            >
+              Elfogytak a képeid — a tekercsed megtelt.
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
       </header>
 
       <div className="mt-10 border-t border-border pt-9">
