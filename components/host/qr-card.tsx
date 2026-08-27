@@ -17,7 +17,7 @@ export function QrCard({
   const dialogRef = useRef<HTMLDialogElement>(null)
   const qrRef = useRef<HTMLCanvasElement>(null)
 
-  function downloadQrCode() {
+  async function downloadQrCode() {
     const canvas = qrRef.current
     if (!canvas) return
 
@@ -28,10 +28,35 @@ export function QrCard({
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '')
 
+    const fileName = `${safeName || 'ourfilm'}-qr-kod.png`
+    const dataUrl = canvas.toDataURL('image/png')
+    const binary = atob(dataUrl.split(',')[1])
+    const bytes = Uint8Array.from(binary, (character) =>
+      character.charCodeAt(0),
+    )
+    const blob = new Blob([bytes], { type: 'image/png' })
+    const file = new File([blob], fileName, { type: blob.type })
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: `${name} QR-kód`,
+        })
+        return
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+      }
+    }
+
+    const objectUrl = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.download = `${safeName || 'ourfilm'}-qr-kod.png`
-    link.href = canvas.toDataURL('image/png')
+    link.download = fileName
+    link.href = objectUrl
+    document.body.appendChild(link)
     link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000)
   }
 
   return (
