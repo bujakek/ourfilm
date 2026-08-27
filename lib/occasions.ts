@@ -53,7 +53,7 @@ export const OCCASIONS_ARE_DRAFT = true
 
 /** The same free-trial line closes every occasion page. */
 const OCCASION_CTA_HELPER =
-  '5 fotóig ingyen, bankkártya nélkül. A teljes album egyszeri 12 900 Ft.'
+  '5 résztvevőig ingyenes, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft.'
 
 export const occasions: Occasion[] = [
   {
