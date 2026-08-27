@@ -11,7 +11,7 @@ import {
   invalidateStoredDraft,
   useStoredDraft,
 } from '@/components/host/onboarding/use-stored-draft'
-import type { RevealMode, ShotOption } from '@/lib/camera'
+import type { RevealChoice, ShotOption } from '@/lib/camera'
 import {
   clearDraft,
   draftHasAnswers,
@@ -20,7 +20,6 @@ import {
   type EventDraft,
 } from '@/lib/event-draft'
 import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
-import { clampRevealDelayDays, revealAfterDelay } from '@/lib/onboarding'
 import type { EventPlan } from '@/lib/onboarding'
 import { createEventFromDraft } from './actions'
 import { StepEnd } from './step-end'
@@ -149,8 +148,7 @@ function OnboardingFlow({
 
   const [step, setStep] = useState(Math.min(LAST_STEP, Math.max(0, startStep)))
   const [name, setName] = useState(initial.name)
-  const [revealMode, setRevealMode] = useState<RevealMode>(initial.revealMode)
-  const [delayDays, setDelayDays] = useState(initial.delayDays)
+  const [revealMode, setRevealMode] = useState<RevealChoice>(initial.revealMode)
   const [shots, setShots] = useState<ShotOption>(initial.shots)
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
   const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
@@ -178,7 +176,6 @@ function OnboardingFlow({
       endLocal,
       timeZone,
       revealMode,
-      delayDays,
       shots,
       plan,
       guestsCanView,
@@ -193,7 +190,6 @@ function OnboardingFlow({
       endLocal,
       timeZone,
       revealMode,
-      delayDays,
       shots,
       plan,
       guestsCanView,
@@ -224,11 +220,7 @@ function OnboardingFlow({
     saveDraft(draft, new Date())
   }, [signature, draft])
 
-  const revealIso = useMemo(() => {
-    if (!endIso || revealMode === 'instant') return null
-    if (revealMode === 'event_end') return endIso
-    return revealAfterDelay(new Date(endIso), delayDays).toISOString()
-  }, [endIso, revealMode, delayDays])
+  const revealIso = revealMode === 'event_end' ? endIso : null
 
   // The one thing that can be answered wrongly on the date screen: a window
   // that closes before it opens. Measured against the server's `nowIso` rather
@@ -245,7 +237,6 @@ function OnboardingFlow({
         endLocal,
         timeZone,
         revealMode,
-        delayDays,
         shots,
         plan,
         guestsCanView,
@@ -321,8 +312,6 @@ function OnboardingFlow({
           nav={nav()}
           mode={revealMode}
           setMode={setRevealMode}
-          delayDays={delayDays}
-          setDelayDays={(value) => setDelayDays(clampRevealDelayDays(value))}
           revealIso={revealIso}
           timeZone={timeZone}
         />

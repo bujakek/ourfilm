@@ -35,8 +35,18 @@ export const REVEAL_MODES: readonly RevealMode[] = [
   'custom',
 ]
 
+/** The two reveal rules a host can currently choose. `custom` stays in the
+ * database model for backwards compatibility, but is not a product setting. */
+export const REVEAL_CHOICES = ['instant', 'event_end'] as const
+
+export type RevealChoice = (typeof REVEAL_CHOICES)[number]
+
 export function isRevealMode(value: unknown): value is RevealMode {
   return REVEAL_MODES.includes(value as RevealMode)
+}
+
+export function isRevealChoice(value: unknown): value is RevealChoice {
+  return REVEAL_CHOICES.includes(value as RevealChoice)
 }
 
 /**

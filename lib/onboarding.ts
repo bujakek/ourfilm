@@ -2,54 +2,13 @@
  * The create flow's own rules, as pure functions.
  *
  * `lib/camera.ts` holds what the *event* is allowed to be — the shot options,
- * the reveal resolution, the validation both the wizard and the settings page
- * run. What lives here is narrower: the handful of decisions that exist only
- * while a host is answering four questions and no row exists yet.
+ * reveal rules and shared validation. What lives here is narrower: the handful
+ * of decisions that exist only while a host is answering four questions and no
+ * row exists yet.
  *
  * Same discipline as `camera.ts`: nothing reads a clock of its own, so the
  * server can re-derive every one of these from the FormData it is handed.
  */
-
-/**
- * The delayed reveal is counted in **days**, not hours.
- *
- * A host choosing "later" is choosing a morning-after or a next-weekend, and
- * both of those are days. An hours stepper would need eighteen taps to express
- * the common answer.
- */
-export const MIN_REVEAL_DELAY_DAYS = 1
-export const MAX_REVEAL_DELAY_DAYS = 30
-export const DEFAULT_REVEAL_DELAY_DAYS = 1
-
-const DAY_MS = 24 * 60 * 60 * 1000
-
-/** The value arrives from a stepper the host can hold down and from a FormData
- *  anyone can post, so it is clamped rather than trusted. Non-numbers fall back
- *  to the default instead of poisoning the arithmetic with NaN. */
-export function clampRevealDelayDays(value: unknown): number {
-  const days = Math.trunc(Number(value))
-  if (!Number.isFinite(days)) return DEFAULT_REVEAL_DELAY_DAYS
-  return Math.min(MAX_REVEAL_DELAY_DAYS, Math.max(MIN_REVEAL_DELAY_DAYS, days))
-}
-
-/**
- * When a delayed album opens: the capture window's end plus whole days.
- *
- * Plain milliseconds rather than calendar arithmetic, deliberately. "Two days
- * later" here means 48 hours later, and across a DST boundary those two answers
- * differ by an hour — the wall clock one would move the reveal an hour earlier
- * or later than the badge the host was shown while choosing it.
- */
-export function revealAfterDelay(captureEndAt: Date, days: number): Date {
-  return new Date(captureEndAt.getTime() + clampRevealDelayDays(days) * DAY_MS)
-}
-
-/** `1 nap`, `15 nap`. Hungarian counts with the singular after a number, so
- *  there is no plural to branch on — the function exists so no caller is
- *  tempted to invent one. */
-export function formatDelayDays(days: number): string {
-  return `${clampRevealDelayDays(days)} nap`
-}
 
 /**
  * The five titles offered under ÖTLETEK on the first screen.

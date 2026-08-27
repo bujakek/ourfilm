@@ -249,9 +249,9 @@ does it need. Neither of the other two depends on the first being answered.
   formats in the event's own zone. The zone reaches the client one render late,
   through `useSyncExternalStore` rather than an effect — see
   `components/host/onboarding/use-browser-time-zone.ts`.
-- **The delayed reveal is counted in days** (1–30), resolved as
-  `capture_end_at + n * 24h` by `revealAfterDelay()` in `lib/onboarding.ts`. The
-  form posts the day count, not an instant, and the action recomputes it.
+- **There are two reveal choices:** immediately, or when the event ends. The
+  database still understands its legacy `custom` mode, but neither onboarding
+  nor settings exposes or accepts it.
 - **The guest count is a plan, not a setting.** There is no `max_participants`
   column and nothing about the inserted row differs between the two choices:
   the free tier is `free_participant_limit()` distinct participants enforced

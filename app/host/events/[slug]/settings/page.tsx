@@ -3,7 +3,6 @@ import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
 import { GuestsToggle } from '@/components/host/guests-toggle'
 import { RevealCard } from '@/components/host/reveal-card'
-import { RevealNowButton } from '@/components/host/reveal-now-button'
 import { ShotsCard } from '@/components/host/shots-card'
 import {
   type EventQuota,
@@ -12,7 +11,11 @@ import {
   getEventQuota,
   type Purchase,
 } from '@/lib/billing'
-import { captureWindowState, type ShotOption } from '@/lib/camera'
+import {
+  captureWindowState,
+  type RevealChoice,
+  type ShotOption,
+} from '@/lib/camera'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
@@ -65,8 +68,9 @@ export default async function AdminEventSettingsPage({
   // not the browser's — a `datetime-local` carries no zone, so handing it any
   // other wall clock would show a host a window their guests are not held to.
   const zone = event.time_zone
+  const now = new Date()
   const windowState = captureWindowState({
-    now: new Date(),
+    now,
     captureStartAt: new Date(event.capture_start_at),
     captureEndAt: new Date(event.capture_end_at),
   })
@@ -77,6 +81,15 @@ export default async function AdminEventSettingsPage({
   const { checkout } = await searchParams
   const checkoutState =
     checkout === 'success' || checkout === 'cancelled' ? checkout : null
+
+  // Older events may still carry the retired custom mode. If their album has
+  // already opened, that is equivalent to "Azonnal"; otherwise the safe
+  // editable choice is the event end.
+  const revealChoice: RevealChoice =
+    event.reveal_mode === 'instant' ||
+    (event.reveal_mode === 'custom' && new Date(event.reveal_at) <= now)
+      ? 'instant'
+      : 'event_end'
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
@@ -103,23 +116,7 @@ export default async function AdminEventSettingsPage({
           state={windowState}
         />
 
-        <RevealCard
-          slug={event.slug}
-          mode={event.reveal_mode}
-          customValue={formatEventLocalInput(new Date(event.reveal_at), zone)}
-          minValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
-        />
-
-        <div className="glass rounded-2xl px-5 py-4">
-          <p className="font-medium">Korai leleplezés</p>
-          <p className="mt-1 mb-4 text-xs leading-relaxed text-muted-foreground">
-            Nem akarsz várni? Nyisd meg a galériát most.
-          </p>
-          <RevealNowButton
-            slug={event.slug}
-            guestsCanView={event.guests_can_view}
-          />
-        </div>
+        <RevealCard slug={event.slug} mode={revealChoice} />
 
         <ShotsCard
           slug={event.slug}

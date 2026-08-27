@@ -64,7 +64,6 @@ async function run(): Promise<Outcome> {
       endLocal: draft.endLocal,
       timeZone: draft.timeZone,
       revealMode: draft.revealMode,
-      delayDays: draft.delayDays,
       shots: draft.shots,
       plan: draft.plan,
       guestsCanView: draft.guestsCanView,

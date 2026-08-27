@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import { isRevealMode, isShotOption, resolveRevealAt } from '@/lib/camera'
+import { isRevealChoice, isShotOption, resolveRevealAt } from '@/lib/camera'
 import { eventLocalToIso } from '@/lib/format'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { PHOTO_BUCKET } from '@/lib/storage'
@@ -136,68 +136,25 @@ export async function setCaptureEnd(slug: string, endLocal: string) {
   revalidatePath(`/e/${slug}`)
 }
 
-/** Change when the album develops. `reveal_at` is recomputed by the trigger for
- *  the two pinned modes; only `custom` carries its own instant. */
-export async function setReveal(
-  slug: string,
-  mode: string,
-  customLocal: string | null,
-) {
-  if (!isRevealMode(mode)) throw new Error('Ismeretlen leleplezési mód.')
+/** Change when the album develops. Both available modes are pinned to the
+ * capture window, so neither accepts a separate date. */
+export async function setReveal(slug: string, mode: string) {
+  if (!isRevealChoice(mode)) throw new Error('Ismeretlen leleplezési mód.')
 
   const event = await getOwnedEventBySlug(slug)
   if (!event) throw new Error('Nincs ilyen esemény.')
-
-  const customIso = customLocal
-    ? eventLocalToIso(customLocal, event.time_zone)
-    : null
-
-  if (mode === 'custom') {
-    if (!customIso) throw new Error('Add meg a leleplezés időpontját.')
-    if (new Date(customIso) < new Date(event.capture_end_at)) {
-      throw new Error('A leleplezés nem lehet korábbi a fotózás végénél.')
-    }
-  }
 
   const revealAt = resolveRevealAt({
     mode,
     captureStartAt: new Date(event.capture_start_at),
     captureEndAt: new Date(event.capture_end_at),
-    customRevealAt: customIso ? new Date(customIso) : null,
+    customRevealAt: null,
   })
 
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('events')
     .update({ reveal_mode: mode, reveal_at: revealAt.toISOString() })
-    .eq('slug', slug)
-    .select('id')
-
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
-
-  revalidateEvent(slug)
-  revalidatePath(`/e/${slug}`)
-}
-
-/**
- * Open the gallery now.
- *
- * Writes a real reveal instant rather than flipping a display flag, so it
- * survives a refresh, a redeploy, and anybody else's session. The mode becomes
- * `custom` because that is what it now is — an instant the host chose.
- *
- * Guests see the album only if `guests_can_view` is also on. That is why the
- * confirmation says "amennyiben a vendéggaléria engedélyezve van" rather than
- * promising something this action cannot deliver on its own.
- */
-export async function revealNow(slug: string) {
-  const supabase = await createClient()
-  const now = new Date().toISOString()
-
-  const { data, error } = await supabase
-    .from('events')
-    .update({ reveal_mode: 'custom', reveal_at: now })
     .eq('slug', slug)
     .select('id')
 

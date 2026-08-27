@@ -51,8 +51,7 @@ describe('saving and reading a draft', () => {
     const original = draft({
       name: 'Az esküvőnk',
       endLocal: '2026-08-27T23:30',
-      revealMode: 'custom',
-      delayDays: 3,
+      revealMode: 'instant',
       shots: 36,
       plan: 'full',
       guestsCanView: false,
@@ -65,8 +64,7 @@ describe('saving and reading a draft', () => {
     expect(read).toMatchObject({
       name: 'Az esküvőnk',
       endLocal: '2026-08-27T23:30',
-      revealMode: 'custom',
-      delayDays: 3,
+      revealMode: 'instant',
       shots: 36,
       plan: 'full',
       guestsCanView: false,
@@ -84,6 +82,15 @@ describe('saving and reading a draft', () => {
 
   it('returns null when nothing was ever saved', () => {
     expect(loadDraft(NOW)).toBeNull()
+  })
+
+  it('clears the previous onboarding shape', () => {
+    storage.setItem(
+      'ourfilm:event-draft:v1',
+      JSON.stringify({ anything: true }),
+    )
+    expect(loadDraft(NOW)).toBeNull()
+    expect(storage.getItem('ourfilm:event-draft:v1')).toBeNull()
   })
 
   it('carries the pending-create intent across the auth round trip', () => {
@@ -108,14 +115,9 @@ describe('a draft that cannot be trusted', () => {
     expect(loadDraft(NOW)).toBeNull()
   })
 
-  it('refuses a reveal mode that is not one of the three', () => {
-    saveDraft({ ...draft(), revealMode: 'whenever' as never }, NOW)
-    expect(loadDraft(NOW)).toBeNull()
-  })
-
-  it('refuses a delay outside 1–30 days', () => {
-    for (const days of [0, -3, 31, 900]) {
-      saveDraft({ ...draft(), delayDays: days }, NOW)
+  it('accepts only the two reveal choices shown by onboarding', () => {
+    for (const revealMode of ['custom', 'whenever']) {
+      saveDraft({ ...draft(), revealMode: revealMode as never }, NOW)
       expect(loadDraft(NOW)).toBeNull()
     }
   })

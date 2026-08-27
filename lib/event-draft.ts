@@ -1,11 +1,6 @@
 import { z } from 'zod'
 
-import { DEFAULT_SHOTS, REVEAL_MODES, SHOT_OPTIONS } from '@/lib/camera'
-import {
-  DEFAULT_REVEAL_DELAY_DAYS,
-  MAX_REVEAL_DELAY_DAYS,
-  MIN_REVEAL_DELAY_DAYS,
-} from '@/lib/onboarding'
+import { DEFAULT_SHOTS, REVEAL_CHOICES, SHOT_OPTIONS } from '@/lib/camera'
 
 /**
  * The unfinished event in this browser.
@@ -26,12 +21,12 @@ import {
 
 /** Versioned, so a shape change is a fresh start rather than a crash. Bump the
  *  suffix whenever a field changes meaning; the old key is then simply never
- *  read again, and `pruneStaleDrafts` clears it. */
-export const DRAFT_KEY = 'ourfilm:event-draft:v1'
+ *  read again, and the legacy list below clears it on the next load. */
+export const DRAFT_KEY = 'ourfilm:event-draft:v2'
 
 /** Keys from earlier shapes, cleared on load so a browser does not carry an
  *  unreadable blob forever. Add the previous key here when bumping. */
-const LEGACY_KEYS: string[] = []
+const LEGACY_KEYS = ['ourfilm:event-draft:v1']
 
 /** How long a draft stays resumable. A week covers "I started this on the bus
  *  and finished it at home"; past that, the dates in it are usually wrong
@@ -47,12 +42,7 @@ const draftSchema = z.object({
   /** The zone the wall clock above was typed in. Stored so a draft resumed on
    *  the same device in a different place still means what it meant. */
   timeZone: z.string().max(64),
-  revealMode: z.enum(REVEAL_MODES as unknown as [string, ...string[]]),
-  delayDays: z
-    .number()
-    .int()
-    .min(MIN_REVEAL_DELAY_DAYS)
-    .max(MAX_REVEAL_DELAY_DAYS),
+  revealMode: z.enum(REVEAL_CHOICES),
   shots: z.union(
     SHOT_OPTIONS.map((n) => z.literal(n)) as unknown as [
       z.ZodLiteral<number>,
@@ -78,7 +68,7 @@ const draftSchema = z.object({
 })
 
 export type EventDraft = z.infer<typeof draftSchema> & {
-  revealMode: (typeof REVEAL_MODES)[number]
+  revealMode: (typeof REVEAL_CHOICES)[number]
   shots: (typeof SHOT_OPTIONS)[number]
 }
 
@@ -96,7 +86,6 @@ export function emptyDraft(
     endLocal: '',
     timeZone,
     revealMode: 'event_end',
-    delayDays: DEFAULT_REVEAL_DELAY_DAYS,
     shots: DEFAULT_SHOTS,
     plan: 'free',
     guestsCanView: true,
@@ -135,6 +124,7 @@ export function draftHasAnswers(draft: EventDraft): boolean {
 export function loadDraft(now: Date): EventDraft | null {
   let raw: string | null
   try {
+    for (const key of LEGACY_KEYS) window.localStorage.removeItem(key)
     raw = window.localStorage.getItem(DRAFT_KEY)
   } catch {
     return null
