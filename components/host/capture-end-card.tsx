@@ -59,7 +59,7 @@ export function CaptureEndCard({
           setEnd(e.target.value)
           setSaved(false)
         }}
-        className="glass mt-4 min-h-12 w-full rounded-xl px-4 text-sm outline-none focus:border-accent"
+        className="glass mt-4 block min-h-12 w-full min-w-0 max-w-full rounded-xl px-4 text-sm outline-none focus:border-accent"
       />
 
       <button
