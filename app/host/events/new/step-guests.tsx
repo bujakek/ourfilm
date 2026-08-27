@@ -1,6 +1,7 @@
 'use client'
 
 import { Check } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
 import { AccountNotice } from '@/components/host/onboarding/account-notice'
 import {
@@ -11,22 +12,6 @@ import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 
-/**
- * The last screen: how many guests, how long a roll, and who may look.
- *
- * Three answers on one screen rather than three screens, because they are the
- * same decision seen from three sides — how big is this party, and how much
- * film does it need. None of them is a question a host has to think about
- * before the previous one, and each on its own would be a screen with one
- * control on it.
- *
- * **The guest count is a plan, not a setting.** There is no `max_participants`
- * column: the free tier is five distinct participants, enforced inside
- * `join_event`'s row lock, and paying lifts it. So choosing "Korlátlan" here
- * does not write anything different — it sends the host to Stripe right after
- * the event is created, and the event is a normal free one until the webhook
- * says otherwise.
- */
 export function StepGuests({
   nav,
   plan,
@@ -45,29 +30,20 @@ export function StepGuests({
   setShots: (value: ShotOption) => void
   guestsCanView: boolean
   setGuestsCanView: (value: boolean) => void
-  /** Whether Stripe is switched on in this environment. When it is not, the
-   *  paid tier is not offered — a price on a button that cannot charge is a
-   *  worse answer than not showing the button. */
   paymentsEnabled: boolean
   pending: boolean
 }) {
+  const reduceMotion = useReducedMotion()
+
   return (
     <OnboardingShell
       {...nav}
       title="Hány vendéged lesz?"
       detail="Mindenki kapjon esélyt, hogy elkapja a pillanatot."
-      // The label says what actually happens next, because the two answers are
-      // different journeys: one ends on the host's own event, the other on
-      // Stripe. A host who is about to be asked for a card should read that on
-      // the button, not discover it after pressing it.
       cta={plan === 'full' ? 'Tovább a fizetéshez' : 'Létrehozás'}
       ctaPending={pending}
       note={<AccountNotice />}
     >
-      {/* Top-aligned, not centred: three stacked sections read as a list that
-          starts under the question, and centring them leaves a gap above as
-          well as below — which makes the screen look like it failed to load
-          something. The slack belongs at the bottom, above the CTA. */}
       <div className="flex flex-col gap-6">
         <fieldset>
           <SectionLabel>VENDÉGEK</SectionLabel>
@@ -79,6 +55,7 @@ export function StepGuests({
               setPlan={setPlan}
               title={`Legfeljebb ${FREE_PARTICIPANT_LIMIT}`}
               detail="Ingyenes"
+              reduceMotion={reduceMotion}
             />
             <PlanTile
               value="full"
@@ -87,6 +64,7 @@ export function StepGuests({
               title="Korlátlan"
               detail={paymentsEnabled ? EVENT_PRICE_LABEL : 'Hamarosan'}
               disabled={!paymentsEnabled}
+              reduceMotion={reduceMotion}
             />
           </div>
         </fieldset>
@@ -94,21 +72,30 @@ export function StepGuests({
         <fieldset className="border-t border-border pt-5">
           <SectionLabel>KÉPEK VENDÉGENKÉNT</SectionLabel>
           <legend className="sr-only">Képek száma vendégenként</legend>
-          {/* One row of five rather than the wrapped three-over-two this step
-              used when it was alone on the screen. Three sections now share the
-              height, and five 63px tiles are still a comfortable thumb target. */}
           <div className="mt-3 grid grid-cols-5 gap-2">
             {SHOT_OPTIONS.map((option) => {
               const active = option === shots
               return (
                 <label
                   key={option}
-                  className={`glass flex min-h-16 cursor-pointer items-center justify-center rounded-[1.1rem] transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                  className={`glass relative flex min-h-16 cursor-pointer items-center justify-center overflow-hidden rounded-[1.1rem] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
                     active
-                      ? 'bg-accent/10 text-lg font-bold text-accent ring-2 ring-accent'
+                      ? 'text-lg font-bold text-accent'
                       : 'text-base font-medium'
                   }`}
                 >
+                  {active ? (
+                    <motion.span
+                      layoutId="shots-selection"
+                      aria-hidden="true"
+                      className="absolute inset-0 rounded-[1.1rem] bg-accent/10 ring-2 ring-inset ring-accent"
+                      transition={
+                        reduceMotion
+                          ? { duration: 0 }
+                          : { type: 'spring', stiffness: 520, damping: 38 }
+                      }
+                    />
+                  ) : null}
                   <input
                     type="radio"
                     name="shots_choice"
@@ -117,10 +104,13 @@ export function StepGuests({
                     onChange={() => setShots(option)}
                     className="sr-only"
                   />
-                  {option}
-                  {/* The default is preselected, which is how the recommendation
-                      is made — there is no room on a 63px tile for a word, and
-                      an unasked-for answer already sitting there says it. */}
+                  <motion.span
+                    className="relative z-10"
+                    animate={{ scale: active ? 1.06 : 1 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.16 }}
+                  >
+                    {option}
+                  </motion.span>
                   {option === DEFAULT_SHOTS ? (
                     <span className="sr-only"> — ajánlott</span>
                   ) : null}
@@ -139,23 +129,40 @@ export function StepGuests({
             onClick={() => setGuestsCanView(!guestsCanView)}
             className="mt-3 flex w-full items-center gap-3 text-left"
           >
-            <span
+            <motion.span
               aria-hidden="true"
-              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                guestsCanView ? 'bg-accent' : 'bg-muted-foreground/30'
-              }`}
+              animate={{
+                backgroundColor: guestsCanView
+                  ? 'var(--color-accent)'
+                  : 'color-mix(in oklab, var(--color-muted-foreground) 30%, transparent)',
+              }}
+              transition={{ duration: reduceMotion ? 0 : 0.18 }}
+              className="relative h-7 w-12 shrink-0 rounded-full"
             >
-              <span
-                className={`absolute top-1 size-5 rounded-full bg-white transition-transform ${
-                  guestsCanView ? 'translate-x-6' : 'translate-x-1'
-                }`}
+              <motion.span
+                className="absolute top-1 left-1 size-5 rounded-full bg-white"
+                animate={{ x: guestsCanView ? 20 : 0 }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { type: 'spring', stiffness: 600, damping: 38 }
+                }
               />
-            </span>
-            <span className="text-sm leading-snug text-pretty">
-              {guestsCanView
-                ? 'A vendégek is látják az összes képet.'
-                : 'Csak te látod a képeket.'}
-            </span>
+            </motion.span>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={guestsCanView ? 'visible' : 'private'}
+                initial={reduceMotion ? false : { opacity: 0, y: 3 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
+                transition={{ duration: reduceMotion ? 0 : 0.14 }}
+                className="text-sm leading-snug text-pretty"
+              >
+                {guestsCanView
+                  ? 'A vendégek is látják az összes képet.'
+                  : 'Csak te látod a képeket.'}
+              </motion.span>
+            </AnimatePresence>
           </button>
         </div>
       </div>
@@ -178,6 +185,7 @@ function PlanTile({
   title,
   detail,
   disabled = false,
+  reduceMotion,
 }: {
   value: EventPlan
   plan: EventPlan
@@ -185,16 +193,27 @@ function PlanTile({
   title: string
   detail: string
   disabled?: boolean
+  reduceMotion: boolean | null
 }) {
   const active = plan === value
   return (
     <label
-      className={`glass flex min-h-20 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-        disabled
-          ? 'cursor-not-allowed opacity-40'
-          : `cursor-pointer ${active ? 'bg-accent/10 text-accent ring-2 ring-accent' : ''}`
-      }`}
+      className={`glass relative flex min-h-20 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[1.25rem] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+      } ${active ? 'text-accent' : ''}`}
     >
+      {active ? (
+        <motion.span
+          layoutId="plan-selection"
+          aria-hidden="true"
+          className="absolute inset-0 rounded-[1.25rem] bg-accent/10 ring-2 ring-inset ring-accent"
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { type: 'spring', stiffness: 480, damping: 38 }
+          }
+        />
+      ) : null}
       <input
         type="radio"
         name="plan_choice"
@@ -204,16 +223,25 @@ function PlanTile({
         onChange={() => setPlan(value)}
         className="sr-only"
       />
-      {/* The check carries the selection alongside the ring, so the choice is
-          not signalled by colour alone. */}
-      <span className="flex items-center gap-1.5 text-base font-semibold">
-        {active ? (
-          <Check className="size-4" strokeWidth={2.4} aria-hidden="true" />
-        ) : null}
+      <span className="relative z-10 flex items-center gap-1.5 text-base font-semibold">
+        <AnimatePresence initial={false}>
+          {active ? (
+            <motion.span
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0, scale: 0.6 }}
+              transition={{ duration: reduceMotion ? 0 : 0.14 }}
+            >
+              <Check className="size-4" strokeWidth={2.4} aria-hidden="true" />
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
         {title}
       </span>
       <span
-        className={`text-xs ${active ? 'text-accent/80' : 'text-muted-foreground'}`}
+        className={`relative z-10 text-xs ${
+          active ? 'text-accent/80' : 'text-muted-foreground'
+        }`}
       >
         {detail}
       </span>

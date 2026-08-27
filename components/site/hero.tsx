@@ -1,8 +1,8 @@
-import { QrCode, ScanLine } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
 import { CREATE_EVENT_PATH } from '@/lib/routes'
+import { HeroQrDemo } from './hero-qr-demo'
 
 const galleryImages = [
   {
@@ -21,17 +21,12 @@ export function Hero() {
       className="relative flex min-h-[92vh] items-center px-4 pt-32 pb-16 sm:px-6 lg:pt-36"
     >
       <div className="mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
-        {/* Copy */}
         <div className="reveal is-visible max-w-xl">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-muted-foreground">
             <span className="size-1.5 rounded-full bg-accent" />
             Digitális eldobható fényképezőgép esküvőre
           </span>
 
-          {/* The two spans are separated by a real space, not a <br />: a
-              line break contributes nothing to textContent, so the old markup
-              read as one joined word to screen readers and to anything else
-              parsing the heading. `text-balance` handles the wrap. */}
           <h1 className="mt-6 text-[2rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl xl:text-[3.5rem]">
             <span className="text-gradient">Az esküvőtök,</span>{' '}
             <span className="text-gradient-accent">
@@ -64,10 +59,8 @@ export function Hero() {
           </p>
         </div>
 
-        {/* Visual */}
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
           <div className="relative aspect-[4/5] w-full">
-            {/* Phone mockup */}
             <div className="absolute top-1/2 left-1/2 w-[62%] max-w-[280px] -translate-x-1/2 -translate-y-1/2 animate-float-slow">
               <div className="glass-strong overflow-hidden rounded-[2.5rem] p-2.5">
                 <div className="overflow-hidden rounded-[2rem] bg-background-secondary">
@@ -102,7 +95,6 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Floating glass photo card — top left */}
             <div
               className="absolute top-4 left-0 w-[38%] max-w-[150px] animate-float-slower [--rot:-6deg]"
               style={{ transform: 'rotate(-6deg)' }}
@@ -120,7 +112,6 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Floating glass photo card — bottom right */}
             <div
               className="absolute right-0 bottom-6 w-[40%] max-w-[160px] animate-float-slow [--rot:7deg] [animation-delay:-4s]"
               style={{ transform: 'rotate(7deg)' }}
@@ -138,27 +129,7 @@ export function Hero() {
               </div>
             </div>
 
-            {/* QR scan card — top right */}
-            <div className="absolute top-8 -right-2 w-[34%] max-w-[132px] animate-float-slower [animation-delay:-8s]">
-              <div className="glass-strong relative overflow-hidden rounded-2xl p-3">
-                <div className="flex items-center justify-center rounded-xl bg-white p-2">
-                  <QrCode
-                    className="size-full text-black"
-                    strokeWidth={1.2}
-                    aria-hidden="true"
-                  />
-                </div>
-                <p className="mt-2 text-center text-[9px] font-medium text-muted-foreground">
-                  Olvasd be, és fotózz velünk.
-                </p>
-                {/* scan line */}
-                <span className="absolute inset-x-3 top-3 h-8 animate-float-slow rounded-lg bg-gradient-to-b from-accent/40 to-transparent" />
-              </div>
-              <div className="glass absolute -bottom-3 -left-3 flex items-center gap-1 rounded-full px-2.5 py-1">
-                <ScanLine className="size-3 text-accent" />
-                <span className="text-[9px] font-medium">Beolvasás…</span>
-              </div>
-            </div>
+            <HeroQrDemo />
           </div>
         </div>
       </div>
