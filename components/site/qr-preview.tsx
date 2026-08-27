@@ -2,14 +2,13 @@
 
 import { EXAMPLE_SLUG_SUFFIX, slugify } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useMemo, useState } from 'react'
 import { Reveal } from './reveal'
 
 export function QrPreview() {
   const [name, setName] = useState('Anna & Péter')
-  const [focused, setFocused] = useState(false)
   const reduceMotion = useReducedMotion()
   const slug = useMemo(() => `${slugify(name)}-${EXAMPLE_SLUG_SUFFIX}`, [name])
   const url = eventUrl(slug)
@@ -43,28 +42,15 @@ export function QrPreview() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
                 maxLength={40}
                 placeholder="Anna & Péter"
                 className="glass w-full rounded-2xl px-5 py-3.5 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground/60 focus:border-accent"
               />
               <div className="mt-4 flex min-w-0 items-center gap-2 text-sm">
                 <span className="shrink-0 text-muted-foreground">Megosztható link:</span>
-                <span className="glass min-w-0 overflow-hidden rounded-lg px-2.5 py-1 text-xs text-accent">
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.code
-                      key={url}
-                      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-                      transition={{ duration: reduceMotion ? 0 : 0.14 }}
-                      className="block truncate"
-                    >
-                      {url}
-                    </motion.code>
-                  </AnimatePresence>
-                </span>
+                <code className="glass min-w-0 truncate rounded-lg px-2.5 py-1 text-xs text-accent">
+                  {url}
+                </code>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
                 A saját eseményedhez egyedi QR-kódot és linket kapsz.
@@ -73,24 +59,11 @@ export function QrPreview() {
           </Reveal>
 
           <Reveal delay={120} className="flex justify-center">
-            <motion.div
-              animate={{ scale: focused && !reduceMotion ? 1.015 : 1 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-              className="glass-strong w-full max-w-sm rounded-[2rem] p-3"
-            >
+            <div className="glass-strong w-full max-w-sm rounded-[2rem] p-3">
               <div className="rounded-[1.6rem] bg-gradient-to-b from-white to-[#f2f2f5] p-8 text-center text-black">
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.p
-                    key={displayName}
-                    initial={reduceMotion ? false : { opacity: 0.55 }}
-                    animate={{ opacity: 1 }}
-                    exit={reduceMotion ? undefined : { opacity: 0.55 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.12 }}
-                    className="text-2xl font-semibold tracking-tight text-balance"
-                  >
-                    {displayName}
-                  </motion.p>
-                </AnimatePresence>
+                <p className="text-2xl font-semibold tracking-tight text-balance">
+                  {displayName}
+                </p>
                 <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-black/50">
                   DIGITÁLIS ELDOBHATÓ KAMERA
                 </p>
@@ -98,9 +71,13 @@ export function QrPreview() {
                 <div className="my-7 flex justify-center">
                   <motion.div
                     key={url}
-                    initial={reduceMotion ? false : { opacity: 0.72, scale: 0.975 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.2 }}
+                    initial={reduceMotion ? false : { scale: 0.96 }}
+                    animate={{ scale: 1 }}
+                    transition={{
+                      type: reduceMotion ? 'tween' : 'spring',
+                      stiffness: 420,
+                      damping: 24,
+                    }}
                     className="rounded-2xl bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]"
                   >
                     <QRCodeSVG
@@ -118,21 +95,12 @@ export function QrPreview() {
                   látod.
                 </p>
                 <div className="mt-6 border-t border-black/10 pt-4">
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.p
-                      key={url}
-                      initial={reduceMotion ? false : { opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={reduceMotion ? undefined : { opacity: 0 }}
-                      transition={{ duration: reduceMotion ? 0 : 0.14 }}
-                      className="truncate text-xs font-medium text-black/50"
-                    >
-                      {url.replace('https://', '')}
-                    </motion.p>
-                  </AnimatePresence>
+                  <p className="truncate text-xs font-medium text-black/50">
+                    {url.replace('https://', '')}
+                  </p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </Reveal>
         </div>
       </div>
