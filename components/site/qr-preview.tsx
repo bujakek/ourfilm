@@ -2,17 +2,15 @@
 
 import { EXAMPLE_SLUG_SUFFIX, slugify } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useMemo, useState } from 'react'
 import { Reveal } from './reveal'
 
 export function QrPreview() {
   const [name, setName] = useState('Anna & Péter')
-  // A real event slug carries a random suffix (see generateEventSlug). Use a
-  // fixed stand-in rather than generating one: this re-runs on every keystroke,
-  // and a URL that reshuffles as you type is not a preview of anything. The
-  // suffix has to be *shown* though — a mockup that omits it teaches hosts to
-  // expect a shorter URL than the one they will actually be given.
+  const [focused, setFocused] = useState(false)
+  const reduceMotion = useReducedMotion()
   const slug = useMemo(() => `${slugify(name)}-${EXAMPLE_SLUG_SUFFIX}`, [name])
   const url = eventUrl(slug)
   const displayName = name.trim() || 'Az esemény neve'
@@ -21,7 +19,6 @@ export function QrPreview() {
     <section id="qr-code" className="relative px-4 py-24 sm:px-6 lg:py-32">
       <div className="mx-auto max-w-6xl">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          {/* Copy + input */}
           <Reveal>
             <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
               EGYETLEN QR-KÓD
@@ -46,15 +43,28 @@ export function QrPreview() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
                 maxLength={40}
                 placeholder="Anna & Péter"
                 className="glass w-full rounded-2xl px-5 py-3.5 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground/60 focus:border-accent"
               />
-              <div className="mt-4 flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Megosztható link:</span>
-                <code className="glass truncate rounded-lg px-2.5 py-1 text-xs text-accent">
-                  {url}
-                </code>
+              <div className="mt-4 flex min-w-0 items-center gap-2 text-sm">
+                <span className="shrink-0 text-muted-foreground">Megosztható link:</span>
+                <span className="glass min-w-0 overflow-hidden rounded-lg px-2.5 py-1 text-xs text-accent">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.code
+                      key={url}
+                      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.14 }}
+                      className="block truncate"
+                    >
+                      {url}
+                    </motion.code>
+                  </AnimatePresence>
+                </span>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
                 A saját eseményedhez egyedi QR-kódot és linket kapsz.
@@ -62,19 +72,37 @@ export function QrPreview() {
             </div>
           </Reveal>
 
-          {/* Printable card */}
           <Reveal delay={120} className="flex justify-center">
-            <div className="glass-strong w-full max-w-sm rounded-[2rem] p-3">
+            <motion.div
+              animate={{ scale: focused && !reduceMotion ? 1.015 : 1 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+              className="glass-strong w-full max-w-sm rounded-[2rem] p-3"
+            >
               <div className="rounded-[1.6rem] bg-gradient-to-b from-white to-[#f2f2f5] p-8 text-center text-black">
-                <p className="text-2xl font-semibold tracking-tight text-balance">
-                  {displayName}
-                </p>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.p
+                    key={displayName}
+                    initial={reduceMotion ? false : { opacity: 0.55 }}
+                    animate={{ opacity: 1 }}
+                    exit={reduceMotion ? undefined : { opacity: 0.55 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.12 }}
+                    className="text-2xl font-semibold tracking-tight text-balance"
+                  >
+                    {displayName}
+                  </motion.p>
+                </AnimatePresence>
                 <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-black/50">
                   DIGITÁLIS ELDOBHATÓ KAMERA
                 </p>
 
                 <div className="my-7 flex justify-center">
-                  <div className="rounded-2xl bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
+                  <motion.div
+                    key={url}
+                    initial={reduceMotion ? false : { opacity: 0.72, scale: 0.975 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.2 }}
+                    className="rounded-2xl bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]"
+                  >
                     <QRCodeSVG
                       value={url}
                       size={168}
@@ -82,7 +110,7 @@ export function QrPreview() {
                       bgColor="#ffffff"
                       fgColor="#050505"
                     />
-                  </div>
+                  </motion.div>
                 </div>
 
                 <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
@@ -90,12 +118,21 @@ export function QrPreview() {
                   látod.
                 </p>
                 <div className="mt-6 border-t border-black/10 pt-4">
-                  <p className="truncate text-xs font-medium text-black/50">
-                    {url.replace('https://', '')}
-                  </p>
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.p
+                      key={url}
+                      initial={reduceMotion ? false : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={reduceMotion ? undefined : { opacity: 0 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.14 }}
+                      className="truncate text-xs font-medium text-black/50"
+                    >
+                      {url.replace('https://', '')}
+                    </motion.p>
+                  </AnimatePresence>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </Reveal>
         </div>
       </div>
