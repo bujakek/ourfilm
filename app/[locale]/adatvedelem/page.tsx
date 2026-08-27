@@ -91,7 +91,7 @@ const sections: LegalSection[] = [
     body: [
       'A rád vonatkozó adatkezeléstől függően kérhetsz hozzáférést, helyesbítést, törlést, korlátozást vagy adathordozást, és tiltakozhatsz a jogos érdeken alapuló adatkezelés ellen. E jogok nem korlátlanok; például jogi megőrzési kötelezettség kizárhatja az azonnali törlést.',
       `Kérésedet a ${CONTACT_EMAIL} címre küldheted. A beazonosításhoz kérhetjük az esemény linkjét és a kép pontos megjelölését, de szükségtelen személyes adatot nem kérünk. Főszabály szerint egy hónapon belül válaszolunk.`,
-      'Ha egy rólad készült képet szeretnél elrejteni vagy eltávolíttatni, a leggyorsabb út az esemény házigazdája. Az OurFilmnek a Jogsértő tartalom bejelentése oldalon vagy e-mailben is jelezheted a kérést.',
+      'Ha egy rólad készült képet szeretnél elrejteni vagy eltávolíttatni, a leggyorsabb út az esemény házigazdája. Az OurFilmnek a Kapcsolat oldalon található űrlapon vagy e-mailben is jelezheted a kérést.',
       'Panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál (NAIH; 1055 Budapest, Falk Miksa utca 9–11.; ugyfelszolgalat@naih.hu), illetve bírósághoz fordulhatsz.',
     ],
   },

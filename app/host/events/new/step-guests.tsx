@@ -193,9 +193,11 @@ export function StepGuests({
                 >
                   ÁSZF-et
                 </Link>
-                , és kérem, hogy a szolgáltatás a 14 napos elállási határidő
-                lejárta előtt megkezdődjön. Tudomásul veszem az ÁSZF-ben leírt
-                elállási következményeket.
+                , és kifejezetten kérem, hogy az OurFilm a 14 napos
+                elállási/felmondási időszak vége előtt kezdje meg a
+                szolgáltatást. Tudomásul veszem, hogy felmondás esetén a
+                megszűnésig arányosan teljesített szolgáltatás díját meg kell
+                fizetnem.
               </>
             ) : (
               <>

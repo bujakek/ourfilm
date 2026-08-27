@@ -151,8 +151,10 @@ export function BillingCard({
               >
                 ÁSZF-et
               </Link>
-              , és kérem a szolgáltatás 14 napon belüli megkezdését. Tudomásul
-              veszem az ÁSZF-ben leírt elállási következményeket és az{' '}
+              , és kifejezetten kérem, hogy az OurFilm a 14 napos
+              elállási/felmondási időszak vége előtt kezdje meg a szolgáltatást.
+              Tudomásul veszem, hogy felmondás esetén a megszűnésig arányosan
+              teljesített szolgáltatás díját meg kell fizetnem, valamint az{' '}
               <Link
                 href="/hu/adatvedelem"
                 target="_blank"

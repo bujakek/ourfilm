@@ -62,11 +62,13 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: 'Elállás fogyasztóként',
+    title: 'Elállás és felmondás fogyasztóként',
     body: [
-      'A fogyasztó a fizetős szerződés megkötésétől számított 14 napon belül indokolás nélkül elállhat. Nyilatkozatát az Elállás oldalon vagy a szolgáltató e-mail-címén közölheti.',
-      'Ha a fogyasztó kéri, hogy a szolgáltatás a 14 napos határidő vége előtt megkezdődjön, elállás esetén a nyilatkozat közléséig arányosan teljesített szolgáltatás ellenértéke felszámítható. Az elállási jog csak a szolgáltatás teljes egészének elvégzése után szűnik meg, ha a teljesítés a fogyasztó kifejezett előzetes kérésével kezdődött, és tudomásul vette e következményt.',
-      'Érvényes elállás esetén a visszajáró összeget legkésőbb 14 napon belül, az eredeti fizetési móddal térítjük vissza, kivéve, ha a fogyasztó más módhoz kifejezetten hozzájárul.',
+      `A fogyasztó a fizetős szerződés megkötésétől számított 14 napon belül indokolás nélkül gyakorolhatja elállási vagy — a szolgáltatás megkezdése után — felmondási jogát. Nyilatkozatát a Kapcsolat oldalon található elektronikus űrlapon vagy a ${CONTACT_EMAIL} címen közölheti. Az űrlapos nyilatkozatról automatikus e-mailes visszaigazolást küldünk.`,
+      'A fizetéskor a fogyasztó kifejezetten kérheti, hogy a szolgáltatás a 14 napos időszak vége előtt megkezdődjön. Ha a fizetős feloldást a nyilatkozat közléséig nem vették igénybe — vagyis az eseményhez nem csatlakozott az ingyenes 5 fős keretet meghaladó vendég —, a teljes díjat visszatérítjük.',
+      'Ha a fizetős szolgáltatás használata már megkezdődött, a nyilatkozat közléséig ténylegesen és arányosan teljesített szolgáltatás díja felszámítható. Ennek megállapításakor az esemény használatának körülményeit vizsgáljuk; önmagában egy meghatározott fotószám elérése vagy a képek letöltése, illetve le nem töltése nem automatikus kizáró feltétel.',
+      'A 14 napos időszak után nincs általános, indokolás nélküli visszatérítési jog. Ez nem érinti a hibás teljesítésből vagy kötelező fogyasztóvédelmi szabályból eredő jogokat.',
+      'A visszajáró összeget a nyilatkozat közlésétől számított legkésőbb 14 napon belül, az eredeti fizetési móddal térítjük vissza, kivéve, ha a fogyasztó más módhoz kifejezetten hozzájárul.',
     ],
   },
   {
@@ -80,7 +82,7 @@ const sections: LegalSection[] = [
   {
     title: 'Jogsértő tartalom és korlátozás',
     body: [
-      'Jogsértőnek vélt kép a Jogsértő tartalom bejelentése oldalon leírt módon jelenthető. A kellően pontos bejelentést megvizsgáljuk, és szükség esetén a tartalmat elérhetetlenné tesszük vagy eltávolítjuk. A döntésről a megadott elektronikus elérhetőségen tájékoztatást adunk.',
+      'Jogsértőnek vélt kép vagy eltávolítási kérés a Kapcsolat oldalon található űrlapon vagy e-mailben jelenthető. A kellően pontos bejelentést megvizsgáljuk, és ha jogszabály vagy az érintett joga indokolja, a tartalmat elérhetetlenné tesszük vagy eltávolítjuk. Szükség esetén a megadott elektronikus elérhetőségen kérünk pontosítást vagy adunk tájékoztatást.',
       'A házigazda bármely képet elrejthet. Súlyos vagy ismételt jogsértés, biztonsági kockázat vagy a szolgáltatás működését veszélyeztető használat esetén az érintett tartalmat vagy eseményt korlátozhatjuk.',
     ],
   },

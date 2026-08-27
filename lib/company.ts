@@ -123,10 +123,10 @@ export const EMAIL_PROVIDER = 'Resend'
  * order. Keep this stable until the terms materially change; a display date is
  * not a useful audit trail on its own.
  */
-export const LEGAL_VERSION = '2026-08-26'
+export const LEGAL_VERSION = '2026-08-27'
 
 /** Shown at the foot of the legal pages. Update when their text changes. */
-export const LAST_UPDATED = '2026. augusztus 26.'
+export const LAST_UPDATED = '2026. augusztus 27.'
 
 /**
  * Flips the legal pages *and* the price page out of draft: hides the

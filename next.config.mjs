@@ -41,6 +41,18 @@ const nextConfig = {
         permanent: true,
       },
       { source: '/blog/:slug', destination: '/hu/blog/:slug', permanent: true },
+      // The pilot keeps legal requests on one Contact page. Preserve links
+      // shared while the two standalone drafts existed.
+      {
+        source: '/hu/elallas',
+        destination: '/hu/kapcsolat#elallas',
+        permanent: true,
+      },
+      {
+        source: '/hu/jogserto-tartalom-bejelentese',
+        destination: '/hu/kapcsolat#kepeltavolitas',
+        permanent: true,
+      },
       // The host area was `/admin` until the route was renamed. Kept because
       // the word collided with `profiles.role = 'admin'`, which is the operator
       // who sees every event — not the couple whose wedding this is. Existing
