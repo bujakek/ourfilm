@@ -115,11 +115,18 @@ export const PAYMENT_PROCESSOR = {
     '1 Grand Canal Street Lower, Grand Canal Dock, Dublin, D02 H210, Írország',
 } as const
 
+/** The processor that receives billing data and issues electronic invoices. */
+export const BILLING_PROVIDER = {
+  name: 'Billingo Technologies Zrt.',
+  address: '1133 Budapest, Árbóc utca 6. I. emelet',
+} as const
+
 /** Who sends the magic-link emails. Named as a processor in the privacy notice. */
 export const EMAIL_PROVIDER = 'Resend'
 
 /** Shown at the foot of both legal pages. Update when their text changes. */
-export const LAST_UPDATED = '2026. augusztus 21.'
+export const LEGAL_VERSION = '2026-08-27'
+export const LAST_UPDATED = '2026. augusztus 27.'
 
 /**
  * Flips the legal pages *and* the price page out of draft: hides the

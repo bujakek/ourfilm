@@ -10,8 +10,7 @@ import {
 import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import { isEventPlan } from '@/lib/onboarding'
 import { generateEventSlug } from '@/lib/slug'
-import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
-import { stripeIsConfigured } from '@/lib/stripe/env'
+import { checkoutIsConfigured } from '@/lib/checkout-readiness'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 
@@ -254,7 +253,7 @@ export async function createEventFromDraft(
     // payments not switched on, or try again — better than a silent landing on
     // the QR code would.
     destination = `/host/events/${slug}/settings`
-    if (stripeIsConfigured()) {
+    if (checkoutIsConfigured()) {
       try {
         // An admin's own events are already unlimited, so there is nothing to
         // sell them. Same predicate the billing card reads.
@@ -262,12 +261,7 @@ export async function createEventFromDraft(
         if (quota.unlimited) {
           destination = `/host/events/${slug}`
         } else {
-          destination = await createEventCheckoutUrl({
-            eventId,
-            slug,
-            ownerId: user.id,
-            ownerEmail: user.email ?? null,
-          })
+          destination = `/host/events/${slug}/checkout`
         }
       } catch (e) {
         // The event exists and works. Failing to start a checkout is not a

@@ -11,6 +11,7 @@ import {
   getEventQuota,
   type Purchase,
 } from '@/lib/billing'
+import { checkoutIsConfigured } from '@/lib/checkout-readiness'
 import {
   captureWindowState,
   type RevealChoice,
@@ -19,7 +20,6 @@ import {
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
-import { stripeIsConfigured } from '@/lib/stripe/env'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -214,7 +214,7 @@ async function EventBilling({
       participantCount={quota.participantCount}
       unlimited={quota.unlimited}
       paidLabel={receipt ? `Kifizetve — ${receipt}` : null}
-      stripeReady={stripeIsConfigured()}
+      checkoutReady={checkoutIsConfigured()}
       checkout={checkout}
     />
   )

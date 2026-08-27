@@ -1,4 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  cancelBillingoInvoice,
+  ensureBillingoInvoice,
+} from '@/lib/billingo/invoicing'
 import { getStripe } from '@/lib/stripe/client'
 import { stripeEnv } from '@/lib/stripe/env'
 import { NextResponse } from 'next/server'
@@ -91,11 +95,21 @@ export async function POST(request: Request) {
       // and both land on the same handler, which is idempotent.
       case 'checkout.session.completed':
       case 'checkout.session.async_payment_succeeded':
-        await recordPaidSession(db, event.data.object)
+        {
+          const purchaseId = await recordPaidSession(
+            db,
+            event.data.object,
+            event.created,
+          )
+          if (purchaseId) await ensureBillingoInvoice(db, purchaseId)
+        }
         break
 
       case 'charge.refunded':
-        await recordRefund(db, event.data.object)
+        {
+          const purchaseId = await recordRefund(db, event.data.object)
+          if (purchaseId) await cancelBillingoInvoice(db, purchaseId)
+        }
         break
 
       // Everything else is acknowledged and ignored. Answering 2xx is what
@@ -131,18 +145,19 @@ function idOf(
 /**
  * Record a settled checkout, and with it the entitlement that lifts the cap.
  *
- * An upsert rather than an update: the pending row the checkout action writes
- * is best effort, so this has to work whether or not it exists. Keyed on the
- * session id, which is unique and is what makes replaying this event harmless.
+ * The checkout action must have written a pending row with the immutable
+ * billing snapshot before Stripe accepts payment. The session id and purchase
+ * id must both match, which makes replaying this event harmless.
  */
 async function recordPaidSession(
   db: AdminClient,
   session: Stripe.Checkout.Session,
-) {
+  stripeEventCreated: number,
+): Promise<string | null> {
   // A completed session is not necessarily a paid one — a delayed payment
   // method completes checkout and settles later, and marking it paid now would
   // hand out an album for money that has not arrived.
-  if (session.payment_status !== 'paid') return
+  if (session.payment_status !== 'paid') return null
 
   const eventId = session.metadata?.event_id ?? session.client_reference_id
   if (!eventId) {
@@ -151,7 +166,7 @@ async function recordPaidSession(
     // the session id is in the log and the dashboard, which is enough to
     // reconcile it by hand.
     console.error(`Checkout session ${session.id} carried no event_id`)
-    return
+    return null
   }
 
   let ownerId = session.metadata?.owner_id ?? null
@@ -165,25 +180,58 @@ async function recordPaidSession(
   }
   if (!ownerId) {
     console.error(`No owner for event ${eventId} (session ${session.id})`)
-    return
+    return null
   }
 
-  const { error } = await db.from('purchases').upsert(
-    {
-      event_id: eventId,
-      owner_id: ownerId,
-      stripe_checkout_session_id: session.id,
+  const { data: purchase, error: readError } = await db
+    .from('purchases')
+    .select('*')
+    .eq('stripe_checkout_session_id', session.id)
+    .maybeSingle()
+
+  if (readError) throw readError
+  if (!purchase) {
+    throw new Error(
+      `Checkout session ${session.id} has no purchase with billing details`,
+    )
+  }
+
+  if (
+    (purchase.event_id !== null && purchase.event_id !== eventId) ||
+    (purchase.owner_id !== null && purchase.owner_id !== ownerId) ||
+    purchase.id !== session.metadata?.purchase_id
+  ) {
+    throw new Error(`Checkout session ${session.id} metadata does not match`)
+  }
+
+  if (
+    session.amount_total === null ||
+    purchase.amount_minor !== session.amount_total ||
+    purchase.currency?.toLowerCase() !== session.currency?.toLowerCase()
+  ) {
+    throw new Error(`Checkout session ${session.id} amount does not match`)
+  }
+
+  // A late checkout event must not resurrect a purchase already refunded.
+  if (purchase.status === 'refunded') return purchase.id
+
+  const { error } = await db
+    .from('purchases')
+    .update({
       stripe_payment_intent_id: idOf(session.payment_intent),
       stripe_customer_id: idOf(session.customer),
-      amount_minor: session.amount_total,
-      currency: session.currency,
       status: 'paid',
-      paid_at: new Date().toISOString(),
-    },
-    { onConflict: 'stripe_checkout_session_id' },
-  )
+      paid_at:
+        purchase.paid_at ?? new Date(stripeEventCreated * 1000).toISOString(),
+      invoice_status:
+        purchase.invoice_status === 'not_started'
+          ? 'pending'
+          : purchase.invoice_status,
+    })
+    .eq('id', purchase.id)
 
   if (error) throw error
+  return purchase.id
 }
 
 /**
@@ -193,19 +241,37 @@ async function recordPaidSession(
  * adjustment — still leaves the album paid for, and revoking it would mean a
  * host who was given 2 000 Ft back loses a wedding album.
  */
-async function recordRefund(db: AdminClient, charge: Stripe.Charge) {
-  if (charge.amount_refunded < charge.amount) return
+async function recordRefund(
+  db: AdminClient,
+  charge: Stripe.Charge,
+): Promise<string | null> {
+  if (charge.amount_refunded < charge.amount) return null
 
   const paymentIntentId = idOf(charge.payment_intent)
-  if (!paymentIntentId) return
+  if (!paymentIntentId) return null
+
+  const { data: purchase, error: readError } = await db
+    .from('purchases')
+    .select('id, invoice_status')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .maybeSingle()
+  if (readError) throw readError
+  if (!purchase) {
+    throw new Error(`Refunded payment ${paymentIntentId} has no purchase`)
+  }
 
   const { error } = await db
     .from('purchases')
     .update({
       status: 'refunded',
       refunded_at: new Date().toISOString(),
+      invoice_status:
+        purchase.invoice_status === 'cancelled'
+          ? 'cancelled'
+          : 'cancellation_pending',
     })
-    .eq('stripe_payment_intent_id', paymentIntentId)
+    .eq('id', purchase.id)
 
   if (error) throw error
+  return purchase.id
 }

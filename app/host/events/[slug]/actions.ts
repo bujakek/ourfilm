@@ -205,7 +205,8 @@ const MAX_LIST_PAGES = 200
 const REMOVE_BATCH = 100
 
 /**
- * Erase an event: every object, every row, permanently.
+ * Erase an event: every photo object and product row, permanently. Accounting
+ * records are detached and retained for the statutory period.
  *
  * This is the one destructive path in the product, and the only thing behind
  * the FAQ's promise that a host can delete an event and its contents. It also

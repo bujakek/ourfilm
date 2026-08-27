@@ -78,6 +78,20 @@ STRIPE_WEBHOOK_SECRET=          # whsec_…, from the endpoint or `stripe listen
 STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 ```
 
+Automatic invoicing adds three Billingo v3 values from the same Billingo
+profile, also server-only:
+
+```bash
+BILLINGO_API_KEY=               # read-write v3 key
+BILLINGO_BLOCK_ID=              # numeric invoice-block id
+BILLINGO_BANK_ACCOUNT_ID=       # numeric HUF bank-account id
+```
+
+`BILLINGO_API_BASE_URL` is an optional test override; production uses
+`https://api.billingo.hu/v3`. Checkout is enabled only when both Stripe and
+Billingo are completely configured. Never mix test-profile ids with a live
+profile key.
+
 **The Stripe account exists and test mode is wired up locally.** All three
 are filled in in `.env.local`, so `stripeIsConfigured()` is true and the admin
 billing card offers checkout. Nothing is set on Vercel yet, so payments are
@@ -155,6 +169,8 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   machine. No `STRIPE_*` variable is set on Vercel, so every deployed
   environment still says payment is not switched on. The comment in
   `lib/stripe/env.ts` claiming there is no Stripe account is stale. See Billing.
+  Billingo is implemented but its migration and environment values are not yet
+  deployed; follow `docs/billingo-rollout.md` before taking a real payment.
 
 - **Auth emails are branded and live in `supabase/templates/`.** Delivery is
   Resend over SMTP, configured in the Supabase dashboard. Two files, because
@@ -592,19 +608,36 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
   service role is the only writer of `status = 'paid'`.
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
-- **Invoicing is still on the never-start list.** A Hungarian company selling to
-  consumers must issue an invoice and report it to NAV Online Számla, and Stripe
-  does not do that for you. Flag it before the first real forint.
+- **A paid Stripe webhook issues the Billingo invoice.** Checkout first records
+  an immutable Hungarian billing snapshot and the two consumer declarations;
+  no pending row means the Stripe session is expired. The webhook verifies the
+  paid status, amount, currency and metadata, then creates an AAM electronic
+  invoice, writes its exact card payment history and emails it. The purchase UUID
+  is Billingo's `vendor_id`, so a timeout after document creation is recovered by
+  lookup rather than producing a duplicate. A full Stripe refund creates and
+  emails a Billingo cancellation document; partial refunds do neither and keep
+  the event entitled.
+- **Stripe retries are the invoice retry queue for the pilot.** The database
+  claim has a five-minute crash lease and serialises concurrent deliveries. A
+  Billingo failure returns HTTP 500 from the webhook, leaving `processed_at`
+  null so Stripe retries. There is deliberately no cron or background worker in
+  this one-wedding MVP; inspect `purchases.invoice_status` and the Stripe event
+  log during rollout.
+- **AAM is configuration, not business logic.** The API payload carries both
+  `vat: AAM` and `entitlement: AAM`, but the exemption threshold applies to the
+  sole trader's total relevant revenue, not only OurFilm purchases. Confirm the
+  status with the accountant and change the invoicing policy before it ceases.
 
 Nothing about the Stripe integration changed in the pivot — only the predicate it
 gates. `event_upload_quota` (photos) became `event_participant_quota`
 (participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
 
-Key files: `lib/stripe/*` (`checkout.ts` builds the session for both entry
-points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
-`lib/roles.ts`, `app/api/stripe/webhook/route.ts`,
-`app/host/events/[slug]/billing-actions.ts`,
-`components/host/billing-card.tsx`, `app/host/events/new/step-guests.tsx`.
+Key files: `lib/stripe/*`, `lib/billingo/*`, `lib/billing-details.ts`,
+`lib/checkout-readiness.ts`, `lib/billing.ts`, `lib/pricing.ts` (the displayed
+price, in one place), `lib/roles.ts`, `app/api/stripe/webhook/route.ts`,
+`app/host/events/[slug]/checkout/*`, `components/host/billing-card.tsx`, and
+`app/host/events/new/step-guests.tsx`. Operations are in
+`docs/billingo-rollout.md`.
 
 **`/hu/arak` mirrors this model.** It presents one paid event rather than a
 three-tier SaaS table: up to five participants are free, one payment admits

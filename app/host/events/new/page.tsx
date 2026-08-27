@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Metadata } from 'next'
 
 import { eventNameSuggestions } from '@/lib/onboarding'
-import { stripeIsConfigured } from '@/lib/stripe/env'
+import { checkoutIsConfigured } from '@/lib/checkout-readiness'
 import { NewEventForm } from './new-event-form'
 
 // Both the suggested deadline and the earliest selectable day are computed from
@@ -61,9 +61,9 @@ export default function NewEventPage() {
       nowIso={now.toISOString()}
       defaultEndIso={end.toISOString()}
       suggestions={eventNameSuggestions(null)}
-      // Reads three environment variables — no await, so the segment still does
-      // not suspend. See the note above.
-      paymentsEnabled={stripeIsConfigured()}
+      // Reads the Stripe and Billingo environment variables — no await, so the
+      // segment still does not suspend. See the note above.
+      paymentsEnabled={checkoutIsConfigured()}
       // Minted here rather than in a state initializer: it is rendered into the
       // draft, and `crypto.randomUUID()` on both sides of hydration would give
       // two different values. The page is `force-dynamic`, so every visit gets

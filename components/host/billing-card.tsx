@@ -1,16 +1,11 @@
 'use client'
 
-import {
-  type CheckoutState,
-  startEventCheckout,
-} from '@/app/host/events/[slug]/billing-actions'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useActionState, useEffect, useState } from 'react'
-
-const INITIAL: CheckoutState = { error: null }
+import { useEffect, useState } from 'react'
 
 /** How long to keep re-checking after Stripe sends the host back. */
 const SETTLE_POLL_MS = 2000
@@ -23,7 +18,7 @@ export type BillingCardProps = {
   unlimited: boolean
   /** Set when the cap is lifted by a payment rather than by the owner's role. */
   paidLabel: string | null
-  stripeReady: boolean
+  checkoutReady: boolean
   checkout: 'success' | 'cancelled' | null
 }
 
@@ -43,11 +38,9 @@ export function BillingCard({
   participantCount,
   unlimited,
   paidLabel,
-  stripeReady,
+  checkoutReady,
   checkout,
 }: BillingCardProps) {
-  const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
-
   // Stripe redirects the host back the instant checkout finishes, which is
   // often before the webhook that records it has landed. Without this the
   // first thing a host sees after paying is their album still saying it is
@@ -131,44 +124,31 @@ export function BillingCard({
         </p>
       ) : null}
 
-      {stripeReady ? (
-        <form action={submit} className="mt-4">
-          <input type="hidden" name="slug" value={slug} />
-          <button
-            type="submit"
-            disabled={pending}
-            aria-busy={pending}
-            className="btn-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+      {checkoutReady ? (
+        <div className="mt-4">
+          <Link
+            href={`/host/events/${slug}/checkout`}
+            className="btn-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground"
           >
-            {pending ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <CreditCard
-                className="size-4"
-                strokeWidth={1.8}
-                aria-hidden="true"
-              />
-            )}
-            {pending
-              ? 'Átirányítás…'
-              : `Teljes esemény feloldása – ${EVENT_PRICE_LABEL}`}
-          </button>
+            <CreditCard
+              className="size-4"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            Teljes esemény feloldása – {EVENT_PRICE_LABEL}
+          </Link>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Korlátlan résztvevő, egyszeri fizetéssel.
           </p>
-        </form>
+        </div>
       ) : (
         // Honest about the state of the world rather than offering a button
-        // that would 500 — no STRIPE_* variables are set in this environment.
+        // that would 500 when Stripe or Billingo is incomplete here.
         <p className="mt-4 rounded-xl bg-white/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
           A fizetés még nincs bekapcsolva. Amíg nincs, írj nekünk, és feloldjuk
           neked kézzel.
         </p>
       )}
-
-      {state.error ? (
-        <p className="mt-3 text-xs text-destructive">{state.error}</p>
-      ) : null}
     </div>
   )
 }

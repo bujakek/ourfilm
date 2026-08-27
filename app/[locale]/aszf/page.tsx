@@ -83,7 +83,7 @@ const sections: LegalSection[] = [
     title: 'Díjak és fizetés',
     body: [
       `A mindenkori díjakat az Árak oldal tartalmazza. ${VAT_STATUS.priceNote}`,
-      'Az esemény létrehozása, a QR-kód, a közös album és az album letöltése díjmentes, és díjmentesen tölthető fel az albumba az Árak oldalon megadott számú kép is. A díj azt a korlátot oldja fel: kifizetése után az adott eseményhez korlátlan számú kép tölthető fel. A díj eseményenként egyszeri, nem előfizetés, és a vendégek soha nem fizetnek semmit.',
+      'Az esemény létrehozása, a QR-kód, a közös album és az album letöltése díjmentes legfeljebb az Árak oldalon megadott számú résztvevőig. A díj ezt a résztvevői korlátot oldja fel: kifizetése után az adott eseményhez korlátlan számú vendég csatlakozhat. A díj eseményenként egyszeri, nem előfizetés, és a vendégek soha nem fizetnek semmit.',
       'A díj akkor esedékes, amikor a házigazda a korlát feloldását megrendeli. A feloldás az adott eseményre szól, és nem jár le.',
       `A fizetést a ${PAYMENT_PROCESSOR.name} (${PAYMENT_PROCESSOR.address}) mint fizetési szolgáltató bonyolítja. A fizetés a Stripe saját, biztonságos oldalán történik: a bankkártya adatait nem látjuk, nem kezeljük és nem tároljuk. Nálunk csak a tranzakció azonosítója, az összeg, a pénznem és a fizetés állapota marad meg.`,
       `A fizetésről számlát állítunk ki, amelyet e-mailben küldünk meg. A számla az ${VAT_STATUS.code} (${VAT_STATUS.label}) jelölést tartalmazza, mert a szolgáltató áfát nem számít fel.`,

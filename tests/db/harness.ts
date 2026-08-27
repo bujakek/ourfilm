@@ -150,6 +150,10 @@ export async function deleteEvent(id: string) {
       .remove(objects.map((o) => `${id}/${o.name}`))
   }
 
+  // DB tests deliberately remove their accounting fixtures too. Production
+  // event deletion retains paid purchase snapshots for the statutory period.
+  await db.from('purchases').delete().eq('event_id', id)
+
   // Cascades participants and photos.
   await db.from('events').delete().eq('id', id)
 }

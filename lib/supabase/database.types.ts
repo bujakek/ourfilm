@@ -96,7 +96,7 @@ export type Database = {
       participants: {
         Row: {
           display_name: string
-          event_id: string
+          event_id: string | null
           id: string
           joined_at: string
           last_seen_at: string
@@ -218,45 +218,114 @@ export type Database = {
       purchases: {
         Row: {
           amount_minor: number | null
+          billing_address: string | null
+          billing_city: string | null
+          billing_country_code: string | null
+          billing_email: string | null
+          billing_name: string | null
+          billing_post_code: string | null
+          billing_tax_number: string | null
+          billing_type: string | null
+          billingo_cancellation_document_id: number | null
+          billingo_document_id: number | null
+          billingo_invoice_number: string | null
+          billingo_partner_id: number | null
           created_at: string
           currency: string | null
+          early_performance_consent_at: string | null
           event_id: string
           id: string
-          owner_id: string
+          invoice_attempts: number
+          invoice_cancelled_at: string | null
+          invoice_issued_at: string | null
+          invoice_last_error: string | null
+          invoice_next_attempt_at: string | null
+          invoice_sent_at: string | null
+          invoice_status: Database["public"]["Enums"]["invoice_status"]
+          invoicing_started_at: string | null
+          owner_id: string | null
           paid_at: string | null
           refunded_at: string | null
           status: Database["public"]["Enums"]["purchase_status"]
           stripe_checkout_session_id: string
           stripe_customer_id: string | null
           stripe_payment_intent_id: string | null
+          terms_accepted_at: string | null
+          terms_version: string | null
         }
         Insert: {
           amount_minor?: number | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_country_code?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          billing_post_code?: string | null
+          billing_tax_number?: string | null
+          billing_type?: string | null
+          billingo_cancellation_document_id?: number | null
+          billingo_document_id?: number | null
+          billingo_invoice_number?: string | null
+          billingo_partner_id?: number | null
           created_at?: string
           currency?: string | null
-          event_id: string
+          early_performance_consent_at?: string | null
+          event_id?: string | null
           id?: string
-          owner_id: string
+          invoice_attempts?: number
+          invoice_cancelled_at?: string | null
+          invoice_issued_at?: string | null
+          invoice_last_error?: string | null
+          invoice_next_attempt_at?: string | null
+          invoice_sent_at?: string | null
+          invoice_status?: Database["public"]["Enums"]["invoice_status"]
+          invoicing_started_at?: string | null
+          owner_id?: string | null
           paid_at?: string | null
           refunded_at?: string | null
           status?: Database["public"]["Enums"]["purchase_status"]
           stripe_checkout_session_id: string
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
         }
         Update: {
           amount_minor?: number | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_country_code?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          billing_post_code?: string | null
+          billing_tax_number?: string | null
+          billing_type?: string | null
+          billingo_cancellation_document_id?: number | null
+          billingo_document_id?: number | null
+          billingo_invoice_number?: string | null
+          billingo_partner_id?: number | null
           created_at?: string
           currency?: string | null
-          event_id?: string
+          early_performance_consent_at?: string | null
+          event_id?: string | null
           id?: string
-          owner_id?: string
+          invoice_attempts?: number
+          invoice_cancelled_at?: string | null
+          invoice_issued_at?: string | null
+          invoice_last_error?: string | null
+          invoice_next_attempt_at?: string | null
+          invoice_sent_at?: string | null
+          invoice_status?: Database["public"]["Enums"]["invoice_status"]
+          invoicing_started_at?: string | null
+          owner_id?: string | null
           paid_at?: string | null
           refunded_at?: string | null
           status?: Database["public"]["Enums"]["purchase_status"]
           stripe_checkout_session_id?: string
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
         }
         Relationships: [
           {
@@ -294,6 +363,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_purchase_invoice: {
+        Args: { p_purchase_id: string }
+        Returns: boolean
+      }
       commit_shot: {
         Args: {
           p_byte_size: number
@@ -416,6 +489,16 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "admin"
+      invoice_status:
+        | "not_started"
+        | "pending"
+        | "processing"
+        | "issued"
+        | "send_failed"
+        | "failed"
+        | "blocked"
+        | "cancellation_pending"
+        | "cancelled"
       photo_status: "pending" | "ready"
       purchase_status: "pending" | "paid" | "refunded"
       reveal_mode: "instant" | "event_end" | "custom"
@@ -550,6 +633,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "admin"],
+      invoice_status: [
+        "not_started",
+        "pending",
+        "processing",
+        "issued",
+        "send_failed",
+        "failed",
+        "blocked",
+        "cancellation_pending",
+        "cancelled",
+      ],
       photo_status: ["pending", "ready"],
       purchase_status: ["pending", "paid", "refunded"],
       reveal_mode: ["instant", "event_end", "custom"],
