@@ -117,12 +117,15 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   it describes a product that no longer exists. Read it for the decisions that
   still hold (slug shape, region, ownership scoping, self-serve delete) and
   ignore the phase list.
-- **Marketing landing page** — `app/[locale]/page.tsx` composing `components/site/*` (hero, stats, how-it-works, occasions, testimonials, qr-preview, live-demo, photo-quality, faq, final-cta, footer). Originally v0-generated, now the permanent homepage at `/hu`, with `/` redirecting to it.
-- **The marketing site still describes the old album product.** Copy, the blog
-  and `/hu/arak` are a separate later phase and were deliberately not touched by
-  the pivot. `components/site/live-demo.tsx` now always renders the hardcoded
-  simulation: the seeded sample album is gone, and a permanently-open public demo
-  event would be a fourth event state existing only for the marketing page.
+- **Marketing landing page** — `app/[locale]/page.tsx` composes the disposable
+  camera story from `components/site/*`: hero, benefits, how-it-works,
+  qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
+  `/hu`, with `/` redirecting to it.
+- **The homepage and `/hu/arak` describe the disposable-camera product.** The
+  old upload demo, technical quality comparison, occasions carousel and
+  instant-arrival pitch are no longer in the homepage flow. The unused
+  components may still exist while secondary marketing content is revised; do
+  not render them again without rewriting them around the camera experience.
 - **All migrations are applied on the remote** and `pnpm types:check` matches.
   The disposable camera schema is live: `participants`, the reveal trigger, the
   capture RPCs and the private bucket.
@@ -603,11 +606,10 @@ points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
 `app/host/events/[slug]/billing-actions.ts`,
 `components/host/billing-card.tsx`, `app/host/events/new/step-guests.tsx`.
 
-**`/hu/arak` is knowingly out of date.** It still advertises a "5 feltöltött
-fotó" free tier and "Korlátlan fotó" on the paid one, neither of which is true
-after the pivot. Marketing copy is a separate later phase, and the page is
-`noindex` while `hasRealCompanyDetails` is false, so it is not reachable from
-search. Fix it in that phase, not by halves.
+**`/hu/arak` mirrors this model.** It presents one paid event rather than a
+three-tier SaaS table: up to five participants are free, one payment admits
+unlimited participants, and every participant still has the host's chosen roll.
+The page remains `noindex` while `hasRealCompanyDetails` is false.
 
 ## MVP scope
 
@@ -668,10 +670,8 @@ Full pipeline in `.cursor/skills/ourfilm-upload/SKILL.md`.
 
 ## Landing page promises
 
-The marketing page is live and still describes the **old album product** — the
-pivot deliberately did not touch it. Rewriting it is the next phase. Until then:
-
-Still true, and load-bearing:
+The homepage and pricing page describe the **disposable-camera product**. These
+claims are live and load-bearing:
 
 - **ZIP download of the whole album** (`benefits.tsx`) — works
 - **High-resolution, print-ready photos** (`photo-quality.tsx`, FAQ) — satisfied
@@ -682,11 +682,12 @@ Still true, and load-bearing:
   `noindex`, and the bucket is now private as well
 - **Host can hide unwanted photos** (FAQ) — `hidden_at`
 
-Knowingly false until the copy phase:
+- **Up to five participants are free; the paid event admits unlimited
+  participants** (`/hu/arak`) — enforced in `join_event`
+- **Every participant gets the host's chosen 5/10/16/24/36-shot roll** — paying
+  never removes the per-person format
 
-- **"5 feltöltött fotó" free tier and "Korlátlan fotó"** (`/hu/arak`) — the free
-  tier is 5 _participants_, and photos are capped per guest on both plans
-- Anything describing uploading from a camera roll rather than taking a photo
+Do not reintroduce anything describing camera-roll upload or unlimited photos.
 
 If a change would falsify a claim that is still true, either honor it or update
 the Hungarian copy in the same change.
