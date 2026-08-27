@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 
 import { setCaptureEnd } from '@/app/host/events/[slug]/actions'
 import { MonthCalendar } from '@/components/host/month-calendar'
+import { Sheet } from '@/components/host/sheet'
 import { formatEventDate } from '@/lib/format'
 
 /**
@@ -70,125 +71,132 @@ export function CaptureEndCard({
   const end = `${day}T${time}`
 
   return (
-    <div className="glass rounded-2xl px-5 py-4">
-      <p className="font-medium">A fotózás vége</p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        {state === 'before'
-          ? 'A kamera még nem nyílt meg.'
-          : state === 'open'
-            ? 'A vendégek most fotózhatnak.'
-            : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
-      </p>
+    <>
+      <div className="glass rounded-2xl px-5 py-4">
+        <p className="font-medium">A fotózás vége</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {state === 'before'
+            ? 'A kamera még nem nyílt meg.'
+            : state === 'open'
+              ? 'A vendégek most fotózhatnak.'
+              : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
+        </p>
 
-      <div className="mt-4 space-y-2">
-        {/* Inline rather than the create flow's sheet. Settings is a scrolling
-            list of cards and the save button belongs under the field it saves;
-            a modal would cover the card that owns it. The calendar itself is
-            the same component, which is the part a host recognises. */}
-        <button
-          type="button"
-          onClick={() => setCalendarOpen((open) => !open)}
-          aria-expanded={calendarOpen}
-          className="glass flex min-h-16 w-full items-center gap-4 rounded-xl px-4 text-left"
-        >
-          <CalendarDays
-            className="size-5 shrink-0 text-accent"
-            strokeWidth={1.8}
-            aria-hidden="true"
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
-              DÁTUM
-            </span>
-            <span className="mt-0.5 block text-sm font-medium">
-              {formatEventDate(day)}
-            </span>
-          </span>
-          <ChevronRight
-            className={`size-5 shrink-0 text-muted-foreground transition-transform ${
-              calendarOpen ? 'rotate-90' : ''
-            }`}
-            aria-hidden="true"
-          />
-        </button>
+        <div className="mt-4 space-y-2">
+          {/* The same two cards and the same sheet as the create flow's second
+            screen. Editing an event and creating one are the same question,
+            and a host who has just answered it once should not have to learn a
+            second control to change the answer.
 
-        {calendarOpen ? (
-          <div className="glass rounded-xl px-2 py-3">
-            <MonthCalendar
-              value={day}
-              earliest={startDay}
-              label="A fotózás vége"
-              onChange={(value) => {
-                setDay(value)
-                setSaved(false)
-                setCalendarOpen(false)
-              }}
+            It also has to be a sheet. `MonthCalendar` is seven 44px cells, so
+            it needs 308px; expanded inside this card at 390px it gets about
+            302 and the grid is squeezed. */}
+          <button
+            type="button"
+            onClick={() => setCalendarOpen(true)}
+            className="glass flex min-h-16 w-full items-center gap-4 rounded-xl px-4 text-left"
+          >
+            <CalendarDays
+              className="size-5 shrink-0 text-accent"
+              strokeWidth={1.8}
+              aria-hidden="true"
             />
-          </div>
-        ) : null}
+            <span className="min-w-0 flex-1">
+              <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
+                DÁTUM
+              </span>
+              <span className="mt-0.5 block text-sm font-medium">
+                {formatEventDate(day)}
+              </span>
+            </span>
+            <ChevronRight
+              className="size-5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </button>
 
-        {/* The card is ours, the picker is the phone's. Keeping the native
+          {/* The card is ours, the picker is the phone's. Keeping the native
             input over the whole surface gives iOS and Android a direct tap
             target without exposing their differently styled text fields. */}
-        <label className="glass relative flex min-h-16 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-xl px-4 text-left has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
-          <Clock3
-            className="size-5 shrink-0 text-accent"
-            strokeWidth={1.8}
-            aria-hidden="true"
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
-              IDŐPONT
+          <label className="glass relative flex min-h-16 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-xl px-4 text-left has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
+            <Clock3
+              className="size-5 shrink-0 text-accent"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
+                IDŐPONT
+              </span>
+              <span className="mt-0.5 block text-sm font-medium tabular-nums">
+                {time}
+              </span>
             </span>
-            <span className="mt-0.5 block text-sm font-medium tabular-nums">
-              {time}
-            </span>
-          </span>
-          <ChevronRight
-            className="size-5 shrink-0 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <input
-            type="time"
-            step={60}
-            required
-            aria-label="A fotózás végének időpontja"
-            value={time}
-            onChange={(event) => {
-              setTime(event.target.value)
-              setSaved(false)
-            }}
-            className="absolute inset-0 size-full cursor-pointer opacity-0"
-          />
-        </label>
+            <ChevronRight
+              className="size-5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <input
+              type="time"
+              step={60}
+              required
+              aria-label="A fotózás végének időpontja"
+              value={time}
+              onChange={(event) => {
+                setTime(event.target.value)
+                setSaved(false)
+              }}
+              className="absolute inset-0 size-full cursor-pointer opacity-0"
+            />
+          </label>
+        </div>
+
+        <button
+          type="button"
+          disabled={pending || end === endValue}
+          onClick={() =>
+            startTransition(async () => {
+              setError(null)
+              try {
+                await setCaptureEnd(slug, end)
+                setSaved(true)
+              } catch (e) {
+                setError(
+                  e instanceof Error ? e.message : 'Nem sikerült módosítani.',
+                )
+              }
+            })
+          }
+          className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+        >
+          {pending ? 'Mentés…' : 'Változtatások mentése'}
+        </button>
+
+        {error ? (
+          <p className="mt-2 text-xs text-destructive">{error}</p>
+        ) : saved ? (
+          <p className="mt-2 text-xs text-accent">Elmentettük.</p>
+        ) : null}
       </div>
 
-      <button
-        type="button"
-        disabled={pending || end === endValue}
-        onClick={() =>
-          startTransition(async () => {
-            setError(null)
-            try {
-              await setCaptureEnd(slug, end)
-              setSaved(true)
-            } catch (e) {
-              setError(
-                e instanceof Error ? e.message : 'Nem sikerült módosítani.',
-              )
-            }
-          })
-        }
-        className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+      <Sheet
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        closeLabel="Dátumválasztó bezárása"
+        title="Válassz dátumot"
+        detail="Eddig az időpontig készíthetnek képeket a vendégeid."
       >
-        {pending ? 'Mentés…' : 'Változtatások mentése'}
-      </button>
-
-      {error ? (
-        <p className="mt-2 text-xs text-destructive">{error}</p>
-      ) : saved ? (
-        <p className="mt-2 text-xs text-accent">Elmentettük.</p>
-      ) : null}
-    </div>
+        <MonthCalendar
+          value={day}
+          earliest={startDay}
+          label="A fotózás vége"
+          onChange={(value) => {
+            setDay(value)
+            setSaved(false)
+            setCalendarOpen(false)
+          }}
+        />
+      </Sheet>
+    </>
   )
 }

@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 
 /**
- * The sheet both onboarding interruptions are drawn in.
+ * The sheet every host-area interruption is drawn in.
  *
  * A real `<dialog>` rather than a div with a high z-index: the browser gives
  * modality, focus trapping, Escape, and inertness of everything behind it for
@@ -12,11 +12,17 @@ import { useEffect, useRef, type ReactNode } from 'react'
  * them. `showModal()` is called from an effect because the element has to exist
  * before it can be opened.
  *
- * Anchored to the bottom on a phone and centred from `sm:` up — the two
- * interruptions in this flow both arrive under a thumb that is already at the
- * bottom of the screen, reaching for the CTA.
+ * Anchored to the bottom on a phone and centred from `sm:` up — these arrive
+ * under a thumb that is already at the bottom of the screen, reaching for a
+ * button.
+ *
+ * It is also the only container wide enough for `MonthCalendar`. That grid is
+ * seven 44px cells, so it needs 308px; a settings card at 390px has about 302
+ * after the page and card padding, and squeezes it. `max-w-md` with `p-6`
+ * gives it 342 — which is why the settings date picker opens a sheet rather
+ * than expanding in place.
  */
-export function OnboardingDialog({
+export function Sheet({
   open,
   onClose,
   title,

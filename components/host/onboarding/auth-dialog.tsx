@@ -5,7 +5,7 @@ import { useActionState, useRef, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 
-import { OnboardingDialog } from './onboarding-dialog'
+import { Sheet } from '@/components/host/sheet'
 
 type Result = { status: 'idle' | 'sent' | 'error'; message?: string }
 
@@ -76,7 +76,7 @@ export function AuthDialog({
 
   if (result.status === 'sent') {
     return (
-      <OnboardingDialog
+      <Sheet
         open={open}
         onClose={onClose}
         closeLabel="Bezárás"
@@ -88,12 +88,12 @@ export function AuthDialog({
             <Check className="size-7 text-accent" strokeWidth={2.2} />
           </span>
         </div>
-      </OnboardingDialog>
+      </Sheet>
     )
   }
 
   return (
-    <OnboardingDialog
+    <Sheet
       open={open}
       onClose={onClose}
       closeLabel="Bezárás"
@@ -149,6 +149,6 @@ export function AuthDialog({
           </button>
         )}
       </form>
-    </OnboardingDialog>
+    </Sheet>
   )
 }

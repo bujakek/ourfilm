@@ -4,7 +4,7 @@ import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
 import { useState } from 'react'
 
 import { MonthCalendar } from '@/components/host/month-calendar'
-import { OnboardingDialog } from '@/components/host/onboarding/onboarding-dialog'
+import { Sheet } from '@/components/host/sheet'
 import {
   OnboardingShell,
   type OnboardingNav,
@@ -113,7 +113,7 @@ export function StepEnd({
         </div>
       </OnboardingShell>
 
-      <OnboardingDialog
+      <Sheet
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
         closeLabel="Dátumválasztó bezárása"
@@ -129,7 +129,7 @@ export function StepEnd({
             setCalendarOpen(false)
           }}
         />
-      </OnboardingDialog>
+      </Sheet>
     </>
   )
 }
