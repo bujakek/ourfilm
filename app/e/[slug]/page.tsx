@@ -1,15 +1,19 @@
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 
 import { JoinForm } from '@/components/event/join-form'
+import { GuestEventView } from '@/components/event/guest-event-view'
 import {
+  getGuestParticipantCount,
   getGuestEventState,
   getPublicEventBySlug,
   hasJoined,
 } from '@/lib/events'
-import { joinStateLabel } from '@/lib/event-copy'
+import { galleryLock, joinStateLabel } from '@/lib/event-copy'
 import { captureWindowState } from '@/lib/camera'
 import { signPhotoUrl } from '@/lib/photo-urls'
+import { getGalleryPhotosBySlug, toGalleryTiles } from '@/lib/photos'
+import { eventUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,18 +32,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /**
  * Where a QR scan lands: the join screen.
  *
- * A guest who has already joined on this device never sees it — they go
- * straight to the camera, which is the whole point of remembering them. The
- * redirect is deliberate rather than rendering the camera here: the camera has
- * its own URL so "back" from the gallery returns to it, and so a guest can keep
- * the tab open on the camera all evening.
+ * Before joining this is the one-field gate. Afterwards it becomes the whole
+ * guest experience: event status, sharing, native camera and the developed
+ * photos. Keeping that on one URL means a QR scan always has one destination
+ * and the guest never has to understand the app's route structure.
  */
 export default async function EventPage({ params }: Props) {
   const { slug } = await params
   const event = await getGuestEventState(slug)
   if (!event) notFound()
-
-  if (hasJoined(event)) redirect(`/e/${slug}/camera`)
 
   const now = new Date()
   const timing = {
@@ -51,19 +52,44 @@ export default async function EventPage({ params }: Props) {
     timeZone: event.time_zone,
   }
 
-  const coverUrl = await signPhotoUrl(event.cover_path)
+  if (!hasJoined(event)) {
+    const coverUrl = await signPhotoUrl(event.cover_path)
+    return (
+      <JoinForm
+        slug={slug}
+        eventName={event.event_name}
+        hostName={event.host_name}
+        coverUrl={coverUrl}
+        shotsPerParticipant={event.shots_per_participant}
+        stateLabel={joinStateLabel(timing, event.shots_per_participant)}
+        // `can_capture` requires a participant and there is none yet, so the
+        // button's label comes from the window itself.
+        canCapture={captureWindowState(timing) === 'open'}
+      />
+    )
+  }
+
+  const lock = galleryLock(timing)
+  const [participantCount, tiles] = await Promise.all([
+    getGuestParticipantCount(event.id),
+    lock.open
+      ? getGalleryPhotosBySlug(slug).then(toGalleryTiles)
+      : Promise.resolve([]),
+  ])
 
   return (
-    <JoinForm
+    <GuestEventView
+      eventId={event.id}
       slug={slug}
       eventName={event.event_name}
-      hostName={event.host_name}
-      coverUrl={coverUrl}
-      shotsPerParticipant={event.shots_per_participant}
-      stateLabel={joinStateLabel(timing, event.shots_per_participant)}
-      // `can_capture` requires a participant and there is none yet, so the
-      // button's label comes from the window itself.
-      canCapture={captureWindowState(timing) === 'open'}
+      eventUrl={eventUrl(event.slug)}
+      captureEndAt={event.capture_end_at}
+      initialNow={now.getTime()}
+      initialCanCapture={event.can_capture}
+      initialShotsRemaining={event.shots_remaining}
+      participantCount={participantCount}
+      gallery={lock}
+      photos={tiles}
     />
   )
 }

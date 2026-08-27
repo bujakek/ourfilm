@@ -64,7 +64,7 @@ export async function setPhotoHidden(
   }
 
   revalidatePath(`/host/events/${slug}`)
-  revalidatePath(`/e/${slug}/gallery`)
+  revalidatePath(`/e/${slug}`)
 }
 
 /** Let guests open the developed gallery, or keep it to the host alone.
@@ -83,7 +83,7 @@ export async function setGuestsCanView(slug: string, canView: boolean) {
   if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
 
   revalidateEvent(slug)
-  revalidatePath(`/e/${slug}/gallery`)
+  revalidatePath(`/e/${slug}`)
 }
 
 /**
@@ -133,7 +133,7 @@ export async function setCaptureEnd(slug: string, endLocal: string) {
   if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
 
   revalidateEvent(slug)
-  revalidatePath(`/e/${slug}/gallery`)
+  revalidatePath(`/e/${slug}`)
 }
 
 /** Change when the album develops. `reveal_at` is recomputed by the trigger for
@@ -177,7 +177,7 @@ export async function setReveal(
   if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
 
   revalidateEvent(slug)
-  revalidatePath(`/e/${slug}/gallery`)
+  revalidatePath(`/e/${slug}`)
 }
 
 /**
@@ -205,7 +205,7 @@ export async function revealNow(slug: string) {
   if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
 
   revalidateEvent(slug)
-  revalidatePath(`/e/${slug}/gallery`)
+  revalidatePath(`/e/${slug}`)
 }
 
 /**

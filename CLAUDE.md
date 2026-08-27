@@ -351,9 +351,9 @@ because a client-side counter is a display and the database is the count.
 | `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                     |
 | `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                             |
 | `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft   |
-| `/e/[slug]`                                                                                | Join screen guests land on from the QR code. Redirects to the camera once they have joined |
-| `/e/[slug]/camera`                                                                         | The camera. Where shots are taken                                                          |
-| `/e/[slug]/gallery`                                                                        | Shared gallery, reveal-gated                                                               |
+| `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos |
+| `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                            |
+| `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                            |
 | `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                        |
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
@@ -613,14 +613,11 @@ search. Fix it in that phase, not by halves.
 
 **Building:**
 
-1. Join screen `/e/[slug]` — cover, event name, state, shot limit, one name field
-2. Camera `/e/[slug]/camera` — live `getUserMedia` preview, big shutter,
-   front/back switch, a `capture` file-input fallback when the live camera is
-   refused or unavailable. No preview, no retake.
-3. Gallery `/e/[slug]/gallery` — reveal-gated, hidden photos excluded
-4. Admin `/host` — four-step create flow, QR, moderation, early reveal,
+1. Guest event `/e/[slug]` — one-field join, compact event status, share action,
+   native camera via `capture="environment"`, and reveal-gated photos on one page
+2. Admin `/host` — four-step create flow, QR, moderation, early reveal,
    **ZIP download of the whole album**
-5. QR code generated from the final event URL
+3. QR code generated from the final event URL
 
 **Not building — flag it and ask first, never start it:**
 
@@ -704,8 +701,8 @@ the Hungarian copy in the same change.
   the server computes them to decide what is allowed and the client to decide
   what to draw, and the two must never disagree. Nothing there reads a clock of
   its own. Guest-facing Hungarian for event states lives in `lib/event-copy.ts`,
-  so the join screen, the camera and the gallery cannot describe the same event
-  differently.
+  so the join state, camera action and photo section cannot describe the same
+  event differently.
 - Import alias `@/*` from the repo root
 
 <!-- BEGIN:nextjs-agent-rules -->

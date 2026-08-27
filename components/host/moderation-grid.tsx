@@ -115,19 +115,11 @@ export function ModerationGrid({
     )
   }
 
-  const hiddenCount = items.filter((p) => p.hidden_at !== null).length
-
   return (
-    <>
-      <p className="mb-3 text-sm text-muted-foreground">
-        {items.length} kép
-        {hiddenCount > 0 ? ` · ${hiddenCount} rejtve` : ''}
-      </p>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {items.map((photo) => (
-          <Tile key={photo.id} photo={photo} slug={slug} onToggle={toggle} />
-        ))}
-      </ul>
-    </>
+    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {items.map((photo) => (
+        <Tile key={photo.id} photo={photo} slug={slug} onToggle={toggle} />
+      ))}
+    </ul>
   )
 }

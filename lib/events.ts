@@ -85,6 +85,21 @@ export function hasJoined(state: GuestEventState): boolean {
   return state.participant_id !== null
 }
 
+/** The single aggregate the unified guest event page shows about other guests.
+ * Names and participant rows never leave the server. */
+export async function getGuestParticipantCount(
+  eventId: string,
+): Promise<number> {
+  const db = createAdminClient()
+  const { count, error } = await db
+    .from('participants')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', eventId)
+
+  if (error) throw error
+  return count ?? 0
+}
+
 export type OwnedEvent = {
   id: string
   slug: string

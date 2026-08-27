@@ -23,10 +23,10 @@ export function InviteButton({ url }: { url: string }) {
       try {
         await navigator.share({ url })
         return
-      } catch {
-        // Cancelling the share sheet rejects with AbortError, which is a
-        // normal outcome and must not surface as a failure. Anything else
-        // (no permission, unsupported payload) falls through to the copy path.
+      } catch (error) {
+        // Closing the native sheet is a complete, normal outcome. Only a real
+        // share failure falls through to the clipboard fallback.
+        if (error instanceof DOMException && error.name === 'AbortError') return
       }
     }
 
@@ -44,14 +44,10 @@ export function InviteButton({ url }: { url: string }) {
     <button
       type="button"
       onClick={invite}
-      // Icon-only at rest, so it needs a real name for anyone who cannot see
-      // the glyph. 44px minimum — this is a thumb target on a phone.
       aria-label="Meghívólink megosztása"
       className={cn(
-        'glass glass-hover inline-flex min-h-11 items-center justify-center gap-2 rounded-full text-sm font-medium transition-all',
-        // Grows to carry the confirmation, then collapses back. Without the
-        // text the clipboard fallback would succeed completely silently.
-        copied ? 'px-4' : 'size-11',
+        'glass glass-hover inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-medium transition-all',
+        copied ? 'text-accent' : 'text-foreground',
       )}
     >
       {copied ? (
@@ -61,13 +57,14 @@ export function InviteButton({ url }: { url: string }) {
             strokeWidth={2.2}
             aria-hidden="true"
           />
-          Link kimásolva
+          Link másolva
         </>
       ) : (
-        <Share2 className="size-5" strokeWidth={1.8} aria-hidden="true" />
+        <>
+          <Share2 className="size-5" strokeWidth={1.8} aria-hidden="true" />
+          Meghívás
+        </>
       )}
-      {/* Announced rather than shown: a screen reader never sees the visible
-          swap above, so the confirmation needs its own live region. */}
       <span aria-live="polite" className="sr-only">
         {copied ? 'Link kimásolva a vágólapra' : ''}
       </span>

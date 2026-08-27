@@ -234,21 +234,13 @@ export async function prepareForUpload(file: File): Promise<PreparedPhoto> {
 }
 
 /**
- * The same three renders, from a bitmap the caller already holds.
- *
- * This is the live camera's entry point. A frame grabbed off `<video>` is
- * already decoded pixels, so routing it through `prepareForUpload` would mean
- * encoding it to a JPEG only to decode that JPEG straight back — one wasted
- * encode/decode round trip per shutter press, on a phone, in the one
- * interaction the product exists to make feel instant.
- *
- * A live frame carries no EXIF, so `takenAt` is passed in: the camera knows
- * when the shutter was pressed, which is a better answer than null and the same
- * answer a file's EXIF would have given.
+ * Build the same three renders from the bitmap decoded by
+ * `prepareForUpload`. Kept separate from file decoding so render generation
+ * owns and releases the large bitmap in one place.
  *
  * Takes ownership of the bitmap and closes it.
  */
-export async function prepareFromBitmap(
+async function prepareFromBitmap(
   bitmap: ImageBitmap,
   takenAt: Date | null,
 ): Promise<PreparedPhoto> {
