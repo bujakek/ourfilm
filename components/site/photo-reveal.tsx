@@ -1,5 +1,9 @@
-import { Clock } from 'lucide-react'
+'use client'
+
+import { Check, Clock } from 'lucide-react'
+import { AnimatePresence, motion, useInView, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
+import { useRef } from 'react'
 import { Reveal } from './reveal'
 
 const photos = [
@@ -22,6 +26,11 @@ const photos = [
 ]
 
 export function PhotoReveal() {
+  const demoRef = useRef<HTMLDivElement>(null)
+  const reduceMotion = useReducedMotion()
+  const inView = useInView(demoRef, { once: true, amount: 0.65 })
+  const developed = reduceMotion ? true : inView
+
   return (
     <section id="photo-reveal" className="relative px-4 py-24 sm:px-6 lg:py-32">
       <div className="mx-auto max-w-6xl">
@@ -40,21 +49,48 @@ export function PhotoReveal() {
           </Reveal>
 
           <Reveal delay={120} className="flex justify-center">
-            <div className="glass-strong w-full max-w-[320px] rounded-[2.5rem] p-2.5">
+            <div ref={demoRef} className="glass-strong w-full max-w-[320px] rounded-[2.5rem] p-2.5">
               <div className="overflow-hidden rounded-[2rem] bg-background-secondary">
                 <div className="flex items-center justify-between px-4 py-3.5">
                   <p className="text-sm font-semibold">Anna &amp; Péter</p>
-                  <span className="flex items-center gap-1.5 text-[10px] text-accent">
-                    <Clock className="size-3" aria-hidden="true" />
-                    Előhívás alatt
-                  </span>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={developed ? 'ready' : 'developing'}
+                      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.18 }}
+                      className="flex items-center gap-1.5 text-[10px] text-accent"
+                    >
+                      {developed ? (
+                        <Check className="size-3" aria-hidden="true" />
+                      ) : (
+                        <Clock className="size-3" aria-hidden="true" />
+                      )}
+                      {developed ? 'Galéria megnyílt' : 'Előhívás alatt'}
+                    </motion.span>
+                  </AnimatePresence>
                 </div>
 
                 <div className="relative">
                   <div className="grid grid-cols-2 gap-2 px-3 pb-4">
-                    {photos.map((photo) => (
-                      <div
+                    {photos.map((photo, index) => (
+                      <motion.div
                         key={photo.src}
+                        initial={false}
+                        animate={
+                          developed
+                            ? { filter: 'blur(0px) brightness(1)', scale: 1 }
+                            : {
+                                filter: 'blur(5px) brightness(0.35)',
+                                scale: 1.025,
+                              }
+                        }
+                        transition={{
+                          duration: reduceMotion ? 0 : 0.55,
+                          delay: reduceMotion ? 0 : index * 0.08,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
                         className="relative aspect-square overflow-hidden rounded-xl"
                       >
                         <Image
@@ -62,13 +98,27 @@ export function PhotoReveal() {
                           alt={photo.alt}
                           fill
                           sizes="140px"
-                          className="object-cover blur-sm brightness-[0.35]"
+                          className="object-cover"
                         />
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
 
-                  <div className="absolute inset-0 flex items-center justify-center px-6 pb-4">
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      opacity: developed ? 0 : 1,
+                      scale: developed ? 0.98 : 1,
+                    }}
+                    transition={{
+                      duration: reduceMotion ? 0 : 0.28,
+                      delay: developed && !reduceMotion ? 0.12 : 0,
+                    }}
+                    aria-hidden={developed}
+                    className={`absolute inset-0 flex items-center justify-center px-6 pb-4 ${
+                      developed ? 'pointer-events-none' : ''
+                    }`}
+                  >
                     <div className="glass-strong rounded-2xl px-5 py-4 text-center">
                       <p className="text-sm font-semibold">
                         A képek még előhívás alatt vannak
@@ -77,7 +127,7 @@ export function PhotoReveal() {
                         A galéria az esemény végén nyílik meg.
                       </p>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </div>
