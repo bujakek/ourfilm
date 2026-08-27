@@ -312,8 +312,8 @@ describe('early reveal', () => {
       await seedPhoto(event.id, event.slug)
       expect(await guestGallery(event.slug)).toHaveLength(0)
 
-      // What `revealNow` writes: a real instant, not a display flag, so it
-      // survives a refresh, a redeploy and anybody else's session.
+      // A legacy early reveal is a real instant, not a display flag, so this
+      // remains backwards-compatibility coverage for custom events.
       await userClient(host.accessToken)
         .from('events')
         .update({ reveal_mode: 'custom', reveal_at: new Date().toISOString() })

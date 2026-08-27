@@ -1,27 +1,22 @@
 'use client'
 
-import { CalendarClock, Clock, Hourglass } from 'lucide-react'
+import { Clock, Hourglass } from 'lucide-react'
 
-import { DelayStepper } from '@/components/host/onboarding/delay-stepper'
 import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
 import { RevealPreview } from '@/components/host/onboarding/reveal-preview'
-import type { RevealMode } from '@/lib/camera'
+import type { RevealChoice } from '@/lib/camera'
 import { formatRevealBadge } from '@/lib/format'
 
 /**
- * Three answers to one question, and the same three the schema already knows:
- * `instant` opens the gallery while the party is still running, `event_end`
- * pins it to the moment the camera closes, `custom` puts whole days between the
- * two. Nothing new is being modelled here — the labels are the host-facing
- * spelling of `events.reveal_mode`.
+ * Two answers to one question: `instant` opens the gallery while the party is
+ * still running, `event_end` pins it to the moment the camera closes.
  */
-const CHOICES: { mode: RevealMode; label: string; Icon: typeof Clock }[] = [
-  { mode: 'instant', label: 'Az esemény alatt', Icon: Hourglass },
-  { mode: 'event_end', label: 'Az esemény után', Icon: Clock },
-  { mode: 'custom', label: 'Késleltetve', Icon: CalendarClock },
+const CHOICES: { mode: RevealChoice; label: string; Icon: typeof Clock }[] = [
+  { mode: 'instant', label: 'Azonnal', Icon: Hourglass },
+  { mode: 'event_end', label: 'Az esemény végén', Icon: Clock },
 ]
 
 /**
@@ -29,24 +24,18 @@ const CHOICES: { mode: RevealMode; label: string; Icon: typeof Clock }[] = [
  *
  * The two photos above the choices are the answer rather than a decoration.
  * Sharp means a guest can open the gallery mid-party; blurred means they
- * cannot, and the badge says exactly when that changes. A radio list can
- * describe a delayed reveal; only this can show one, and this is the setting
- * hosts have the least intuition about.
+ * cannot, and the badge says exactly when that changes.
  */
 export function StepReveal({
   nav,
   mode,
   setMode,
-  delayDays,
-  setDelayDays,
   revealIso,
   timeZone,
 }: {
   nav: OnboardingNav
-  mode: RevealMode
-  setMode: (value: RevealMode) => void
-  delayDays: number
-  setDelayDays: (value: number) => void
+  mode: RevealChoice
+  setMode: (value: RevealChoice) => void
   /** The resolved reveal instant for the current answer, or null while the
    *  window is not yet a valid pair of dates. */
   revealIso: string | null
@@ -73,7 +62,7 @@ export function StepReveal({
           choices stay a thumb's reach from the CTA on every screen height. */}
       <fieldset className="mt-auto pt-6">
         <legend className="sr-only">A galéria megnyílásának időpontja</legend>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           {CHOICES.map(({ mode: choice, label, Icon }) => {
             const active = choice === mode
             return (
@@ -112,12 +101,6 @@ export function StepReveal({
           })}
         </div>
       </fieldset>
-
-      {mode === 'custom' ? (
-        <div className="mt-5 border-t border-border pt-5">
-          <DelayStepper days={delayDays} onChange={setDelayDays} />
-        </div>
-      ) : null}
     </OnboardingShell>
   )
 }

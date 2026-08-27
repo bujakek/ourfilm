@@ -1,13 +1,14 @@
 'use server'
 
 import { getEventQuota } from '@/lib/billing'
-import { isRevealMode, isShotOption, validateEventDraft } from '@/lib/camera'
-import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import {
-  clampRevealDelayDays,
-  isEventPlan,
-  revealAfterDelay,
-} from '@/lib/onboarding'
+  isRevealChoice,
+  isShotOption,
+  resolveRevealAt,
+  validateEventDraft,
+} from '@/lib/camera'
+import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
+import { isEventPlan } from '@/lib/onboarding'
 import { generateEventSlug } from '@/lib/slug'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
@@ -22,7 +23,6 @@ export type EventDraftInput = {
   endLocal: string
   timeZone: string
   revealMode: string
-  delayDays: number
   shots: number
   plan: string
   guestsCanView: boolean
@@ -85,7 +85,6 @@ export async function createEventFromDraft(
 
   const captureEndIso = eventLocalToIso(String(input.endLocal ?? ''), timeZone)
   const revealModeRaw = String(input.revealMode ?? '')
-  const delayDays = clampRevealDelayDays(input.delayDays)
   const shots = Number(input.shots)
   const planRaw = String(input.plan ?? 'free')
   const guestsCanView = input.guestsCanView === true
@@ -97,7 +96,7 @@ export async function createEventFromDraft(
       reason: 'end',
     }
   }
-  if (!isRevealMode(revealModeRaw)) {
+  if (!isRevealChoice(revealModeRaw)) {
     return { ok: false, error: 'Válaszd ki, mikor jelenjenek meg a képek.' }
   }
   if (!isShotOption(shots)) {
@@ -108,17 +107,13 @@ export async function createEventFromDraft(
   }
 
   const captureEndAt = new Date(captureEndIso)
-  const customRevealAt =
-    revealModeRaw === 'custom'
-      ? revealAfterDelay(captureEndAt, delayDays)
-      : null
 
   const problems = validateEventDraft({
     name,
     captureStartAt,
     captureEndAt,
     revealMode: revealModeRaw,
-    customRevealAt,
+    customRevealAt: null,
     shotsPerParticipant: shots,
   })
 
@@ -133,12 +128,6 @@ export async function createEventFromDraft(
       ok: false,
       error: 'Ez az időpont már elmúlt. Válassz későbbit.',
       reason: 'end',
-    }
-  }
-  if (problems.includes('reveal_before_end')) {
-    return {
-      ok: false,
-      error: 'A leleplezés nem lehet korábbi a fotózás végénél.',
     }
   }
   if (problems.length > 0) {
@@ -182,7 +171,12 @@ export async function createEventFromDraft(
     }
   }
 
-  const revealAt = (customRevealAt ?? captureEndAt).toISOString()
+  const revealAt = resolveRevealAt({
+    mode: revealModeRaw,
+    captureStartAt,
+    captureEndAt,
+    customRevealAt: null,
+  }).toISOString()
 
   let slug: string | null = null
   let eventId: string | null = null

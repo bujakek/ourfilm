@@ -5,6 +5,7 @@ import {
   SHOT_OPTIONS,
   captureWindowState,
   guestGalleryIsOpen,
+  isRevealChoice,
   isRevealMode,
   isShotOption,
   resolveRevealAt,
@@ -114,6 +115,13 @@ describe('resolveRevealAt', () => {
     for (const bad of ['later', 'legacy_album', '', null, 24]) {
       expect(isRevealMode(bad)).toBe(false)
     }
+  })
+
+  it('offers only instant and event-end as product choices', () => {
+    expect(isRevealChoice('instant')).toBe(true)
+    expect(isRevealChoice('event_end')).toBe(true)
+    expect(isRevealChoice('custom')).toBe(false)
+    expect(isRevealChoice('later')).toBe(false)
   })
 })
 

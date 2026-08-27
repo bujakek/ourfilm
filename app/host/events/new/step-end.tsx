@@ -1,10 +1,15 @@
 'use client'
 
+import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
+import { useState } from 'react'
+
 import { MonthCalendar } from '@/components/host/onboarding/month-calendar'
+import { OnboardingDialog } from '@/components/host/onboarding/onboarding-dialog'
 import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
+import { formatEventDate } from '@/lib/format'
 
 /**
  * Question two: when does the party end?
@@ -38,39 +43,92 @@ export function StepEnd({
   today: string
   canAdvance: boolean
 }) {
-  return (
-    <OnboardingShell
-      {...nav}
-      title="Mikor érjen véget az esemény?"
-      detail="A film most indul, a vendégek pedig a megadott időpontig készíthetnek képeket."
-      cta="Tovább"
-      ctaDisabled={!canAdvance}
-    >
-      <MonthCalendar value={day} today={today} onChange={setDay} />
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
-      <div className="mt-6 border-t border-dashed border-border pt-5">
-        <div className="flex items-center justify-between gap-4">
-          <span
-            id="end-time-label"
-            className="text-xs tracking-[0.2em] text-muted-foreground/70"
+  return (
+    <>
+      <OnboardingShell
+        {...nav}
+        title="Mikor érjen véget az esemény?"
+        detail="A film most indul, a vendégek pedig a megadott időpontig készíthetnek képeket."
+        cta="Tovább"
+        ctaDisabled={!canAdvance}
+      >
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setCalendarOpen(true)}
+            className="glass flex min-h-20 w-full items-center gap-4 rounded-2xl px-5 text-left"
           >
-            IDŐPONT
-          </span>
-          {/* A native time input rather than a custom wheel: on a phone this is
-              the OS picker, which is the one control every guest-facing rule in
-              this product is eventually measured against. `step` pins it to
-              whole minutes so no seconds field appears next to it. */}
-          <input
-            type="time"
-            step={60}
-            required
-            aria-labelledby="end-time-label"
-            value={time}
-            onChange={(event) => setTime(event.target.value)}
-            className="glass min-h-12 cursor-pointer rounded-full px-5 text-lg font-medium tabular-nums outline-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-date-and-time-value]:text-center"
-          />
+            <CalendarDays
+              className="size-5 shrink-0 text-accent"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs tracking-[0.2em] text-muted-foreground/70">
+                DÁTUM
+              </span>
+              <span className="mt-1 block text-base font-medium">
+                {formatEventDate(day)}
+              </span>
+            </span>
+            <ChevronRight
+              className="size-5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </button>
+
+          {/* The card is ours, the picker is the phone's. Keeping the native
+              input over the whole surface gives iOS and Android a direct tap
+              target without exposing their differently styled text fields. */}
+          <label className="glass relative flex min-h-20 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-2xl px-5 text-left has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
+            <Clock3
+              className="size-5 shrink-0 text-accent"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs tracking-[0.2em] text-muted-foreground/70">
+                IDŐPONT
+              </span>
+              <span className="mt-1 block text-base font-medium tabular-nums">
+                {time}
+              </span>
+            </span>
+            <ChevronRight
+              className="size-5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <input
+              type="time"
+              step={60}
+              required
+              aria-label="Az esemény végének időpontja"
+              value={time}
+              onChange={(event) => setTime(event.target.value)}
+              className="absolute inset-0 size-full cursor-pointer opacity-0"
+            />
+          </label>
         </div>
-      </div>
-    </OnboardingShell>
+      </OnboardingShell>
+
+      <OnboardingDialog
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        closeLabel="Dátumválasztó bezárása"
+        title="Válassz dátumot"
+        detail="Eddig az időpontig készíthetnek képeket a vendégeid."
+      >
+        <MonthCalendar
+          value={day}
+          today={today}
+          onChange={(value) => {
+            setDay(value)
+            setCalendarOpen(false)
+          }}
+        />
+      </OnboardingDialog>
+    </>
   )
 }

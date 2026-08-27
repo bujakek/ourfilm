@@ -3,9 +3,9 @@
 import { useState, useTransition } from 'react'
 
 import { setReveal } from '@/app/host/events/[slug]/actions'
-import type { RevealMode } from '@/lib/camera'
+import type { RevealChoice } from '@/lib/camera'
 
-const CHOICES: { mode: RevealMode; title: string; detail: string }[] = [
+const CHOICES: { mode: RevealChoice; title: string; detail: string }[] = [
   {
     mode: 'instant',
     title: 'Azonnal',
@@ -16,44 +16,30 @@ const CHOICES: { mode: RevealMode; title: string; detail: string }[] = [
     title: 'Az esemény végén',
     detail: 'A galéria akkor nyílik meg, amikor a fotózás véget ér.',
   },
-  {
-    mode: 'custom',
-    title: 'Később',
-    detail: 'Válassz egy későbbi időpontot a közös leleplezéshez.',
-  },
 ]
 
 /**
  * When the album develops.
  *
- * Two of the three modes carry no time of their own — they are pinned to the
- * capture window, and the database trigger recomputes the instant whenever that
- * window moves. So the date field appears only for `Később`, which is the one
- * answer that means a moment rather than a rule.
+ * Both choices are pinned to the capture window, and the database trigger
+ * recomputes the instant whenever that window moves.
  *
- * Like the capture window beside it, no optimistic state: a reveal date is
- * something a host will read back and act on.
+ * Like the capture window beside it, there is no optimistic state: the saved
+ * rule is something a host will read back and act on.
  */
 export function RevealCard({
   slug,
   mode: savedMode,
-  customValue,
-  minValue,
 }: {
   slug: string
-  mode: RevealMode
-  customValue: string
-  /** The capture end — a custom reveal may not precede it. */
-  minValue: string
+  mode: RevealChoice
 }) {
-  const [mode, setMode] = useState<RevealMode>(savedMode)
-  const [custom, setCustom] = useState(customValue)
+  const [mode, setMode] = useState<RevealChoice>(savedMode)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  const dirty =
-    mode !== savedMode || (mode === 'custom' && custom !== customValue)
+  const dirty = mode !== savedMode
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
@@ -89,28 +75,6 @@ export function RevealCard({
         ))}
       </fieldset>
 
-      {mode === 'custom' ? (
-        <div className="mt-3">
-          <label
-            htmlFor="reveal_at_setting"
-            className="mb-1.5 block text-xs text-muted-foreground"
-          >
-            Leleplezés időpontja
-          </label>
-          <input
-            id="reveal_at_setting"
-            type="datetime-local"
-            value={custom}
-            min={minValue}
-            onChange={(e) => {
-              setCustom(e.target.value)
-              setSaved(false)
-            }}
-            className="glass min-h-12 w-full rounded-xl px-4 text-sm outline-none focus:border-accent"
-          />
-        </div>
-      ) : null}
-
       <button
         type="button"
         disabled={pending || !dirty}
@@ -118,7 +82,7 @@ export function RevealCard({
           startTransition(async () => {
             setError(null)
             try {
-              await setReveal(slug, mode, mode === 'custom' ? custom : null)
+              await setReveal(slug, mode)
               setSaved(true)
             } catch (e) {
               setError(
