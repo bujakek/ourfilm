@@ -1,88 +1,33 @@
 import { PageShell } from '@/components/site/page-shell'
 import { hasRealCompanyDetails } from '@/lib/company'
+import { isLocale, localePath } from '@/lib/i18n'
+import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
+import { EVENT_PRICE_LABEL } from '@/lib/pricing'
+import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { Check } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-
-import { CREATE_EVENT_PATH } from '@/lib/routes'
-import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
 const TITLE = 'Árak – OurFilm'
-const DESCRIPTION =
-  'Korlátlan vendég és korlátlan fotó, egyszeri 12 900 Ft-ért. Előfizetés nélkül, 5 fotóig ingyen kipróbálható.'
+const DESCRIPTION = `Egy teljes esküvői vendégkamera ${EVENT_PRICE_LABEL}-ért, egyszeri fizetéssel. Legfeljebb ${FREE_PARTICIPANT_LIMIT} vendéggel ingyen kipróbálható.`
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   openGraph: { title: TITLE, description: DESCRIPTION },
-  // Indexed only once the provider's details are real. The prices below are
-  // now final, but a price a stranger can find in Google leads to an ÁSZF
-  // that still says [NÉV — TODO], and a service cannot lawfully be sold to a
-  // consumer while the mandatory identifiers are placeholders. One flag,
-  // flipped in lib/company.ts, releases the whole set of pages together.
+  // Indexed only once the provider's details are real. A price a stranger can
+  // find in Google must not lead to legal pages with placeholder identifiers.
   robots: { index: hasRealCompanyDetails, follow: true },
 }
 
-// The numbers here are real and load-bearing.
-//
-// - 12 900 Ft is the amount configured on the Stripe Price that
-//   STRIPE_PRICE_EVENT points at. If one changes, the other has to.
-// - The 5-photo free cap comes from `public.free_photo_limit()` and is
-//   enforced on every guest upload. Raising it means changing both.
-//
-// No gross/net split is shown because there is none to show: the provider
-// charges no VAT, and the displayed figure is simply the amount payable.
-interface Tier {
-  name: string
-  /** Absent on the partner card, which is quoted rather than priced. */
-  price?: string
-  cadence?: string
-  description: string
-  features?: string[]
-  cta: string
-  featured: boolean
-}
-
-const tiers: Tier[] = [
-  {
-    name: 'Ingyenes próba',
-    price: '0 Ft',
-    cadence: 'egy eseményre',
-    description: 'Próbáld ki 5 fotóval, bankkártya nélkül.',
-    features: [
-      'Egy esemény',
-      '5 feltöltött fotó',
-      'Korlátlan vendég',
-      'Saját QR-kód',
-      'Közös album',
-    ],
-    cta: 'Próbáld ki ingyen',
-    featured: false,
-  },
-  {
-    name: 'Teljes album',
-    price: '12 900 Ft',
-    cadence: 'egyszeri díj',
-    description: 'Minden vendégfotó egy közös albumban.',
-    features: [
-      'Korlátlan vendég',
-      'Korlátlan fotó',
-      'Saját QR-kód és meghívólink',
-      'Minden kép egy közös albumban',
-      'Az egész album letöltése',
-      'Te döntöd el, mi látszik az albumban',
-      'Nincs előfizetés',
-    ],
-    cta: 'Esemény létrehozása',
-    featured: true,
-  },
-  {
-    name: 'Partnereknek',
-    description: 'Több eseményt kezelsz? Írj nekünk egyedi ajánlatért.',
-    cta: 'Írj nekünk',
-    featured: false,
-  },
+const included = [
+  'Korlátlan számú vendég',
+  'Saját tekercs minden vendégnek',
+  'Saját QR-kód és meghívólink',
+  'Azonnali vagy esemény végi előhívás',
+  'Privát galéria a képeknek',
+  'Az egész album letöltése',
 ]
 
 type Props = { params: Promise<{ locale: string }> }
@@ -95,89 +40,92 @@ export default async function ArakPage({ params }: Props) {
     <PageShell
       locale={locale}
       eyebrow="ÁRAK"
-      title="Korlátlan vendég. Korlátlan fotó. Egyszeri 12 900 Ft."
-      lead="Nincs előfizetés. Nincs vendégenkénti díj."
+      title="Egy esküvő. Egy kamera. Egy ár."
+      lead="Nincs előfizetés és nincs vendégenkénti díj. Egyszer fizettek, az egész násznép fotózhat."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-6xl">
-          <div className="mt-12 grid gap-4 lg:grid-cols-3">
-            {tiers.map((tier) => (
-              <article
-                key={tier.name}
-                className={`glass flex h-full flex-col rounded-3xl p-8 ${
-                  tier.featured ? 'ring-1 ring-accent/40 ring-inset' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-semibold">{tier.name}</h2>
-                  {tier.featured ? (
-                    <span className="glass rounded-full px-3 py-1 text-xs font-medium text-accent">
-                      Ajánlott
-                    </span>
-                  ) : null}
-                </div>
-
-                {tier.price ? (
-                  <p className="mt-5 flex items-baseline gap-2">
-                    <span className="text-gradient text-4xl font-semibold tracking-tight">
-                      {tier.price}
-                    </span>
-                    {tier.cadence ? (
-                      <span className="text-sm text-muted-foreground">
-                        {tier.cadence}
-                      </span>
-                    ) : null}
-                  </p>
-                ) : null}
-
-                <p className="mt-3 text-sm leading-relaxed text-pretty text-muted-foreground">
-                  {tier.description}
+        <div className="mx-auto max-w-4xl">
+          <article className="glass-strong overflow-hidden rounded-[2rem]">
+            <div className="grid gap-10 p-7 sm:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:p-12">
+              <div className="flex flex-col">
+                <p className="text-xs font-medium tracking-[0.2em] text-accent uppercase">
+                  Teljes esemény
                 </p>
 
-                {tier.features ? (
-                  <ul className="mt-7 flex flex-1 flex-col gap-3">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="flex gap-3 text-sm">
-                        <Check
-                          className="mt-0.5 size-4 shrink-0 text-accent"
-                          strokeWidth={2}
-                          aria-hidden="true"
-                        />
-                        <span className="text-foreground/90">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="flex-1" />
-                )}
+                <p className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="text-gradient text-5xl font-semibold tracking-tight sm:text-6xl">
+                    {EVENT_PRICE_LABEL}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    egyszeri fizetés
+                  </span>
+                </p>
+
+                <p className="mt-5 max-w-md leading-relaxed text-pretty text-muted-foreground">
+                  Minden vendég saját tekercset kap. A képeket pedig azonnal
+                  vagy az este végén nézhetitek meg együtt.
+                </p>
 
                 <Link
-                  href={
-                    tier.name === 'Partnereknek'
-                      ? localePath(locale, '/kapcsolat')
-                      : CREATE_EVENT_PATH
-                  }
-                  className={`mt-8 inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold transition-transform hover:scale-[1.03] ${
-                    tier.featured
-                      ? 'btn-shine bg-primary text-primary-foreground'
-                      : 'glass glass-hover text-foreground'
-                  }`}
+                  href={CREATE_EVENT_PATH}
+                  className="btn-shine mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
                 >
-                  {tier.cta}
+                  Hozd létre ingyen
                 </Link>
-              </article>
-            ))}
-          </div>
+                <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+                  Nincs app. Nincs vendégregisztráció.
+                </p>
+              </div>
 
-          <p className="mx-auto mt-10 max-w-3xl text-sm leading-relaxed text-pretty text-muted-foreground">
+              <div className="border-t border-border pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-14">
+                <h2 className="text-xl font-semibold tracking-tight">
+                  Minden benne van, ami az estéhez kell.
+                </h2>
+                <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                  {included.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm">
+                      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-accent/15">
+                        <Check
+                          className="size-3.5 text-accent"
+                          strokeWidth={2.2}
+                          aria-hidden="true"
+                        />
+                      </span>
+                      <span className="leading-relaxed text-foreground/90">
+                        {item}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="border-t border-border bg-white/[0.025] px-7 py-7 sm:px-10 lg:px-12">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="max-w-2xl">
+                  <h2 className="font-semibold">Előbb próbáld ki.</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-pretty text-muted-foreground">
+                    Legfeljebb {FREE_PARTICIPANT_LIMIT} vendéggel teljesen
+                    ingyen használhatod. Ha többen csatlakoznának, egyetlen
+                    fizetéssel feloldhatod a teljes eseményt.
+                  </p>
+                </div>
+                <span className="glass shrink-0 rounded-full px-4 py-2 text-xs font-medium text-accent">
+                  Bankkártya nélkül
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <p className="mx-auto mt-10 max-w-2xl text-center text-sm leading-relaxed text-pretty text-muted-foreground">
             Kérdésed van?{' '}
             <Link
               href={localePath(locale, '/kapcsolat')}
               className="text-accent underline underline-offset-4 transition-colors hover:text-foreground"
             >
               Írj nekünk
-            </Link>
-            , vagy nézd meg a{' '}
+            </Link>{' '}
+            vagy nézd meg a{' '}
             <Link
               href={localePath(locale, '/#faq')}
               className="text-accent underline underline-offset-4 transition-colors hover:text-foreground"
