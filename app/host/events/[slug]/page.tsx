@@ -2,7 +2,6 @@ import {
   ArrowLeft,
   ChevronDown,
   Clock3,
-  Download,
   ExternalLink,
   Image,
   Settings,
@@ -14,6 +13,7 @@ import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
 
 import { InviteButton } from '@/components/event/invite-button'
+import { AlbumDownload } from '@/components/host/album-download'
 import { ModerationGrid } from '@/components/host/moderation-grid'
 import { QrCard } from '@/components/host/qr-card'
 import { getEventQuota, type EventQuota } from '@/lib/billing'
@@ -120,15 +120,7 @@ export default async function AdminEventPage({ params }: Props) {
             <ExternalLink className="size-4" aria-hidden="true" />
             Vendégnézet
           </Link>
-          {photos.length > 0 ? (
-            <a
-              href={`/host/events/${event.slug}/export`}
-              className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Download className="size-4" aria-hidden="true" />
-              Album letöltése
-            </a>
-          ) : null}
+          {photos.length > 0 ? <AlbumDownload slug={event.slug} /> : null}
         </div>
       </header>
 

@@ -53,6 +53,20 @@ export type HostPhoto = {
   participants: { display_name: string } | null
 }
 
+const HOST_PHOTO_COLUMNS =
+  'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, participant_id, participants(display_name)'
+
+/**
+ * How many rows to ask for per round trip.
+ *
+ * Matched to PostgREST's `max_rows` (1000, `supabase/config.toml`) so the
+ * common case — every album this product has ever had — is still exactly one
+ * request. It is a request size, not a limit: the loop below keeps going until
+ * a page comes back empty, so a server configured to cap lower than this
+ * shortens each page rather than truncating the answer.
+ */
+const PHOTO_PAGE = 1000
+
 /**
  * Every photo in an event, for the host.
  *
@@ -62,21 +76,56 @@ export type HostPhoto = {
  *
  * Filters to `ready`. A reserved-but-uncommitted frame has no bytes behind it,
  * so showing it to a host would be a permanently broken tile in their grid.
+ *
+ * **Paged, because "every" has to mean every.** PostgREST caps an unbounded
+ * `select` at `max_rows` and says nothing about having done so — no error, no
+ * flag, just a short array. A single request here therefore stopped at 1000
+ * photos, and the callers are the ZIP export, the moderation grid and the
+ * host's photo count, so an album over that line silently exported partially
+ * and reported the wrong total while looking entirely healthy. Everything this
+ * route promises the couple is "the whole album", so the read has to be
+ * exhaustive even though no real event has come near the limit yet.
+ *
+ * `id` is ordered on after `created_at` for the same reason: paging over a
+ * non-total order lets rows that tie shuffle between pages, which duplicates
+ * some and drops others. Two photos sharing a timestamp is unlikely, not
+ * impossible, and the failure would be invisible.
+ *
+ * The loop is driven by `count`, not by "did this page come back short". A
+ * short page is ambiguous — it means either the end of the album or a server
+ * capping the request, and those need opposite responses — whereas `count` is
+ * the true total whatever `max_rows` is set to. It also means the range asked
+ * for never runs past the end, which PostgREST answers with a 416 rather than
+ * an empty page, and that the common one-page album costs one request.
  */
 export const getAllEventPhotos = cache(
   async (eventId: string): Promise<HostPhoto[]> => {
     const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('photos')
-      .select(
-        'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, participant_id, participants(display_name)',
-      )
-      .eq('event_id', eventId)
-      .eq('status', 'ready')
-      .order('created_at', { ascending: false })
+    const photos: HostPhoto[] = []
+    /** Learned from the first response; until then, "at least one page". */
+    let total = Number.POSITIVE_INFINITY
 
-    if (error) throw error
-    return data ?? []
+    while (photos.length < total) {
+      const { data, count, error } = await supabase
+        .from('photos')
+        .select(HOST_PHOTO_COLUMNS, { count: 'exact' })
+        .eq('event_id', eventId)
+        .eq('status', 'ready')
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(photos.length, photos.length + PHOTO_PAGE - 1)
+
+      if (error) throw error
+      if (count !== null) total = count
+      // Belt and braces: `count` should make this unreachable, but a page that
+      // adds nothing would otherwise be an infinite loop, and this runs on the
+      // host's own page load.
+      if (!data || data.length === 0) break
+
+      photos.push(...data)
+    }
+
+    return photos
   },
 )
 
