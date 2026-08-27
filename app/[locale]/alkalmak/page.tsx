@@ -8,9 +8,9 @@ import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
 export const metadata: Metadata = {
-  title: 'Alkalmak — OurFilm',
+  title: 'Digitális vendégkamera minden alkalomra – OurFilm',
   description:
-    'Esküvő, születésnap, utazás vagy buli: gyűjtsd össze a vendégek fotóit egy közös albumban, QR-kóddal.',
+    'Esküvő, születésnap, utazás vagy buli: adj mindenkinek saját digitális tekercset QR-kóddal, alkalmazás és regisztráció nélkül.',
   ...(OCCASIONS_ARE_DRAFT ? { robots: { index: false, follow: true } } : {}),
 }
 
@@ -25,7 +25,7 @@ export default async function AlkalmakPage({ params }: Props) {
       locale={locale}
       eyebrow="ALKALMAK"
       title="Minden alkalomra, ahol fotó készül"
-      lead="Ugyanaz a QR-kód, ugyanaz a közös album, csak az alkalom más. Válaszd ki, mire készülsz."
+      lead="Ugyanaz a közös kamera, csak az alkalom más. Minden résztvevő saját digitális tekercset kap, a képek pedig együtt hívódnak elő."
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-6xl">

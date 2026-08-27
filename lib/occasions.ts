@@ -53,7 +53,7 @@ export const OCCASIONS_ARE_DRAFT = true
 
 /** The same free-trial line closes every occasion page. */
 const OCCASION_CTA_HELPER =
-  '5 fotóig ingyen, bankkártya nélkül. A teljes album egyszeri 12 900 Ft.'
+  '5 résztvevőig ingyenes, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft.'
 
 export const occasions: Occasion[] = [
   {
@@ -64,27 +64,27 @@ export const occasions: Occasion[] = [
     alt: 'Esküvői első tánc',
     title: 'A napotok, ahogy a vendégeitek látták.',
     text: 'A fotós megörökíti a nagy pillanatokat. A vendégeitek pedig mindazt, ami közben történik.',
-    linkLabel: 'Album esküvőre',
+    linkLabel: 'Vendégkamera esküvőre',
     sections: [
       {
         heading: 'Mert a fotós nem lehet egyszerre mindenhol.',
-        body: 'Az asztaloknál, a készülődés közben és a hajnali bulin is készülnek képek. Az OurFilm egy közös albumba gyűjti őket, hogy hozzátok is eljussanak.',
+        body: 'Az asztaloknál, a készülődés közben és a hajnali bulin is történnek olyan pillanatok, amelyeket csak a vendégeitek látnak. Az OurFilmmel mindenki saját digitális tekercset kap, és a saját szemszögéből fotózhatja végig a napot.',
       },
       {
         heading: 'Legyen ott, ahol a vendégek is vannak',
-        body: 'Tegyétek ki a QR-kódot az asztalokra, a bárpulthoz vagy a vendégkönyv mellé. A meghívólinket az esküvői csoportban is megoszthatjátok.',
+        body: 'Tegyétek ki a QR-kódot az asztalokra, a bárpulthoz vagy a vendégkönyv mellé. A vendégek beolvasás után rögtön fotózhatnak, alkalmazás és regisztráció nélkül.',
       },
     ],
     cta: {
       heading: 'Lássátok viszont a napot a vendégeitek szemével.',
-      body: 'Hozzátok létre az albumot, és gyűjtsétek össze egy helyre a képeket.',
+      body: 'Hozzátok létre a közös filmet, és döntsétek el, hány képkockát kapjanak a vendégek, valamint mikor hívódjanak elő a képek.',
       button: 'Próbáljátok ki ingyen',
       helper: OCCASION_CTA_HELPER,
     },
     meta: {
-      title: 'Esküvői közös fotóalbum – OurFilm',
+      title: 'Esküvői vendégkamera – OurFilm',
       description:
-        'A napotok, ahogy a vendégeitek látták. Egy QR-kód, és minden vendégfotó egy közös albumba kerül.',
+        'A vendégek QR-kóddal nyitják meg saját digitális tekercsüket. Nincs app, nincs regisztráció, a képek pedig akkor jelennek meg, amikor szeretnétek.',
     },
   },
   {
@@ -94,28 +94,28 @@ export const occasions: Occasion[] = [
     image: '/images/birthday.webp',
     alt: 'Születésnapi ünneplés',
     title: 'Te ünnepelsz. A vendégeid fotóznak.',
-    text: 'A képek egy közös albumba kerülnek, miközben te a bulit élvezed.',
-    linkLabel: 'Album születésnapra',
+    text: 'Minden vendég saját digitális tekercset kap. A képek pedig akkor jelennek meg, amikor te szeretnéd.',
+    linkLabel: 'Vendégkamera születésnapra',
     sections: [
       {
         heading: 'Ne másnap kelljen elkérned a képeket.',
-        body: 'A vendégeid már a helyszínen feltölthetik a fotóikat. Mire véget ér a buli, a képek egy helyen várnak.',
+        body: 'A vendégeid a QR-kód után rögtön fotózhatnak a közös kamerával. Nem kell utólag képeket kérned vagy üzenetekből összeszedned őket.',
       },
       {
         heading: 'Tedd oda, ahol mindenki látja',
-        body: 'Kerüljön egy QR-kód a bejárathoz, a tortaasztalra vagy az italpulthoz. A meghívólinket a közös üzenetben is elküldheted.',
+        body: 'Kerüljön egy QR-kód a bejárathoz, a tortaasztalra vagy az italpulthoz. A vendégek alkalmazás és regisztráció nélkül nyithatják meg a saját tekercsüket.',
       },
     ],
     cta: {
-      heading: 'Gyűjtsd össze a vendégeid fotóit.',
-      body: 'Hozd létre az albumot, és oszd meg a vendégeiddel.',
+      heading: 'Legyen egy közös film az egész születésnapból.',
+      body: 'Hozd létre az eseményt, állítsd be a képkockák számát és válaszd ki, mikor jelenjenek meg a fotók.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,
     },
     meta: {
-      title: 'Születésnapi közös fotóalbum – OurFilm',
+      title: 'Születésnapi vendégkamera – OurFilm',
       description:
-        'A vendégeid fotói egy közös albumban. QR-kóddal, app és regisztráció nélkül.',
+        'Adj minden vendégnek saját digitális tekercset a születésnapra. QR-kóddal, alkalmazás és regisztráció nélkül.',
     },
   },
   {
@@ -124,29 +124,29 @@ export const occasions: Occasion[] = [
     icon: Plane,
     image: '/images/travel.webp',
     alt: 'Közös utazás',
-    title: 'Egy út. Sok telefon. Egy közös album.',
-    text: 'Mindenki hozzáadhatja a saját képeit, így semmi nem marad szétszórva.',
-    linkLabel: 'Album utazáshoz',
+    title: 'Egy út. Sok nézőpont. Egy közös film.',
+    text: 'Minden útitárs saját digitális tekercset kap. A képek az út végén egyszerre hívódhatnak elő.',
+    linkLabel: 'Közös kamera utazáshoz',
     sections: [
       {
-        heading: 'Mindenkinél más képek készülnek',
-        body: 'Az OurFilm egy helyre gyűjti őket, így az út végén minden fotót ugyanabban az albumban találsz.',
+        heading: 'Mindenki mást vesz észre',
+        body: 'Ugyanazt az utat mindenki másképp látja. A saját digitális tekercsekből a végén egy közös film áll össze.',
       },
       {
         heading: 'Oszd meg még indulás előtt',
-        body: 'Küldd el a meghívólinket a közös csoportba, így mindenki már az első naptól ugyanabba az albumba töltheti fel a képeit.',
+        body: 'Küldd el a meghívólinket a közös csoportba, így mindenki már az első naptól a saját tekercsével fotózhat. Alkalmazást senkinek sem kell letöltenie.',
       },
     ],
     cta: {
-      heading: 'Gyűjtsd össze egy helyre az út fotóit.',
-      body: 'Hozd létre az albumot, és oszd meg az útitársaiddal.',
+      heading: 'Nézzétek vissza együtt az utat.',
+      body: 'Hozd létre a közös filmet, oszd meg az útitársaiddal, és állítsd be, mikor hívódjanak elő a képek.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,
     },
     meta: {
-      title: 'Közös fotóalbum utazáshoz – OurFilm',
+      title: 'Közös digitális kamera utazáshoz – OurFilm',
       description:
-        'Gyűjtsd össze egy helyre az út minden fotóját. Egy link, egy közös album.',
+        'Minden útitárs saját digitális tekercset kap, a képekből pedig egy közös film áll össze. Alkalmazás és regisztráció nélkül.',
     },
   },
   {
@@ -156,28 +156,28 @@ export const occasions: Occasion[] = [
     image: '/images/party.webp',
     alt: 'Esti buli',
     title: 'Este mindenki fotózik.',
-    text: 'Mire véget ér a buli, a feltöltött képek már egy helyen várnak.',
-    linkLabel: 'Album bulira',
+    text: 'Minden vendég saját digitális tekercset kap. A képek az este végén egyszerre jelenhetnek meg.',
+    linkLabel: 'Vendégkamera bulira',
     sections: [
       {
         heading: 'Ne másnap kelljen összeszedned a képeket.',
-        body: 'A vendégek már a helyszínen feltölthetik a fotóikat. Egy QR-kód, és minden kép ugyanabba az albumba kerül.',
+        body: 'A QR-kód rögtön megnyitja a közös kamerát, így a vendégek a buli közben fotózhatnak. Nincs utólagos képbekérés és nincs letöltendő alkalmazás.',
       },
       {
         heading: 'Tedd oda, ahol mindenki megfordul',
-        body: 'A bejárat, a bárpult és az asztalok a legjobb helyek. Ha van kijelző, azon is megmutathatod a QR-kódot.',
+        body: 'A bejárat, a bárpult és az asztalok a legjobb helyek. Egy beolvasás után minden vendég megkapja a saját, véges számú képkockáját.',
       },
     ],
     cta: {
-      heading: 'Gyűjtsd össze egy helyre a buli képeit.',
-      body: 'Hozd létre az albumot, és oszd meg a vendégeiddel.',
+      heading: 'Lássátok viszont a bulit minden szemszögből.',
+      body: 'Hozd létre a közös filmet, állítsd be a képkockák számát, és döntsd el, mikor jelenjenek meg a fotók.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,
     },
     meta: {
-      title: 'Közös fotóalbum bulikhoz – OurFilm',
+      title: 'Digitális vendégkamera bulikhoz – OurFilm',
       description:
-        'A vendégek a helyszínen feltöltik a képeiket, te pedig egy közös albumban kapod meg őket.',
+        'A vendégek QR-kóddal nyitják meg saját digitális tekercsüket, és a buli közben fotóznak. Alkalmazás és regisztráció nélkül.',
     },
   },
 ]
