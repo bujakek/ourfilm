@@ -1,6 +1,6 @@
 'use client'
 
-import { OnboardingDialog } from './onboarding-dialog'
+import { Sheet } from '@/components/host/sheet'
 
 /**
  * Offers back an unfinished event found on this device.
@@ -20,7 +20,7 @@ export function DraftRestoreDialog({
   onDiscard: () => void
 }) {
   return (
-    <OnboardingDialog
+    <Sheet
       open={open}
       title="Folytatod az eseményed?"
       detail="Találtunk egy korábban elkezdett eseményt ezen az eszközön."
@@ -41,6 +41,6 @@ export function DraftRestoreDialog({
           Újrakezdés
         </button>
       </div>
-    </OnboardingDialog>
+    </Sheet>
   )
 }

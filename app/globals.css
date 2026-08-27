@@ -160,6 +160,38 @@
       0 30px 70px -25px rgba(0, 0, 0, 0.9);
   }
 
+  /* The material an overlay is drawn in — a modal sheet, a dialog.
+     
+     Distinct from `.glass-strong` because an overlay sits over the page it
+     interrupts, not over the page background, and it is the one glass surface
+     that must never be see-through. `.glass-strong` was doing that hiding with
+     `backdrop-filter: blur(28px)` — and the touch-device rule below switches
+     that filter off for the compositing cost, which left every sheet on a phone
+     a 3-9% white film over fully legible text. Verified on an iPhone: the
+     onboarding date sheet showed the question and the fields behind it straight
+     through the calendar.
+
+     So the gradient stays as the top layer and an opaque colour goes under it.
+     The surface still reads as glass, and it reads that way identically on
+     every device because it no longer depends on a filter that can be turned
+     off. Nothing here needs the `(pointer: coarse)` override.
+
+     `<dialog>` also needs its own opaque background for a second reason: the
+     `::backdrop` scrim only dims what is behind, it does not hide it. */
+  .glass-overlay {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.09) 0%,
+        rgba(255, 255, 255, 0.03) 100%
+      ),
+      var(--background-secondary);
+    border: 1px solid var(--border-strong);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.1) inset,
+      0 30px 70px -25px rgba(0, 0, 0, 0.9);
+  }
+
   /* Fixed chrome (nav pill). Two states of one material: a dark scrim over the
      hero, densifying to a near-solid pill once content scrolls under. Both are
      --background-secondary, so the state change is a pure alpha ramp rather

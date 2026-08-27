@@ -113,6 +113,13 @@ export default async function AdminEventSettingsPage({
         <CaptureEndCard
           slug={event.slug}
           endValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
+          // The card's calendar refuses exactly what `setCaptureEnd` refuses,
+          // and that is `end <= start` — not `end < now`. Closing the camera
+          // early means picking a moment already past.
+          startDay={formatEventLocalInput(
+            new Date(event.capture_start_at),
+            zone,
+          ).slice(0, 10)}
           state={windowState}
         />
 
