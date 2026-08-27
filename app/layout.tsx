@@ -17,9 +17,9 @@ const manrope = Manrope({
  * one pair rather than three near-variants is what stops the tab title, the
  * link preview and the search result from disagreeing about what this is.
  */
-const TITLE = 'OurFilm – Közös fotóalbum QR-kóddal'
+const TITLE = 'OurFilm – Digitális eldobható fényképezőgép esküvőre'
 const DESCRIPTION =
-  'Egy QR-kód, és minden vendégfotó egy közös albumba kerül. App és regisztráció nélkül.'
+  'A vendégek QR-kóddal nyitják meg a saját digitális tekercsüket. Nincs app, nincs előnézet, a képek pedig akkor jelennek meg, amikor ti szeretnétek.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
         url: '/images/og-cover.jpg',
         width: 1200,
         height: 630,
-        alt: 'Esküvői első tánc az OurFilm közös albumában',
+        alt: 'Esküvői első tánc az OurFilm digitális eldobható kamerájával',
       },
     ],
   },

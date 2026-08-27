@@ -29,8 +29,8 @@ const columns: FooterColumn[] = [
     heading: 'Termék',
     links: [
       { label: 'Hogyan működik', href: '/#how-it-works' },
-      { label: 'Bemutató', href: '/#live-demo' },
-      { label: 'Minden kép egy helyen', href: '/#photo-quality' },
+      { label: 'QR-kód', href: '/#qr-code' },
+      { label: 'A képek előhívása', href: '/#photo-reveal' },
       { label: 'Árak', href: '/arak' },
     ],
   },
@@ -48,7 +48,7 @@ const columns: FooterColumn[] = [
     links: [
       { label: 'Gyakori kérdések', href: '/#faq' },
       { label: 'Kapcsolat', href: '/kapcsolat' },
-      { label: 'Próbáld ki ingyen', href: CREATE_EVENT_PATH, external: true },
+      { label: 'Hozd létre ingyen', href: CREATE_EVENT_PATH, external: true },
     ],
   },
   {
@@ -97,7 +97,7 @@ export function Footer({ locale }: { locale: Locale }) {
                 </span>
               </Link>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Minden vendégfotó egy közös albumban.
+                Egy kamera az egész násznépnek.
               </p>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}

@@ -5,51 +5,35 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Reveal } from './reveal'
 
-/**
- * Every answer here is checked against what the product actually does, because
- * this is the page a host reads before deciding to trust it with a wedding.
- *
- * Two are worth the note:
- *
- * - **Moderation.** A host hides photos (`hidden_at`); single photos are never
- *   hard-deleted. Only the whole event can be deleted, so the answer speaks of
- *   what appears in the gallery and never of deleting one photo.
- * - **Visibility.** The album has no gate; anyone holding the link is in, and
- *   `gallery_hidden_at` is what decides whether guests may browse at all. The
- *   answer says both, and never says "biztonságos" or "jelszóval védett".
- */
+/** Every answer is checked against the disposable-camera product as built. */
 const faqs = [
   {
     q: 'Kell alkalmazást letölteni?',
-    a: 'Nem. A vendégeid a QR-kód beolvasása után közvetlenül a böngészőből tölthetnek fel.',
+    a: 'Nem. A QR-kód beolvasása után a kamera közvetlenül a telefon böngészőjében nyílik meg.',
   },
   {
     q: 'Kell regisztrálni?',
-    a: 'A vendégeknek nem. A nevüket megadhatják, hogy lásd, kitől érkeztek a képek.',
+    a: 'A vendégeknek nem. Csak a nevüket adják meg, hogy mindenki a saját tekercsét használja.',
   },
   {
-    q: 'Ki láthatja az albumot?',
-    a: 'Az album nem nyilvános. Az esemény linkjével vagy QR-kódjával lehet megnyitni, a vendégeknek szánt galériát pedig te kapcsolhatod be.',
+    q: 'Hogyan készülnek a képek?',
+    a: 'A vendégek az OurFilm kamerájával, az esemény közben fotóznak. Nincs előnézet és nincs újrapróbálás.',
   },
   {
-    q: 'Ki lehet nyomtatni a képeket?',
-    a: 'Igen. A fotók jó minőségben kerülnek az albumba, így később le is töltheted és ki is nyomtathatod őket.',
+    q: 'Hány képet készíthet egy vendég?',
+    a: 'Te választod ki: 5, 10, 16, 24 vagy 36 képet.',
   },
   {
-    q: 'Meddig maradnak meg a képek?',
-    a: 'Addig maradnak az albumodban, amíg nem törlöd az eseményt.',
+    q: 'Mikor láthatók a képek?',
+    a: 'Te döntöd el: azonnal, az esemény végén vagy 1–30 nappal később.',
   },
   {
-    q: 'Elrejthetem a nem kívánt képeket?',
-    a: 'Igen. Te döntöd el, mi jelenjen meg a vendégeknek szánt galériában.',
+    q: 'Ki láthatja a képeket?',
+    a: 'A galéria nem nyilvános. Szervezőként minden képet látsz, a vendégek galériáját pedig te kapcsolod be.',
   },
   {
-    q: 'Mennyibe kerül?',
-    a: '5 fotóig ingyen, bankkártya nélkül kipróbálhatod. A teljes album egyszeri 12 900 Ft, korlátlan vendéggel és korlátlan fotóval.',
-  },
-  {
-    q: 'Hogyan kezelitek a fotókat?',
-    a: 'A képeidet nem adjuk el, és nem használjuk fel hirdetésekhez.',
+    q: 'Letölthetők a képek?',
+    a: 'Igen. Az esemény képeit egyben is letöltheted, majd megoszthatod vagy kinyomtathatod őket.',
   },
 ]
 

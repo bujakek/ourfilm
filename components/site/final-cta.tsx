@@ -72,28 +72,25 @@ export function FinalCta() {
 
             <div className="relative mx-auto max-w-2xl">
               <h2 className="text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                <span className="text-gradient">Lásd viszont a napot</span>{' '}
+                <span className="text-gradient">Nézzétek meg az esküvőt</span>{' '}
                 <span className="text-gradient-accent">
-                  a vendégeid szemével.
+                  a vendégeitek szemével.
                 </span>
               </h2>
               <p className="mx-auto mt-6 max-w-lg leading-relaxed text-pretty text-muted-foreground">
-                Hozd létre az albumot, oszd meg a QR-kódot, és gyűjtsd össze egy
-                helyre a képeket.
+                Hozd létre az eseményt, oszd meg a QR-kódot, és a vendégek már
+                fotózhatnak is.
               </p>
               <div className="mt-9 flex justify-center">
                 <Link
                   href={CREATE_EVENT_PATH}
                   className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
                 >
-                  Próbáld ki ingyen
+                  Hozd létre ingyen
                 </Link>
               </div>
               <p className="mt-5 text-sm text-muted-foreground">
-                5 fotóig ingyen, bankkártya nélkül.
-              </p>
-              <p className="mt-3 text-sm text-muted-foreground">
-                A teljes album egyszeri 12 900 Ft. Nincs előfizetés.
+                Nincs app. Nincs vendégregisztráció.
               </p>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { CalendarPlus, Images, Link2, Lock, QrCode } from 'lucide-react'
+import { CalendarPlus, Camera, Link2, QrCode } from 'lucide-react'
 import Image from 'next/image'
 import { SITE_HOST } from '@/lib/site'
 import { Reveal } from './reveal'
@@ -8,8 +8,8 @@ const steps = [
   {
     number: '01',
     icon: CalendarPlus,
-    title: 'Hozd létre',
-    text: 'Adj nevet az eseménynek, és már kész is a közös album.',
+    title: 'Hozd létre az eseményt',
+    text: 'Állítsd be, hány képet készíthetnek a vendégek, és mikor jelenjenek meg.',
     image: '/images/wedding-portrait.webp',
     alt: 'Esküvői portré a párról',
     note: null,
@@ -17,17 +17,17 @@ const steps = [
   {
     number: '02',
     icon: QrCode,
-    title: 'Oszd meg',
-    text: 'Tedd ki a QR-kódot, vagy küldd el a meghívólinket.',
+    title: 'Oszd meg a QR-kódot',
+    text: 'Tedd ki az asztalokra, vagy küldd el a linket a vendégeknek.',
     image: '/images/garden-party.webp',
     alt: 'Kerti buli fényfüzérek alatt',
-    note: 'Az album nem nyilvános. A linkkel vagy a QR-kóddal lehet megnyitni.',
+    note: null,
   },
   {
     number: '03',
-    icon: Images,
-    title: 'Kapd meg a képeket',
-    text: 'A vendégek feltöltik a fotóikat, te pedig mindet egy helyen találod.',
+    icon: Camera,
+    title: 'A vendégek fotóznak',
+    text: 'Megnyitják a kamerát, és elkattintják a saját tekercsüket.',
     image: '/images/evening-party.webp',
     alt: 'Esti buli vendégekkel',
     note: null,
@@ -40,7 +40,7 @@ export function HowItWorks() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Három lépés, és kész az album
+            Három lépés, és indulhat a fotózás.
           </h2>
         </Reveal>
 
@@ -74,17 +74,6 @@ export function HowItWorks() {
                     <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
                       {step.text}
                     </p>
-                    {step.note && (
-                      <div className="glass mt-6 flex max-w-md items-start gap-3 rounded-2xl p-4">
-                        <Lock
-                          className="mt-0.5 size-4 shrink-0 text-accent"
-                          aria-hidden="true"
-                        />
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                          {step.note}
-                        </p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Visual */}
@@ -116,7 +105,7 @@ export function HowItWorks() {
                                 {SITE_HOST}/e/…
                               </p>
                               <p className="text-[10px] text-muted-foreground">
-                                Koppints a feltöltéshez
+                                Koppints a fotózáshoz
                               </p>
                             </div>
                           </div>
