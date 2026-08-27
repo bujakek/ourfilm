@@ -1,34 +1,17 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 
-/**
- * The sheet every host-area interruption is drawn in.
- *
- * A real `<dialog>` rather than a div with a high z-index: the browser gives
- * modality, focus trapping, Escape, and inertness of everything behind it for
- * free, and every hand-rolled version of that list is missing at least one of
- * them. `showModal()` is called from an effect because the element has to exist
- * before it can be opened.
- *
- * Anchored to the bottom on a phone and centred from `sm:` up — these arrive
- * under a thumb that is already at the bottom of the screen, reaching for a
- * button.
- *
- * It is also the only container wide enough for `MonthCalendar`. That grid is
- * seven 44px cells, so it needs 308px; a settings card at 390px has about 302
- * after the page and card padding, and squeezes it. `max-w-md` with `p-6`
- * gives it 342 — which is why the settings date picker opens a sheet rather
- * than expanding in place.
- *
- * **Three ways out, and they are one rule.** Escape, the close button and a tap
- * on the backdrop all run `onClose`, and all three are gated on the same
- * `dismissible`. A sheet that must be answered has no third "neither" option,
- * and a backdrop that dismisses one silently would be exactly that option —
- * which is also why `busy` has to close all three at once rather than only
- * disabling the button.
- */
+const EXIT_MS = 180
+
 export function Sheet({
   open,
   onClose,
@@ -37,92 +20,125 @@ export function Sheet({
   icon,
   busy = false,
   children,
-  /** Omitted for a sheet that must be answered — the restore prompt has two
-   *  buttons and no third "neither" option. */
   closeLabel,
 }: {
   open: boolean
   onClose?: () => void
   title: string
-  /** Omitted when the sheet's content introduces itself — the QR ticket carries
-   *  the event's name and its own instructions. */
   detail?: string
-  /** Sits above the heading. One caller uses it: the delete confirmation, where
-   *  the warning triangle is the fastest-read part of the sheet and worth more
-   *  than the row it costs. */
   icon?: ReactNode
-  /** Refuses every way out while something irreversible is in flight. Distinct
-   *  from omitting `closeLabel`, which means "this sheet is never dismissable"
-   *  — here the close button stays visible and goes disabled, so it reads as
-   *  "not yet" rather than vanishing mid-action. */
   busy?: boolean
   children: ReactNode
   closeLabel?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const closeTimer = useRef<number | null>(null)
   const titleId = useId()
+  const reduceMotion = useReducedMotion()
+  const [panelVisible, setPanelVisible] = useState(false)
   const dismissible = Boolean(closeLabel) && !busy
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    if (open && !el.open) el.showModal()
-    if (!open && el.open) el.close()
-  }, [open])
+
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+
+    if (open) {
+      if (!el.open) el.showModal()
+      const frame = window.requestAnimationFrame(() => setPanelVisible(true))
+      return () => window.cancelAnimationFrame(frame)
+    }
+
+    if (!el.open) return
+    setPanelVisible(false)
+
+    if (reduceMotion) {
+      el.close()
+      return
+    }
+
+    closeTimer.current = window.setTimeout(() => {
+      el.close()
+      closeTimer.current = null
+    }, EXIT_MS)
+
+    return () => {
+      if (closeTimer.current !== null) {
+        window.clearTimeout(closeTimer.current)
+        closeTimer.current = null
+      }
+    }
+  }, [open, reduceMotion])
 
   return (
     <dialog
       ref={ref}
       aria-labelledby={titleId}
-      // Escape closes a <dialog> natively and does not run onClose, which would
-      // leave the caller thinking the sheet is still open.
       onCancel={(event) => {
         event.preventDefault()
         if (dismissible) onClose?.()
       }}
-      // The backdrop is not a child, so a click on it reports the <dialog>
-      // itself as the target — that identity check is the whole test, and it is
-      // why the padding lives on an inner element. With `p-6` on the dialog, a
-      // tap in the padding would also read as the dialog and dismiss a sheet
-      // the host was aiming at.
       onClick={(event) => {
         if (event.target === ref.current && dismissible) onClose?.()
       }}
-      className="glass-overlay mx-auto mt-auto mb-0 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-3xl text-foreground backdrop:bg-black/70 sm:my-auto sm:rounded-3xl"
+      className="m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 text-foreground backdrop:bg-black/70"
     >
-      {/* Scrolls with the content rather than pinning the header, because these
-          sheets are short enough that a sticky bar would cost more height than
-          it saves. */}
-      <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
-        <div className="flex items-start gap-4">
-          <div className="min-w-0 flex-1">
-            {icon ? <div className="mb-3">{icon}</div> : null}
-            <h2
-              id={titleId}
-              className="font-display text-xl font-semibold tracking-tight text-balance"
-            >
-              {title}
-            </h2>
-            {detail ? (
-              <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-                {detail}
-              </p>
-            ) : null}
-          </div>
-          {closeLabel ? (
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={busy}
-              aria-label={closeLabel}
-              className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem] disabled:opacity-40"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
+      <div className="pointer-events-none fixed inset-0 flex items-end justify-center sm:items-center sm:p-4">
+        <motion.div
+          initial={false}
+          animate={
+            panelVisible
+              ? { opacity: 1, y: 0, scale: 1 }
+              : reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: 28, scale: 0.985 }
+          }
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : panelVisible
+                ? { type: 'spring', stiffness: 430, damping: 36, mass: 0.8 }
+                : { duration: EXIT_MS / 1000, ease: [0.4, 0, 1, 1] }
+          }
+          className="glass-overlay pointer-events-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-3xl sm:rounded-3xl"
+        >
+          <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                {icon ? <div className="mb-3">{icon}</div> : null}
+                <h2
+                  id={titleId}
+                  className="font-display text-xl font-semibold tracking-tight text-balance"
+                >
+                  {title}
+                </h2>
+                {detail ? (
+                  <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                    {detail}
+                  </p>
+                ) : null}
+              </div>
+              {closeLabel ? (
+                <motion.button
+                  type="button"
+                  onClick={onClose}
+                  disabled={busy}
+                  whileTap={!busy && !reduceMotion ? { scale: 0.92 } : undefined}
+                  aria-label={closeLabel}
+                  className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem] disabled:opacity-40"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </motion.button>
+              ) : null}
+            </div>
 
-        <div className="mt-5">{children}</div>
+            <div className="mt-5">{children}</div>
+          </div>
+        </motion.div>
       </div>
     </dialog>
   )
