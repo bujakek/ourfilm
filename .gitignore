@@ -27,7 +27,14 @@ next-env.d.ts
 .claude/skills/
 
 # Screenshot/dev-login scratch. `.dev-login-token` is a live bearer credential
-# for a host account (scripts/dev-login-token.ts); `.screenshots/` is throwaway
-# capture output.
+# for a host account (scripts/dev-login-token.ts); the screenshot directories
+# are throwaway capture output.
+#
+# Both spellings, deliberately. The capture output has landed in `docs/`
+# before, and 39 MB of PNGs committed there is not undone by deleting them in
+# a later commit — git keeps every blob it has been told about, so a clone
+# carries them forever. Ignoring the path is the only thing that actually
+# prevents it.
 .dev-login-token
 .screenshots/
+docs/screenshots/
