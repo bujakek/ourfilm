@@ -84,7 +84,7 @@ export function QrCard({
                   bgColor="#ffffff"
                   fgColor="#050505"
                   marginSize={4}
-                  className="size-[168px]"
+                  style={{ height: 168, width: 168 }}
                 />
               </div>
             </div>
