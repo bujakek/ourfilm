@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type Stripe from 'stripe'
 
 export const BILLING_TYPES = ['individual', 'company'] as const
 export type BillingType = (typeof BILLING_TYPES)[number]
@@ -38,28 +39,39 @@ export type BillingDetailsResult =
   { success: true; data: BillingDetails } | { success: false; error: string }
 
 /**
- * Parses the invoice address before a Stripe session can be created.
+ * Builds the immutable invoice snapshot from a paid Stripe Checkout Session.
  *
- * The pilot sells in Hungary only. Keeping the country fixed is deliberate:
- * accepting a foreign billing address would make VAT treatment a business
- * decision, not a harmless extra option in this form.
+ * Stripe collects these fields on its hosted page so an Apple Pay customer can
+ * supply them from the wallet instead of completing a second OurFilm form.
+ * The pilot still sells in Hungary only: accepting a foreign address would be
+ * a VAT decision, not a harmless UI option.
  */
-export function parseBillingDetails(formData: FormData): BillingDetailsResult {
-  const type =
-    formData.get('billing_type') === 'company' ? 'company' : 'individual'
+export function billingDetailsFromStripeSession(
+  session: Stripe.Checkout.Session,
+): BillingDetailsResult {
+  const customer = session.customer_details
+  const address = customer?.address
+  const hungarianTaxId = customer?.tax_ids?.find(
+    (taxId) => taxId.type === 'hu_tin',
+  )
+  const taxNumber = hungarianTaxId?.value
+    ? normalizeHungarianTaxNumber(hungarianTaxId.value)
+    : null
+  const type: BillingType = taxNumber ? 'company' : 'individual'
 
   const parsed = billingDetailsSchema.safeParse({
     type,
-    name: String(formData.get('billing_name') ?? ''),
-    email: String(formData.get('billing_email') ?? ''),
-    countryCode: 'HU',
-    postCode: String(formData.get('billing_post_code') ?? ''),
-    city: String(formData.get('billing_city') ?? ''),
-    address: String(formData.get('billing_address') ?? ''),
-    taxNumber:
-      type === 'company'
-        ? String(formData.get('billing_tax_number') ?? '')
-        : null,
+    name:
+      (type === 'company' ? customer?.business_name : null) ??
+      customer?.individual_name ??
+      customer?.name ??
+      '',
+    email: customer?.email ?? session.customer_email ?? '',
+    countryCode: address?.country ?? '',
+    postCode: address?.postal_code ?? '',
+    city: address?.city ?? '',
+    address: [address?.line1, address?.line2].filter(Boolean).join(', '),
+    taxNumber,
   })
 
   if (parsed.success) return { success: true, data: parsed.data }
@@ -76,6 +88,16 @@ export function parseBillingDetails(formData: FormData): BillingDetailsResult {
 
   return {
     success: false,
-    error: messages[String(field)] ?? 'Ellenőrizd a számlázási adatokat.',
+    error:
+      messages[String(field)] ??
+      `A Stripe Checkout hiányos vagy nem magyar számlázási adatokat adott vissza (${String(field ?? 'unknown')}).`,
   }
+}
+
+function normalizeHungarianTaxNumber(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 11) {
+    return `${digits.slice(0, 8)}-${digits.slice(8, 9)}-${digits.slice(9)}`
+  }
+  return value.trim()
 }

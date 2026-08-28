@@ -105,9 +105,8 @@ export const HOSTING_PROVIDER =
  *
  * Checkout is a hosted redirect (`mode: 'payment'`), so card numbers, 3-D
  * Secure and any wallet credentials go straight to Stripe. This system stores
- * only Stripe's reference ids, the amount, the currency and a status — see
- * the `purchases` table. That distinction is the whole reason the privacy
- * notice can say we never see a card number.
+ * Stripe's reference ids and payment status plus the invoice snapshot returned
+ * by Checkout, but never the card or wallet credentials — see `purchases`.
  */
 export const PAYMENT_PROCESSOR = {
   name: 'Stripe Payments Europe, Limited',

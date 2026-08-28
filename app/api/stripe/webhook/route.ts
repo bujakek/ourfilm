@@ -3,6 +3,8 @@ import {
   cancelBillingoInvoice,
   ensureBillingoInvoice,
 } from '@/lib/billingo/invoicing'
+import { billingDetailsFromStripeSession } from '@/lib/billing-details'
+import { LEGAL_VERSION } from '@/lib/company'
 import { getStripe } from '@/lib/stripe/client'
 import { stripeEnv } from '@/lib/stripe/env'
 import { NextResponse } from 'next/server'
@@ -145,9 +147,10 @@ function idOf(
 /**
  * Record a settled checkout, and with it the entitlement that lifts the cap.
  *
- * The checkout action must have written a pending row with the immutable
- * billing snapshot before Stripe accepts payment. The session id and purchase
- * id must both match, which makes replaying this event harmless.
+ * The checkout action writes the pending ledger row before Stripe accepts
+ * payment. Stripe then returns the invoice snapshot and legal consent here.
+ * The session id and purchase id must both match, which makes replaying this
+ * event harmless.
  */
 async function recordPaidSession(
   db: AdminClient,
@@ -212,14 +215,44 @@ async function recordPaidSession(
     throw new Error(`Checkout session ${session.id} amount does not match`)
   }
 
+  const billingResult = billingDetailsFromStripeSession(session)
+  if (!billingResult.success) {
+    throw new Error(
+      `Checkout session ${session.id} has invalid billing details: ${billingResult.error}`,
+    )
+  }
+  if (session.consent?.terms_of_service !== 'accepted') {
+    throw new Error(`Checkout session ${session.id} has no accepted terms`)
+  }
+  if (session.metadata?.terms_version !== LEGAL_VERSION) {
+    throw new Error(
+      `Checkout session ${session.id} has an unknown terms version`,
+    )
+  }
+
   // A late checkout event must not resurrect a purchase already refunded.
   if (purchase.status === 'refunded') return purchase.id
+
+  const billing = billingResult.data
+  const acceptedAt = new Date(stripeEventCreated * 1000).toISOString()
 
   const { error } = await db
     .from('purchases')
     .update({
       stripe_payment_intent_id: idOf(session.payment_intent),
       stripe_customer_id: idOf(session.customer),
+      billing_type: billing.type,
+      billing_name: billing.name,
+      billing_email: billing.email,
+      billing_country_code: billing.countryCode,
+      billing_post_code: billing.postCode,
+      billing_city: billing.city,
+      billing_address: billing.address,
+      billing_tax_number: billing.taxNumber,
+      terms_version: LEGAL_VERSION,
+      terms_accepted_at: purchase.terms_accepted_at ?? acceptedAt,
+      early_performance_consent_at:
+        purchase.early_performance_consent_at ?? acceptedAt,
       status: 'paid',
       paid_at:
         purchase.paid_at ?? new Date(stripeEventCreated * 1000).toISOString(),

@@ -1,25 +1,37 @@
 import { describe, expect, it } from 'vitest'
+import type Stripe from 'stripe'
 
-import { parseBillingDetails } from '@/lib/billing-details'
+import { billingDetailsFromStripeSession } from '@/lib/billing-details'
 
-function form(overrides: Record<string, string> = {}) {
-  const values = {
-    billing_type: 'individual',
-    billing_name: 'Teszt Elek',
-    billing_email: 'teszt@example.com',
-    billing_post_code: '1111',
-    billing_city: 'Budapest',
-    billing_address: 'Példa utca 12.',
-    ...overrides,
-  }
-  const data = new FormData()
-  for (const [key, value] of Object.entries(values)) data.set(key, value)
-  return data
+function session(
+  customerOverrides: Partial<Stripe.Checkout.Session.CustomerDetails> = {},
+): Stripe.Checkout.Session {
+  return {
+    customer_email: 'teszt@example.com',
+    customer_details: {
+      address: {
+        city: 'Budapest',
+        country: 'HU',
+        line1: 'Példa utca 12.',
+        line2: null,
+        postal_code: '1111',
+        state: null,
+      },
+      business_name: null,
+      email: 'teszt@example.com',
+      individual_name: null,
+      name: 'Teszt Elek',
+      phone: null,
+      tax_exempt: 'none',
+      tax_ids: [],
+      ...customerOverrides,
+    },
+  } as Stripe.Checkout.Session
 }
 
 describe('billing details', () => {
-  it('parses a Hungarian individual invoice address', () => {
-    expect(parseBillingDetails(form())).toEqual({
+  it('parses a Hungarian individual invoice address from Stripe', () => {
+    expect(billingDetailsFromStripeSession(session())).toEqual({
       success: true,
       data: {
         type: 'individual',
@@ -34,28 +46,64 @@ describe('billing details', () => {
     })
   })
 
-  it('requires a full domestic tax number for company invoices', () => {
-    const result = parseBillingDetails(
-      form({ billing_type: 'company', billing_tax_number: 'HU12345678' }),
+  it("normalizes Stripe's Hungarian company tax ID", () => {
+    const result = billingDetailsFromStripeSession(
+      session({
+        business_name: 'Példa Kft.',
+        tax_ids: [{ type: 'hu_tin', value: '12345678142' }],
+      }),
     )
 
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toContain('12345678-1-42')
+    expect(result).toEqual({
+      success: true,
+      data: {
+        type: 'company',
+        name: 'Példa Kft.',
+        email: 'teszt@example.com',
+        countryCode: 'HU',
+        postCode: '1111',
+        city: 'Budapest',
+        address: 'Példa utca 12.',
+        taxNumber: '12345678-1-42',
+      },
+    })
   })
 
-  it('accepts a company with a full Hungarian tax number', () => {
-    const result = parseBillingDetails(
-      form({
-        billing_type: 'company',
-        billing_name: 'Példa Kft.',
-        billing_tax_number: '12345678-1-42',
+  it('joins the two Stripe address lines', () => {
+    const result = billingDetailsFromStripeSession(
+      session({
+        address: {
+          city: 'Budapest',
+          country: 'HU',
+          line1: 'Példa utca 12.',
+          line2: '2. emelet',
+          postal_code: '1111',
+          state: null,
+        },
       }),
     )
 
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.taxNumber).toBe('12345678-1-42')
-      expect(result.data.type).toBe('company')
+      expect(result.data.address).toBe('Példa utca 12., 2. emelet')
     }
+  })
+
+  it('rejects a non-Hungarian invoice address for the pilot', () => {
+    const result = billingDetailsFromStripeSession(
+      session({
+        address: {
+          city: 'Wien',
+          country: 'AT',
+          line1: 'Beispielgasse 1',
+          line2: null,
+          postal_code: '1010',
+          state: null,
+        },
+      }),
+    )
+
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toContain('nem magyar')
   })
 })

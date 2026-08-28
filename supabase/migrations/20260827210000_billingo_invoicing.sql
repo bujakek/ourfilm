@@ -66,9 +66,9 @@ alter table public.purchases
   add constraint purchases_owner_id_fkey
     foreign key (owner_id) references auth.users (id) on delete set null;
 
--- Checkout writes through the authenticated client. Keep the existing
--- entitlement guard and also prevent a browser from forging invoice workflow
--- state or pretending that the mandatory consumer declarations were recorded.
+-- Checkout writes only the pending ledger row through the authenticated
+-- client. Stripe supplies billing data and the mandatory declarations after
+-- payment; only the service-role webhook may write those fields.
 drop policy "host records own pending purchase" on public.purchases;
 create policy "host records own pending purchase"
   on public.purchases for insert to authenticated
@@ -76,16 +76,17 @@ create policy "host records own pending purchase"
     status = 'pending'
     and owner_id = auth.uid()
     and invoice_status = 'not_started'
-    and billing_type in ('individual', 'company')
-    and billing_name is not null
-    and billing_email is not null
-    and billing_country_code = 'HU'
-    and billing_post_code is not null
-    and billing_city is not null
-    and billing_address is not null
-    and terms_version is not null
-    and terms_accepted_at is not null
-    and early_performance_consent_at is not null
+    and billing_type is null
+    and billing_name is null
+    and billing_email is null
+    and billing_country_code is null
+    and billing_post_code is null
+    and billing_city is null
+    and billing_address is null
+    and billing_tax_number is null
+    and terms_version is null
+    and terms_accepted_at is null
+    and early_performance_consent_at is null
     and billingo_partner_id is null
     and billingo_document_id is null
     and billingo_cancellation_document_id is null

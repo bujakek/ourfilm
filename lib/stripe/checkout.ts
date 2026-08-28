@@ -1,6 +1,5 @@
 import 'server-only'
 
-import type { BillingDetails } from '@/lib/billing-details'
 import { LEGAL_VERSION } from '@/lib/company'
 import { requestOrigin } from '@/lib/request-origin'
 import { createClient } from '@/lib/supabase/server'
@@ -28,16 +27,15 @@ export async function createEventCheckoutUrl({
   eventId,
   slug,
   ownerId,
-  billingDetails,
+  ownerEmail,
 }: {
   eventId: string
   slug: string
   ownerId: string
-  billingDetails: BillingDetails
+  ownerEmail: string | null
 }): Promise<string> {
   const origin = await requestOrigin()
   const purchaseId = randomUUID()
-  const acceptedAt = new Date().toISOString()
 
   const session = await getStripe().checkout.sessions.create({
     mode: 'payment',
@@ -57,6 +55,7 @@ export async function createEventCheckoutUrl({
       event_id: eventId,
       owner_id: ownerId,
       purchase_id: purchaseId,
+      terms_version: LEGAL_VERSION,
     },
     // Copied onto the PaymentIntent as well, because a refund webhook carries a
     // charge rather than a session and would otherwise have no route back to
@@ -66,9 +65,26 @@ export async function createEventCheckoutUrl({
         event_id: eventId,
         owner_id: ownerId,
         purchase_id: purchaseId,
+        terms_version: LEGAL_VERSION,
       },
     },
-    customer_email: billingDetails.email,
+    customer_email: ownerEmail ?? undefined,
+    // Tax IDs are attached to a Customer in payment mode. We keep the id for
+    // reconciliation, while the invoice itself always uses our own snapshot.
+    customer_creation: 'always',
+    billing_address_collection: 'required',
+    tax_id_collection: { enabled: true, required: 'never' },
+    consent_collection: { terms_of_service: 'required' },
+    custom_text: {
+      submit: {
+        message:
+          'Az OurFilm pilot jelenleg kizárólag magyar számlázási címmel használható.',
+      },
+      terms_of_service_acceptance: {
+        message:
+          'Elfogadom az ÁSZF-et, kérem a szolgáltatás azonnali, a 14 napos elállási időn belüli megkezdését, és tudomásul veszem, hogy a teljesítés megkezdésével elveszítem az elállási jogomat.',
+      },
+    },
     locale: 'hu',
   })
 
@@ -87,10 +103,9 @@ export async function createEventCheckoutUrl({
     throw new Error('Stripe returned an invalid HUF checkout amount')
   }
 
-  // This is no longer best effort. Billingo needs an immutable invoice address,
-  // and Stripe metadata is intentionally not used as a personal-data store. If
-  // the ledger row cannot be written, expire the unpaid session rather than
-  // accepting money that cannot be invoiced automatically.
+  // This is no longer best effort. Stripe will collect the immutable invoice
+  // snapshot and declarations, but the ledger row must exist before it accepts
+  // money so the webhook always has somewhere durable to store them.
   const supabase = await createClient()
   const { error } = await supabase.from('purchases').insert({
     id: purchaseId,
@@ -99,17 +114,6 @@ export async function createEventCheckoutUrl({
     stripe_checkout_session_id: session.id,
     amount_minor: session.amount_total,
     currency: session.currency,
-    billing_type: billingDetails.type,
-    billing_name: billingDetails.name,
-    billing_email: billingDetails.email,
-    billing_country_code: billingDetails.countryCode,
-    billing_post_code: billingDetails.postCode,
-    billing_city: billingDetails.city,
-    billing_address: billingDetails.address,
-    billing_tax_number: billingDetails.taxNumber,
-    terms_version: LEGAL_VERSION,
-    terms_accepted_at: acceptedAt,
-    early_performance_consent_at: acceptedAt,
     status: 'pending',
     invoice_status: 'not_started',
   })

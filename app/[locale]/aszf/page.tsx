@@ -85,7 +85,7 @@ const sections: LegalSection[] = [
       `A mindenkori díjakat az Árak oldal tartalmazza. ${VAT_STATUS.priceNote}`,
       'Az esemény létrehozása, a QR-kód, a közös album és az album letöltése díjmentes legfeljebb az Árak oldalon megadott számú résztvevőig. A díj ezt a résztvevői korlátot oldja fel: kifizetése után az adott eseményhez korlátlan számú vendég csatlakozhat. A díj eseményenként egyszeri, nem előfizetés, és a vendégek soha nem fizetnek semmit.',
       'A díj akkor esedékes, amikor a házigazda a korlát feloldását megrendeli. A feloldás az adott eseményre szól, és nem jár le.',
-      `A fizetést a ${PAYMENT_PROCESSOR.name} (${PAYMENT_PROCESSOR.address}) mint fizetési szolgáltató bonyolítja. A fizetés a Stripe saját, biztonságos oldalán történik: a bankkártya adatait nem látjuk, nem kezeljük és nem tároljuk. Nálunk csak a tranzakció azonosítója, az összeg, a pénznem és a fizetés állapota marad meg.`,
+      `A fizetést a ${PAYMENT_PROCESSOR.name} (${PAYMENT_PROCESSOR.address}) mint fizetési szolgáltató bonyolítja. A fizetés és a számlázási adatok megadása a Stripe saját, biztonságos oldalán történik: a bankkártya adatait nem látjuk, nem kezeljük és nem tároljuk. A Stripe-tól a tranzakció adatai mellett a számla kiállításához szükséges nevet, e-mail-címet, magyar postacímet és céges vásárlásnál az adószámot kapjuk meg.`,
       `A fizetésről számlát állítunk ki, amelyet e-mailben küldünk meg. A számla az ${VAT_STATUS.code} (${VAT_STATUS.label}) jelölést tartalmazza, mert a szolgáltató áfát nem számít fel.`,
       'A már megkezdett esemény díja nem kerül visszatérítésre, kivéve az alábbi elállási jogot és a hibás teljesítés eseteit.',
     ],
@@ -94,7 +94,7 @@ const sections: LegalSection[] = [
     title: 'Elállási jog',
     body: [
       'A fogyasztót a szerződéskötéstől számított 14 napon belül indokolás nélküli elállási jog illeti meg.',
-      'A szolgáltatás nem tárgyi adathordozón nyújtott digitális szolgáltatás. Ha a fogyasztó kifejezetten kéri a teljesítés 14 napon belüli megkezdését, és egyidejűleg nyilatkozik arról, hogy tudomásul veszi: a teljesítés megkezdése után az elállási jogát elveszíti, akkor a szolgáltatás igénybevételének megkezdésével az elállási jog megszűnik. Erről a megrendelés során külön nyilatkozni kell.',
+      'A szolgáltatás nem tárgyi adathordozón nyújtott digitális szolgáltatás. Ha a fogyasztó kifejezetten kéri a teljesítés 14 napon belüli megkezdését, és egyidejűleg nyilatkozik arról, hogy tudomásul veszi: a teljesítés megkezdése után az elállási jogát elveszíti, akkor a szolgáltatás igénybevételének megkezdésével az elállási jog megszűnik. A fogyasztó ezt a Stripe fizetési oldalán megjelenő kötelező nyilatkozat elfogadásával kéri és veszi tudomásul.',
       'Elállás esetén a díjat legkésőbb 14 napon belül visszatérítjük, ugyanolyan fizetési módon, ahogyan érkezett.',
       `Az elállást a ${CONTACT_EMAIL} címre küldött nyilatkozattal lehet közölni.`,
     ],

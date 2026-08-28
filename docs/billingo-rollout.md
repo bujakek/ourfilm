@@ -60,18 +60,30 @@ project.
 
 1. Keep the existing one-time HUF Price at `1290000` Stripe minor units, which
    the app verifies and converts to HUF 12,900 for Billingo.
-2. Create a deployed webhook destination at
+2. In **Settings → Business → Public details**, set the public OurFilm Terms of
+   Service URL to `https://ourfilm.app/hu/aszf`. Stripe will not create a
+   Checkout Session with required terms acceptance until this is valid.
+3. In **Settings → Payment methods**, keep Cards enabled. Apple Pay is surfaced
+   automatically by hosted Checkout on eligible Apple devices; do not hard-code
+   payment method types in the app. Confirm the domain/payment-method status in
+   both test and live mode.
+4. Create a deployed webhook destination at
    `https://ourfilm.app/api/stripe/webhook` with only:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
    - `charge.refunded`
-3. Copy that destination's own `whsec_…`; the `stripe listen` secret is local
+5. Copy that destination's own `whsec_…`; the `stripe listen` secret is local
    and cannot be used on Vercel.
-4. Run one individual and one company checkout in Stripe test mode. Verify the
+6. Run one individual and one company checkout in Stripe test mode. Checkout
+   must ask for a billing address, offer optional Tax ID collection, and require
+   the combined ÁSZF/immediate-performance declaration. Verify the
    purchase row, invoice payload/payment date, e-mail delivery, duplicate event
    replay, and a full refund/cancellation. Also force one invalid Billingo
    credential once and verify the Stripe retry finishes the same invoice after
    restoring it.
+7. Test the Apple Pay button on a real supported Apple device and Safari with a
+   Hungarian billing address in Wallet. Wallet availability cannot be proven by
+   a desktop test-card checkout or by application unit tests.
 
 ## 5. Production credentials and Vercel
 

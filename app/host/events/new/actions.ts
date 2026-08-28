@@ -11,6 +11,7 @@ import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import { isEventPlan } from '@/lib/onboarding'
 import { generateEventSlug } from '@/lib/slug'
 import { checkoutIsConfigured } from '@/lib/checkout-readiness'
+import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 
@@ -261,7 +262,12 @@ export async function createEventFromDraft(
         if (quota.unlimited) {
           destination = `/host/events/${slug}`
         } else {
-          destination = `/host/events/${slug}/checkout`
+          destination = await createEventCheckoutUrl({
+            eventId,
+            slug,
+            ownerId: user.id,
+            ownerEmail: user.email ?? null,
+          })
         }
       } catch (e) {
         // The event exists and works. Failing to start a checkout is not a

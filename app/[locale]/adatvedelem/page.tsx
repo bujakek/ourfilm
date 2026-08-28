@@ -47,7 +47,7 @@ const sections: LegalSection[] = [
       'A vendég a csatlakozáskor megadja a nevét. Ezt a saját böngészője tárolja, és minden általa feltöltött fotóhoz hozzákapcsoljuk, hogy látszódjon, kitől érkezett. Bármilyen nevet megadhat; nem ellenőrizzük.',
       'A vendégeknek nincs fiókjuk: nem kérünk e-mail-címet, jelszót és regisztrációt. A házigazda fiókjához e-mail-cím tartozik, mert a belépés e-mailben küldött linkkel történik.',
       'A fotók tartalmát nem elemezzük: nem futtatunk rajtuk arcfelismerést, és nem készítünk belőlük profilt.',
-      'Fizetés esetén a bankkártya adatait nem látjuk és nem tároljuk: a fizetés a Stripe saját, általa üzemeltetett oldalán történik. A tranzakció azonosítóit, az összeget, a pénznemet és a fizetés állapotát, továbbá a számla kiállításához megadott nevet, e-mail-címet, postacímet és céges vásárlásnál az adószámot tároljuk.',
+      'Fizetés esetén a bankkártya adatait nem látjuk és nem tároljuk: a fizetés és a számlázási adatok megadása a Stripe saját, általa üzemeltetett oldalán történik. A Stripe-tól kapott tranzakcióazonosítókat, összeget, pénznemet és fizetési állapotot, továbbá a számla kiállításához megadott nevet, e-mail-címet, magyar postacímet és céges vásárlásnál az adószámot tároljuk.',
     ],
   },
   {

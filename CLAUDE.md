@@ -600,8 +600,12 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
   wrong sentence to put in front of them. The upgrade is the host's, and they
   reach it in two places: the billing card in settings, and the plan choice on
   the last onboarding screen. Both go through `createEventCheckoutUrl`.
-- **Checkout is a redirect** to Stripe's hosted page (`mode: 'payment'`). No card
-  data touches this app — the difference between SAQ A and a compliance project.
+- **Checkout is a direct redirect** to Stripe's hosted page (`mode: 'payment'`).
+  There is no OurFilm billing form in front of it. Stripe collects the required
+  billing address, optional Hungarian tax ID and required terms/performance
+  declaration, so Apple Pay can prefill the customer details from the wallet.
+  No card data touches this app — the difference between SAQ A and a compliance
+  project.
 - **Only the webhook marks a purchase paid.** `?checkout=success` proves nothing:
   a host can type it, and a host who closes the tab on Stripe's success page
   still deserves their album. `purchases` has no update policy at all, so the
@@ -609,10 +613,11 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
 - **A paid Stripe webhook issues the Billingo invoice.** Checkout first records
-  an immutable Hungarian billing snapshot and the two consumer declarations;
-  no pending row means the Stripe session is expired. The webhook verifies the
-  paid status, amount, currency and metadata, then creates an AAM electronic
-  invoice, writes its exact card payment history and emails it. The purchase UUID
+  a pending ledger row; no pending row means the Stripe session is expired. The
+  webhook verifies the paid status, amount, currency, metadata and required
+  Stripe consent, then copies Stripe's Hungarian billing details into an
+  immutable snapshot and creates an AAM electronic invoice. It writes the exact
+  card payment history and emails the invoice. The purchase UUID
   is Billingo's `vendor_id`, so a timeout after document creation is recovered by
   lookup rather than producing a duplicate. A full Stripe refund creates and
   emails a Billingo cancellation document; partial refunds do neither and keep
@@ -635,7 +640,7 @@ gates. `event_upload_quota` (photos) became `event_participant_quota`
 Key files: `lib/stripe/*`, `lib/billingo/*`, `lib/billing-details.ts`,
 `lib/checkout-readiness.ts`, `lib/billing.ts`, `lib/pricing.ts` (the displayed
 price, in one place), `lib/roles.ts`, `app/api/stripe/webhook/route.ts`,
-`app/host/events/[slug]/checkout/*`, `components/host/billing-card.tsx`, and
+`app/host/events/[slug]/billing-actions.ts`, `components/host/billing-card.tsx`, and
 `app/host/events/new/step-guests.tsx`. Operations are in
 `docs/billingo-rollout.md`.
 

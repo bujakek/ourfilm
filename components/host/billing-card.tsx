@@ -1,11 +1,16 @@
 'use client'
 
+import {
+  type CheckoutState,
+  startEventCheckout,
+} from '@/app/host/events/[slug]/billing-actions'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
+
+const INITIAL: CheckoutState = { error: null }
 
 /** How long to keep re-checking after Stripe sends the host back. */
 const SETTLE_POLL_MS = 2000
@@ -41,6 +46,7 @@ export function BillingCard({
   checkoutReady,
   checkout,
 }: BillingCardProps) {
+  const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
   // Stripe redirects the host back the instant checkout finishes, which is
   // often before the webhook that records it has landed. Without this the
   // first thing a host sees after paying is their album still saying it is
@@ -125,22 +131,32 @@ export function BillingCard({
       ) : null}
 
       {checkoutReady ? (
-        <div className="mt-4">
-          <Link
-            href={`/host/events/${slug}/checkout`}
+        <form action={submit} className="mt-4">
+          <input type="hidden" name="slug" value={slug} />
+          <button
+            type="submit"
+            disabled={pending}
+            aria-busy={pending}
             className="btn-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground"
           >
-            <CreditCard
-              className="size-4"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-            Teljes esemény feloldása – {EVENT_PRICE_LABEL}
-          </Link>
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <CreditCard
+                className="size-4"
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
+            )}
+            {pending
+              ? 'Átirányítás…'
+              : `Teljes esemény feloldása – ${EVENT_PRICE_LABEL}`}
+          </button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Korlátlan résztvevő, egyszeri fizetéssel.
+            Korlátlan résztvevő, egyszeri fizetéssel. A számlázási adatokat a
+            Stripe biztonságos oldalán adod meg.
           </p>
-        </div>
+        </form>
       ) : (
         // Honest about the state of the world rather than offering a button
         // that would 500 when Stripe or Billingo is incomplete here.
@@ -149,6 +165,10 @@ export function BillingCard({
           neked kézzel.
         </p>
       )}
+
+      {state.error ? (
+        <p className="mt-3 text-xs text-destructive">{state.error}</p>
+      ) : null}
     </div>
   )
 }

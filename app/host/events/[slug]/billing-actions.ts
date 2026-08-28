@@ -1,39 +1,28 @@
 'use server'
 
-import { parseBillingDetails } from '@/lib/billing-details'
 import { getEventQuota } from '@/lib/billing'
-import { checkoutIsConfigured } from '@/lib/checkout-readiness'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
+import { checkoutIsConfigured } from '@/lib/checkout-readiness'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-export type BillingCheckoutState = { error: string | null }
+export type CheckoutState = { error: string | null }
 
-export async function submitBillingCheckout(
-  _previous: BillingCheckoutState,
+/** Send an event owner straight to hosted Stripe Checkout. */
+export async function startEventCheckout(
+  _prev: CheckoutState,
   formData: FormData,
-): Promise<BillingCheckoutState> {
+): Promise<CheckoutState> {
   const slug = String(formData.get('slug') ?? '').trim()
   if (!slug) return { error: 'Hiányzó esemény.' }
 
   if (!checkoutIsConfigured()) {
     return {
-      error: 'A fizetés és a számlázás még nincs teljesen beállítva.',
+      error:
+        'A fizetés még nincs beállítva. Szólj nekünk, és elintézzük — addig az album és a feltöltés változatlanul működik.',
     }
   }
-
-  if (
-    formData.get('accept_terms') !== 'on' ||
-    formData.get('early_performance_consent') !== 'on'
-  ) {
-    return {
-      error: 'A továbblépéshez fogadd el mindkét nyilatkozatot.',
-    }
-  }
-
-  const parsed = parseBillingDetails(formData)
-  if (!parsed.success) return { error: parsed.error }
 
   const supabase = await createClient()
   const {
@@ -55,7 +44,7 @@ export async function submitBillingCheckout(
       eventId: event.id,
       slug: event.slug,
       ownerId: user.id,
-      billingDetails: parsed.data,
+      ownerEmail: user.email ?? null,
     })
   } catch (error) {
     console.error('Stripe checkout session failed', error)
