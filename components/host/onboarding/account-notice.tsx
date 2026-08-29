@@ -3,6 +3,7 @@
 import { Suspense, use } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
+import type { Locale } from '@/lib/i18n'
 
 /**
  * "Az esemény mentéséhez ingyenes fiók szükséges." — for signed-out visitors
@@ -34,19 +35,21 @@ function signedIn(): Promise<boolean> {
   return cached
 }
 
-function Notice() {
+function Notice({ locale }: { locale: Locale }) {
   if (use(signedIn())) return null
   return (
     <p className="mt-3 text-center text-xs text-muted-foreground">
-      Az esemény mentéséhez ingyenes fiók szükséges.
+      {locale === 'en'
+        ? 'A free account is required to save your event.'
+        : 'Az esemény mentéséhez ingyenes fiók szükséges.'}
     </p>
   )
 }
 
-export function AccountNotice() {
+export function AccountNotice({ locale = 'hu' }: { locale?: Locale }) {
   return (
     <Suspense fallback={null}>
-      <Notice />
+      <Notice locale={locale} />
     </Suspense>
   )
 }

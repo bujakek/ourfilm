@@ -1,6 +1,7 @@
 'use client'
 
 import { Pencil } from 'lucide-react'
+import type { Locale } from '@/lib/i18n'
 
 import {
   OnboardingShell,
@@ -21,19 +22,29 @@ export function StepName({
   setName,
   suggestions,
   canAdvance,
+  locale,
 }: {
   nav: OnboardingNav
   name: string
   setName: (value: string) => void
   suggestions: string[]
   canAdvance: boolean
+  locale: Locale
 }) {
+  const en = locale === 'en'
   return (
     <OnboardingShell
       {...nav}
-      title="Mi legyen az esemény neve?"
-      detail="Adj nevet a filmednek. Ezt látják majd a vendégeid."
-      cta="Tovább"
+      locale={locale}
+      title={
+        en ? 'What should we call your event?' : 'Mi legyen az esemény neve?'
+      }
+      detail={
+        en
+          ? 'Give your camera a name. This is what your guests will see.'
+          : 'Adj nevet a filmednek. Ezt látják majd a vendégeid.'
+      }
+      cta={en ? 'Continue' : 'Tovább'}
       ctaDisabled={!canAdvance}
     >
       <div className="glass flex min-h-16 items-center gap-3 rounded-2xl px-5">
@@ -45,7 +56,7 @@ export function StepName({
         {/* No visible label: the heading two lines up is the question, and a
             second "Esemény neve" above the box would be the same words twice. */}
         <input
-          aria-label="Az esemény neve"
+          aria-label={en ? 'Event name' : 'Az esemény neve'}
           maxLength={80}
           autoFocus
           enterKeyHint="next"
@@ -61,7 +72,7 @@ export function StepName({
             event.preventDefault()
             if (canAdvance) nav.onNext?.()
           }}
-          placeholder="Írd be a filmed nevét"
+          placeholder={en ? 'Enter your event name' : 'Írd be a filmed nevét'}
           className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground/50"
         />
       </div>
@@ -70,7 +81,7 @@ export function StepName({
         id="name-suggestions-label"
         className="mt-8 text-xs tracking-[0.2em] text-muted-foreground/70"
       >
-        ÖTLETEK
+        {en ? 'IDEAS' : 'ÖTLETEK'}
       </p>
       <ul
         aria-labelledby="name-suggestions-label"

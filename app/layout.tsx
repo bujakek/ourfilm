@@ -17,9 +17,9 @@ const manrope = Manrope({
  * one pair rather than three near-variants is what stops the tab title, the
  * link preview and the search result from disagreeing about what this is.
  */
-const TITLE = 'OurFilm – Digitális eldobható fényképezőgép esküvőre'
+const TITLE = 'OurFilm – Wedding Guest Photo App'
 const DESCRIPTION =
-  'A vendégek QR-kóddal nyitják meg a saját digitális tekercsüket. Nincs app, nincs előnézet, a képek pedig akkor jelennek meg, amikor ti szeretnétek.'
+  'Give every wedding guest their own digital roll with one QR code. No app, no accounts and no chasing photos after the wedding.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'OurFilm' }],
   openGraph: {
     type: 'website',
-    locale: 'hu_HU',
+    locale: 'en_GB',
     url: `${SITE_URL}/${defaultLocale}`,
     siteName: 'OurFilm',
     title: TITLE,
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
         url: '/images/og-cover.jpg',
         width: 1200,
         height: 630,
-        alt: 'Esküvői első tánc az OurFilm digitális eldobható kamerájával',
+        alt: 'A wedding first dance captured with the OurFilm digital guest camera',
       },
     ],
   },
@@ -65,7 +65,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="hu" className="bg-background">
+    <html lang={defaultLocale} className="bg-background">
       <body className={`${manrope.variable} font-sans antialiased`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

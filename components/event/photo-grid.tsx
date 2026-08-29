@@ -5,8 +5,15 @@ import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
 import { useState } from 'react'
 import { Lightbox } from './lightbox'
+import type { Locale } from '@/lib/i18n'
 
-export function PhotoGrid({ photos }: { photos: GalleryTile[] }) {
+export function PhotoGrid({
+  photos,
+  locale = 'hu',
+}: {
+  photos: GalleryTile[]
+  locale?: Locale
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
@@ -31,7 +38,11 @@ export function PhotoGrid({ photos }: { photos: GalleryTile[] }) {
             >
               <Image
                 src={photo.thumbUrl}
-                alt={`${photo.uploaderName} fotója`}
+                alt={
+                  locale === 'en'
+                    ? `Photo by ${photo.uploaderName}`
+                    : `${photo.uploaderName} fotója`
+                }
                 fill
                 sizes="(max-width: 640px) 50vw, 33vw"
                 unoptimized
@@ -54,6 +65,7 @@ export function PhotoGrid({ photos }: { photos: GalleryTile[] }) {
         {openIndex !== null ? (
           <Lightbox
             photos={photos}
+            locale={locale}
             index={openIndex}
             onClose={() => setOpenIndex(null)}
             onNavigate={setOpenIndex}

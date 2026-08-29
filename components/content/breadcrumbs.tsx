@@ -20,7 +20,7 @@ export function Breadcrumbs({
   crumbs: Crumb[]
 }) {
   return (
-    <nav aria-label="Morzsamenü">
+    <nav aria-label={locale === 'en' ? 'Breadcrumbs' : 'Morzsamenü'}>
       <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1

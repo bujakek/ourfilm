@@ -6,12 +6,47 @@ import Link from 'next/link'
 import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: 'Kapcsolat – OurFilm',
-  description:
-    'Írj nekünk, ha kérdésed van az OurFilmről, egy eseményről vagy a fotóidról.',
-  // Publish with the other standalone pages once the company details are real.
-  robots: { index: false, follow: true },
+const copy = {
+  en: {
+    title: 'Contact – OurFilm',
+    description:
+      'Get in touch with a question about OurFilm, your event or your photos.',
+    eyebrow: 'CONTACT',
+    heading: 'Talk to us',
+    lead: 'Have a question about your event, uploading or downloading photos? Send us a note and a real person will reply.',
+    emailBody:
+      'Tell us briefly how we can help. If your question is about an existing event, include its name.',
+    faq: 'Frequently asked questions',
+    faqBody: 'You may find the answer you need in our FAQ.',
+    made: 'Made in Budapest',
+    madeBody: 'OurFilm is built in Hungary.',
+    about: 'About us',
+  },
+  hu: {
+    title: 'Kapcsolat – OurFilm',
+    description:
+      'Írj nekünk, ha kérdésed van az OurFilmről, egy eseményről vagy a fotóidról.',
+    eyebrow: 'KAPCSOLAT',
+    heading: 'Írj nekünk',
+    lead: 'Kérdésed van az eseményedről, a feltöltésről vagy a letöltésről? Írj nekünk, és személyesen válaszolunk.',
+    emailBody:
+      'Írd meg röviden, miben segíthetünk. Ha egy konkrét eseményről írsz, add meg az esemény nevét is.',
+    faq: 'Gyakori kérdések',
+    faqBody: 'A leggyakoribb kérdésekre már összegyűjtöttük a válaszokat.',
+    made: 'Budapesten készül',
+    madeBody: 'Az OurFilm magyar fejlesztés.',
+    about: 'Rólunk',
+  },
+} as const
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  if (!isLocale(locale)) return {}
+  return {
+    title: copy[locale].title,
+    description: copy[locale].description,
+    robots: { index: false, follow: true },
+  }
 }
 
 type Props = { params: Promise<{ locale: string }> }
@@ -19,13 +54,14 @@ type Props = { params: Promise<{ locale: string }> }
 export default async function KapcsolatPage({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
+  const current = copy[locale]
 
   return (
     <PageShell
       locale={locale}
-      eyebrow="KAPCSOLAT"
-      title="Írj nekünk"
-      lead="Kérdésed van az eseményedről, a feltöltésről vagy a letöltésről? Írj nekünk, és személyesen válaszolunk."
+      eyebrow={current.eyebrow}
+      title={current.heading}
+      lead={current.lead}
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
@@ -41,8 +77,7 @@ export default async function KapcsolatPage({ params }: Props) {
               E-mail
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Írd meg röviden, miben segíthetünk. Ha egy konkrét eseményről
-              írsz, add meg az esemény nevét is.
+              {current.emailBody}
             </p>
             {/* mailto only, on purpose: a contact form with nothing behind it
                 silently swallows messages, which is worse than no form. */}
@@ -64,15 +99,15 @@ export default async function KapcsolatPage({ params }: Props) {
                   aria-hidden="true"
                 />
               </span>
-              <h2 className="mt-6 text-base font-semibold">Gyakori kérdések</h2>
+              <h2 className="mt-6 text-base font-semibold">{current.faq}</h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                A leggyakoribb kérdésekre már összegyűjtöttük a válaszokat.
+                {current.faqBody}
               </p>
               <Link
                 href={localePath(locale, '/#faq')}
                 className="mt-5 text-sm font-medium text-accent underline underline-offset-4 transition-colors hover:text-foreground"
               >
-                Gyakori kérdések
+                {current.faq}
               </Link>
             </article>
 
@@ -84,17 +119,15 @@ export default async function KapcsolatPage({ params }: Props) {
                   aria-hidden="true"
                 />
               </span>
-              <h2 className="mt-6 text-base font-semibold">
-                Budapesten készül
-              </h2>
+              <h2 className="mt-6 text-base font-semibold">{current.made}</h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                Az OurFilm magyar fejlesztés.
+                {current.madeBody}
               </p>
               <Link
                 href={localePath(locale, '/rolunk')}
                 className="mt-5 text-sm font-medium text-accent underline underline-offset-4 transition-colors hover:text-foreground"
               >
-                Rólunk
+                {current.about}
               </Link>
             </article>
           </div>

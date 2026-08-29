@@ -44,7 +44,7 @@ export function DocList({
               {doc.description}
             </p>
             <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-accent">
-              Elolvasom
+              {locale === 'en' ? 'Read more' : 'Elolvasom'}
               <ArrowRight
                 className="size-4 transition-transform group-hover:translate-x-0.5"
                 aria-hidden="true"

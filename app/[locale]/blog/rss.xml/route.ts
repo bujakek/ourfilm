@@ -31,6 +31,11 @@ export function generateStaticParams() {
 export const dynamicParams = false
 
 const CHANNEL: Record<Locale, { title: string; description: string }> = {
+  en: {
+    title: 'OurFilm blog',
+    description:
+      'Practical guides to collecting and sharing wedding guest photos.',
+  },
   hu: {
     title: 'OurFilm blog',
     description:

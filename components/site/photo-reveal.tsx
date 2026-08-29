@@ -1,31 +1,51 @@
 'use client'
 
 import { Check, Clock } from 'lucide-react'
-import { AnimatePresence, motion, useInView, useReducedMotion } from 'motion/react'
+import {
+  AnimatePresence,
+  motion,
+  useInView,
+  useReducedMotion,
+} from 'motion/react'
 import Image from 'next/image'
 import { useRef } from 'react'
 import { Reveal } from './reveal'
+import type { Locale } from '@/lib/i18n'
+import { marketingCopy } from '@/lib/marketing-copy'
 
 const photos = [
   {
     src: '/images/wedding-cake.webp',
-    alt: 'Előhívás alatt álló esküvői fotó',
+    alt: {
+      en: 'A wedding photo being revealed',
+      hu: 'Előhívás alatt álló esküvői fotó',
+    },
   },
   {
     src: '/images/guests-laughing.webp',
-    alt: 'Előhívás alatt álló vendégfotó',
+    alt: {
+      en: 'A guest photo being revealed',
+      hu: 'Előhívás alatt álló vendégfotó',
+    },
   },
   {
     src: '/images/evening-party.webp',
-    alt: 'Előhívás alatt álló fotó az esti buliról',
+    alt: {
+      en: 'An evening party photo being revealed',
+      hu: 'Előhívás alatt álló fotó az esti buliról',
+    },
   },
   {
     src: '/images/group-lookout.webp',
-    alt: 'Előhívás alatt álló csoportkép',
+    alt: {
+      en: 'A group photo being revealed',
+      hu: 'Előhívás alatt álló csoportkép',
+    },
   },
 ]
 
-export function PhotoReveal() {
+export function PhotoReveal({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].reveal
   const demoRef = useRef<HTMLDivElement>(null)
   const reduceMotion = useReducedMotion()
   const inView = useInView(demoRef, { once: true, amount: 0.65 })
@@ -37,22 +57,24 @@ export function PhotoReveal() {
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <Reveal>
             <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
-              ELŐHÍVÁS
+              {copy.eyebrow}
             </span>
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-              A képek maradjanak meglepetések.
+              {copy.title}
             </h2>
             <p className="mt-4 max-w-md leading-relaxed text-pretty text-muted-foreground">
-              Te döntöd el, mikor nyíljon meg a galéria: azonnal, az esemény
-              végén vagy néhány nappal később.
+              {copy.lead}
             </p>
           </Reveal>
 
           <Reveal delay={120} className="flex justify-center">
-            <div ref={demoRef} className="glass-strong w-full max-w-[320px] rounded-[2.5rem] p-2.5">
+            <div
+              ref={demoRef}
+              className="glass-strong w-full max-w-[320px] rounded-[2.5rem] p-2.5"
+            >
               <div className="overflow-hidden rounded-[2rem] bg-background-secondary">
                 <div className="flex items-center justify-between px-4 py-3.5">
-                  <p className="text-sm font-semibold">Anna &amp; Péter</p>
+                  <p className="text-sm font-semibold">{copy.couple}</p>
                   <AnimatePresence mode="wait" initial={false}>
                     <motion.span
                       key={developed ? 'ready' : 'developing'}
@@ -67,7 +89,7 @@ export function PhotoReveal() {
                       ) : (
                         <Clock className="size-3" aria-hidden="true" />
                       )}
-                      {developed ? 'Galéria megnyílt' : 'Előhívás alatt'}
+                      {developed ? copy.opened : copy.developing}
                     </motion.span>
                   </AnimatePresence>
                 </div>
@@ -95,7 +117,7 @@ export function PhotoReveal() {
                       >
                         <Image
                           src={photo.src}
-                          alt={photo.alt}
+                          alt={photo.alt[locale]}
                           fill
                           sizes="140px"
                           className="object-cover"
@@ -120,11 +142,9 @@ export function PhotoReveal() {
                     }`}
                   >
                     <div className="glass-strong rounded-2xl px-5 py-4 text-center">
-                      <p className="text-sm font-semibold">
-                        A képek még előhívás alatt vannak
-                      </p>
+                      <p className="text-sm font-semibold">{copy.waiting}</p>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        A galéria az esemény végén nyílik meg.
+                        {copy.waitingBody}
                       </p>
                     </div>
                   </motion.div>

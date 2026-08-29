@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useRef, type ReactNode } from 'react'
+import type { Locale } from '@/lib/i18n'
 
 export type OnboardingNav = {
   step: number
@@ -28,6 +29,7 @@ export function OnboardingShell({
   error = null,
   note = null,
   children,
+  locale = 'hu',
 }: {
   title: string
   detail: string
@@ -42,6 +44,7 @@ export function OnboardingShell({
   error?: string | null
   note?: ReactNode
   children: ReactNode
+  locale?: Locale
 }) {
   const spent = useRef<number | null>(null)
   useEffect(() => {
@@ -57,7 +60,9 @@ export function OnboardingShell({
           {backHref ? (
             <Link
               href={backHref}
-              aria-label="Vissza az eseményekhez"
+              aria-label={
+                locale === 'en' ? 'Back to events' : 'Vissza az eseményekhez'
+              }
               className="glass flex size-12 items-center justify-center rounded-[0.875rem]"
             >
               <ArrowLeft className="size-5" aria-hidden="true" />
@@ -67,7 +72,11 @@ export function OnboardingShell({
               type="button"
               onClick={onBack}
               whileTap={{ scale: 0.94 }}
-              aria-label="Vissza az előző kérdéshez"
+              aria-label={
+                locale === 'en'
+                  ? 'Back to the previous question'
+                  : 'Vissza az előző kérdéshez'
+              }
               className="glass flex size-12 items-center justify-center rounded-[0.875rem]"
             >
               <ArrowLeft className="size-5" aria-hidden="true" />
@@ -109,7 +118,7 @@ export function OnboardingShell({
 
         <footer className="mt-6 grid min-h-14 grid-cols-[1fr_auto] items-center gap-3">
           <ol
-            aria-label="Lépések"
+            aria-label={locale === 'en' ? 'Steps' : 'Lépések'}
             className="pointer-events-none flex justify-center gap-2"
           >
             {Array.from({ length: stepCount }, (_, i) => (
@@ -126,7 +135,9 @@ export function OnboardingShell({
                 }`}
               >
                 <span className="sr-only">
-                  {i + 1}. lépés{i === step ? ' — jelenlegi' : ''}
+                  {locale === 'en'
+                    ? `Step ${i + 1}${i === step ? ' — current' : ''}`
+                    : `${i + 1}. lépés${i === step ? ' — jelenlegi' : ''}`}
                 </span>
               </motion.li>
             ))}

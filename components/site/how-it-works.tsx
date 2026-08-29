@@ -2,45 +2,53 @@ import { cn } from '@/lib/utils'
 import { CalendarPlus, Camera, Link2, QrCode } from 'lucide-react'
 import Image from 'next/image'
 import { SITE_HOST } from '@/lib/site'
+import type { Locale } from '@/lib/i18n'
+import { marketingCopy } from '@/lib/marketing-copy'
 import { Reveal } from './reveal'
 
-const steps = [
+const visuals = [
   {
     number: '01',
     icon: CalendarPlus,
-    title: 'Hozd létre az eseményt',
-    text: 'Állítsd be, hány képet készíthetnek a vendégek, és mikor jelenjenek meg.',
     image: '/images/wedding-portrait.webp',
-    alt: 'Esküvői portré a párról',
+    alt: {
+      en: 'A wedding portrait of the couple',
+      hu: 'Esküvői portré a párról',
+    },
     note: null,
   },
   {
     number: '02',
     icon: QrCode,
-    title: 'Oszd meg a QR-kódot',
-    text: 'Tedd ki az asztalokra, vagy küldd el a linket a vendégeknek.',
     image: '/images/garden-party.webp',
-    alt: 'Kerti buli fényfüzérek alatt',
+    alt: {
+      en: 'A garden party under string lights',
+      hu: 'Kerti buli fényfüzérek alatt',
+    },
     note: null,
   },
   {
     number: '03',
     icon: Camera,
-    title: 'A vendégek fotóznak',
-    text: 'Megnyitják a kamerát, és elkattintják a saját tekercsüket.',
     image: '/images/evening-party.webp',
-    alt: 'Esti buli vendégekkel',
+    alt: { en: 'Guests at an evening party', hu: 'Esti buli vendégekkel' },
     note: null,
   },
 ]
 
-export function HowItWorks() {
+export function HowItWorks({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].how
+  const steps = visuals.map((visual, index) => ({
+    ...visual,
+    title: copy.steps[index][0],
+    text: copy.steps[index][1],
+  }))
   return (
     <section id="how-it-works" className="relative px-4 py-24 sm:px-6 lg:py-32">
       <div className="mx-auto max-w-6xl">
         <Reveal className="max-w-2xl">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Három lépés, és indulhat a fotózás.
+            {copy.title}
           </h2>
         </Reveal>
 
@@ -82,7 +90,7 @@ export function HowItWorks() {
                       <div className="relative aspect-[4/3] overflow-hidden rounded-[1.6rem]">
                         <Image
                           src={step.image}
-                          alt={step.alt}
+                          alt={step.alt[locale]}
                           fill
                           sizes="(max-width: 1024px) 100vw, 520px"
                           className="object-cover"
@@ -105,7 +113,7 @@ export function HowItWorks() {
                                 {SITE_HOST}/e/…
                               </p>
                               <p className="text-[10px] text-muted-foreground">
-                                Koppints a fotózáshoz
+                                {copy.tap}
                               </p>
                             </div>
                           </div>

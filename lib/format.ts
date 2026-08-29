@@ -16,9 +16,12 @@ const HU_DATE = new Intl.DateTimeFormat('hu-HU', {
  * shows up as június 12. Rendering happens on the server, whose timezone is not
  * ours to assume, so the formatter is pinned to UTC to stay deterministic.
  */
-export function formatEventDate(date: string | null): string | null {
+export function formatEventDate(
+  date: string | null,
+  locale: KnownLocale = 'hu',
+): string | null {
   if (!date) return null
-  return HU_DATE.format(new Date(`${date}T00:00:00Z`))
+  return POST_DATE[locale].format(new Date(`${date}T00:00:00Z`))
 }
 
 /**
@@ -232,19 +235,24 @@ const DEADLINE_CACHE = new Map<string, Intl.DateTimeFormat>()
  * under the title on a 390px phone, where the long form pushes to a second
  * line. The year stays: a wedding booked for next January is not a hypothesis.
  */
-export function formatDeadline(iso: string, zone = EVENT_TIME_ZONE): string {
+export function formatDeadline(
+  iso: string,
+  zone = EVENT_TIME_ZONE,
+  locale: KnownLocale = 'hu',
+): string {
+  const key = `${locale}:${zone}`
   return memoFormatter(
     DEADLINE_CACHE,
-    zone,
-    (tz) =>
-      new Intl.DateTimeFormat('hu-HU', {
+    key,
+    () =>
+      new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'hu-HU', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
         hourCycle: 'h23',
-        timeZone: tz,
+        timeZone: zone,
       }),
   ).format(new Date(iso))
 }
@@ -342,18 +350,23 @@ const REVEAL_BADGE_CACHE = new Map<string, Intl.DateTimeFormat>()
  * just picked two screens earlier, and the year only costs width on a badge
  * that has to fit across two photos on a 390px phone.
  */
-export function formatRevealBadge(iso: string, zone = EVENT_TIME_ZONE): string {
+export function formatRevealBadge(
+  iso: string,
+  zone = EVENT_TIME_ZONE,
+  locale: KnownLocale = 'hu',
+): string {
+  const key = `${locale}:${zone}`
   return memoFormatter(
     REVEAL_BADGE_CACHE,
-    zone,
-    (tz) =>
-      new Intl.DateTimeFormat('hu-HU', {
+    key,
+    () =>
+      new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'hu-HU', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
         hourCycle: 'h23',
-        timeZone: tz,
+        timeZone: zone,
       }),
   ).format(new Date(iso))
 }

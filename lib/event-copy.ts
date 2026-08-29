@@ -1,5 +1,6 @@
 import { captureWindowState, guestGalleryIsOpen } from './camera'
 import { formatDeadline } from './format'
+import type { Locale } from './i18n'
 
 /**
  * The Hungarian a guest reads about an event's state.
@@ -60,18 +61,25 @@ export function captureStateDetail(timing: EventTiming): string | null {
 export function joinStateLabel(
   timing: EventTiming,
   shotsPerParticipant: number,
+  locale: Locale = 'hu',
 ): string {
   const state = captureWindowState(timing)
   if (state === 'before') {
-    return `A fotózás ${formatDeadline(
+    const deadline = formatDeadline(
       timing.captureStartAt.toISOString(),
       timing.timeZone,
-    )}-kor kezdődik. Addig is csatlakozhatsz.`
+      locale,
+    )
+    return locale === 'en'
+      ? `Shooting starts ${deadline}. You can join now.`
+      : `A fotózás ${deadline}-kor kezdődik. Addig is csatlakozhatsz.`
   }
   if (state === 'after') {
-    return 'A fotózás véget ért.'
+    return locale === 'en' ? 'Shooting has ended.' : 'A fotózás véget ért.'
   }
-  return `Most lehet fotózni — ${shotsPerParticipant} kép a tiéd.`
+  return locale === 'en'
+    ? `The camera is open — you have ${shotsPerParticipant} shots.`
+    : `Most lehet fotózni — ${shotsPerParticipant} kép a tiéd.`
 }
 
 export type GalleryLock =
@@ -85,24 +93,34 @@ export type GalleryLock =
  * the host made. Telling a guest to wait for something that will never open
  * would be a small lie that a guest discovers by refreshing all evening.
  */
-export function galleryLock(timing: EventTiming): GalleryLock {
+export function galleryLock(
+  timing: EventTiming,
+  locale: Locale = 'hu',
+): GalleryLock {
   if (guestGalleryIsOpen(timing)) return { open: true }
 
   if (!timing.guestsCanView) {
     return {
       open: false,
-      heading: 'A képeket csak a szervező láthatja',
+      heading:
+        locale === 'en'
+          ? 'Only the host can see these photos'
+          : 'A képeket csak a szervező láthatja',
       detail: null,
     }
   }
 
   return {
     open: false,
-    heading: 'A képek még előhívás alatt vannak',
-    detail: `A galéria ${formatDeadline(
+    heading:
+      locale === 'en'
+        ? 'The photos are still developing'
+        : 'A képek még előhívás alatt vannak',
+    detail: `${locale === 'en' ? 'The gallery opens' : 'A galéria'} ${formatDeadline(
       timing.revealAt.toISOString(),
       timing.timeZone,
-    )} nyílik meg.`,
+      locale,
+    )}${locale === 'en' ? '.' : ' nyílik meg.'}`,
   }
 }
 
