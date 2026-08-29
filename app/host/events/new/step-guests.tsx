@@ -12,6 +12,7 @@ import {
 import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'
+import type { Locale } from '@/lib/i18n'
 
 export function StepGuests({
   nav,
@@ -25,6 +26,7 @@ export function StepGuests({
   setLegalAccepted,
   paymentsEnabled,
   pending,
+  locale,
 }: {
   nav: OnboardingNav
   plan: EventPlan
@@ -40,38 +42,67 @@ export function StepGuests({
    *  worse answer than not showing the button. */
   paymentsEnabled: boolean
   pending: boolean
+  locale: Locale
 }) {
   const reduceMotion = useReducedMotion()
+  const en = locale === 'en'
 
   return (
     <OnboardingShell
       {...nav}
-      title="Hány vendéged lesz?"
-      detail="Mindenki kapjon esélyt, hogy elkapja a pillanatot."
-      cta={plan === 'full' ? 'Tovább a fizetéshez' : 'Létrehozás'}
+      locale={locale}
+      title={en ? 'How many guests are coming?' : 'Hány vendéged lesz?'}
+      detail={
+        en
+          ? 'Give everyone a chance to capture part of the day.'
+          : 'Mindenki kapjon esélyt, hogy elkapja a pillanatot.'
+      }
+      cta={
+        plan === 'full'
+          ? en
+            ? 'Continue to payment'
+            : 'Tovább a fizetéshez'
+          : en
+            ? 'Create event'
+            : 'Létrehozás'
+      }
       ctaDisabled={!legalAccepted}
       ctaPending={pending}
-      note={<AccountNotice />}
+      note={<AccountNotice locale={locale} />}
     >
       <div className="flex flex-col gap-6">
         <fieldset>
-          <SectionLabel>VENDÉGEK</SectionLabel>
-          <legend className="sr-only">Hány vendég csatlakozhat</legend>
+          <SectionLabel>{en ? 'GUESTS' : 'VENDÉGEK'}</SectionLabel>
+          <legend className="sr-only">
+            {en ? 'How many guests can join' : 'Hány vendég csatlakozhat'}
+          </legend>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <PlanTile
               value="free"
               plan={plan}
               setPlan={setPlan}
-              title={`Legfeljebb ${FREE_PARTICIPANT_LIMIT}`}
-              detail="Ingyenes"
+              title={
+                en
+                  ? `Up to ${FREE_PARTICIPANT_LIMIT}`
+                  : `Legfeljebb ${FREE_PARTICIPANT_LIMIT}`
+              }
+              detail={en ? 'Free' : 'Ingyenes'}
               reduceMotion={reduceMotion}
             />
             <PlanTile
               value="full"
               plan={plan}
               setPlan={setPlan}
-              title="Korlátlan"
-              detail={paymentsEnabled ? EVENT_PRICE_LABEL : 'Hamarosan'}
+              title={en ? 'Unlimited' : 'Korlátlan'}
+              detail={
+                paymentsEnabled
+                  ? en
+                    ? 'HUF 12,900'
+                    : EVENT_PRICE_LABEL
+                  : en
+                    ? 'Coming soon'
+                    : 'Hamarosan'
+              }
               disabled={!paymentsEnabled}
               reduceMotion={reduceMotion}
             />
@@ -79,8 +110,12 @@ export function StepGuests({
         </fieldset>
 
         <fieldset className="border-t border-border pt-5">
-          <SectionLabel>KÉPEK VENDÉGENKÉNT</SectionLabel>
-          <legend className="sr-only">Képek száma vendégenként</legend>
+          <SectionLabel>
+            {en ? 'SHOTS PER GUEST' : 'KÉPEK VENDÉGENKÉNT'}
+          </SectionLabel>
+          <legend className="sr-only">
+            {en ? 'Shots per guest' : 'Képek száma vendégenként'}
+          </legend>
           <div className="mt-3 grid grid-cols-5 gap-2">
             {SHOT_OPTIONS.map((option) => {
               const active = option === shots
@@ -97,7 +132,7 @@ export function StepGuests({
                     <motion.span
                       layoutId="shots-selection"
                       aria-hidden="true"
-                      className="absolute inset-0 rounded-[1.1rem] bg-accent/10 ring-2 ring-inset ring-accent"
+                      className="absolute inset-0 rounded-[1.1rem] bg-accent/10 ring-2 ring-accent ring-inset"
                       transition={
                         reduceMotion
                           ? { duration: 0 }
@@ -121,7 +156,10 @@ export function StepGuests({
                     {option}
                   </motion.span>
                   {option === DEFAULT_SHOTS ? (
-                    <span className="sr-only"> — ajánlott</span>
+                    <span className="sr-only">
+                      {' '}
+                      — {en ? 'recommended' : 'ajánlott'}
+                    </span>
                   ) : null}
                 </label>
               )
@@ -130,7 +168,7 @@ export function StepGuests({
         </fieldset>
 
         <div className="border-t border-border pt-5">
-          <SectionLabel>LÁTHATÓSÁG</SectionLabel>
+          <SectionLabel>{en ? 'GALLERY ACCESS' : 'LÁTHATÓSÁG'}</SectionLabel>
           <button
             type="button"
             role="switch"
@@ -168,8 +206,12 @@ export function StepGuests({
                 className="text-sm leading-snug text-pretty"
               >
                 {guestsCanView
-                  ? 'A vendégek is látják az összes képet.'
-                  : 'Csak te látod a képeket.'}
+                  ? en
+                    ? 'Guests can see the full gallery.'
+                    : 'A vendégek is látják az összes képet.'
+                  : en
+                    ? 'Only you can see the photos.'
+                    : 'Csak te látod a képeket.'}
               </motion.span>
             </AnimatePresence>
           </button>
@@ -264,7 +306,7 @@ function PlanTile({
         <motion.span
           layoutId="plan-selection"
           aria-hidden="true"
-          className="absolute inset-0 rounded-[1.25rem] bg-accent/10 ring-2 ring-inset ring-accent"
+          className="absolute inset-0 rounded-[1.25rem] bg-accent/10 ring-2 ring-accent ring-inset"
           transition={
             reduceMotion
               ? { duration: 0 }

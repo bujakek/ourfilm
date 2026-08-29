@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils'
 import { Check, Share2 } from 'lucide-react'
 import { useState } from 'react'
+import type { Locale } from '@/lib/i18n'
 
 /**
  * Lets a guest forward the album link.
@@ -15,7 +16,14 @@ import { useState } from 'react'
  * Bulk download stays host-only. Forwarding one link and exporting the whole
  * archive are different actions, and the host owns the archive.
  */
-export function InviteButton({ url }: { url: string }) {
+export function InviteButton({
+  url,
+  locale = 'hu',
+}: {
+  url: string
+  locale?: Locale
+}) {
+  const en = locale === 'en'
   const [copied, setCopied] = useState(false)
 
   const invite = async () => {
@@ -44,7 +52,7 @@ export function InviteButton({ url }: { url: string }) {
     <button
       type="button"
       onClick={invite}
-      aria-label="Meghívólink megosztása"
+      aria-label={en ? 'Share invite link' : 'Meghívólink megosztása'}
       className={cn(
         'glass glass-hover inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-medium transition-all',
         copied ? 'text-accent' : 'text-foreground',
@@ -57,16 +65,20 @@ export function InviteButton({ url }: { url: string }) {
             strokeWidth={2.2}
             aria-hidden="true"
           />
-          Link másolva
+          {en ? 'Link copied' : 'Link másolva'}
         </>
       ) : (
         <>
           <Share2 className="size-5" strokeWidth={1.8} aria-hidden="true" />
-          Meghívás
+          {en ? 'Invite' : 'Meghívás'}
         </>
       )}
       <span aria-live="polite" className="sr-only">
-        {copied ? 'Link kimásolva a vágólapra' : ''}
+        {copied
+          ? en
+            ? 'Link copied to clipboard'
+            : 'Link kimásolva a vágólapra'
+          : ''}
       </span>
     </button>
   )

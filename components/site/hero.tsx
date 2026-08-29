@@ -1,20 +1,41 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
+import type { Locale } from '@/lib/i18n'
+import { marketingCopy } from '@/lib/marketing-copy'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { HeroQrDemo } from './hero-qr-demo'
 
 const galleryImages = [
   {
     src: '/images/wedding-dance.webp',
-    alt: 'Esküvői első tánc fényfüzérek alatt',
+    alt: {
+      en: 'A wedding first dance under string lights',
+      hu: 'Esküvői első tánc fényfüzérek alatt',
+    },
   },
-  { src: '/images/wedding-cake.webp', alt: 'Tortavágás az esküvőn' },
-  { src: '/images/guests-laughing.webp', alt: 'Nevető vendégek az asztalnál' },
-  { src: '/images/garden-party.webp', alt: 'Esti kerti buli fényfüzérekkel' },
+  {
+    src: '/images/wedding-cake.webp',
+    alt: { en: 'Cutting the wedding cake', hu: 'Tortavágás az esküvőn' },
+  },
+  {
+    src: '/images/guests-laughing.webp',
+    alt: {
+      en: 'Wedding guests laughing at a table',
+      hu: 'Nevető vendégek az asztalnál',
+    },
+  },
+  {
+    src: '/images/garden-party.webp',
+    alt: {
+      en: 'An evening garden party under string lights',
+      hu: 'Esti kerti buli fényfüzérekkel',
+    },
+  },
 ]
 
-export function Hero() {
+export function Hero({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].hero
   return (
     <section
       id="top"
@@ -24,39 +45,34 @@ export function Hero() {
         <div className="reveal is-visible max-w-xl">
           <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-muted-foreground">
             <span className="size-1.5 rounded-full bg-accent" />
-            Digitális eldobható fényképezőgép esküvőre
+            {copy.eyebrow}
           </span>
 
           <h1 className="mt-6 text-[2rem] leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl xl:text-[3.5rem]">
-            <span className="text-gradient">Az esküvőtök,</span>{' '}
-            <span className="text-gradient-accent">
-              ahogy a vendégeitek látták.
-            </span>
+            <span className="text-gradient">{copy.titleStart}</span>{' '}
+            <span className="text-gradient-accent">{copy.titleEnd}</span>
           </h1>
 
           <p className="mt-7 max-w-lg text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            A vendégek beolvassák a QR-kódot, megkapják a saját tekercsüket, és
-            fotóznak. A képeket később együtt nézitek meg.
+            {copy.lead}
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
-              href={CREATE_EVENT_PATH}
+              href={`${CREATE_EVENT_PATH}?lang=${locale}`}
               className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              Hozd létre ingyen
+              {copy.create}
             </Link>
             <a
               href="#how-it-works"
               className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"
             >
-              Így működik
+              {copy.how}
             </a>
           </div>
 
-          <p className="mt-5 text-sm text-muted-foreground">
-            Nincs app. Nincs vendégregisztráció.
-          </p>
+          <p className="mt-5 text-sm text-muted-foreground">{copy.helper}</p>
         </div>
 
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
@@ -67,10 +83,10 @@ export function Hero() {
                   <div className="flex items-center justify-between px-4 py-3">
                     <div>
                       <p className="text-[13px] leading-tight font-semibold">
-                        Anna &amp; Péter
+                        {copy.couple}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        Közös galéria
+                        {copy.gallery}
                       </p>
                     </div>
                     <span className="size-6 rounded-full bg-gradient-to-br from-accent to-accent-blue" />
@@ -83,7 +99,7 @@ export function Hero() {
                       >
                         <Image
                           src={img.src}
-                          alt={img.alt}
+                          alt={img.alt[locale]}
                           fill
                           sizes="140px"
                           className="object-cover"
@@ -103,7 +119,11 @@ export function Hero() {
                 <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
                   <Image
                     src="/images/wedding-portrait.webp"
-                    alt="Esküvői portré a párról"
+                    alt={
+                      locale === 'en'
+                        ? 'A wedding portrait of the couple'
+                        : 'Esküvői portré a párról'
+                    }
                     fill
                     sizes="150px"
                     className="object-cover"
@@ -120,7 +140,11 @@ export function Hero() {
                 <div className="relative aspect-square overflow-hidden rounded-xl">
                   <Image
                     src="/images/evening-party.webp"
-                    alt="Esti fényfüzéres buli"
+                    alt={
+                      locale === 'en'
+                        ? 'An evening party under string lights'
+                        : 'Esti fényfüzéres buli'
+                    }
                     fill
                     sizes="160px"
                     className="object-cover"
@@ -129,7 +153,7 @@ export function Hero() {
               </div>
             </div>
 
-            <HeroQrDemo />
+            <HeroQrDemo locale={locale} />
           </div>
         </div>
       </div>

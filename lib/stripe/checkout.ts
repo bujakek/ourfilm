@@ -40,6 +40,10 @@ export async function createEventCheckoutUrl({
 
   const session = await getStripe().checkout.sessions.create({
     mode: 'payment',
+    // Link acts as merchant of record: it calculates and remits supported
+    // indirect taxes, issues the customer-facing transaction documents, and
+    // handles payment-level support, refunds, fraud and disputes.
+    managed_payments: { enabled: true },
     line_items: [{ price: stripeEnv().eventPriceId, quantity: 1 }],
     // Back to the settings page rather than the event page: the billing card
     // that explains the outcome lives there. That holds for a host arriving
@@ -72,7 +76,7 @@ export async function createEventCheckoutUrl({
       },
     },
     customer_email: ownerEmail ?? undefined,
-    locale: 'hu',
+    locale: 'auto',
   })
 
   if (!session.url) {

@@ -1,10 +1,11 @@
 import { type Locale, localePath } from '@/lib/i18n'
-import { occasions } from '@/lib/occasions'
+import { occasionCopy, occasions } from '@/lib/occasions'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { Aperture } from 'lucide-react'
 import Link from 'next/link'
 
 import { CREATE_EVENT_PATH } from '@/lib/routes'
+import { marketingCopy } from '@/lib/marketing-copy'
 
 interface FooterColumn {
   heading: string
@@ -24,56 +25,108 @@ interface FooterColumn {
  * is anything under `/host`, flagged `external` here: that area sits outside
  * the locale tree, and `proxy.ts` matches it by exact path.
  */
-const columns: FooterColumn[] = [
-  {
-    heading: 'Termék',
-    links: [
-      { label: 'Hogyan működik', href: '/#how-it-works' },
-      { label: 'QR-kód', href: '/#qr-code' },
-      { label: 'A képek előhívása', href: '/#photo-reveal' },
-      { label: 'Árak', href: '/arak' },
-    ],
-  },
-  {
-    // Generated from the same module the pages and the sitemap read, so a new
-    // occasion appears here without anyone remembering to add it.
-    heading: 'Alkalmak',
-    links: occasions.map((occasion) => ({
-      label: occasion.label,
-      href: `/alkalmak/${occasion.slug}`,
-    })),
-  },
-  {
-    heading: 'Támogatás',
-    links: [
-      { label: 'Gyakori kérdések', href: '/#faq' },
-      { label: 'Kapcsolat', href: '/kapcsolat' },
-      { label: 'Hozd létre ingyen', href: CREATE_EVENT_PATH, external: true },
-    ],
-  },
-  {
-    // The content library's three hubs. Deliberately here and not in the
-    // navbar: sixty-nine pages behind one header link would turn a simple nav
-    // into a sitemap, and a reader who wants a guide is not the reader the
-    // header is for.
-    heading: 'Tudásbázis',
-    links: [
-      { label: 'Blog', href: '/blog' },
-      { label: 'Alternatívák', href: '/alternativak' },
-      { label: 'Összehasonlítás', href: '/osszehasonlitas' },
-    ],
-  },
-  {
-    heading: 'Jogi',
-    links: [
-      { label: 'Impresszum', href: '/impresszum' },
-      { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
-      { label: 'Általános Szerződési Feltételek', href: '/aszf' },
-    ],
-  },
-]
+const columnsByLocale: Record<Locale, FooterColumn[]> = {
+  en: [
+    {
+      heading: 'Product',
+      links: [
+        { label: 'How it works', href: '/#how-it-works' },
+        { label: 'QR code', href: '/#qr-code' },
+        { label: 'Photo reveal', href: '/#photo-reveal' },
+        { label: 'Pricing', href: '/arak' },
+      ],
+    },
+    {
+      heading: 'Occasions',
+      links: occasions.map((occasion) => ({
+        label: occasionCopy('en', occasion).label,
+        href: `/alkalmak/${occasion.slug}`,
+      })),
+    },
+    {
+      heading: 'Support',
+      links: [
+        { label: 'FAQ', href: '/#faq' },
+        { label: 'Contact', href: '/kapcsolat' },
+        {
+          label: 'Create your camera',
+          href: `${CREATE_EVENT_PATH}?lang=en`,
+          external: true,
+        },
+      ],
+    },
+    {
+      heading: 'Resources',
+      links: [
+        { label: 'Blog', href: '/blog' },
+        { label: 'Alternatives', href: '/alternativak' },
+      ],
+    },
+    {
+      heading: 'Company',
+      links: [
+        { label: 'About', href: '/rolunk' },
+        { label: 'Magyar', href: '/hu', external: true },
+      ],
+    },
+  ],
+  hu: [
+    {
+      heading: 'Termék',
+      links: [
+        { label: 'Hogyan működik', href: '/#how-it-works' },
+        { label: 'QR-kód', href: '/#qr-code' },
+        { label: 'A képek előhívása', href: '/#photo-reveal' },
+        { label: 'Árak', href: '/arak' },
+      ],
+    },
+    {
+      heading: 'Alkalmak',
+      links: occasions.map((occasion) => ({
+        label: occasion.label,
+        href: `/alkalmak/${occasion.slug}`,
+      })),
+    },
+    {
+      heading: 'Támogatás',
+      links: [
+        { label: 'Gyakori kérdések', href: '/#faq' },
+        { label: 'Kapcsolat', href: '/kapcsolat' },
+        {
+          label: 'Hozd létre ingyen',
+          href: `${CREATE_EVENT_PATH}?lang=hu`,
+          external: true,
+        },
+      ],
+    },
+    {
+      heading: 'Tudásbázis',
+      links: [
+        { label: 'Blog', href: '/blog' },
+        { label: 'Alternatívák', href: '/alternativak' },
+        { label: 'Összehasonlítás', href: '/osszehasonlitas' },
+      ],
+    },
+    {
+      heading: 'Jogi',
+      links: [
+        { label: 'Rólunk', href: '/rolunk' },
+        { label: 'Impresszum', href: '/impresszum' },
+        { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
+        { label: 'Általános Szerződési Feltételek', href: '/aszf' },
+        {
+          label: 'Elállás a szerződéstől',
+          href: '/kapcsolat#elallas',
+        },
+        { label: 'English', href: '/en', external: true },
+      ],
+    },
+  ],
+}
 
 export function Footer({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].footer
+  const columns = columnsByLocale[locale]
   return (
     <footer className="relative px-4 pt-16 pb-10 sm:px-6">
       <div className="mx-auto max-w-6xl">
@@ -83,7 +136,7 @@ export function Footer({ locale }: { locale: Locale }) {
               <Link
                 href={localePath(locale, '/')}
                 className="flex items-center gap-2.5"
-                aria-label="OurFilm — vissza a főoldalra"
+                aria-label={marketingCopy[locale].nav.home}
               >
                 <span className="glass flex size-9 items-center justify-center rounded-xl">
                   <Aperture
@@ -97,7 +150,7 @@ export function Footer({ locale }: { locale: Locale }) {
                 </span>
               </Link>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Egy kamera az egész násznépnek.
+                {copy.tagline}
               </p>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
@@ -108,7 +161,7 @@ export function Footer({ locale }: { locale: Locale }) {
             </div>
 
             <nav
-              aria-label="Lábléc"
+              aria-label={copy.aria}
               className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5 lg:gap-10"
             >
               {columns.map((column) => (
@@ -141,7 +194,7 @@ export function Footer({ locale }: { locale: Locale }) {
             {/* Never a literal year: the footer renders on every page, and a
                 hardcoded one silently goes stale on 1 January. */}
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} OurFilm. Minden jog fenntartva.
+              © {new Date().getFullYear()} OurFilm. {copy.copyright}
             </p>
           </div>
         </div>

@@ -10,11 +10,7 @@ import {
 import { RevealPreview } from '@/components/host/onboarding/reveal-preview'
 import type { RevealChoice } from '@/lib/camera'
 import { formatRevealBadge } from '@/lib/format'
-
-const CHOICES: { mode: RevealChoice; label: string; Icon: typeof Clock }[] = [
-  { mode: 'instant', label: 'Azonnal', Icon: Hourglass },
-  { mode: 'event_end', label: 'Az esemény végén', Icon: Clock },
-]
+import type { Locale } from '@/lib/i18n'
 
 export function StepReveal({
   nav,
@@ -22,34 +18,58 @@ export function StepReveal({
   setMode,
   revealIso,
   timeZone,
+  locale,
 }: {
   nav: OnboardingNav
   mode: RevealChoice
   setMode: (value: RevealChoice) => void
   revealIso: string | null
   timeZone: string
+  locale: Locale
 }) {
   const reduceMotion = useReducedMotion()
+  const en = locale === 'en'
+  const choices: { mode: RevealChoice; label: string; Icon: typeof Clock }[] = [
+    { mode: 'instant', label: en ? 'Right away' : 'Azonnal', Icon: Hourglass },
+    {
+      mode: 'event_end',
+      label: en ? 'When the event ends' : 'Az esemény végén',
+      Icon: Clock,
+    },
+  ]
   const badge =
     mode === 'instant'
-      ? 'A képek azonnal láthatók'
+      ? en
+        ? 'Photos appear right away'
+        : 'A képek azonnal láthatók'
       : revealIso
-        ? `Megjelenik: ${formatRevealBadge(revealIso, timeZone)}`
-        : 'Az esemény után jelenik meg'
+        ? `${en ? 'Opens' : 'Megjelenik'}: ${formatRevealBadge(revealIso, timeZone, locale)}`
+        : en
+          ? 'Opens after the event'
+          : 'Az esemény után jelenik meg'
 
   return (
     <OnboardingShell
       {...nav}
-      title="Mikor jelenjenek meg a képek?"
-      detail="A képek alapból rejtve maradnak az esemény alatt. Te döntöd el, mikor nyíljon meg a galéria."
-      cta="Tovább"
+      locale={locale}
+      title={
+        en ? 'When should the photos appear?' : 'Mikor jelenjenek meg a képek?'
+      }
+      detail={
+        en
+          ? 'Keep them hidden while everyone shoots, or reveal them as they arrive. You decide.'
+          : 'A képek alapból rejtve maradnak az esemény alatt. Te döntöd el, mikor nyíljon meg a galéria.'
+      }
+      cta={en ? 'Continue' : 'Tovább'}
     >
       <RevealPreview blurred={mode !== 'instant'} badge={badge} />
 
       <fieldset className="mt-auto pt-6">
-        <legend className="sr-only">A galéria megnyílásának időpontja</legend>
+        <legend className="sr-only">
+          {en ? 'Gallery reveal time' : 'A galéria megnyílásának időpontja'}
+        </legend>
         <div className="grid grid-cols-2 gap-2.5">
-          {CHOICES.map(({ mode: choice, label, Icon }) => {
+          {choices.map(({ mode: choice, label, Icon }) => {
             const active = choice === mode
             return (
               <label
@@ -62,7 +82,7 @@ export function StepReveal({
                   <motion.span
                     layoutId="reveal-selection"
                     aria-hidden="true"
-                    className="absolute inset-0 rounded-2xl bg-accent/10 ring-2 ring-inset ring-accent"
+                    className="absolute inset-0 rounded-2xl bg-accent/10 ring-2 ring-accent ring-inset"
                     transition={
                       reduceMotion
                         ? { duration: 0 }

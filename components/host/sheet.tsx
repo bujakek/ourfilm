@@ -2,13 +2,7 @@
 
 import { X } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 const EXIT_MS = 180
 
@@ -127,7 +121,9 @@ export function Sheet({
                   type="button"
                   onClick={onClose}
                   disabled={busy}
-                  whileTap={!busy && !reduceMotion ? { scale: 0.92 } : undefined}
+                  whileTap={
+                    !busy && !reduceMotion ? { scale: 0.92 } : undefined
+                  }
                   aria-label={closeLabel}
                   className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem] disabled:opacity-40"
                 >

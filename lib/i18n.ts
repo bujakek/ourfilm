@@ -10,12 +10,12 @@
  * Not `server-only`: the navbar is a Client Component and builds its own hrefs.
  */
 
-export const locales = ['hu'] as const
+export const locales = ['en', 'hu'] as const
 
 export type Locale = (typeof locales)[number]
 
 /** Where `/` sends visitors, and what `x-default` points at. */
-export const defaultLocale: Locale = 'hu'
+export const defaultLocale: Locale = 'en'
 
 /** Every locale the content model knows about, enabled or not.
  *
@@ -40,6 +40,21 @@ export function isKnownLocale(value: string): value is KnownLocale {
  *  are not locale-scoped — `/host`, `/e/…` — must not go through here. */
 export function localePath(locale: Locale, path: string): string {
   if (path === '/') return `/${locale}`
+  if (locale === 'en') {
+    const aliases: Record<string, string> = {
+      '/arak': '/pricing',
+      '/alkalmak': '/occasions',
+      '/rolunk': '/about',
+      '/kapcsolat': '/contact',
+      '/alternativak': '/alternatives',
+      '/osszehasonlitas': '/comparisons',
+    }
+    for (const [source, destination] of Object.entries(aliases)) {
+      if (path === source || path.startsWith(`${source}/`)) {
+        return `/${locale}${destination}${path.slice(source.length)}`
+      }
+    }
+  }
   return `/${locale}${path}`
 }
 

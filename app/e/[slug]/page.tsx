@@ -14,11 +14,13 @@ import { captureWindowState } from '@/lib/camera'
 import { signPhotoUrl } from '@/lib/photo-urls'
 import { getGalleryPhotosBySlug, toGalleryTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
+import type { Locale } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ lang?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -37,8 +39,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * photos. Keeping that on one URL means a QR scan always has one destination
  * and the guest never has to understand the app's route structure.
  */
-export default async function EventPage({ params }: Props) {
+export default async function EventPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const query = await searchParams
+  const locale: Locale = query.lang === 'hu' ? 'hu' : 'en'
   const event = await getGuestEventState(slug)
   if (!event) notFound()
 
@@ -57,11 +61,12 @@ export default async function EventPage({ params }: Props) {
     return (
       <JoinForm
         slug={slug}
+        locale={locale}
         eventName={event.event_name}
         hostName={event.host_name}
         coverUrl={coverUrl}
         shotsPerParticipant={event.shots_per_participant}
-        stateLabel={joinStateLabel(timing, event.shots_per_participant)}
+        stateLabel={joinStateLabel(timing, event.shots_per_participant, locale)}
         // `can_capture` requires a participant and there is none yet, so the
         // button's label comes from the window itself.
         canCapture={captureWindowState(timing) === 'open'}
@@ -69,7 +74,7 @@ export default async function EventPage({ params }: Props) {
     )
   }
 
-  const lock = galleryLock(timing)
+  const lock = galleryLock(timing, locale)
   const [participantCount, tiles] = await Promise.all([
     getGuestParticipantCount(event.id),
     lock.open
@@ -80,6 +85,7 @@ export default async function EventPage({ params }: Props) {
   return (
     <GuestEventView
       eventId={event.id}
+      locale={locale}
       slug={slug}
       eventName={event.event_name}
       eventUrl={eventUrl(event.slug)}

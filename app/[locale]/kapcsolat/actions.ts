@@ -51,13 +51,15 @@ export async function submitLegalRequest(formData: FormData) {
   const eventReference = readField(formData, 'eventReference', 500)
   const details = readField(formData, 'details')
   const paymentDate = readField(formData, 'paymentDate', 100)
+  const withdrawalConfirmed =
+    readField(formData, 'withdrawalConfirmed', 20) === 'confirmed'
   const photoReference = readField(formData, 'photoReference', 1_000)
 
   const validCommon =
     name.length >= 2 && EMAIL.test(email) && eventReference.length >= 3
   const validSpecific =
     type === 'withdrawal'
-      ? paymentDate.length >= 4
+      ? withdrawalConfirmed
       : photoReference.length >= 3 && details.length >= 5
 
   if (!validCommon || !validSpecific) {
@@ -97,7 +99,10 @@ export async function submitLegalRequest(formData: FormData) {
   ]
 
   if (type === 'withdrawal') {
-    lines.push(`Fizetés időpontja: ${paymentDate}`)
+    lines.push(
+      'Nyilatkozat: A fogyasztó a fent azonosított szerződéstől eláll, illetve a már megkezdett szolgáltatást felmondja.',
+    )
+    if (paymentDate) lines.push(`Fizetés időpontja: ${paymentDate}`)
     if (details) lines.push(`Megjegyzés: ${details}`)
     lines.push(
       '',

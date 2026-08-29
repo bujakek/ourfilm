@@ -41,9 +41,9 @@ export default async function AlternativesHubPage({ params }: Props) {
           {/* Said once, at the top of the shelf, rather than trusted to each
               page: these are our pages about our competitors, not a review. */}
           <p className="glass rounded-2xl px-6 py-4 text-sm leading-relaxed text-muted-foreground">
-            Ezek az összevetések az OurFilm oldalán jelennek meg, nem független
-            tesztek. A versenytársak nyilvános adatait a megjelöléskor
-            ellenőriztük; az árak és a funkciók azóta változhattak.
+            {locale === 'en'
+              ? 'These comparisons are published by OurFilm, not an independent reviewer. We checked each competitor’s public information on the date shown; pricing and features may have changed since.'
+              : 'Ezek az összevetések az OurFilm oldalán jelennek meg, nem független tesztek. A versenytársak nyilvános adatait a megjelöléskor ellenőriztük; az árak és a funkciók azóta változhattak.'}
           </p>
 
           <DocList docs={docs} locale={locale} showDate={false} />

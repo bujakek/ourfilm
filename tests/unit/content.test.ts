@@ -2,7 +2,7 @@ import { getAllDocs, getDocs, getRelatedDocs } from '@/lib/content/docs'
 import { getFaq } from '@/lib/content/faq'
 import { hubKinds, hubs, kindDefinitions } from '@/lib/content/kinds'
 import type { ContentDoc } from '@/lib/content/types'
-import { defaultLocale, localePath } from '@/lib/i18n'
+import { localePath, locales } from '@/lib/i18n'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
@@ -22,16 +22,15 @@ const docs = getAllDocs()
 /** Every path this site actually serves under a locale, content included.
  *  Anything an MDX body links to must be in here or it is a 404 waiting. */
 const servedPaths = new Set<string>([
-  localePath(defaultLocale, '/'),
-  ...[
-    '/arak',
-    '/alkalmak',
-    '/rolunk',
-    '/kapcsolat',
-    '/aszf',
-    '/adatvedelem',
-  ].map((path) => localePath(defaultLocale, path)),
-  ...hubs.map((hub) => localePath(defaultLocale, `/${hub}`)),
+  ...locales.flatMap((locale) => [
+    localePath(locale, '/'),
+    ...['/arak', '/alkalmak', '/rolunk', '/kapcsolat'].map((path) =>
+      localePath(locale, path),
+    ),
+    ...hubs.map((hub) => localePath(locale, `/${hub}`)),
+  ]),
+  localePath('hu', '/aszf'),
+  localePath('hu', '/adatvedelem'),
   ...docs.map((doc) => doc.href),
 ])
 
@@ -50,16 +49,17 @@ function internalLinks(doc: ContentDoc): string[] {
 }
 
 describe('the content pack', () => {
-  it('is all sixty-nine pages, and all of them are served', () => {
-    expect(docs).toHaveLength(69)
+  it('serves every published page in both content packs', () => {
+    expect(getDocs('hu')).toHaveLength(69)
+    expect(getDocs('en')).toHaveLength(7)
     expect(docs.filter((doc) => doc.draft)).toHaveLength(0)
   })
 
   it('puts each kind where the kind map says', () => {
     const counts = {
-      pages: 8,
-      blog: 41,
-      alternatives: 8,
+      pages: 11,
+      blog: 42,
+      alternatives: 11,
       vs: 7,
       compare: 5,
     } as const
@@ -70,7 +70,7 @@ describe('the content pack', () => {
       for (const doc of of) {
         expect(doc.href, doc.filePath).toBe(
           localePath(
-            defaultLocale,
+            doc.locale,
             `${kindDefinitions[doc.kind].prefix}/${doc.slug}`,
           ),
         )
@@ -82,7 +82,8 @@ describe('the content pack', () => {
     for (const field of ['href', 'id', 'title', 'description'] as const) {
       const seen = new Map<string, string>()
       for (const doc of docs) {
-        const value = doc[field]
+        const value =
+          field === 'href' ? doc[field] : `${doc.locale}:${doc[field]}`
         expect(
           seen.get(value),
           `${field} "${value}" is shared by ${doc.filePath} and ${seen.get(value)}`,
@@ -138,7 +139,7 @@ describe('internal linking', () => {
     for (const doc of docs) {
       for (const href of internalLinks(doc)) {
         expect(
-          servedPaths.has(href || localePath(defaultLocale, '/')),
+          servedPaths.has(href || localePath(doc.locale, '/')),
           `${doc.filePath} links to ${href}, which nothing serves`,
         ).toBe(true)
       }
@@ -170,9 +171,11 @@ describe('internal linking', () => {
       for (const related of getRelatedDocs(doc, 99)) bump(related.href)
     }
     // What the three hub pages render.
-    for (const hub of hubs) {
-      for (const doc of getDocs(defaultLocale, hubKinds[hub])) bump(doc.href)
-      for (const doc of getDocs(defaultLocale, ['pages'])) bump(doc.href)
+    for (const locale of locales) {
+      for (const hub of hubs) {
+        for (const doc of getDocs(locale, hubKinds[hub])) bump(doc.href)
+        for (const doc of getDocs(locale, ['pages'])) bump(doc.href)
+      }
     }
 
     const orphans = [...inbound].filter(([, count]) => count === 0)
@@ -180,10 +183,11 @@ describe('internal linking', () => {
   })
 
   it('sends the money pages onward, and the competitor pages back', () => {
-    const isMoney = (href: string) =>
-      getDocs(defaultLocale, ['pages']).some((doc) => doc.href === href)
-
     for (const doc of docs) {
+      const isMoney = (href: string) =>
+        getDocs(doc.locale, ['pages']).some(
+          (candidate) => candidate.href === href,
+        )
       const outbound = new Set([
         ...internalLinks(doc),
         ...getRelatedDocs(doc, 99).map((item) => item.href),
@@ -219,7 +223,7 @@ describe('structured data', () => {
 
       const text = body(doc)
       for (const entry of faq) {
-        expect(text, doc.filePath).toContain(`### ${entry.question}`)
+        expect(text, doc.filePath).toContain(entry.question)
       }
     }
   })

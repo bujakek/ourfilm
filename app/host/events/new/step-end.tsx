@@ -10,6 +10,7 @@ import {
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
 import { formatEventDate } from '@/lib/format'
+import type { Locale } from '@/lib/i18n'
 
 /**
  * Question two: when does the party end?
@@ -31,6 +32,7 @@ export function StepEnd({
   setTime,
   today,
   canAdvance,
+  locale,
 }: {
   nav: OnboardingNav
   /** `YYYY-MM-DD` */
@@ -42,16 +44,25 @@ export function StepEnd({
   /** The host's today, `YYYY-MM-DD`. Nothing before it is selectable. */
   today: string
   canAdvance: boolean
+  locale: Locale
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const en = locale === 'en'
 
   return (
     <>
       <OnboardingShell
         {...nav}
-        title="Mikor érjen véget az esemény?"
-        detail="A film most indul, a vendégek pedig a megadott időpontig készíthetnek képeket."
-        cta="Tovább"
+        locale={locale}
+        title={
+          en ? 'When should the camera close?' : 'Mikor érjen véget az esemény?'
+        }
+        detail={
+          en
+            ? 'The camera opens now. Guests can keep shooting until this time.'
+            : 'A film most indul, a vendégek pedig a megadott időpontig készíthetnek képeket.'
+        }
+        cta={en ? 'Continue' : 'Tovább'}
         ctaDisabled={!canAdvance}
       >
         <div className="space-y-3">
@@ -67,10 +78,10 @@ export function StepEnd({
             />
             <span className="min-w-0 flex-1">
               <span className="block text-xs tracking-[0.2em] text-muted-foreground/70">
-                DÁTUM
+                {en ? 'DATE' : 'DÁTUM'}
               </span>
               <span className="mt-1 block text-base font-medium">
-                {formatEventDate(day)}
+                {formatEventDate(day, locale)}
               </span>
             </span>
             <ChevronRight
@@ -90,7 +101,7 @@ export function StepEnd({
             />
             <span className="min-w-0 flex-1">
               <span className="block text-xs tracking-[0.2em] text-muted-foreground/70">
-                IDŐPONT
+                {en ? 'TIME' : 'IDŐPONT'}
               </span>
               <span className="mt-1 block text-base font-medium tabular-nums">
                 {time}
@@ -104,7 +115,9 @@ export function StepEnd({
               type="time"
               step={60}
               required
-              aria-label="Az esemény végének időpontja"
+              aria-label={
+                en ? 'Event end time' : 'Az esemény végének időpontja'
+              }
               value={time}
               onChange={(event) => setTime(event.target.value)}
               className="absolute inset-0 size-full cursor-pointer opacity-0"
@@ -116,14 +129,19 @@ export function StepEnd({
       <Sheet
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
-        closeLabel="Dátumválasztó bezárása"
-        title="Válassz dátumot"
-        detail="Eddig az időpontig készíthetnek képeket a vendégeid."
+        closeLabel={en ? 'Close date picker' : 'Dátumválasztó bezárása'}
+        title={en ? 'Choose a date' : 'Válassz dátumot'}
+        detail={
+          en
+            ? 'Guests can shoot until this date and time.'
+            : 'Eddig az időpontig készíthetnek képeket a vendégeid.'
+        }
       >
         <MonthCalendar
           value={day}
           earliest={today}
           label="Az esemény vége"
+          locale={locale}
           onChange={(value) => {
             setDay(value)
             setCalendarOpen(false)

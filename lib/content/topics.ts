@@ -33,7 +33,7 @@ export function isTopic(value: string): value is Topic {
 /** Shelf order on the index, and the Hungarian each shelf is titled with. */
 export const topicOrder: readonly TopicKey[] = [...topics, FALLBACK_TOPIC]
 
-export const topicLabel: Record<TopicKey, { title: string; lead: string }> = {
+const huTopicLabel: Record<TopicKey, { title: string; lead: string }> = {
   vendegkamera: {
     title: 'Vendégkamera és QR-kód',
     lead: 'Hogyan állítsd be, hova tedd ki, és mit írj a kód mellé.',
@@ -59,3 +59,32 @@ export const topicLabel: Record<TopicKey, { title: string; lead: string }> = {
     lead: 'Minden más, ami a vendégfotókról szól.',
   },
 }
+
+const enTopicLabel: Record<TopicKey, { title: string; lead: string }> = {
+  vendegkamera: {
+    title: 'Guest cameras and QR codes',
+    lead: 'How to set it up, where to place the code and what to write beside it.',
+  },
+  film: {
+    title: 'Disposable cameras and the film experience',
+    lead: 'Limited rolls, delayed reveals and what digital film adds to the day.',
+  },
+  eszkozok: {
+    title: 'Apps and tools you already use',
+    lead: 'Drive, iCloud, WhatsApp and photo-sharing apps — where each one works and where it falls short.',
+  },
+  otletek: {
+    title: 'Ideas for the wedding day',
+    lead: 'Photo corners, guest books, games and ideas guests will actually join.',
+  },
+  utana: {
+    title: 'After the wedding',
+    lead: 'Saving, organising and sharing the photos once the day is over.',
+  },
+  egyeb: {
+    title: 'More guides',
+    lead: 'Everything else about collecting guest photos.',
+  },
+}
+
+export const topicLabel = { en: enTopicLabel, hu: huTopicLabel } as const

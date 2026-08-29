@@ -1,5 +1,4 @@
 import { PageShell } from '@/components/site/page-shell'
-import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { Flag, HelpCircle, Mail, ReceiptText } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -8,12 +7,47 @@ import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import { submitLegalRequest } from './actions'
 
-export const metadata: Metadata = {
-  title: 'Kapcsolat – OurFilm',
-  description:
-    'Írj nekünk, ha kérdésed van az OurFilmről, egy eseményről vagy a fotóidról.',
-  // Publish with the other standalone pages once the company details are real.
-  robots: { index: false, follow: true },
+const copy = {
+  en: {
+    title: 'Contact – OurFilm',
+    description:
+      'Get in touch with a question about OurFilm, your event or your photos.',
+    eyebrow: 'CONTACT',
+    heading: 'Talk to us',
+    lead: 'Have a question about your event, uploading or downloading photos? Send us a note and a real person will reply.',
+    emailBody:
+      'Tell us briefly how we can help. If your question is about an existing event, include its name.',
+    faq: 'Frequently asked questions',
+    faqBody: 'You may find the answer you need in our FAQ.',
+    made: 'Made in Budapest',
+    madeBody: 'OurFilm is built in Hungary.',
+    about: 'About us',
+  },
+  hu: {
+    title: 'Kapcsolat – OurFilm',
+    description:
+      'Írj nekünk, ha kérdésed van az OurFilmről, egy eseményről vagy a fotóidról.',
+    eyebrow: 'KAPCSOLAT',
+    heading: 'Írj nekünk',
+    lead: 'Kérdésed van az eseményedről, a feltöltésről vagy a letöltésről? Írj nekünk, és személyesen válaszolunk.',
+    emailBody:
+      'Írd meg röviden, miben segíthetünk. Ha egy konkrét eseményről írsz, add meg az esemény nevét is.',
+    faq: 'Gyakori kérdések',
+    faqBody: 'A leggyakoribb kérdésekre már összegyűjtöttük a válaszokat.',
+    made: 'Budapesten készül',
+    madeBody: 'Az OurFilm magyar fejlesztés.',
+    about: 'Rólunk',
+  },
+} as const
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  if (!isLocale(locale)) return {}
+  return {
+    title: copy[locale].title,
+    description: copy[locale].description,
+    robots: { index: false, follow: true },
+  }
 }
 
 type Props = {
@@ -24,6 +58,7 @@ type Props = {
 export default async function KapcsolatPage({ params, searchParams }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
+  const current = copy[locale]
   const query = await searchParams
   const result =
     query.legal === 'sent' ? 'sent' : query.legal === 'error' ? 'error' : null
@@ -32,9 +67,9 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
   return (
     <PageShell
       locale={locale}
-      eyebrow="KAPCSOLAT"
-      title="Írj nekünk"
-      lead="Kérdésed van az eseményedről, a feltöltésről vagy a letöltésről? Írj nekünk, és személyesen válaszolunk."
+      eyebrow={current.eyebrow}
+      title={current.heading}
+      lead={current.lead}
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
@@ -50,8 +85,7 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
               E-mail
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Írd meg röviden, miben segíthetünk. Ha egy konkrét eseményről
-              írsz, add meg az esemény nevét is.
+              {current.emailBody}
             </p>
             <a
               href={`mailto:${CONTACT_EMAIL}`}
@@ -71,15 +105,15 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
                   aria-hidden="true"
                 />
               </span>
-              <h2 className="mt-6 text-base font-semibold">Gyakori kérdések</h2>
+              <h2 className="mt-6 text-base font-semibold">{current.faq}</h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                A leggyakoribb kérdésekre már összegyűjtöttük a válaszokat.
+                {current.faqBody}
               </p>
               <Link
                 href={localePath(locale, '/#faq')}
                 className="mt-5 text-sm font-medium text-accent underline underline-offset-4 transition-colors hover:text-foreground"
               >
-                Gyakori kérdések
+                {current.faq}
               </Link>
             </article>
 
@@ -91,49 +125,48 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
                   aria-hidden="true"
                 />
               </span>
-              <h2 className="mt-6 text-base font-semibold">Fizetős csomag</h2>
+              <h2 className="mt-6 text-base font-semibold">{current.made}</h2>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                Az egyszeri, {EVENT_PRICE_LABEL}-os csomaggal kapcsolatos
-                elállást is itt tudod intézni, külön ügyfélszolgálati rendszer
-                nélkül.
+                {current.madeBody}
               </p>
-              <a
-                href="#elallas"
+              <Link
+                href={localePath(locale, '/rolunk')}
                 className="mt-5 text-sm font-medium text-accent underline underline-offset-4 transition-colors hover:text-foreground"
               >
-                Ugrás az elállási űrlaphoz
-              </a>
+                {current.about}
+              </Link>
             </article>
           </div>
 
-          <div className="mt-12 space-y-4">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Kérelmek egyszerűen
-            </h2>
-            <p className="leading-relaxed text-pretty text-muted-foreground">
-              Nem kell külön jogi oldalak között keresgélned. Válaszd ki, mit
-              szeretnél intézni; a beküldésről azonnali e-mailes másolatot
-              kapsz.
-            </p>
+          {locale === 'hu' ? (
+            <div className="mt-12 space-y-4">
+              <h2 className="text-2xl font-semibold tracking-tight">
+                Kérelmek egyszerűen
+              </h2>
+              <p className="leading-relaxed text-pretty text-muted-foreground">
+                Válaszd ki, mit szeretnél intézni; a beküldésről azonnali,
+                dátummal és időponttal ellátott e-mailes másolatot kapsz.
+              </p>
 
-            <LegalRequestCard
-              id="elallas"
-              icon="withdrawal"
-              title="Elállás vagy felmondás"
-              description="Fogyasztóként a fizetéstől számított 14 napon belül küldheted el. Ha a szolgáltatás már megkezdődött, a ténylegesen teljesített rész arányos díja levonható; a visszatérítés ezért nem minden esetben automatikusan a teljes összeg."
-              locale={locale}
-              result={resultType === 'withdrawal' ? result : null}
-            />
+              <LegalRequestCard
+                id="elallas"
+                icon="withdrawal"
+                title="Elállás a szerződéstől"
+                description="Fogyasztóként a fizetéstől számított 14 napon belül küldheted el a nyilatkozatot. Ha a szolgáltatás már megkezdődött, a ténylegesen teljesített rész arányos díja levonható; a visszatérítés ezért nem minden esetben automatikusan a teljes összeg."
+                locale={locale}
+                result={resultType === 'withdrawal' ? result : null}
+              />
 
-            <LegalRequestCard
-              id="kepeltavolitas"
-              icon="content"
-              title="Kép eltávolítása vagy tartalom bejelentése"
-              description="A leggyorsabb megoldás az esemény házigazdája, aki azonnal elrejtheti a képet. Ha ez nem lehetséges, itt pontosan megjelölheted a képet és a kérésed okát."
-              locale={locale}
-              result={resultType === 'content' ? result : null}
-            />
-          </div>
+              <LegalRequestCard
+                id="kepeltavolitas"
+                icon="content"
+                title="Kép eltávolítása vagy tartalom bejelentése"
+                description="A leggyorsabb megoldás az esemény házigazdája, aki azonnal elrejtheti a képet. Ha ez nem lehetséges, itt pontosan megjelölheted a képet és a kérésed okát."
+                locale={locale}
+                result={resultType === 'content' ? result : null}
+              />
+            </div>
+          ) : null}
         </div>
       </section>
     </PageShell>
@@ -216,7 +249,7 @@ function LegalRequestCard({
         </div>
 
         <FormField
-          label="Esemény neve vagy linkje"
+          label="Esemény neve, linkje vagy Stripe-bizonylat azonosítója"
           name="eventReference"
           placeholder="Például: Anna és Bence esküvője"
         />
@@ -224,11 +257,25 @@ function LegalRequestCard({
         {isWithdrawal ? (
           <>
             <FormField
-              label="Fizetés időpontja"
+              label="Fizetés időpontja (nem kötelező)"
               name="paymentDate"
               type="date"
+              required={false}
             />
             <FormTextArea label="Megjegyzés (nem kötelező)" name="details" />
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm leading-relaxed">
+              <input
+                required
+                type="checkbox"
+                name="withdrawalConfirmed"
+                value="confirmed"
+                className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+              />
+              <span>
+                Kijelentem, hogy a fent azonosított szerződéstől elállok,
+                illetve a már megkezdett szolgáltatást felmondom.
+              </span>
+            </label>
           </>
         ) : (
           <>
@@ -249,7 +296,7 @@ function LegalRequestCard({
           type="submit"
           className="btn-shine inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
         >
-          Kérelem elküldése
+          {isWithdrawal ? 'Elállás megerősítése' : 'Kérelem elküldése'}
         </button>
         <p className="text-xs leading-relaxed text-muted-foreground">
           A megadott adatokat kizárólag a kérelem kezelésére használjuk.
@@ -265,18 +312,20 @@ function FormField({
   type = 'text',
   autoComplete,
   placeholder,
+  required = true,
 }: {
   label: string
   name: string
   type?: string
   autoComplete?: string
   placeholder?: string
+  required?: boolean
 }) {
   return (
     <label className="block text-sm font-medium">
       {label}
       <input
-        required
+        required={required}
         name={name}
         type={type}
         autoComplete={autoComplete}

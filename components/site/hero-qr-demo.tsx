@@ -3,8 +3,11 @@
 import { Check, QrCode, ScanLine } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
+import type { Locale } from '@/lib/i18n'
+import { marketingCopy } from '@/lib/marketing-copy'
 
-export function HeroQrDemo() {
+export function HeroQrDemo({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].demo
   const reduceMotion = useReducedMotion()
   const [complete, setComplete] = useState(false)
 
@@ -30,9 +33,7 @@ export function HeroQrDemo() {
     <div className="absolute top-8 -right-2 w-[34%] max-w-[132px] animate-float-slower [animation-delay:-8s]">
       <motion.div
         animate={
-          complete && !reduceMotion
-            ? { scale: [1, 1.025, 1] }
-            : { scale: 1 }
+          complete && !reduceMotion ? { scale: [1, 1.025, 1] } : { scale: 1 }
         }
         transition={{ duration: reduceMotion ? 0 : 0.32 }}
         className="glass-strong relative overflow-hidden rounded-2xl p-3"
@@ -45,7 +46,7 @@ export function HeroQrDemo() {
           />
         </div>
         <p className="mt-2 text-center text-[9px] font-medium text-muted-foreground">
-          Olvasd be, és fotózz velünk.
+          {copy.scan}
         </p>
 
         {!reduceMotion ? (
@@ -80,7 +81,7 @@ export function HeroQrDemo() {
               <ScanLine className="size-3 text-accent" aria-hidden="true" />
             )}
             <span className="text-[9px] font-medium">
-              {complete ? 'Kész' : 'Beolvasás…'}
+              {complete ? copy.ready : copy.scanning}
             </span>
           </motion.span>
         </AnimatePresence>

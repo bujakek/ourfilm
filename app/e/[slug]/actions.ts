@@ -52,9 +52,12 @@ export async function joinEventAction(
 ): Promise<JoinState> {
   const slug = String(formData.get('slug') ?? '').trim()
   const name = String(formData.get('name') ?? '').trim()
+  const lang = formData.get('lang') === 'hu' ? 'hu' : 'en'
 
-  if (!slug) return { error: 'Hiányzó esemény.' }
-  if (!name) return { error: 'Írd be a neved.' }
+  if (!slug)
+    return { error: lang === 'en' ? 'Event not found.' : 'Hiányzó esemény.' }
+  if (!name)
+    return { error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.' }
 
   // A fresh token per join. A guest re-joining on the same device gets a new
   // cookie and, because the RPC upserts on the *old* hash only if it matches,
@@ -67,13 +70,17 @@ export async function joinEventAction(
     if (result.reason === 'cap_reached') {
       return {
         error:
-          'Ez az ingyenes esemény legfeljebb 5 résztvevővel használható. ' +
-          'Kérd meg a szervezőt, hogy oldja fel a teljes eseményt.',
+          lang === 'en'
+            ? 'This free event supports up to 5 guests. Ask the host to unlock the full event.'
+            : 'Ez az ingyenes esemény legfeljebb 5 résztvevővel használható. Kérd meg a szervezőt, hogy oldja fel a teljes eseményt.',
         capReached: true,
       }
     }
-    if (result.reason === 'not_found') return { error: 'Nincs ilyen esemény.' }
-    return { error: 'Írd be a neved.' }
+    if (result.reason === 'not_found')
+      return {
+        error: lang === 'en' ? 'Event not found.' : 'Nincs ilyen esemény.',
+      }
+    return { error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.' }
   }
 
   await writeParticipantCookie(slug, session.token)
@@ -90,7 +97,7 @@ export async function joinEventAction(
   // the action is unambiguous and terminal.
   revalidatePath(`/e/${slug}`, 'layout')
   // Outside any try/catch: redirect() signals by throwing.
-  redirect(`/e/${slug}`)
+  redirect(`/e/${slug}?lang=${lang}`)
 }
 
 export type ReserveState =

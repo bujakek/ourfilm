@@ -47,7 +47,12 @@ export const getFaq = cache((doc: ContentDoc): FaqEntry[] => {
   const source = readFileSync(doc.filePath, 'utf8')
 
   const start = source.indexOf(`\n${FAQ_HEADING}`)
-  if (start === -1) return []
+  if (start === -1) {
+    const entries = [
+      ...source.matchAll(/q:\s*'([^']+)',\s*a:\s*'([^']+)',/g),
+    ].map(([, question, answer]) => ({ question, answer }))
+    return entries
+  }
 
   // The section runs to the next `##` of any depth-2 kind, or to the end.
   const rest = source.slice(start + FAQ_HEADING.length + 1)

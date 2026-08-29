@@ -1,5 +1,10 @@
 import { PageShell } from '@/components/site/page-shell'
-import { OCCASIONS_ARE_DRAFT, occasionBySlug, occasions } from '@/lib/occasions'
+import {
+  OCCASIONS_ARE_DRAFT,
+  occasionBySlug,
+  occasionCopy,
+  occasions,
+} from '@/lib/occasions'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
@@ -17,16 +22,18 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { occasion: slug } = await params
+  const { locale, occasion: slug } = await params
+  if (!isLocale(locale)) return {}
   const occasion = occasionBySlug(slug)
   if (!occasion) return {}
+  const copy = occasionCopy(locale, occasion)
 
   return {
-    title: occasion.meta.title,
-    description: occasion.meta.description,
+    title: copy.meta.title,
+    description: copy.meta.description,
     openGraph: {
-      title: occasion.meta.title,
-      description: occasion.meta.description,
+      title: copy.meta.title,
+      description: copy.meta.description,
     },
     ...(OCCASIONS_ARE_DRAFT ? { robots: { index: false, follow: true } } : {}),
   }
@@ -37,13 +44,14 @@ export default async function OccasionPage({ params }: Props) {
   if (!isLocale(locale)) notFound()
   const occasion = occasionBySlug(slug)
   if (!occasion) notFound()
+  const copy = occasionCopy(locale, occasion)
 
   return (
     <PageShell
       locale={locale}
-      eyebrow={occasion.label.toUpperCase()}
-      title={occasion.title}
-      lead={occasion.text}
+      eyebrow={copy.label.toUpperCase()}
+      title={copy.title}
+      lead={copy.text}
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
@@ -51,7 +59,7 @@ export default async function OccasionPage({ params }: Props) {
             <div className="relative aspect-[16/10] overflow-hidden rounded-[1.6rem] sm:aspect-[16/8]">
               <Image
                 src={occasion.image}
-                alt={occasion.alt}
+                alt={copy.alt}
                 fill
                 sizes="(max-width: 768px) 100vw, 768px"
                 priority
@@ -61,7 +69,7 @@ export default async function OccasionPage({ params }: Props) {
           </div>
 
           <div className="mt-14 space-y-12">
-            {occasion.sections.map((section) => (
+            {copy.sections.map((section) => (
               <div key={section.heading}>
                 <h2 className="text-2xl font-semibold tracking-tight text-balance">
                   {section.heading}
@@ -75,19 +83,19 @@ export default async function OccasionPage({ params }: Props) {
 
           <div className="glass-strong mt-14 rounded-3xl p-8 sm:p-10">
             <h2 className="text-2xl font-semibold tracking-tight text-balance">
-              {occasion.cta.heading}
+              {copy.cta.heading}
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              {occasion.cta.body}
+              {copy.cta.body}
             </p>
             <Link
-              href={CREATE_EVENT_PATH}
+              href={`${CREATE_EVENT_PATH}?lang=${locale}`}
               className="btn-shine mt-7 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              {occasion.cta.button}
+              {copy.cta.button}
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
-              {occasion.cta.helper}
+              {copy.cta.helper}
             </p>
           </div>
 
@@ -96,7 +104,7 @@ export default async function OccasionPage({ params }: Props) {
             className="mt-12 inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Minden alkalom
+            {locale === 'en' ? 'All occasions' : 'Minden alkalom'}
           </Link>
         </div>
       </section>

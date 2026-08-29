@@ -53,7 +53,9 @@ export default async function BlogIndexPage({ params }: Props) {
         <div className="mx-auto max-w-3xl">
           {shelves.size === 0 ? (
             <p className="mt-12 leading-relaxed text-muted-foreground">
-              Még nincs bejegyzés. Hamarosan.
+              {locale === 'en'
+                ? 'No articles yet. Check back soon.'
+                : 'Még nincs bejegyzés. Hamarosan.'}
             </p>
           ) : (
             topicOrder
@@ -61,10 +63,10 @@ export default async function BlogIndexPage({ params }: Props) {
               .map((topic) => (
                 <section key={topic} className="mt-14 first:mt-8">
                   <h2 className="text-2xl font-semibold tracking-tight text-balance">
-                    {topicLabel[topic].title}
+                    {topicLabel[locale][topic].title}
                   </h2>
                   <p className="mt-2 leading-relaxed text-pretty text-muted-foreground">
-                    {topicLabel[topic].lead}
+                    {topicLabel[locale][topic].lead}
                   </p>
                   <DocList docs={shelves.get(topic) ?? []} locale={locale} />
                 </section>
