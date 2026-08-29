@@ -6,6 +6,7 @@ import { useActionState, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 import { Sheet } from '@/components/host/sheet'
+import type { Locale } from '@/lib/i18n'
 
 type Result = { status: 'idle' | 'sent' | 'error'; message?: string }
 
@@ -33,13 +34,16 @@ export function AuthDialog({
   open,
   onClose,
   returnTo,
+  locale = 'hu',
 }: {
   open: boolean
   onClose: () => void
   /** Path the magic link should land on, already carrying whatever the resume
    *  route needs. Passed through `safeNext` on the way back. */
   returnTo: string
+  locale?: Locale
 }) {
+  const en = locale === 'en'
   const [result, submit, pending] = useActionState(sendLink, INITIAL)
   const [existing, setExisting] = useState(false)
   const sendingRef = useRef(false)
@@ -68,7 +72,9 @@ export function AuthDialog({
       sendingRef.current = false
       return {
         status: 'error' as const,
-        message: 'Nem sikerült elküldeni. Próbáld újra egy kicsit később.',
+        message: en
+          ? 'We could not send the link. Please try again in a moment.'
+          : 'Nem sikerült elküldeni. Próbáld újra egy kicsit később.',
       }
     }
     return { status: 'sent' as const }
@@ -79,9 +85,13 @@ export function AuthDialog({
       <Sheet
         open={open}
         onClose={onClose}
-        closeLabel="Bezárás"
-        title="Elküldtük a linket"
-        detail="Nézd meg a postaládádat, és koppints a linkre. Ugyanebben a böngészőben nyisd meg — az eseményed beállításai ezen az eszközön vannak elmentve."
+        closeLabel={en ? 'Close' : 'Bezárás'}
+        title={en ? 'Check your inbox' : 'Elküldtük a linket'}
+        detail={
+          en
+            ? 'Open the link in this browser. Your event settings are saved on this device.'
+            : 'Nézd meg a postaládádat, és koppints a linkre. Ugyanebben a böngészőben nyisd meg — az eseményed beállításai ezen az eszközön vannak elmentve.'
+        }
       >
         <div className="flex items-center justify-center">
           <span className="flex size-14 items-center justify-center rounded-full bg-accent/20">
@@ -96,12 +106,16 @@ export function AuthDialog({
     <Sheet
       open={open}
       onClose={onClose}
-      closeLabel="Bezárás"
-      title="Mentsd el az eseményed"
+      closeLabel={en ? 'Close' : 'Bezárás'}
+      title={en ? 'Save your event' : 'Mentsd el az eseményed'}
       detail={
         existing
-          ? 'Add meg az e-mail-címed, és küldünk egy belépési linket. A beállításaid már el vannak mentve.'
-          : 'Hozz létre egy ingyenes fiókot, hogy később is elérd és kezeld az eseményt. A beállításaid már el vannak mentve.'
+          ? en
+            ? 'Enter your email and we will send you a sign-in link. Your settings are already saved.'
+            : 'Add meg az e-mail-címed, és küldünk egy belépési linket. A beállításaid már el vannak mentve.'
+          : en
+            ? 'Create a free account so you can come back and manage your event. Your settings are already saved.'
+            : 'Hozz létre egy ingyenes fiókot, hogy később is elérd és kezeld az eseményt. A beállításaid már el vannak mentve.'
       }
     >
       <form action={submit} className="flex flex-col gap-3">
@@ -111,8 +125,8 @@ export function AuthDialog({
           required
           autoComplete="email"
           disabled={pending}
-          placeholder="te@pelda.hu"
-          aria-label="E-mail-cím"
+          placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
+          aria-label={en ? 'Email address' : 'E-mail-cím'}
           className="glass min-h-14 w-full rounded-2xl px-5 text-base outline-none placeholder:text-muted-foreground/50 focus:border-accent disabled:opacity-60"
         />
 
@@ -133,7 +147,13 @@ export function AuthDialog({
           ) : (
             <Mail className="size-5" strokeWidth={1.8} aria-hidden="true" />
           )}
-          {pending ? 'Küldés…' : 'Küldjétek a linket'}
+          {pending
+            ? en
+              ? 'Sending…'
+              : 'Küldés…'
+            : en
+              ? 'Send me the link'
+              : 'Küldjétek a linket'}
         </button>
 
         {/* One link signs up and signs in, so this changes the wording rather
@@ -145,7 +165,9 @@ export function AuthDialog({
             onClick={() => setExisting(true)}
             className="min-h-11 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
           >
-            Már van fiókod? Belépés
+            {en
+              ? 'Already have an account? Sign in'
+              : 'Már van fiókod? Belépés'}
           </button>
         )}
       </form>

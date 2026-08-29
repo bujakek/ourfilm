@@ -4,40 +4,12 @@ import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Reveal } from './reveal'
+import type { Locale } from '@/lib/i18n'
+import { marketingCopy } from '@/lib/marketing-copy'
 
-/** Every answer is checked against the disposable-camera product as built. */
-const faqs = [
-  {
-    q: 'Kell alkalmazást letölteni?',
-    a: 'Nem. A QR-kód beolvasása után a kamera közvetlenül a telefon böngészőjében nyílik meg.',
-  },
-  {
-    q: 'Kell regisztrálni?',
-    a: 'A vendégeknek nem. Csak a nevüket adják meg, hogy mindenki a saját tekercsét használja.',
-  },
-  {
-    q: 'Hogyan készülnek a képek?',
-    a: 'A vendégek az OurFilm kamerájával, az esemény közben fotóznak. Nincs előnézet és nincs újrapróbálás.',
-  },
-  {
-    q: 'Hány képet készíthet egy vendég?',
-    a: 'Te választod ki: 5, 10, 16, 24 vagy 36 képet.',
-  },
-  {
-    q: 'Mikor láthatók a képek?',
-    a: 'Te döntöd el: azonnal, az esemény végén vagy 1–30 nappal később.',
-  },
-  {
-    q: 'Ki láthatja a képeket?',
-    a: 'A galéria nem nyilvános. Szervezőként minden képet látsz, a vendégek galériáját pedig te kapcsolod be.',
-  },
-  {
-    q: 'Letölthetők a képek?',
-    a: 'Igen. Az esemény képeit egyben is letöltheted, majd megoszthatod vagy kinyomtathatod őket.',
-  },
-]
-
-export function Faq() {
+export function Faq({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].faq
+  const faqs = copy.items.map(([q, a]) => ({ q, a }))
   const [open, setOpen] = useState<number | null>(0)
 
   return (
@@ -45,7 +17,7 @@ export function Faq() {
       <div className="mx-auto max-w-3xl">
         <Reveal className="text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Gyakori kérdések
+            {copy.title}
           </h2>
         </Reveal>
 

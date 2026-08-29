@@ -21,6 +21,7 @@ import {
 } from '@/lib/event-draft'
 import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
 import type { EventPlan } from '@/lib/onboarding'
+import type { Locale } from '@/lib/i18n'
 import { createEventFromDraft } from './actions'
 import { StepEnd } from './step-end'
 import { StepGuests } from './step-guests'
@@ -62,6 +63,7 @@ export function NewEventForm(props: Props) {
   const stored = useStoredDraft()
   const params = useSearchParams()
   const timeZone = useBrowserTimeZone()
+  const locale: Locale = params.get('lang') === 'hu' ? 'hu' : 'en'
 
   // Set by the resume route when a draft's end date has gone by: reopen the
   // flow on the date screen with everything else intact, rather than asking
@@ -98,10 +100,12 @@ export function NewEventForm(props: Props) {
         }
         startStep={forceEndStep ? END_STEP : initial.step}
         timeZone={timeZone}
+        locale={locale}
       />
 
       <DraftRestoreDialog
         open={askRestore}
+        locale={locale}
         onResume={() => setChoice('stored')}
         onDiscard={() => {
           clearDraft()
@@ -136,10 +140,12 @@ function OnboardingFlow({
   initialCreationKey,
   startStep,
   timeZone,
+  locale,
 }: Props & {
   initial: EventDraft
   startStep: number
   timeZone: string
+  locale: Locale
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -287,16 +293,28 @@ function OnboardingFlow({
     <>
       {step === 0 ? (
         <StepName
+          locale={locale}
           nav={nav()}
           name={name}
           setName={setName}
-          suggestions={suggestions}
+          suggestions={
+            locale === 'en'
+              ? [
+                  'Our wedding',
+                  'The big day',
+                  'Birthday party',
+                  'Anniversary',
+                  'One unforgettable night',
+                ]
+              : suggestions
+          }
           canAdvance={name.trim().length > 0}
         />
       ) : null}
 
       {step === END_STEP ? (
         <StepEnd
+          locale={locale}
           nav={nav()}
           day={day}
           setDay={(value) => setChosenEnd(`${value}T${time}`)}
@@ -309,6 +327,7 @@ function OnboardingFlow({
 
       {step === 2 ? (
         <StepReveal
+          locale={locale}
           nav={nav()}
           mode={revealMode}
           setMode={setRevealMode}
@@ -319,6 +338,7 @@ function OnboardingFlow({
 
       {step === LAST_STEP ? (
         <StepGuests
+          locale={locale}
           nav={nav({ onNext: create })}
           plan={plan}
           setPlan={setPlan}
@@ -332,6 +352,7 @@ function OnboardingFlow({
       ) : null}
 
       <AuthDialog
+        locale={locale}
         open={authOpen}
         onClose={() => setAuthOpen(false)}
         returnTo="/auth/event-complete"

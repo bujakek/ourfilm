@@ -6,6 +6,10 @@ import type { ContentKind } from './kinds'
 
 type MdxModule = { default: ComponentType<MDXProps> }
 
+const unavailable = async (): Promise<MdxModule> => {
+  throw new Error('No English document exists for this content kind.')
+}
+
 /**
  * Loads a document's compiled body.
  *
@@ -26,23 +30,23 @@ const loaders: Record<
 > = {
   pages: {
     hu: (slug) => import(`@/content/pages/hu/${slug}.mdx`),
-    // en: (slug) => import(`@/content/pages/en/${slug}.mdx`),
+    en: (slug) => import(`@/content/pages/en/${slug}.mdx`),
   },
   blog: {
     hu: (slug) => import(`@/content/blog/hu/${slug}.mdx`),
-    // en: (slug) => import(`@/content/blog/en/${slug}.mdx`),
+    en: (slug) => import(`@/content/blog/en/${slug}.mdx`),
   },
   alternatives: {
     hu: (slug) => import(`@/content/alternatives/hu/${slug}.mdx`),
-    // en: (slug) => import(`@/content/alternatives/en/${slug}.mdx`),
+    en: (slug) => import(`@/content/alternatives/en/${slug}.mdx`),
   },
   vs: {
     hu: (slug) => import(`@/content/vs/hu/${slug}.mdx`),
-    // en: (slug) => import(`@/content/vs/en/${slug}.mdx`),
+    en: unavailable,
   },
   compare: {
     hu: (slug) => import(`@/content/compare/hu/${slug}.mdx`),
-    // en: (slug) => import(`@/content/compare/en/${slug}.mdx`),
+    en: unavailable,
   },
 }
 

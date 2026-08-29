@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef } from 'react'
+import type { Locale } from '@/lib/i18n'
 
 const SWIPE_THRESHOLD = 50
 
@@ -13,11 +14,13 @@ export function Lightbox({
   index,
   onClose,
   onNavigate,
+  locale = 'hu',
 }: {
   photos: GalleryTile[]
   index: number
   onClose: () => void
   onNavigate: (next: number) => void
+  locale?: Locale
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const touchStartX = useRef<number | null>(null)
@@ -55,12 +58,15 @@ export function Lightbox({
 
   if (!photo) return null
 
-  const caption = `${photo.uploaderName} fotója`
+  const caption =
+    locale === 'en'
+      ? `Photo by ${photo.uploaderName}`
+      : `${photo.uploaderName} fotója`
 
   return (
     <dialog
       ref={dialogRef}
-      aria-label="Fotó nagyban"
+      aria-label={locale === 'en' ? 'Photo viewer' : 'Fotó nagyban'}
       className="max-h-none max-w-none bg-transparent backdrop:bg-black/90 backdrop:backdrop-blur-sm"
       onClose={onClose}
       onTouchStart={(e) => {
@@ -89,7 +95,7 @@ export function Lightbox({
             type="button"
             onClick={onClose}
             whileTap={{ scale: 0.9 }}
-            aria-label="Bezárás"
+            aria-label={locale === 'en' ? 'Close' : 'Bezárás'}
             className="glass flex size-11 items-center justify-center rounded-full text-white"
           >
             <X className="size-5" />
@@ -125,7 +131,7 @@ export function Lightbox({
             onClick={() => go(-1)}
             disabled={index === 0}
             whileTap={index === 0 ? undefined : { scale: 0.9 }}
-            aria-label="Előző kép"
+            aria-label={locale === 'en' ? 'Previous photo' : 'Előző kép'}
             className="glass flex size-12 items-center justify-center rounded-full text-white disabled:opacity-30"
           >
             <ChevronLeft className="size-6" />
@@ -138,7 +144,7 @@ export function Lightbox({
             onClick={() => go(1)}
             disabled={index === photos.length - 1}
             whileTap={index === photos.length - 1 ? undefined : { scale: 0.9 }}
-            aria-label="Következő kép"
+            aria-label={locale === 'en' ? 'Next photo' : 'Következő kép'}
             className="glass flex size-12 items-center justify-center rounded-full text-white disabled:opacity-30"
           >
             <ChevronRight className="size-6" />

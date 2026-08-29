@@ -1,9 +1,9 @@
 import sitemap from '@/app/sitemap'
 import { hubCopy } from '@/lib/content/copy'
 import { getAllDocs, getDocs } from '@/lib/content/docs'
-import { hubs } from '@/lib/content/kinds'
+import { hubKinds, hubs } from '@/lib/content/kinds'
 import { contentMetadata } from '@/lib/content/metadata'
-import { defaultLocale, localePath } from '@/lib/i18n'
+import { defaultLocale, localePath, locales } from '@/lib/i18n'
 import { breadcrumbJsonLd, canonicalUrl, contentJsonLd } from '@/lib/seo'
 import { SITE_URL } from '@/lib/site'
 import { readdirSync } from 'node:fs'
@@ -23,8 +23,11 @@ describe('the sitemap', () => {
   })
 
   it('lists every hub that has something on it', () => {
-    for (const hub of hubs) {
-      expect(urls).toContain(canonicalUrl(localePath(defaultLocale, `/${hub}`)))
+    for (const locale of locales) {
+      for (const hub of hubs) {
+        if (getDocs(locale, hubKinds[hub]).length === 0) continue
+        expect(urls).toContain(canonicalUrl(localePath(locale, `/${hub}`)))
+      }
     }
   })
 
@@ -32,12 +35,12 @@ describe('the sitemap', () => {
     expect(urls).toHaveLength(new Set(urls).size)
   })
 
-  it('lists nothing this site does not serve under the enabled locale', () => {
+  it('lists only enabled locales', () => {
     for (const url of urls) {
-      expect(url.startsWith(`${SITE_URL}/${defaultLocale}`), url).toBe(true)
-      // An `en` URL in the sitemap while `locales` is `['hu']` is a 404
-      // advertised to every crawler.
-      expect(url, url).not.toMatch(/\/en(\/|$)/)
+      expect(
+        locales.some((locale) => url.startsWith(`${SITE_URL}/${locale}`)),
+        url,
+      ).toBe(true)
     }
   })
 
@@ -85,12 +88,14 @@ describe('page metadata', () => {
     }
   })
 
-  it('invents no hreflang while Hungarian is the only locale', () => {
+  it('adds hreflang only when a translation exists', () => {
     for (const doc of docs) {
-      expect(
-        contentMetadata(doc).alternates?.languages ?? {},
-        doc.filePath,
-      ).toEqual({})
+      const languages = contentMetadata(doc).alternates?.languages ?? {}
+      const translated = docs.some(
+        (candidate) =>
+          candidate.id === doc.id && candidate.locale !== doc.locale,
+      )
+      expect(Object.keys(languages).length > 0, doc.filePath).toBe(translated)
     }
   })
 })
@@ -150,9 +155,11 @@ describe('routing', () => {
   })
 
   it('gives the two comparison kinds one URL space without a collision', () => {
-    const comparisons = getDocs(defaultLocale, ['vs', 'compare'])
-    const slugs = comparisons.map((doc) => doc.slug)
-    expect(slugs).toHaveLength(new Set(slugs).size)
-    expect(comparisons).toHaveLength(12)
+    for (const locale of locales) {
+      const comparisons = getDocs(locale, ['vs', 'compare'])
+      const slugs = comparisons.map((doc) => doc.slug)
+      expect(slugs).toHaveLength(new Set(slugs).size)
+    }
+    expect(getDocs('hu', ['vs', 'compare'])).toHaveLength(12)
   })
 })

@@ -4,6 +4,8 @@ import { Reveal } from './reveal'
 import Link from 'next/link'
 
 import { CREATE_EVENT_PATH } from '@/lib/routes'
+import type { Locale } from '@/lib/i18n'
+import { marketingCopy } from '@/lib/marketing-copy'
 
 const floatingPhotos = [
   {
@@ -28,7 +30,8 @@ const floatingPhotos = [
   },
 ]
 
-export function FinalCta() {
+export function FinalCta({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].final
   return (
     <section id="get-started" className="relative px-4 py-20 sm:px-6 lg:py-28">
       <div className="mx-auto max-w-6xl">
@@ -72,25 +75,22 @@ export function FinalCta() {
 
             <div className="relative mx-auto max-w-2xl">
               <h2 className="text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                <span className="text-gradient">Nézzétek meg az esküvőt</span>{' '}
-                <span className="text-gradient-accent">
-                  a vendégeitek szemével.
-                </span>
+                <span className="text-gradient">{copy.titleStart}</span>{' '}
+                <span className="text-gradient-accent">{copy.titleEnd}</span>
               </h2>
               <p className="mx-auto mt-6 max-w-lg leading-relaxed text-pretty text-muted-foreground">
-                Hozd létre az eseményt, oszd meg a QR-kódot, és a vendégek már
-                fotózhatnak is.
+                {copy.lead}
               </p>
               <div className="mt-9 flex justify-center">
                 <Link
-                  href={CREATE_EVENT_PATH}
+                  href={`${CREATE_EVENT_PATH}?lang=${locale}`}
                   className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
                 >
-                  Hozd létre ingyen
+                  {copy.create}
                 </Link>
               </div>
               <p className="mt-5 text-sm text-muted-foreground">
-                Nincs app. Nincs vendégregisztráció.
+                {copy.helper}
               </p>
             </div>
           </div>

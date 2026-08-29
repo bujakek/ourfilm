@@ -3,12 +3,20 @@
 import { createClient } from '@/lib/supabase/client'
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useActionState, useRef } from 'react'
+import type { Locale } from '@/lib/i18n'
 
 type Result = { status: 'idle' | 'sent' | 'error'; message?: string }
 
 const INITIAL: Result = { status: 'idle' }
 
-export function LoginForm({ linkError }: { linkError: boolean }) {
+export function LoginForm({
+  linkError,
+  locale,
+}: {
+  linkError: boolean
+  locale: Locale
+}) {
+  const en = locale === 'en'
   // Not hand-rolled useState, and the difference is visible: `<form action>`
   // runs its function inside a transition, and a transition deliberately
   // suppresses intermediate renders — it holds the current UI rather than
@@ -40,7 +48,7 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
       options: {
         // Must also be listed under Redirect URLs in the Supabase dashboard,
         // or the link comes back rejected.
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/host?lang=${locale}`)}`,
         // The same link signs in and signs up. Safe because owner_id scoping
         // is enforced in the database, not the UI: a brand-new account sees an
         // empty admin, never anyone else's events. Verified with a second real
@@ -55,7 +63,9 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
       sendingRef.current = false
       return {
         status: 'error',
-        message: 'Nem sikerült elküldeni. Próbáld újra egy kicsit később.',
+        message: en
+          ? 'We could not send the link. Please try again in a moment.'
+          : 'Nem sikerült elküldeni. Próbáld újra egy kicsit később.',
       }
     }
 
@@ -68,10 +78,13 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
         <span className="flex size-14 items-center justify-center rounded-full bg-accent/20">
           <Check className="size-7 text-accent" strokeWidth={2.2} />
         </span>
-        <p className="text-lg font-semibold">Elküldtük a belépési linket</p>
+        <p className="text-lg font-semibold">
+          {en ? 'Check your inbox' : 'Elküldtük a belépési linket'}
+        </p>
         <p className="max-w-xs text-sm leading-relaxed text-pretty text-muted-foreground">
-          Nézd meg a postaládádat, és koppints a linkre. Ugyanezen az eszközön
-          nyisd meg, ahol most vagy.
+          {en
+            ? 'Open the link on this device to finish signing in.'
+            : 'Nézd meg a postaládádat, és koppints a linkre. Ugyanezen az eszközön nyisd meg, ahol most vagy.'}
         </p>
       </div>
     )
@@ -84,7 +97,7 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
           htmlFor="email"
           className="mb-2 block text-sm text-muted-foreground"
         >
-          E-mail-cím
+          {en ? 'Email address' : 'E-mail-cím'}
         </label>
         <input
           id="email"
@@ -94,7 +107,7 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
           autoComplete="email"
           autoFocus
           disabled={pending}
-          placeholder="te@pelda.hu"
+          placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
           className="glass min-h-14 w-full rounded-2xl px-5 text-base text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-accent disabled:opacity-60"
         />
       </div>
@@ -103,7 +116,9 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
         <p className="text-sm text-destructive">
           {result.status === 'error'
             ? result.message
-            : 'Ez a link lejárt vagy már felhasználtad. Kérj egy újat.'}
+            : en
+              ? 'This link has expired or has already been used. Request a new one.'
+              : 'Ez a link lejárt vagy már felhasználtad. Kérj egy újat.'}
         </p>
       ) : null}
 
@@ -118,7 +133,13 @@ export function LoginForm({ linkError }: { linkError: boolean }) {
         ) : (
           <Mail className="size-5" strokeWidth={1.8} aria-hidden="true" />
         )}
-        {pending ? 'Küldés…' : 'Kérem a belépési linket'}
+        {pending
+          ? en
+            ? 'Sending…'
+            : 'Küldés…'
+          : en
+            ? 'Send sign-in link'
+            : 'Kérem a belépési linket'}
       </button>
     </form>
   )

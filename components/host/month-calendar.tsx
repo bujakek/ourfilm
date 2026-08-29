@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+import type { Locale } from '@/lib/i18n'
 
 import {
   formatHuCalendarDay,
@@ -50,6 +51,7 @@ export function MonthCalendar({
   earliest,
   onChange,
   label,
+  locale = 'hu',
 }: {
   /** The selected day, `YYYY-MM-DD`. */
   value: string
@@ -62,11 +64,21 @@ export function MonthCalendar({
   /** Names the region for a screen reader. Two callers ask the same question in
    *  different words. */
   label: string
+  locale?: Locale
 }) {
   const [visible, setVisible] = useState(() => monthOf(value))
 
   const cells = monthGrid(visible.year, visible.month)
-  const heading = formatHuMonthYear(visible.year, visible.month)
+  const heading =
+    locale === 'en'
+      ? new Intl.DateTimeFormat('en-GB', {
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'UTC',
+        }).format(new Date(Date.UTC(visible.year, visible.month, 1)))
+      : formatHuMonthYear(visible.year, visible.month)
+  const weekdays =
+    locale === 'en' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : HU_WEEKDAYS_SHORT
 
   // Nothing before `earliest` can be chosen, so a month entirely before it
   // holds nothing to go back to. Day 0 of the visible month is the last day of
@@ -87,7 +99,7 @@ export function MonthCalendar({
           type="button"
           onClick={() => step(-1)}
           disabled={!canGoBack}
-          aria-label="Előző hónap"
+          aria-label={locale === 'en' ? 'Previous month' : 'Előző hónap'}
           className="flex size-11 items-center justify-center rounded-[0.85rem] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-25"
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
@@ -100,7 +112,7 @@ export function MonthCalendar({
         <button
           type="button"
           onClick={() => step(1)}
-          aria-label="Következő hónap"
+          aria-label={locale === 'en' ? 'Next month' : 'Következő hónap'}
           className="flex size-11 items-center justify-center rounded-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronRight className="size-5" aria-hidden="true" />
@@ -111,8 +123,8 @@ export function MonthCalendar({
         aria-hidden="true"
         className="mt-3 grid grid-cols-7 text-center text-xs text-muted-foreground/70"
       >
-        {HU_WEEKDAYS_SHORT.map((weekday) => (
-          <span key={weekday}>{weekday}</span>
+        {weekdays.map((weekday, index) => (
+          <span key={`${weekday}-${index}`}>{weekday}</span>
         ))}
       </div>
 
@@ -129,7 +141,14 @@ export function MonthCalendar({
                 type="button"
                 disabled={past}
                 aria-pressed={selected}
-                aria-label={formatHuCalendarDay(day)}
+                aria-label={
+                  locale === 'en'
+                    ? new Intl.DateTimeFormat('en-GB', {
+                        dateStyle: 'full',
+                        timeZone: 'UTC',
+                      }).format(new Date(`${day}T00:00:00Z`))
+                    : formatHuCalendarDay(day)
+                }
                 onClick={() => {
                   onChange(day)
                   // Tapping into a neighbouring month brings the month with it,

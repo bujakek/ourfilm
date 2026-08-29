@@ -6,6 +6,7 @@ import { Aperture, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 
 import { CREATE_EVENT_PATH, LOGIN_PATH } from '@/lib/routes'
+import { marketingCopy } from '@/lib/marketing-copy'
 import { useEffect, useState } from 'react'
 
 /**
@@ -16,14 +17,14 @@ import { useEffect, useState } from 'react'
  *
  * The ids themselves stay English — an anchor ends up in the address bar.
  */
-const navLinks = [
-  { label: 'Hogyan működik', href: '/#how-it-works' },
-  { label: 'Alkalmak', href: '/alkalmak' },
-  { label: 'Árak', href: '/arak' },
-  { label: 'Rólunk', href: '/rolunk' },
-]
+const navHrefs = ['/#how-it-works', '/alkalmak', '/arak', '/rolunk']
 
 export function Navbar({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].nav
+  const navLinks = navHrefs.map((href, index) => ({
+    href,
+    label: copy.links[index],
+  }))
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -50,12 +51,12 @@ export function Navbar({ locale }: { locale: Locale }) {
           scrolled &&
             'glass-nav-scrolled py-1.5 pl-3 sm:gap-4 sm:py-1.5 sm:pr-2 sm:pl-4',
         )}
-        aria-label="Fő navigáció"
+        aria-label={copy.aria}
       >
         <Link
           href={localePath(locale, '/')}
           className="flex shrink-0 items-center gap-2"
-          aria-label="OurFilm — vissza a főoldalra"
+          aria-label={copy.home}
         >
           <span
             className={cn(
@@ -91,29 +92,37 @@ export function Navbar({ locale }: { locale: Locale }) {
         </ul>
 
         <Link
-          href={LOGIN_PATH}
+          href={`${LOGIN_PATH}?lang=${locale}`}
           className={cn(
             'hidden shrink-0 rounded-full text-foreground/80 transition-all duration-200 hover:text-foreground md:inline-flex',
             scrolled ? 'px-2.5 py-1.5 text-[13px]' : 'px-3 py-2 text-sm',
           )}
         >
-          Belépés
+          {copy.login}
         </Link>
 
         <Link
-          href={CREATE_EVENT_PATH}
+          href={locale === 'en' ? '/hu' : '/en'}
+          hrefLang={locale === 'en' ? 'hu' : 'en'}
+          className="hidden shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+        >
+          {locale === 'en' ? 'HU' : 'EN'}
+        </Link>
+
+        <Link
+          href={`${CREATE_EVENT_PATH}?lang=${locale}`}
           className={cn(
             'btn-shine hidden shrink-0 rounded-full bg-primary font-semibold text-primary-foreground transition-all duration-200 hover:scale-[1.03] md:inline-flex',
             scrolled ? 'px-3.5 py-1.5 text-[13px]' : 'px-4 py-2 text-sm',
           )}
         >
-          Hozd létre ingyen
+          {copy.create}
         </Link>
 
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label={open ? 'Menü bezárása' : 'Menü megnyitása'}
+          aria-label={open ? copy.close : copy.open}
           aria-expanded={open}
           className="ml-auto flex size-10 shrink-0 items-center justify-center rounded-full bg-white/5 text-foreground md:hidden"
         >
@@ -150,18 +159,26 @@ export function Navbar({ locale }: { locale: Locale }) {
             </Link>
           ))}
           <Link
-            href={LOGIN_PATH}
+            href={`${LOGIN_PATH}?lang=${locale}`}
             onClick={() => setOpen(false)}
             className="rounded-2xl px-5 py-4 text-lg font-medium text-foreground/90 transition-colors hover:bg-white/5"
           >
-            Belépés
+            {copy.login}
           </Link>
           <Link
-            href={CREATE_EVENT_PATH}
+            href={locale === 'en' ? '/hu' : '/en'}
+            hrefLang={locale === 'en' ? 'hu' : 'en'}
+            onClick={() => setOpen(false)}
+            className="rounded-2xl px-5 py-4 text-lg font-medium text-foreground/90 transition-colors hover:bg-white/5"
+          >
+            {locale === 'en' ? 'Magyar' : 'English'}
+          </Link>
+          <Link
+            href={`${CREATE_EVENT_PATH}?lang=${locale}`}
             onClick={() => setOpen(false)}
             className="btn-shine mt-2 rounded-2xl bg-primary px-5 py-4 text-center text-lg font-semibold text-primary-foreground"
           >
-            Hozd létre ingyen
+            {copy.create}
           </Link>
         </div>
       </div>

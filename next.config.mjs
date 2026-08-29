@@ -28,7 +28,65 @@ const nextConfig = {
     ]
 
     return [
-      { source: '/', destination: '/hu', permanent: true },
+      { source: '/', destination: '/en', permanent: true },
+      { source: '/en/arak', destination: '/en/pricing', permanent: true },
+      { source: '/en/alkalmak', destination: '/en/occasions', permanent: true },
+      {
+        source: '/en/alkalmak/:slug',
+        destination: '/en/occasions/:slug',
+        permanent: true,
+      },
+      { source: '/en/rolunk', destination: '/en/about', permanent: true },
+      { source: '/en/kapcsolat', destination: '/en/contact', permanent: true },
+      {
+        source: '/en/alternativak',
+        destination: '/en/alternatives',
+        permanent: true,
+      },
+      {
+        source: '/en/alternativak/:slug',
+        destination: '/en/alternatives/:slug',
+        permanent: true,
+      },
+      {
+        source: '/en/osszehasonlitas',
+        destination: '/en/comparisons',
+        permanent: true,
+      },
+      {
+        source: '/en/osszehasonlitas/:slug',
+        destination: '/en/comparisons/:slug',
+        permanent: true,
+      },
+      { source: '/hu/pricing', destination: '/hu/arak', permanent: true },
+      { source: '/hu/occasions', destination: '/hu/alkalmak', permanent: true },
+      {
+        source: '/hu/occasions/:slug',
+        destination: '/hu/alkalmak/:slug',
+        permanent: true,
+      },
+      { source: '/hu/about', destination: '/hu/rolunk', permanent: true },
+      { source: '/hu/contact', destination: '/hu/kapcsolat', permanent: true },
+      {
+        source: '/hu/alternatives',
+        destination: '/hu/alternativak',
+        permanent: true,
+      },
+      {
+        source: '/hu/alternatives/:slug',
+        destination: '/hu/alternativak/:slug',
+        permanent: true,
+      },
+      {
+        source: '/hu/comparisons',
+        destination: '/hu/osszehasonlitas',
+        permanent: true,
+      },
+      {
+        source: '/hu/comparisons/:slug',
+        destination: '/hu/osszehasonlitas/:slug',
+        permanent: true,
+      },
       ...moved.map((path) => ({
         source: path,
         destination: `/hu${path}`,

@@ -5,6 +5,7 @@ import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
 const HEADING: Record<Locale, string> = {
+  en: 'Related pages',
   hu: 'Kapcsolódó oldalak',
 }
 

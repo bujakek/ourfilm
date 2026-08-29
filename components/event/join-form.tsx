@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useActionState, useState } from 'react'
 
 import { joinEventAction, type JoinState } from '@/app/e/[slug]/actions'
+import type { Locale } from '@/lib/i18n'
 
 const initial: JoinState = { error: null }
 
@@ -32,6 +33,7 @@ export function JoinForm({
   shotsPerParticipant,
   stateLabel,
   canCapture,
+  locale,
 }: {
   slug: string
   eventName: string
@@ -41,14 +43,16 @@ export function JoinForm({
   /** What the event is doing right now — before, during, or after. */
   stateLabel: string
   canCapture: boolean
+  locale: Locale
 }) {
+  const en = locale === 'en'
   const [state, action, pending] = useActionState(joinEventAction, initial)
   const [name, setName] = useState('')
   // No effect watching for success, and no `router.refresh()` — the navigation
   // to the camera happens inside `joinEventAction`, which redirects. An effect
   // keyed on `useActionState`'s state has no stable resting point, since that
   // state is a fresh object on every render.
-  if (state.capReached) return <ParticipantCapReached />
+  if (state.capReached) return <ParticipantCapReached locale={locale} />
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
@@ -56,7 +60,7 @@ export function JoinForm({
         <div className="relative mb-8 aspect-[4/3] w-full overflow-hidden rounded-3xl">
           <Image
             src={coverUrl}
-            alt={`${eventName} borítóképe`}
+            alt={en ? `${eventName} cover photo` : `${eventName} borítóképe`}
             fill
             sizes="(max-width: 448px) 100vw, 448px"
             unoptimized
@@ -82,7 +86,7 @@ export function JoinForm({
       </h1>
       {hostName ? (
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {hostName} eseménye
+          {en ? `Hosted by ${hostName}` : `${hostName} eseménye`}
         </p>
       ) : null}
 
@@ -92,13 +96,14 @@ export function JoinForm({
 
       <form action={action} className="mt-8 flex flex-col gap-4">
         <input type="hidden" name="slug" value={slug} />
+        <input type="hidden" name="lang" value={locale} />
 
         <div>
           <label
             htmlFor="join-name"
             className="mb-2 block text-sm text-muted-foreground"
           >
-            Mi a neved?
+            {en ? 'What is your name?' : 'Mi a neved?'}
           </label>
           <input
             id="join-name"
@@ -109,7 +114,7 @@ export function JoinForm({
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Írd be a neved"
+            placeholder={en ? 'Enter your name' : 'Írd be a neved'}
             className="glass min-h-14 w-full rounded-2xl px-5 text-base outline-none placeholder:text-muted-foreground/60 focus:border-accent"
           />
         </div>
@@ -128,11 +133,19 @@ export function JoinForm({
           ) : (
             <ArrowRight className="size-5" strokeWidth={2} />
           )}
-          {canCapture ? 'Kamera megnyitása' : 'Csatlakozom'}
+          {canCapture
+            ? en
+              ? 'Open camera'
+              : 'Kamera megnyitása'
+            : en
+              ? 'Join event'
+              : 'Csatlakozom'}
         </button>
 
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
-          {shotsPerParticipant} képet készíthetsz ezen az eseményen.
+          {en
+            ? `You have ${shotsPerParticipant} shots for this event.`
+            : `${shotsPerParticipant} képet készíthetsz ezen az eseményen.`}
         </p>
       </form>
     </main>
@@ -147,15 +160,19 @@ export function JoinForm({
  * wrong sentence to put in front of them. The upgrade lives on the host's
  * dashboard, where the person who can act on it is already standing.
  */
-function ParticipantCapReached() {
+function ParticipantCapReached({ locale }: { locale: Locale }) {
+  const en = locale === 'en'
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10 text-center">
       <h1 className="text-2xl font-semibold tracking-tight text-balance">
-        Az esemény elérte a résztvevői keretet
+        {en
+          ? 'This event has reached its guest limit'
+          : 'Az esemény elérte a résztvevői keretet'}
       </h1>
       <p className="mt-4 text-sm leading-relaxed text-pretty text-muted-foreground">
-        Ez az ingyenes esemény legfeljebb 5 résztvevővel használható. Kérd meg a
-        szervezőt, hogy oldja fel a teljes eseményt.
+        {en
+          ? 'The free event supports up to 5 guests. Ask the host to unlock the full event.'
+          : 'Ez az ingyenes esemény legfeljebb 5 résztvevővel használható. Kérd meg a szervezőt, hogy oldja fel a teljes eseményt.'}
       </p>
     </main>
   )

@@ -137,7 +137,7 @@ type Props = { params: Promise<{ locale: string }> }
 
 export default async function AdatvedelemPage({ params }: Props) {
   const { locale } = await params
-  if (!isLocale(locale)) notFound()
+  if (!isLocale(locale) || locale !== 'hu') notFound()
 
   return (
     <PageShell

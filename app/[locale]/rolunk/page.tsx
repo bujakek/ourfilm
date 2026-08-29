@@ -5,72 +5,103 @@ import Link from 'next/link'
 import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
-const TITLE = 'Rólunk – OurFilm'
-const DESCRIPTION =
-  'Az OurFilm egy saját esküvő után született, amikor a vendégek fotóinak nagy része sosem jutott el hozzánk.'
+const copy = {
+  en: {
+    title: 'About – OurFilm',
+    description:
+      'OurFilm began after our own wedding, when many of the photos our guests took never reached us.',
+    eyebrow: 'ABOUT',
+    heading: 'We built the thing we wished we had.',
+    lead: 'A wedding never fits inside one camera. Guests capture hundreds of moments too — but many of those photos never make it back to the couple.',
+    paragraphs: [
+      'OurFilm began after our own wedding. Our guests took plenty of photos, but they stayed scattered across phones and message threads. Many never reached us.',
+      'Only later did we realise how much of the day we had missed. The photos existed. There simply was not one easy place for everyone to put them.',
+      'So we built OurFilm: one QR code, one shared camera and every guest photo in one private gallery.',
+    ],
+    facts: [
+      ['Made in Budapest', 'OurFilm is built in Hungary.'],
+      [
+        'Born from a real wedding',
+        'We looked for this at our own wedding. Now we help other couples collect the moments their guests capture.',
+      ],
+      [
+        'Easy for every guest',
+        'No app and no account. They scan the QR code and start shooting.',
+      ],
+    ],
+    question: 'Have a question?',
+    questionBody:
+      'Tell us what you are planning and we will help you set up your camera.',
+    contact: 'Talk to us',
+  },
+  hu: {
+    title: 'Rólunk – OurFilm',
+    description:
+      'Az OurFilm egy saját esküvő után született, amikor a vendégek fotóinak nagy része sosem jutott el hozzánk.',
+    eyebrow: 'RÓLUNK',
+    heading: 'Azért készítettük el, mert velünk is megtörtént.',
+    lead: 'Egy esemény emlékei ritkán férnek el egyetlen fényképezőgépben. A vendégek telefonjain is rengeteg kép készül, és sok közülük sosem jut el a házigazdához.',
+    paragraphs: [
+      'Az OurFilm ötlete a saját esküvőnk után született. A vendégeink rengeteget fotóztak, de a képek különböző telefonokon és beszélgetésekben maradtak. Sok közülük végül sosem jutott el hozzánk.',
+      'Csak később láttuk, mennyi minden történt aznap, amiről nekünk egyetlen fotónk sem volt. Nem azért, mert nem készültek képek, hanem mert nem volt egy hely, ahová mindenki feltölthette volna őket.',
+      'Ezért készítettük el az OurFilmet: egy QR-kód, és minden vendégfotó egy közös albumba kerül.',
+    ],
+    facts: [
+      ['Budapesten készül', 'Az OurFilm magyar fejlesztés.'],
+      [
+        'Egy esküvőből indult',
+        'A saját esküvőnkre kerestünk megoldást. Ma másoknak segítünk összegyűjteni a vendégeik fotóit.',
+      ],
+      [
+        'Egyszerű a vendégeknek',
+        'Nincs app és nincs regisztráció. Beolvassák a QR-kódot, és feltöltik a képeiket.',
+      ],
+    ],
+    question: 'Kérdésed van?',
+    questionBody:
+      'Írd meg, milyen eseményre készülsz, és segítünk létrehozni az albumot.',
+    contact: 'Írj nekünk',
+  },
+} as const
+const icons = [MapPin, Camera, Heart]
 
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  openGraph: { title: TITLE, description: DESCRIPTION },
-  // Held back with the rest of the standalone pages until the provider's
-  // details are real and /arak may be indexed — not because the copy below is
-  // unfinished. Flip it in the same change that publishes those.
-  robots: { index: false, follow: true },
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  if (!isLocale(locale)) return {}
+  const current = copy[locale]
+  return {
+    title: current.title,
+    description: current.description,
+    openGraph: { title: current.title, description: current.description },
+    robots: { index: false, follow: true },
+  }
 }
-
-// Only what is verifiably true. Headcount, customer numbers and testimonials
-// are deliberately absent rather than invented.
-const facts = [
-  {
-    icon: MapPin,
-    title: 'Budapesten készül',
-    text: 'Az OurFilm magyar fejlesztés.',
-  },
-  {
-    icon: Camera,
-    title: 'Egy esküvőből indult',
-    text: 'A saját esküvőnkre kerestünk megoldást. Ma másoknak segítünk összegyűjteni a vendégeik fotóit.',
-  },
-  {
-    icon: Heart,
-    title: 'Egyszerű a vendégeknek',
-    text: 'Nincs app és nincs regisztráció. Beolvassák a QR-kódot, és feltöltik a képeiket.',
-  },
-]
 
 type Props = { params: Promise<{ locale: string }> }
 
 export default async function RolunkPage({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
+  const current = copy[locale]
+  const facts = current.facts.map(([title, text], index) => ({
+    title,
+    text,
+    icon: icons[index],
+  }))
 
   return (
     <PageShell
       locale={locale}
-      eyebrow="RÓLUNK"
-      title="Azért készítettük el, mert velünk is megtörtént."
-      lead="Egy esemény emlékei ritkán férnek el egyetlen fényképezőgépben. A vendégek telefonjain is rengeteg kép készül, és sok közülük sosem jut el a házigazdához."
+      eyebrow={current.eyebrow}
+      title={current.heading}
+      lead={current.lead}
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
           <div className="mt-12 space-y-5 text-lg leading-relaxed text-pretty text-muted-foreground">
-            <p>
-              Az OurFilm ötlete a saját esküvőnk után született. A vendégeink
-              rengeteget fotóztak, de a képek különböző telefonokon és
-              beszélgetésekben maradtak. Sok közülük végül sosem jutott el
-              hozzánk.
-            </p>
-            <p>
-              Csak később láttuk, mennyi minden történt aznap, amiről nekünk
-              egyetlen fotónk sem volt. Nem azért, mert nem készültek képek,
-              hanem mert nem volt egy hely, ahová mindenki feltölthette volna
-              őket.
-            </p>
-            <p>
-              Ezért készítettük el az OurFilmet: egy QR-kód, és minden
-              vendégfotó egy közös albumba kerül.
-            </p>
+            {current.paragraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
           </div>
 
           <div className="mt-14 grid gap-4 sm:grid-cols-3">
@@ -96,17 +127,16 @@ export default async function RolunkPage({ params }: Props) {
 
           <div className="glass-strong mt-14 rounded-3xl p-8 sm:p-10">
             <h2 className="text-2xl font-semibold tracking-tight text-balance">
-              Kérdésed van?
+              {current.question}
             </h2>
             <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              Írd meg, milyen eseményre készülsz, és segítünk létrehozni az
-              albumot.
+              {current.questionBody}
             </p>
             <Link
               href={localePath(locale, '/kapcsolat')}
               className="btn-shine mt-7 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
             >
-              Írj nekünk
+              {current.contact}
             </Link>
           </div>
         </div>

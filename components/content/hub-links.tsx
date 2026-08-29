@@ -45,7 +45,10 @@ export function HubLinks({
         ))}
       </ul>
 
-      <nav className="mt-10 flex flex-wrap gap-3" aria-label="További listák">
+      <nav
+        className="mt-10 flex flex-wrap gap-3"
+        aria-label={locale === 'en' ? 'More resources' : 'További listák'}
+      >
         {others.map((hub) => (
           <Link
             key={hub}

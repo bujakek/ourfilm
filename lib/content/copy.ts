@@ -18,6 +18,26 @@ export interface HubCopy {
 }
 
 export const hubCopy: Record<Locale, Record<Hub, HubCopy>> = {
+  en: {
+    blog: {
+      label: 'Blog',
+      eyebrow: 'BLOG',
+      title: 'Wedding guest photo guides',
+      lead: 'Simple, practical ways to collect every guest photo — from placing the QR code to saving the album after the wedding.',
+    },
+    alternativak: {
+      label: 'Alternatives',
+      eyebrow: 'ALTERNATIVES',
+      title: 'OurFilm alternatives',
+      lead: 'How OurFilm compares with other wedding camera and photo-sharing apps — and when another option may suit you better.',
+    },
+    osszehasonlitas: {
+      label: 'Comparisons',
+      eyebrow: 'COMPARISONS',
+      title: 'Wedding photo apps compared',
+      lead: 'Guest limits, photo reveal, apps and pricing — compared side by side.',
+    },
+  },
   hu: {
     blog: {
       label: 'Blog',
@@ -43,10 +63,14 @@ export const hubCopy: Record<Locale, Record<Hub, HubCopy>> = {
 /** The label the money pages are collected under. They have no hub of their
  *  own: a landing page is an entry point, not something you browse a list of. */
 export const solutionsLabel: Record<Locale, { title: string; lead: string }> = {
+  en: {
+    title: 'Solutions',
+    lead: 'Straight answers to the questions couples ask first.',
+  },
   hu: {
     title: 'Megoldások',
     lead: 'A leggyakoribb kérdések, amivel a párok elindulnak.',
   },
 }
 
-export const homeLabel: Record<Locale, string> = { hu: 'Főoldal' }
+export const homeLabel: Record<Locale, string> = { en: 'Home', hu: 'Főoldal' }
