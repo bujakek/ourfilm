@@ -55,6 +55,7 @@ describe('saving and reading a draft', () => {
       shots: 36,
       plan: 'full',
       guestsCanView: false,
+      legalAccepted: true,
       step: 3,
     })
     saveDraft(original, NOW)
@@ -68,6 +69,7 @@ describe('saving and reading a draft', () => {
       shots: 36,
       plan: 'full',
       guestsCanView: false,
+      legalAccepted: true,
       step: 3,
       creationKey: KEY,
     })
@@ -95,8 +97,12 @@ describe('saving and reading a draft', () => {
 
   it('carries the pending-create intent across the auth round trip', () => {
     // The one flag that has to survive a page the browser leaves entirely.
-    saveDraft(draft({ name: 'A', pendingCreate: true }), NOW)
+    saveDraft(
+      draft({ name: 'A', legalAccepted: true, pendingCreate: true }),
+      NOW,
+    )
     expect(loadDraft(NOW)?.pendingCreate).toBe(true)
+    expect(loadDraft(NOW)?.legalAccepted).toBe(true)
   })
 })
 
@@ -180,6 +186,12 @@ describe('clearing', () => {
     clearDraft()
     expect(storage.getItem(DRAFT_KEY)).toBeNull()
     expect(storage.getItem('unrelated')).toBe('keep me')
+  })
+
+  it('also removes the previous draft shape', () => {
+    storage.setItem('ourfilm:event-draft:v1', '{}')
+    clearDraft()
+    expect(storage.getItem('ourfilm:event-draft:v1')).toBeNull()
   })
 })
 

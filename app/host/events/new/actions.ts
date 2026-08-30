@@ -26,6 +26,7 @@ export type EventDraftInput = {
   shots: number
   plan: string
   guestsCanView: boolean
+  legalAccepted: boolean
   /** Per-draft uuid. Makes a repeat attempt land on the event the first one
    *  created instead of a second one. Optional: a flow with no draft behind it
    *  has nothing to be idempotent about. */
@@ -104,6 +105,12 @@ export async function createEventFromDraft(
   }
   if (!isEventPlan(planRaw)) {
     return { ok: false, error: 'Válaszd ki, hány vendég csatlakozhat.' }
+  }
+  if (input.legalAccepted !== true) {
+    return {
+      ok: false,
+      error: 'Az esemény létrehozásához fogadd el az ÁSZF-et.',
+    }
   }
 
   const captureEndAt = new Date(captureEndIso)
@@ -267,6 +274,7 @@ export async function createEventFromDraft(
             slug,
             ownerId: user.id,
             ownerEmail: user.email ?? null,
+            termsAcceptedAt: new Date().toISOString(),
           })
         }
       } catch (e) {

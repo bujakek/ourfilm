@@ -28,13 +28,7 @@ export const COMPANY = {
    * number on the egyéni vállalkozói igazolvány / the EVNY record.
    */
   registryNumber: '[NYILVÁNTARTÁSI SZÁM — TODO]',
-  /**
-   * Adószám, e.g. "12345678-1-42".
-   *
-   * Worth checking the middle digit against reality: `1` marks a taxpayer who
-   * charges no VAT, which is what alanyi adómentes looks like. A `2` there
-   * would mean the AAM status below is wrong.
-   */
+  /** Adószám, e.g. "12345678-1-42". */
   taxNumber: '[ADÓSZÁM — TODO]',
   /** A reachable phone number. Required; an email address alone is not enough. */
   phone: '[TELEFONSZÁM — TODO]',
@@ -51,51 +45,12 @@ export const COMPANY = {
  */
 export const REGISTRY = 'Egyéni Vállalkozók Nyilvántartása (EVNY)'
 
-/**
- * VAT status: alanyi adómentes.
- *
- * Under the Áfa tv. an AAM provider charges no VAT, so the price a guest sees
- * is simply the price — there is no gross/net split to state, and the ÁSZF
- * must not claim the fee is "áfával növelt". Invoices carry the AAM marking.
- *
- * Two things to watch, both of which end the exemption or add an obligation
- * without anyone sending a warning:
- *
- * - There is an annual revenue threshold. Crossing it ends the exemption from
- *   the transaction that crosses it, not from the next tax year. Confirm the
- *   current figure with a könyvelő rather than trusting a number written here.
- * - Buying services from an EU supplier — Stripe Ireland, and likely the other
- *   vendors named in these pages — is reverse charged. An AAM taxpayer then
- *   needs a közösségi adószám and has to self-assess and pay the Hungarian VAT
- *   on those purchases, even though it charges none on its own sales. This is
- *   the obligation most easily missed on the day the first Stripe fee lands.
- */
-export const VAT_STATUS = {
-  /** The marking an invoice must carry. */
-  code: 'AAM',
-  label: 'alanyi adómentes',
-  /**
-   * What a price page must say. Note it states the displayed figure is the
-   * final amount payable — consumer pricing rules care about that far more
-   * than about the tax mechanism behind it.
-   */
-  priceNote:
-    'A feltüntetett ár a fizetendő végösszeg. A szolgáltató alanyi adómentes (AAM), az ár áfát nem tartalmaz.',
-  /**
-   * The same fact for /arak, where the reader is deciding whether to buy
-   * rather than reading a contract. Separate from `priceNote` because the ÁSZF
-   * quotes that one verbatim and a legal document needs the long form.
-   */
-  pricePageNote:
-    'A feltüntetett ár a fizetendő végösszeg. Alanyi adómentes szolgáltatás.',
-} as const
-
 /** Hosting provider named in the ÁSZF, per the Elker tv. */
 export const HOSTING_PROVIDER =
   'Vercel Inc. (340 S Lemon Ave #4133, Walnut, CA 91789, USA)'
 
 /**
- * The payment processor, named in both legal pages.
+ * The Managed Payments parties, named in both legal pages.
  *
  * Stripe Payments Europe is the Irish entity EU merchants contract with, so
  * the payment relationship itself stays inside the EEA. Verify this matches
@@ -103,23 +58,32 @@ export const HOSTING_PROVIDER =
  * assigns it by merchant country, and the address belongs in the ÁSZF as
  * written, not approximated.
  *
- * Checkout is a hosted redirect (`mode: 'payment'`), so card numbers, 3-D
- * Secure and any wallet credentials go straight to Stripe. This system stores
- * only Stripe's reference ids, the amount, the currency and a status — see
- * the `purchases` table. That distinction is the whole reason the privacy
- * notice can say we never see a card number.
+ * Sold through Link, LLC is the merchant of record for Managed Payments
+ * transactions. Stripe Payments Europe provides the EEA payment services.
+ * The exact entities shown in the live Dashboard agreement must be checked
+ * before launch; do not replace them with a guessed local Stripe company.
  */
 export const PAYMENT_PROCESSOR = {
   name: 'Stripe Payments Europe, Limited',
   address:
     '1 Grand Canal Street Lower, Grand Canal Dock, Dublin, D02 H210, Írország',
+  merchantOfRecord: 'Link, LLC',
+  checkoutLabel: 'Sold through Link',
+  supportUrl: 'https://support.link.com/topics/sold-through-link',
 } as const
 
 /** Who sends the magic-link emails. Named as a processor in the privacy notice. */
 export const EMAIL_PROVIDER = 'Resend'
 
-/** Shown at the foot of both legal pages. Update when their text changes. */
-export const LAST_UPDATED = '2026. augusztus 21.'
+/**
+ * Version recorded on Stripe Checkout Sessions when a host starts a paid
+ * order. Keep this stable until the terms materially change; a display date is
+ * not a useful audit trail on its own.
+ */
+export const LEGAL_VERSION = '2026-08-29-mor-hu'
+
+/** Shown at the foot of the legal pages. Update when their text changes. */
+export const LAST_UPDATED = '2026. augusztus 29.'
 
 /**
  * Flips the legal pages *and* the price page out of draft: hides the

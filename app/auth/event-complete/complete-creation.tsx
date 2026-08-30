@@ -67,6 +67,7 @@ async function run(): Promise<Outcome> {
       shots: draft.shots,
       plan: draft.plan,
       guestsCanView: draft.guestsCanView,
+      legalAccepted: draft.legalAccepted,
       creationKey: draft.creationKey,
     })
   } catch {

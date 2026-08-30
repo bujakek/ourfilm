@@ -544,6 +544,9 @@ Do not reopen these without a reason; the tickets below already assume them.
       username `resend`, password = the Resend API key, sender something like
       `OurFilm <noreply@ourfilm.app>`. Supabase's own rate limit starts at 30/hour
       once custom SMTP is on, which is ample.
+      The same key must be set on Vercel as `RESEND_API_KEY` for the legal
+      request forms on `/hu/kapcsolat`; `LEGAL_EMAIL_FROM` may override their
+      default sender, `OurFilm <noreply@ourfilm.app>`.
       Until then, sign in with `POST /auth/v1/admin/generate_link` and the
       service key — it returns a working login link without sending mail.
       _If email is ever needed before the domain exists, a provider offering

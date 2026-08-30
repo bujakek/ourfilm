@@ -8,6 +8,7 @@ import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useActionState, useEffect, useState } from 'react'
 
 const INITIAL: CheckoutState = { error: null }
@@ -134,6 +135,36 @@ export function BillingCard({
       {stripeReady ? (
         <form action={submit} className="mt-4">
           <input type="hidden" name="slug" value={slug} />
+          <label className="mb-4 flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
+            <input
+              type="checkbox"
+              name="legal_acceptance"
+              required
+              className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+            />
+            <span>
+              Elfogadom az{' '}
+              <Link
+                href="/hu/aszf"
+                target="_blank"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                ÁSZF-et
+              </Link>
+              , és kifejezetten kérem, hogy az OurFilm a 14 napos
+              elállási/felmondási időszak vége előtt kezdje meg a szolgáltatást.
+              Tudomásul veszem, hogy felmondás esetén a megszűnésig arányosan
+              teljesített szolgáltatás díját meg kell fizetnem, valamint az{' '}
+              <Link
+                href="/hu/adatvedelem"
+                target="_blank"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                adatkezelési tájékoztatót
+              </Link>
+              .
+            </span>
+          </label>
           <button
             type="submit"
             disabled={pending}

@@ -158,6 +158,7 @@ function OnboardingFlow({
   const [shots, setShots] = useState<ShotOption>(initial.shots)
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
   const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
+  const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
   // apart between the calendar and the time pill. Null means "not chosen yet",
@@ -185,6 +186,7 @@ function OnboardingFlow({
       shots,
       plan,
       guestsCanView,
+      legalAccepted,
       step,
       creationKey: initialCreationKey,
       pendingCreate: false,
@@ -199,6 +201,7 @@ function OnboardingFlow({
       shots,
       plan,
       guestsCanView,
+      legalAccepted,
       step,
       initialCreationKey,
       initial.createdAt,
@@ -246,6 +249,7 @@ function OnboardingFlow({
         shots,
         plan,
         guestsCanView,
+        legalAccepted,
         creationKey: initialCreationKey,
       })
 
@@ -341,11 +345,18 @@ function OnboardingFlow({
           locale={locale}
           nav={nav({ onNext: create })}
           plan={plan}
-          setPlan={setPlan}
+          setPlan={(value) => {
+            setPlan(value)
+            // The paid wording also contains the early-performance request,
+            // so changing plan requires a fresh, explicit choice.
+            setLegalAccepted(false)
+          }}
           shots={shots}
           setShots={setShots}
           guestsCanView={guestsCanView}
           setGuestsCanView={setGuestsCanView}
+          legalAccepted={legalAccepted}
+          setLegalAccepted={setLegalAccepted}
           paymentsEnabled={paymentsEnabled}
           pending={pending}
         />

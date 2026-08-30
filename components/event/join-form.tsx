@@ -2,6 +2,7 @@
 
 import { ArrowRight, Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useActionState, useState } from 'react'
 
 import { joinEventAction, type JoinState } from '@/app/e/[slug]/actions'
@@ -146,6 +147,23 @@ export function JoinForm({
           {en
             ? `You have ${shotsPerParticipant} shots for this event.`
             : `${shotsPerParticipant} képet készíthetsz ezen az eseményen.`}
+        </p>
+        <p className="text-center text-[0.7rem] leading-relaxed text-muted-foreground">
+          A csatlakozással elfogadod az{' '}
+          <Link
+            href="/hu/aszf"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            ÁSZF vendégekre vonatkozó szabályait
+          </Link>
+          , és tudomásul veszed az{' '}
+          <Link
+            href="/hu/adatvedelem"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            adatkezelési tájékoztatót
+          </Link>
+          .
         </p>
       </form>
     </main>

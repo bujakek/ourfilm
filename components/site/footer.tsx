@@ -108,11 +108,16 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
       ],
     },
     {
-      heading: 'Cég',
+      heading: 'Jogi',
       links: [
         { label: 'Rólunk', href: '/rolunk' },
+        { label: 'Impresszum', href: '/impresszum' },
         { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
         { label: 'Általános Szerződési Feltételek', href: '/aszf' },
+        {
+          label: 'Elállás a szerződéstől',
+          href: '/kapcsolat#elallas',
+        },
         { label: 'English', href: '/en', external: true },
       ],
     },
