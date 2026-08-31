@@ -7,11 +7,13 @@ import type { Database } from '@/lib/supabase/database.types'
 /**
  * Fixtures for the database suite.
  *
- * These tests run against the **linked remote project** and mutate it. There is
- * no local stack in this repo and no `supabase/seed.sql`, and more to the point
- * the properties worth testing here do not exist anywhere but a real Postgres:
- * a row lock holding under genuinely concurrent HTTP requests, an RLS policy
- * refusing a real anon key, a check constraint rejecting a value.
+ * CI runs these tests against a disposable local Supabase stack rebuilt from
+ * every committed migration. `pnpm test:db` still targets the project described
+ * by `.env.local`, so local developers should confirm whether that file points
+ * at a local or linked project before running it. The properties worth testing
+ * here need a real Postgres: a row lock holding under genuinely concurrent HTTP
+ * requests, an RLS policy refusing a real anon key, a check constraint rejecting
+ * a value.
  *
  * Every fixture is namespaced with a uuid and torn down in a `finally`. Nothing
  * here touches a row it did not create.

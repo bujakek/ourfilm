@@ -19,6 +19,8 @@ version marker. Tables, columns, relationships, functions, enums, and all other
 generated schema details must match exactly.
 
 The pull request workflow does not use production secrets or production data.
+It also verifies that a clean database receives every API-role privilege from
+versioned migrations instead of relying on grants left behind in one project.
 
 ## Production migrations
 
