@@ -24,16 +24,16 @@ import '../globals.css'
  * `components/event/join-form.tsx` and `components/event/guest-event-view.tsx`
  * for the guest flow; the four host pages plus
  * `components/host/onboarding/onboarding-shell.tsx` (one shell, so one
- * attribute covers all four create-flow steps) and
- * `app/(product)/auth/event-complete/complete-creation.tsx` for the host side.
- * A new page here needs the same line — the locale is already resolved in each
- * one, so it is a single attribute, and forgetting it is invisible until
- * someone listens to the page.
+ * attribute covers all four create-flow steps),
+ * `app/(product)/auth/event-complete/complete-creation.tsx` and
+ * `app/(product)/auth/callback/page.tsx` for the host side. A new page here
+ * needs the same line — the locale is already resolved in each one, so it is a
+ * single attribute, and forgetting it is invisible until someone listens to
+ * the page.
  *
- * `app/(product)/auth/callback/page.tsx` is the one that marks a constant: its
- * copy is Hungarian only, so it says `hu` rather than resolving anything. The
- * two shared screens (`not-found.tsx`, `error.tsx`) render at `defaultLocale`,
- * which is what this document already declares, so they need nothing.
+ * The two shared screens (`not-found.tsx`, `error.tsx`) render at
+ * `defaultLocale`, which is what this document already declares, so they need
+ * nothing.
  *
  * None of these routes is indexed (`/e` sets `noindex`, `/host` is behind the
  * auth proxy), so the search-engine half of the problem does not arise here.
