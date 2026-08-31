@@ -43,17 +43,23 @@ export function LoginForm({
     sendingRef.current = true
 
     const supabase = createClient()
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    callbackUrl.searchParams.set('next', `/host?lang=${locale}`)
+    callbackUrl.searchParams.set('lang', locale)
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         // Must also be listed under Redirect URLs in the Supabase dashboard,
         // or the link comes back rejected.
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/host?lang=${locale}`)}`,
+        emailRedirectTo: callbackUrl.toString(),
         // The same link signs in and signs up. Safe because owner_id scoping
         // is enforced in the database, not the UI: a brand-new account sees an
         // empty admin, never anyone else's events. Verified with a second real
         // account.
         shouldCreateUser: true,
+        // Used as a fallback by the Send Email Hook for legacy callers whose
+        // redirect URL does not carry a locale.
+        data: { locale },
       },
     })
 

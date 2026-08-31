@@ -78,8 +78,10 @@ Abuse and storage emergency controls are server-only:
 ```bash
 OURFILM_UPLOADS_DISABLED=false          # true pauses all new reservations
 OURFILM_EVENT_STORAGE_LIMIT_BYTES=      # optional positive per-event master-byte cap
-RESEND_API_KEY=                         # legal request confirmations
+RESEND_API_KEY=                         # auth and legal request emails
 LEGAL_EMAIL_FROM=                       # optional sender override
+SEND_EMAIL_HOOK_SECRET=                 # Supabase Send Email Hook signature
+AUTH_EMAIL_FROM=                        # optional auth sender override
 ```
 
 Payments add three more, all server-only — Checkout is a redirect to Stripe's
@@ -169,16 +171,13 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   environment still says payment is not switched on. The comment in
   `lib/stripe/env.ts` claiming there is no Stripe account is stale. See Billing.
 
-- **Auth emails are branded and live in `supabase/templates/`.** Delivery is
-  Resend over SMTP, configured in the Supabase dashboard. Two files, because
-  `signInWithOtp` picks between them: `magic-link.html` goes to a returning
-  host and `confirm-signup.html` to a first-time one, so branding only one
-  leaves half of them on the Supabase default. `config.toml` points the local
-  stack at both; the linked project is updated with `pnpm emails:push --apply`,
-  which PATCHes only the four mailer fields on the Management API. **Do not run
-  `supabase config push`** — it sends this whole file, and the auth section here
-  is otherwise stock, so it would point production's magic links at `127.0.0.1`
-  and drop the Resend SMTP settings. Details in
+- **Production auth email is localized by a signed Send Email Hook.** Both
+  `signInWithOtp` callers put `lang=en|hu` in `emailRedirectTo` and user
+  metadata. `/api/auth/send-email` verifies Supabase's Standard Webhooks
+  signature, renders exactly that language and sends through Resend with the
+  webhook ID as an idempotency key. The HTML files in `supabase/templates/`
+  are English-only local-stack fallbacks; static templates cannot select a
+  locale and must not replace the production hook. Deployment details are in
   `supabase/templates/README.md`.
 
 - `lib/slug.ts` holds the canonical `slugify()` — the host area and the QR preview must both use it so printed QR codes never disagree.

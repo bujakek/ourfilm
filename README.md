@@ -37,9 +37,11 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_EVENT=
 
-# Optional legal request email
+# Transactional email
 RESEND_API_KEY=
 LEGAL_EMAIL_FROM=
+SEND_EMAIL_HOOK_SECRET=         # Supabase Authentication → Hooks → Send Email
+AUTH_EMAIL_FROM=                # optional; defaults to OurFilm <noreply@ourfilm.app>
 
 # Emergency upload controls
 OURFILM_UPLOADS_DISABLED=false
@@ -50,6 +52,11 @@ OURFILM_EVENT_STORAGE_LIMIT_BYTES=
 affecting existing galleries. `OURFILM_EVENT_STORAGE_LIMIT_BYTES`, when set to a
 positive integer, pauses new reservations for an event after its ready master
 photos reach that many bytes.
+
+Production auth messages use the signed endpoint at `/api/auth/send-email`,
+which selects English or Hungarian from the individual login request and sends
+one language through Resend. Deployment and Supabase hook setup are documented
+in `supabase/templates/README.md`.
 
 ## Important routes
 
