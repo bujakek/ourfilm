@@ -2,6 +2,7 @@
   "name": "ourfilm",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.19.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +13,8 @@
     "format:check": "prettier --check .",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
     "types:gen": "supabase gen types typescript --linked > lib/supabase/database.types.ts",
-    "types:check": "supabase gen types typescript --linked | diff -u lib/supabase/database.types.ts - && echo 'types match the remote schema'",
+    "types:check": "node scripts/check-supabase-types.mjs linked",
+    "types:check:local": "node scripts/check-supabase-types.mjs local",
     "seed": "node --env-file=.env.local --experimental-strip-types scripts/seed.ts",
     "emails:push": "node --env-file=.env.local --experimental-strip-types scripts/push-auth-emails.ts",
     "test": "vitest run",

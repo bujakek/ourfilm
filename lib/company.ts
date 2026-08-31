@@ -83,7 +83,7 @@ export const EMAIL_PROVIDER = 'Resend'
 export const LEGAL_VERSION = '2026-08-29-mor-hu'
 
 /** Shown at the foot of the legal pages. Update when their text changes. */
-export const LAST_UPDATED = '2026. augusztus 29.'
+export const LAST_UPDATED = '2026. augusztus 31.'
 
 /**
  * Flips the legal pages *and* the price page out of draft: hides the

@@ -43,6 +43,7 @@ const sections: LegalSection[] = [
       'Vendég: a csatlakozáskor megadott megjelenített név, egy véletlen munkamenet-azonosító, a megmaradt képkockák száma, valamint az eseményhez és az elkészített képekhez tartozó azonosítók. A vendégtől nem kérünk e-mail-címet és nem hozunk létre számára fiókot.',
       'Fotó: a képfájl, a készítés időpontja, a fájl- és képméret, a formátum és a feldolgozáshoz szükséges technikai állapotok. A kamera képe az eszközön jelenik meg; csak az elkészített és feldolgozott JPEG kerül feltöltésre. A feldolgozás eltávolítja az EXIF-adatokat, így a GPS-helyadat nem kerül a feltöltött fájlba.',
       'Fizetés: az OurFilm a Stripe munkamenet- és tranzakcióazonosítóit, az eseményhez kapcsolást, az összeget, pénznemet, fizetési és visszatérítési állapotot kapja meg. A fizetési mód adatait, a számlázási adatokat és a csalásmegelőzéshez szükséges technikai adatokat a Stripe/Link közvetlenül kezeli; bankkártyaszámot az OurFilm nem kap meg.',
+      'Early Couple Program jelentkezője: név, a pár neve, ha megadják, e-mail-cím, az esküvő dátuma és helyszíne, becsült vendégszámtartomány, a jelentkezés rövid indoka, a választott nyelv, a jelentkezés és a két beszélgetés állapota, valamint az esetleges kampány forrásadatai. A visszaélések korlátozásához a hálózati cím nyers értéke helyett egy elkülönítetten tárolt, nem visszafejthető HMAC-lenyomatot használunk.',
     ],
   },
   {
@@ -51,6 +52,7 @@ const sections: LegalSection[] = [
       'A házigazda fiókját, eseményét és megrendelését a szerződés teljesítéséhez kezeljük (GDPR 6. cikk (1) b)). A saját számviteli, adózási és jogi bizonylatainkat jogi kötelezettség alapján kezeljük (GDPR 6. cikk (1) c)). A vásárlónak szóló tranzakciós számlát vagy bizonylatot a Link állítja ki és őrzi meg a rá vonatkozó szabályok szerint.',
       'A vendég által kért csatlakozást és fotózást a szolgáltatás biztosításához kezeljük. A munkamenet védelme, a képkockakeret érvényesítése, a hibák kivizsgálása és a visszaélések megelőzése az OurFilm és a felhasználók jogos érdeke (GDPR 6. cikk (1) f)).',
       'A képek és a rajtuk szereplő személyek adatkezelésének megfelelő jogalapjáról és az eseményi tájékoztatásról a házigazda gondoskodik, ha az adatvédelmi szabályok az adott eseményre alkalmazandók. Az OurFilm a képeket nem használja saját reklámhoz, arcfelismeréshez vagy profilalkotáshoz.',
+      'Az Early Couple Program jelentkezési adatait a jelentkező kérésére történő kapcsolatfelvételhez, a részvétel elbírálásához és elfogadás esetén a program lebonyolításához kezeljük (GDPR 6. cikk (1) b)). A kéretlen automatizált beküldések korlátozása az OurFilm és a jelentkezők jogos érdeke (GDPR 6. cikk (1) f)). A jelentkezés nem jelent hírlevél-feliratkozást, és nyilvános ajánlást sem kérünk érte.',
       'A sütimentes látogatottságmérés célja a szolgáltatás használatának összesített megértése; ennek jogalapja az OurFilm jogos érdeke. E mérés ellen a böngésző vagy hálózati szűrő beállításaival lehet tiltakozni.',
     ],
   },
@@ -77,6 +79,7 @@ const sections: LegalSection[] = [
       'Az eseményt, a vendégek megjelenített nevét, munkamenetét és a fotókat addig őrizzük, amíg a házigazda törli az eseményt. A pilotban nincs automatikus lejárat. Törlés előtt a házigazdának kell letöltenie a megtartani kívánt képeket.',
       'Az esemény törlésekor az aktív tárhelyen lévő képek és a kapcsolódó eseményadatok véglegesen törlődnek. A szolgáltatói biztonsági mentésekből a másolatok a szolgáltató saját felülírási ciklusa szerint kerülnek ki, és rendes működés során nem használhatók visszaállításra.',
       'A házigazda fiókadatait a fiók megszüntetéséig, a szerződéses igényekhez szükséges adatokat az elévülési idő végéig, a saját számviteli bizonylatainkat pedig a jogszabályban előírt 8 évig őrizzük. A Stripe/Link a saját fizetési és bizonylati adatait a saját tájékoztatója és jogi kötelezettségei szerinti ideig őrzi.',
+      'Az Early Couple Program jelentkezési adatait a jelentkezés és az esetleges részvétel lezárásáig, főszabályként legfeljebb a jelentkezéstől számított 12 hónapig őrizzük. A technikai visszaélés-megelőzési lenyomatok nem kapcsolódnak a jelentkezési sorhoz, az aktív forgalom során a 30 napnál régebbi értékeket töröljük.',
     ],
   },
   {
