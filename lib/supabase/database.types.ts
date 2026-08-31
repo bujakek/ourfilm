@@ -39,6 +39,122 @@ export type Database = {
   }
   public: {
     Tables: {
+      early_couple_applications: {
+        Row: {
+          agreement_accepted_at: string
+          created_at: string
+          email: string
+          event_id: string | null
+          first_call_at: string | null
+          first_call_status: string
+          founder_notes: string | null
+          guest_count_range: string
+          id: string
+          locale: string
+          name: string
+          partner_name: string | null
+          referrer: string | null
+          retention_until: string
+          second_call_at: string | null
+          second_call_status: string
+          status: string
+          updated_at: string
+          user_id: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          wedding_date: string
+          wedding_location: string
+          why_interested: string
+        }
+        Insert: {
+          agreement_accepted_at?: string
+          created_at?: string
+          email: string
+          event_id?: string | null
+          first_call_at?: string | null
+          first_call_status?: string
+          founder_notes?: string | null
+          guest_count_range: string
+          id?: string
+          locale: string
+          name: string
+          partner_name?: string | null
+          referrer?: string | null
+          retention_until?: string
+          second_call_at?: string | null
+          second_call_status?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          wedding_date: string
+          wedding_location: string
+          why_interested: string
+        }
+        Update: {
+          agreement_accepted_at?: string
+          created_at?: string
+          email?: string
+          event_id?: string | null
+          first_call_at?: string | null
+          first_call_status?: string
+          founder_notes?: string | null
+          guest_count_range?: string
+          id?: string
+          locale?: string
+          name?: string
+          partner_name?: string | null
+          referrer?: string | null
+          retention_until?: string
+          second_call_at?: string | null
+          second_call_status?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          wedding_date?: string
+          wedding_location?: string
+          why_interested?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "early_couple_applications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      early_couple_rate_limits: {
+        Row: {
+          key_hash: string
+          submission_count: number
+          window_started_at: string
+        }
+        Insert: {
+          key_hash: string
+          submission_count?: number
+          window_started_at?: string
+        }
+        Update: {
+          key_hash?: string
+          submission_count?: number
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           capture_end_at: string
@@ -307,6 +423,10 @@ export type Database = {
           committed: boolean
           shots_remaining: number
         }[]
+      }
+      consume_early_couple_rate_limit: {
+        Args: { p_key_hash: string }
+        Returns: boolean
       }
       event_gallery_by_slug: {
         Args: { p_slug: string }
