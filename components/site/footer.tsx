@@ -66,6 +66,9 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
       heading: 'Company',
       links: [
         { label: 'About', href: '/rolunk' },
+        { label: 'Legal notice', href: '/impresszum' },
+        { label: 'Privacy', href: '/adatvedelem' },
+        { label: 'Terms', href: '/aszf' },
         { label: 'Magyar', href: '/hu', external: true },
       ],
     },

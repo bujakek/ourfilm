@@ -49,6 +49,7 @@ export type Database = {
           event_name: string
           guests_can_view: boolean
           id: string
+          locale: string
           owner_id: string
           reveal_at: string
           reveal_mode: Database["public"]["Enums"]["reveal_mode"]
@@ -66,6 +67,7 @@ export type Database = {
           event_name: string
           guests_can_view?: boolean
           id?: string
+          locale?: string
           owner_id: string
           reveal_at: string
           reveal_mode?: Database["public"]["Enums"]["reveal_mode"]
@@ -83,6 +85,7 @@ export type Database = {
           event_name?: string
           guests_can_view?: boolean
           id?: string
+          locale?: string
           owner_id?: string
           reveal_at?: string
           reveal_mode?: Database["public"]["Enums"]["reveal_mode"]
@@ -335,6 +338,7 @@ export type Database = {
           guests_can_view: boolean
           host_name: string
           id: string
+          locale: string
           participant_id: string
           participant_limit_reached: boolean
           photo_count: number
@@ -347,6 +351,11 @@ export type Database = {
         }[]
       }
       event_is_full_plan: { Args: { p_event_id: string }; Returns: boolean }
+      consume_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number }
+        Returns: boolean
+      }
+      event_ready_photo_bytes: { Args: { p_event_id: string }; Returns: number }
       event_participant_count_capped: {
         Args: { p_cap: number; p_event_id: string }
         Returns: number
@@ -379,6 +388,7 @@ export type Database = {
           event_name: string
           guests_can_view: boolean
           id: string
+          locale: string
           participant_count: number
           photo_count: number
           previews: string[]

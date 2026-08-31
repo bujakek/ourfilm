@@ -30,10 +30,13 @@ const CHOICES: { mode: RevealChoice; title: string; detail: string }[] = [
 export function RevealCard({
   slug,
   mode: savedMode,
+  locale,
 }: {
   slug: string
   mode: RevealChoice
+  locale: 'en' | 'hu'
 }) {
+  const en = locale === 'en'
   const [mode, setMode] = useState<RevealChoice>(savedMode)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -43,10 +46,12 @@ export function RevealCard({
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
-      <p className="font-medium">Képek megjelenése</p>
+      <p className="font-medium">{en ? 'Photo reveal' : 'Képek megjelenése'}</p>
 
       <fieldset className="mt-4 flex flex-col gap-2">
-        <legend className="sr-only">Leleplezés időpontja</legend>
+        <legend className="sr-only">
+          {en ? 'Photo reveal time' : 'Leleplezés időpontja'}
+        </legend>
         {CHOICES.map((choice) => (
           <label
             key={choice.mode}
@@ -66,9 +71,19 @@ export function RevealCard({
               className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]"
             />
             <span className="min-w-0">
-              <span className="block text-sm font-medium">{choice.title}</span>
+              <span className="block text-sm font-medium">
+                {en
+                  ? choice.mode === 'instant'
+                    ? 'Immediately'
+                    : 'At the end of the event'
+                  : choice.title}
+              </span>
               <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                {choice.detail}
+                {en
+                  ? choice.mode === 'instant'
+                    ? 'Guests can see photos during the event.'
+                    : 'The gallery opens when shooting ends.'
+                  : choice.detail}
               </span>
             </span>
           </label>
@@ -86,20 +101,32 @@ export function RevealCard({
               setSaved(true)
             } catch (e) {
               setError(
-                e instanceof Error ? e.message : 'Nem sikerült módosítani.',
+                e instanceof Error
+                  ? e.message
+                  : en
+                    ? 'Could not save changes.'
+                    : 'Nem sikerült módosítani.',
               )
             }
           })
         }
         className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
       >
-        {pending ? 'Mentés…' : 'Változtatások mentése'}
+        {pending
+          ? en
+            ? 'Saving…'
+            : 'Mentés…'
+          : en
+            ? 'Save changes'
+            : 'Változtatások mentése'}
       </button>
 
       {error ? (
         <p className="mt-2 text-xs text-destructive">{error}</p>
       ) : saved ? (
-        <p className="mt-2 text-xs text-accent">Elmentettük.</p>
+        <p className="mt-2 text-xs text-accent">
+          {en ? 'Saved.' : 'Elmentettük.'}
+        </p>
       ) : null}
     </div>
   )

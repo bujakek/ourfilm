@@ -35,10 +35,10 @@ pass it inline, don't put it in `.env.local`.
 The dashboard route still works if you prefer it — **Authentication → Emails →
 Templates** — with these subjects:
 
-| Template       | Subject                                  |
-| -------------- | ---------------------------------------- |
-| Magic Link     | `Belépési linked az OurFilmhez`          |
-| Confirm signup | `Erősítsd meg az e-mail-címed — OurFilm` |
+| Template       | Subject                                              |
+| -------------- | ---------------------------------------------------- |
+| Magic Link     | `Your OurFilm sign-in link / Belépési linked`        |
+| Confirm signup | `Confirm your email / E-mail megerősítése — OurFilm` |
 
 **What not to use: `supabase config push`.** It sends this repo's entire
 `config.toml` to the linked project and has no `--dry-run`. The auth section

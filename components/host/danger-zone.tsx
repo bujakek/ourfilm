@@ -26,11 +26,14 @@ export function DangerZone({
   slug,
   eventName,
   photoCount,
+  locale,
 }: {
   slug: string
   eventName: string
   photoCount: number
+  locale: 'en' | 'hu'
 }) {
+  const en = locale === 'en'
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -53,11 +56,17 @@ export function DangerZone({
 
   return (
     <section className="print-hidden mt-12 rounded-2xl border border-destructive/30 px-5 py-4">
-      <h2 className="font-semibold text-destructive">Esemény törlése</h2>
+      <h2 className="font-semibold text-destructive">
+        {en ? 'Delete event' : 'Esemény törlése'}
+      </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         {photoCount > 0
-          ? `Véglegesen törli az eseményt és mind a ${photoCount} feltöltött képet. Ez a művelet nem vonható vissza.`
-          : 'Véglegesen törli az eseményt és az összes feltöltött képet. Ez a művelet nem vonható vissza.'}
+          ? en
+            ? `Permanently deletes the event and all ${photoCount} uploaded photos. This cannot be undone.`
+            : `Véglegesen törli az eseményt és mind a ${photoCount} feltöltött képet. Ez a művelet nem vonható vissza.`
+          : en
+            ? 'Permanently deletes the event and all uploaded photos. This cannot be undone.'
+            : 'Véglegesen törli az eseményt és az összes feltöltött képet. Ez a művelet nem vonható vissza.'}
       </p>
 
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
@@ -68,19 +77,23 @@ export function DangerZone({
         className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-destructive/40 px-5 text-sm font-semibold text-destructive"
       >
         <Trash2 className="size-4" />
-        Esemény végleges törlése
+        {en ? 'Permanently delete event' : 'Esemény végleges törlése'}
       </button>
 
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        closeLabel="Mégse"
+        closeLabel={en ? 'Cancel' : 'Mégse'}
         busy={pending}
-        title="Biztosan törlöd az eseményt?"
+        title={en ? 'Delete this event?' : 'Biztosan törlöd az eseményt?'}
         detail={
           photoCount > 0
-            ? `Az „${eventName}” esemény és mind a ${photoCount} feltöltött kép véglegesen törlődik. Ezt később nem lehet visszavonni.`
-            : `Az „${eventName}” esemény véglegesen törlődik. Ezt később nem lehet visszavonni.`
+            ? en
+              ? `“${eventName}” and all ${photoCount} uploaded photos will be permanently deleted.`
+              : `Az „${eventName}” esemény és mind a ${photoCount} feltöltött kép véglegesen törlődik. Ezt később nem lehet visszavonni.`
+            : en
+              ? `“${eventName}” will be permanently deleted.`
+              : `Az „${eventName}” esemény véglegesen törlődik. Ezt később nem lehet visszavonni.`
         }
         icon={
           <span className="flex size-12 items-center justify-center rounded-full bg-destructive/15">
@@ -103,7 +116,7 @@ export function DangerZone({
             ) : (
               <Trash2 className="size-4" />
             )}
-            Igen, végleg törlöm
+            {en ? 'Yes, delete permanently' : 'Igen, végleg törlöm'}
           </button>
           <button
             type="button"
@@ -116,7 +129,7 @@ export function DangerZone({
             onClick={() => setOpen(false)}
             className="glass glass-hover inline-flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-medium disabled:opacity-60"
           >
-            Mégse
+            {en ? 'Cancel' : 'Mégse'}
           </button>
         </div>
       </Sheet>

@@ -50,6 +50,7 @@ export function CaptureEndCard({
   endValue,
   startDay,
   state,
+  locale,
 }: {
   /** The saved end, as a `datetime-local` value in the event's own zone. */
   endValue: string
@@ -57,7 +58,9 @@ export function CaptureEndCard({
   /** The day the camera opened, `YYYY-MM-DD` in the event's zone. */
   startDay: string
   state: 'before' | 'open' | 'after'
+  locale: 'en' | 'hu'
 }) {
+  const en = locale === 'en'
   // Split once, on the string the server already formatted in the event's zone.
   // Reparsing it into a Date here would reintroduce exactly the zone question
   // `formatEventLocalInput` settled on the server.
@@ -73,13 +76,19 @@ export function CaptureEndCard({
   return (
     <>
       <div className="glass rounded-2xl px-5 py-4">
-        <p className="font-medium">A fotózás vége</p>
+        <p className="font-medium">{en ? 'Shooting ends' : 'A fotózás vége'}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           {state === 'before'
-            ? 'A kamera még nem nyílt meg.'
+            ? en
+              ? 'The camera is not open yet.'
+              : 'A kamera még nem nyílt meg.'
             : state === 'open'
-              ? 'A vendégek most fotózhatnak.'
-              : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
+              ? en
+                ? 'Guests can take photos now.'
+                : 'A vendégek most fotózhatnak.'
+              : en
+                ? 'Shooting has ended. Choose a later time to reopen it.'
+                : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
         </p>
 
         <div className="mt-4 space-y-2">
@@ -103,7 +112,7 @@ export function CaptureEndCard({
             />
             <span className="min-w-0 flex-1">
               <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
-                DÁTUM
+                {en ? 'DATE' : 'DÁTUM'}
               </span>
               <span className="mt-0.5 block text-sm font-medium">
                 {formatEventDate(day)}
@@ -126,7 +135,7 @@ export function CaptureEndCard({
             />
             <span className="min-w-0 flex-1">
               <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
-                IDŐPONT
+                {en ? 'TIME' : 'IDŐPONT'}
               </span>
               <span className="mt-0.5 block text-sm font-medium tabular-nums">
                 {time}
@@ -140,7 +149,9 @@ export function CaptureEndCard({
               type="time"
               step={60}
               required
-              aria-label="A fotózás végének időpontja"
+              aria-label={
+                en ? 'Shooting end time' : 'A fotózás végének időpontja'
+              }
               value={time}
               onChange={(event) => {
                 setTime(event.target.value)
@@ -162,34 +173,51 @@ export function CaptureEndCard({
                 setSaved(true)
               } catch (e) {
                 setError(
-                  e instanceof Error ? e.message : 'Nem sikerült módosítani.',
+                  e instanceof Error
+                    ? e.message
+                    : en
+                      ? 'Could not save changes.'
+                      : 'Nem sikerült módosítani.',
                 )
               }
             })
           }
           className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         >
-          {pending ? 'Mentés…' : 'Változtatások mentése'}
+          {pending
+            ? en
+              ? 'Saving…'
+              : 'Mentés…'
+            : en
+              ? 'Save changes'
+              : 'Változtatások mentése'}
         </button>
 
         {error ? (
           <p className="mt-2 text-xs text-destructive">{error}</p>
         ) : saved ? (
-          <p className="mt-2 text-xs text-accent">Elmentettük.</p>
+          <p className="mt-2 text-xs text-accent">
+            {en ? 'Saved.' : 'Elmentettük.'}
+          </p>
         ) : null}
       </div>
 
       <Sheet
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
-        closeLabel="Dátumválasztó bezárása"
-        title="Válassz dátumot"
-        detail="Eddig az időpontig készíthetnek képeket a vendégeid."
+        closeLabel={en ? 'Close date picker' : 'Dátumválasztó bezárása'}
+        title={en ? 'Choose a date' : 'Válassz dátumot'}
+        detail={
+          en
+            ? 'Guests can take photos until this time.'
+            : 'Eddig az időpontig készíthetnek képeket a vendégeid.'
+        }
       >
         <MonthCalendar
           value={day}
           earliest={startDay}
-          label="A fotózás vége"
+          label={en ? 'Shooting ends' : 'A fotózás vége'}
+          locale={locale}
           onChange={(value) => {
             setDay(value)
             setSaved(false)

@@ -31,14 +31,14 @@ const TEMPLATES = [
     file: 'magic-link.html',
     subjectField: 'mailer_subjects_magic_link',
     contentField: 'mailer_templates_magic_link_content',
-    subject: 'Belépési linked az OurFilmhez',
+    subject: 'Your OurFilm sign-in link / Belépési linked',
     label: 'Magic Link (returning host)',
   },
   {
     file: 'confirm-signup.html',
     subjectField: 'mailer_subjects_confirmation',
     contentField: 'mailer_templates_confirmation_content',
-    subject: 'Erősítsd meg az e-mail-címed — OurFilm',
+    subject: 'Confirm your email / E-mail megerősítése — OurFilm',
     label: 'Confirm signup (first-time host)',
   },
 ] as const

@@ -23,10 +23,13 @@ import { useOptimistic, useState, useTransition } from 'react'
 export function GuestsToggle({
   slug,
   canView,
+  locale,
 }: {
   slug: string
   canView: boolean
+  locale: 'en' | 'hu'
 }) {
+  const en = locale === 'en'
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState(false)
   // Falls back to `canView` on its own once the action settles or throws, so
@@ -37,11 +40,17 @@ export function GuestsToggle({
     <div className="glass rounded-2xl px-5 py-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-medium">Vendégek galéria-hozzáférése</p>
+          <p className="font-medium">
+            {en ? 'Guest gallery access' : 'Vendégek galéria-hozzáférése'}
+          </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {optimisticCanView
-              ? 'A vendégek is megnyithatják a galériát a leleplezés után.'
-              : 'A képeket csak te látod. A vendégek a leleplezés után sem férnek hozzá.'}
+              ? en
+                ? 'Guests can open the gallery after the reveal.'
+                : 'A vendégek is megnyithatják a galériát a leleplezés után.'
+              : en
+                ? 'Only you can see the photos, including after the reveal.'
+                : 'A képeket csak te látod. A vendégek a leleplezés után sem férnek hozzá.'}
           </p>
         </div>
 
@@ -49,7 +58,9 @@ export function GuestsToggle({
           type="button"
           role="switch"
           aria-checked={optimisticCanView}
-          aria-label="Vendégek galéria-hozzáférése"
+          aria-label={
+            en ? 'Guest gallery access' : 'Vendégek galéria-hozzáférése'
+          }
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
@@ -78,7 +89,7 @@ export function GuestsToggle({
 
       {error ? (
         <p className="mt-2 text-xs text-destructive">
-          Nem sikerült módosítani.
+          {en ? 'Could not save changes.' : 'Nem sikerült módosítani.'}
         </p>
       ) : null}
     </div>

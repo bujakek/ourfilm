@@ -5,7 +5,7 @@ import { CompleteCreation } from './complete-creation'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Esemény létrehozása — OurFilm',
+  title: 'Creating event — OurFilm',
   robots: { index: false, follow: false },
 }
 

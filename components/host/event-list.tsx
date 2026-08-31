@@ -4,12 +4,12 @@ import { EyeOff, Images, Users } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-function PreviewStrip({ event }: { event: EventListItem }) {
+function PreviewStrip({ event, en }: { event: EventListItem; en: boolean }) {
   if (event.previewUrls.length === 0) {
     return (
       <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Images className="size-3.5" />
-        Még nincs feltöltött kép
+        {en ? 'No photos uploaded yet' : 'Még nincs feltöltött kép'}
       </p>
     )
   }
@@ -44,11 +44,18 @@ function PreviewStrip({ event }: { event: EventListItem }) {
   )
 }
 
-function EventRow({ event }: { event: EventListItem }) {
+function EventRow({
+  event,
+  locale,
+}: {
+  event: EventListItem
+  locale: 'en' | 'hu'
+}) {
+  const en = locale === 'en'
   return (
     <li>
       <Link
-        href={`/host/events/${event.slug}`}
+        href={`/host/events/${event.slug}?lang=${event.locale}`}
         className="glass glass-hover block rounded-2xl px-5 py-4"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-x-4">
@@ -59,19 +66,22 @@ function EventRow({ event }: { event: EventListItem }) {
         </div>
         <p className="mt-1 truncate text-xs text-muted-foreground">
           /e/{event.slug}
-          {event.photoCount > 0 ? ` · ${event.photoCount} kép` : ''}
+          {event.photoCount > 0
+            ? ` · ${event.photoCount} ${en ? 'photos' : 'kép'}`
+            : ''}
         </p>
         <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <Users className="size-3" />
-          {event.participantCount} résztvevő · {event.shots_per_participant} kép
-          fejenként
+          {event.participantCount} {en ? 'guests' : 'résztvevő'} ·{' '}
+          {event.shots_per_participant} {en ? 'photos each' : 'kép fejenként'}
         </p>
         {!event.guests_can_view ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <EyeOff className="size-3" />A galériát csak te látod
+            <EyeOff className="size-3" />
+            {en ? 'Only you can view the gallery' : 'A galériát csak te látod'}
           </p>
         ) : null}
-        <PreviewStrip event={event} />
+        <PreviewStrip event={event} en={en} />
       </Link>
     </li>
   )
@@ -80,20 +90,23 @@ function EventRow({ event }: { event: EventListItem }) {
 export function EventList({
   active,
   closed,
+  locale,
 }: {
   active: EventListItem[]
   closed: EventListItem[]
+  locale: 'en' | 'hu'
 }) {
+  const en = locale === 'en'
   return (
     <div className="mt-8 flex flex-col gap-8">
       {active.length > 0 ? (
         <section>
           <h2 className="mb-3 text-xs font-medium tracking-[0.2em] text-muted-foreground">
-            AKTÍV
+            {en ? 'ACTIVE' : 'AKTÍV'}
           </h2>
           <ul className="flex flex-col gap-3">
             {active.map((event) => (
-              <EventRow key={event.id} event={event} />
+              <EventRow key={event.id} event={event} locale={locale} />
             ))}
           </ul>
         </section>
@@ -102,11 +115,11 @@ export function EventList({
       {closed.length > 0 ? (
         <section>
           <h2 className="mb-3 text-xs font-medium tracking-[0.2em] text-muted-foreground">
-            LEZÁRULT
+            {en ? 'CLOSED' : 'LEZÁRULT'}
           </h2>
           <ul className="flex flex-col gap-3">
             {closed.map((event) => (
-              <EventRow key={event.id} event={event} />
+              <EventRow key={event.id} event={event} locale={locale} />
             ))}
           </ul>
         </section>

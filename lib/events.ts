@@ -6,6 +6,7 @@ import { readParticipantTokenHash } from './participants'
 import { createAdminClient } from './supabase/admin'
 import { createClient } from './supabase/server'
 import type { Database } from './supabase/database.types'
+import type { Locale } from './i18n'
 
 /**
  * Everything the guest surface is allowed to know, plus what this particular
@@ -106,6 +107,7 @@ export type OwnedEvent = {
   event_name: string
   cover_path: string | null
   time_zone: string
+  locale: Locale
   capture_start_at: string
   capture_end_at: string
   reveal_mode: Database['public']['Enums']['reveal_mode']
@@ -116,7 +118,7 @@ export type OwnedEvent = {
 }
 
 const OWNED_EVENT_COLUMNS =
-  'id, slug, event_name, cover_path, time_zone, capture_start_at, capture_end_at, reveal_mode, reveal_at, shots_per_participant, guests_can_view, created_at'
+  'id, slug, event_name, cover_path, time_zone, locale, capture_start_at, capture_end_at, reveal_mode, reveal_at, shots_per_participant, guests_can_view, created_at'
 
 /**
  * One of the host's own events, by slug. Returns null when it does not exist
@@ -138,6 +140,8 @@ export const getOwnedEventBySlug = cache(
 
     if (error) throw error
     return data
+      ? ({ ...data, locale: data.locale as Locale } satisfies OwnedEvent)
+      : null
   },
 )
 
@@ -172,6 +176,7 @@ export async function getOwnedEventsWithPreviews(): Promise<
       // genuinely null on most events. Asserted here so no caller inherits the
       // lie — the same wrinkle `lib/billing.ts` documents.
       cover_path: cover_path as string | null,
+      locale: event.locale as Locale,
       photoCount: photo_count,
       participantCount: participant_count,
     }),

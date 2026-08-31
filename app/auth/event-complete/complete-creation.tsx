@@ -17,7 +17,7 @@ type Outcome =
   | { kind: 'error'; message: string }
 
 const GENERIC_ERROR =
-  'Az eseményt most nem sikerült létrehozni. A beállításaidat elmentettük, így később újra megpróbálhatod.'
+  'We could not create the event. Your settings are saved, so you can try again later.'
 
 /**
  * Runs once per page load.
@@ -60,6 +60,7 @@ async function run(): Promise<Outcome> {
   let result
   try {
     result = await createEventFromDraft({
+      locale: draft.locale,
       name: draft.name,
       endLocal: draft.endLocal,
       timeZone: draft.timeZone,
@@ -115,6 +116,10 @@ async function run(): Promise<Outcome> {
  */
 export function CompleteCreation() {
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'working' })
+  const [locale] = useState<'en' | 'hu'>(
+    () => loadDraft(new Date())?.locale ?? 'en',
+  )
+  const en = locale === 'en'
 
   useEffect(() => {
     if (started) return
@@ -130,38 +135,52 @@ export function CompleteCreation() {
     case 'no-draft':
       return (
         <Outcome
-          title="Nem találtuk az esemény piszkozatát"
-          detail="A piszkozat csak abban a böngészőben érhető el, ahol elkezdted az eseményt."
-          href="/host/events/new"
-          cta="Új esemény létrehozása"
+          title={
+            en ? 'Event draft not found' : 'Nem találtuk az esemény piszkozatát'
+          }
+          detail={
+            en
+              ? 'The draft is only available in the browser where you started creating the event.'
+              : 'A piszkozat csak abban a böngészőben érhető el, ahol elkezdted az eseményt.'
+          }
+          href={`/host/events/new?lang=${locale}`}
+          cta={en ? 'Create a new event' : 'Új esemény létrehozása'}
         />
       )
     case 'stale-end':
       return (
         <Outcome
-          title="Frissítsd az esemény végét"
-          detail="A korábban kiválasztott időpont már elmúlt. Válassz egy új befejezési időpontot."
+          title={en ? 'Update the event end' : 'Frissítsd az esemény végét'}
+          detail={
+            en
+              ? 'The time you chose has passed. Choose a new end time.'
+              : 'A korábban kiválasztott időpont már elmúlt. Válassz egy új befejezési időpontot.'
+          }
           // `resume=end` reopens the flow on the date screen with every other
           // answer still in place, rather than starting over.
-          href="/host/events/new?resume=end"
-          cta="Időpont választása"
+          href={`/host/events/new?resume=end&lang=${locale}`}
+          cta={en ? 'Choose a time' : 'Időpont választása'}
         />
       )
     case 'error':
       return (
         <Outcome
-          title="Nem sikerült létrehozni"
+          title={en ? 'Could not create the event' : 'Nem sikerült létrehozni'}
           detail={outcome.message}
-          href="/host/events/new"
-          cta="Vissza a beállításokhoz"
+          href={`/host/events/new?lang=${locale}`}
+          cta={en ? 'Back to settings' : 'Vissza a beállításokhoz'}
         />
       )
     default:
       return (
         <div className="flex min-h-[100dvh] items-center justify-center px-5">
           <LoadingStatus
-            title="Esemény létrehozása…"
-            description="Egy pillanat, mentjük a beállításaidat."
+            title={en ? 'Creating your event…' : 'Esemény létrehozása…'}
+            description={
+              en
+                ? 'One moment while we save your settings.'
+                : 'Egy pillanat, mentjük a beállításaidat.'
+            }
           />
         </div>
       )

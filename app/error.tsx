@@ -24,11 +24,11 @@ export default function Error({
       <BackgroundGlow />
       <main className="relative z-10 w-full max-w-md text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Valami félresikerült
+          Something went wrong
         </h1>
         <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
-          Nem sikerült betölteni az oldalt. Próbáld meg újra — ha a képeidet
-          töltötted fel, azok nem vesztek el.
+          We could not load this page. Try again — if you were uploading photos,
+          they have not been lost.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button
@@ -36,18 +36,18 @@ export default function Error({
             onClick={reset}
             className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
           >
-            Próbáld újra
+            Try again
           </button>
           <Link
             href={localePath(defaultLocale, '/')}
             className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"
           >
-            Vissza a főoldalra
+            Back to home
           </Link>
         </div>
         {error.digest ? (
           <p className="mt-6 text-xs text-muted-foreground/60">
-            Hibaazonosító: {error.digest}
+            Error ID: {error.digest}
           </p>
         ) : null}
       </main>

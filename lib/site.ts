@@ -14,8 +14,9 @@ export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ourfilm.app'
 ).replace(/\/$/, '')
 
-export function eventUrl(slug: string) {
-  return `${SITE_URL}/e/${slug}`
+export function eventUrl(slug: string, locale?: 'en' | 'hu') {
+  const url = `${SITE_URL}/e/${slug}`
+  return locale ? `${url}?lang=${locale}` : url
 }
 
 /** Origin without the scheme, for places that show the URL rather than link it

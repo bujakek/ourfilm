@@ -258,11 +258,11 @@ otp_expiry = 3600
 # the templates before reaching for `supabase config push`, which writes this
 # whole file's auth section over the remote's.
 [auth.email.template.magic_link]
-subject = "Belépési linked az OurFilmhez"
+subject = "Your OurFilm sign-in link / Belépési linked"
 content_path = "./supabase/templates/magic-link.html"
 
 [auth.email.template.confirmation]
-subject = "Erősítsd meg az e-mail-címed — OurFilm"
+subject = "Confirm your email / E-mail megerősítése — OurFilm"
 content_path = "./supabase/templates/confirm-signup.html"
 
 # Uncomment to customize notification email template

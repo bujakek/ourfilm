@@ -2,6 +2,39 @@ import createMDX from '@next/mdx'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    const csp = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self' https://checkout.stripe.com",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.supabase.co",
+      "font-src 'self' data:",
+      "connect-src 'self' https://*.supabase.co",
+      "media-src 'self' blob: https://*.supabase.co",
+      "worker-src 'self' blob:",
+      'upgrade-insecure-requests',
+    ].join('; ')
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: csp },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value:
+              'camera=(self), microphone=(), geolocation=(), payment=(self)',
+          },
+        ],
+      },
+    ]
+  },
   // Lets a blog post be an .mdx file that *is* the page, rather than a
   // markdown string parsed at runtime by a loader we would have to write.
   pageExtensions: ['ts', 'tsx', 'mdx'],
@@ -38,6 +71,13 @@ const nextConfig = {
       },
       { source: '/en/rolunk', destination: '/en/about', permanent: true },
       { source: '/en/kapcsolat', destination: '/en/contact', permanent: true },
+      { source: '/en/aszf', destination: '/en/terms', permanent: true },
+      {
+        source: '/en/adatvedelem',
+        destination: '/en/privacy',
+        permanent: true,
+      },
+      { source: '/en/impresszum', destination: '/en/legal', permanent: true },
       {
         source: '/en/alternativak',
         destination: '/en/alternatives',
@@ -67,6 +107,13 @@ const nextConfig = {
       },
       { source: '/hu/about', destination: '/hu/rolunk', permanent: true },
       { source: '/hu/contact', destination: '/hu/kapcsolat', permanent: true },
+      { source: '/hu/terms', destination: '/hu/aszf', permanent: true },
+      {
+        source: '/hu/privacy',
+        destination: '/hu/adatvedelem',
+        permanent: true,
+      },
+      { source: '/hu/legal', destination: '/hu/impresszum', permanent: true },
       {
         source: '/hu/alternatives',
         destination: '/hu/alternativak',

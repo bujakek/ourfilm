@@ -22,24 +22,32 @@ import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
 export function ShotsCard({
   slug,
   shots,
+  locale,
 }: {
   slug: string
   shots: ShotOption
+  locale: 'en' | 'hu'
 }) {
+  const en = locale === 'en'
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState(false)
   const [optimisticShots, setOptimisticShots] = useOptimistic(shots)
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
-      <p className="font-medium">Képek vendégenként</p>
+      <p className="font-medium">
+        {en ? 'Photos per guest' : 'Képek vendégenként'}
+      </p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        A limit minden vendégnél külön számít. A csökkentés nem töröl képeket —
-        aki már többet készített, megtartja őket, de újat nem tud.
+        {en
+          ? 'The limit applies separately to each guest. Lowering it never deletes existing photos.'
+          : 'A limit minden vendégnél külön számít. A csökkentés nem töröl képeket — aki már többet készített, megtartja őket, de újat nem tud.'}
       </p>
 
       <fieldset className="mt-4">
-        <legend className="sr-only">Képek száma vendégenként</legend>
+        <legend className="sr-only">
+          {en ? 'Photos per guest' : 'Képek száma vendégenként'}
+        </legend>
         <div className="grid grid-cols-5 gap-2">
           {SHOT_OPTIONS.map((option) => {
             const active = option === optimisticShots
@@ -79,7 +87,7 @@ export function ShotsCard({
                 </span>
                 {option === DEFAULT_SHOTS ? (
                   <span className="mt-0.5 text-[10px] text-accent">
-                    Ajánlott
+                    {en ? 'Recommended' : 'Ajánlott'}
                   </span>
                 ) : null}
               </label>
@@ -90,7 +98,7 @@ export function ShotsCard({
 
       {error ? (
         <p className="mt-2 text-xs text-destructive">
-          Nem sikerült módosítani.
+          {en ? 'Could not save changes.' : 'Nem sikerült módosítani.'}
         </p>
       ) : null}
     </div>

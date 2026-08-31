@@ -83,8 +83,13 @@ export function NewEventForm(props: Props) {
 
   const fresh = useMemo(
     () =>
-      emptyDraft(new Date(props.nowIso), timeZone, props.initialCreationKey),
-    [props.nowIso, timeZone, props.initialCreationKey],
+      emptyDraft(
+        new Date(props.nowIso),
+        timeZone,
+        props.initialCreationKey,
+        locale,
+      ),
+    [props.nowIso, timeZone, props.initialCreationKey, locale],
   )
 
   const initial = useStored && stored ? stored : fresh
@@ -179,6 +184,7 @@ function OnboardingFlow({
 
   const draft: EventDraft = useMemo(
     () => ({
+      locale,
       name,
       endLocal,
       timeZone,
@@ -194,6 +200,7 @@ function OnboardingFlow({
       updatedAt: initial.updatedAt,
     }),
     [
+      locale,
       name,
       endLocal,
       timeZone,
@@ -242,6 +249,7 @@ function OnboardingFlow({
     setError(null)
     startTransition(async () => {
       const result = await createEventFromDraft({
+        locale,
         name,
         endLocal,
         timeZone,

@@ -11,19 +11,19 @@ export default function NotFound() {
           404
         </span>
         <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Ez az oldal nem található
+          Page not found
         </h1>
         {/* Most people who land here mistyped a QR link, so lead with that
             rather than a generic apology. */}
         <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
-          Lehet, hogy elgépelted a linket, vagy a kód egy része lemaradt. Olvasd
-          be újra a QR-kódot, vagy kérd el a linket a házigazdától.
+          The link may be incomplete. Scan the QR code again or ask the host for
+          the event link.
         </p>
         <Link
           href={localePath(defaultLocale, '/')}
           className="btn-shine mt-8 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
         >
-          Vissza a főoldalra
+          Back to home
         </Link>
       </main>
     </div>

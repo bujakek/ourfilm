@@ -10,9 +10,16 @@ import { NewEventForm } from './new-event-form'
 // stale the day after a deploy.
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Új esemény — OurFilm',
-  robots: { index: false, follow: false },
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string }>
+}): Promise<Metadata> {
+  const { lang } = await searchParams
+  return {
+    title: lang === 'hu' ? 'Új esemény — OurFilm' : 'New event — OurFilm',
+    robots: { index: false, follow: false },
+  }
 }
 
 /**

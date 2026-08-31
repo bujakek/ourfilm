@@ -9,15 +9,18 @@ import {
 } from '@/lib/camera'
 import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import { isEventPlan } from '@/lib/onboarding'
+import { isLocale, type Locale } from '@/lib/i18n'
 import { generateEventSlug } from '@/lib/slug'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 /** What the browser sends. Every field is re-derived or re-checked below — it
  *  comes out of `localStorage`, which is a JSON blob any visitor can edit. */
 export type EventDraftInput = {
+  locale: string
   name: string
   /** `YYYY-MM-DDTHH:mm`, read as wall clock in `timeZone`. */
   endLocal: string
@@ -69,13 +72,44 @@ export async function createEventFromDraft(
   input: EventDraftInput,
 ): Promise<CreateEventResult> {
   const name = String(input.name ?? '').trim()
+  const locale: Locale = isLocale(input.locale) ? input.locale : 'en'
+  const copy =
+    locale === 'en'
+      ? {
+          zone: 'We could not determine your time zone.',
+          end: 'Choose when the event should end.',
+          reveal: 'Choose when the photos should appear.',
+          shots: 'Choose how many photos each guest can take.',
+          plan: 'Choose how many guests can join.',
+          legal: 'Accept the Terms to create the event.',
+          name: 'Give your event a name.',
+          past: 'That time has already passed. Choose a later one.',
+          invalid: 'We could not create the event. Check your settings.',
+          auth: 'Sign in to save your event.',
+          retry: 'We could not create the event. Try again.',
+          slug: 'We could not generate a unique link. Try again.',
+        }
+      : {
+          zone: 'Nem sikerült megállapítani az időzónádat.',
+          end: 'Add meg, mikor érjen véget az esemény.',
+          reveal: 'Válaszd ki, mikor jelenjenek meg a képek.',
+          shots: 'Válaszd ki, hány képet készíthet egy vendég.',
+          plan: 'Válaszd ki, hány vendég csatlakozhat.',
+          legal: 'Az esemény létrehozásához fogadd el az ÁSZF-et.',
+          name: 'Adj nevet az eseménynek.',
+          past: 'Ez az időpont már elmúlt. Válassz későbbit.',
+          invalid: 'Nem sikerült létrehozni. Nézd át a beállításokat.',
+          auth: 'Az esemény mentéséhez lépj be.',
+          retry: 'Nem sikerült létrehozni. Próbáld újra.',
+          slug: 'Nem sikerült egyedi linket generálni. Próbáld újra.',
+        }
 
   // Read off the host's browser rather than chosen from a list. Still checked:
   // an unknown zone makes `Intl` throw at render time rather than at the point
   // it was accepted.
   const timeZone = String(input.timeZone ?? '').trim()
   if (!isValidTimeZone(timeZone)) {
-    return { ok: false, error: 'Nem sikerült megállapítani az időzónádat.' }
+    return { ok: false, error: copy.zone }
   }
 
   // **The camera opens now.** Stamped here rather than sent from the browser:
@@ -93,23 +127,23 @@ export async function createEventFromDraft(
   if (!captureEndIso) {
     return {
       ok: false,
-      error: 'Add meg, mikor érjen véget az esemény.',
+      error: copy.end,
       reason: 'end',
     }
   }
   if (!isRevealChoice(revealModeRaw)) {
-    return { ok: false, error: 'Válaszd ki, mikor jelenjenek meg a képek.' }
+    return { ok: false, error: copy.reveal }
   }
   if (!isShotOption(shots)) {
-    return { ok: false, error: 'Válaszd ki, hány képet készíthet egy vendég.' }
+    return { ok: false, error: copy.shots }
   }
   if (!isEventPlan(planRaw)) {
-    return { ok: false, error: 'Válaszd ki, hány vendég csatlakozhat.' }
+    return { ok: false, error: copy.plan }
   }
   if (input.legalAccepted !== true) {
     return {
       ok: false,
-      error: 'Az esemény létrehozásához fogadd el az ÁSZF-et.',
+      error: copy.legal,
     }
   }
 
@@ -125,7 +159,7 @@ export async function createEventFromDraft(
   })
 
   if (problems.includes('name_required')) {
-    return { ok: false, error: 'Adj nevet az eseménynek.' }
+    return { ok: false, error: copy.name }
   }
   if (problems.includes('window_backwards')) {
     // The camera starts now, so the only way to fail this is an end that has
@@ -133,14 +167,14 @@ export async function createEventFromDraft(
     // why it is worth its own reason code rather than a sentence.
     return {
       ok: false,
-      error: 'Ez az időpont már elmúlt. Válassz későbbit.',
+      error: copy.past,
       reason: 'end',
     }
   }
   if (problems.length > 0) {
     return {
       ok: false,
-      error: 'Nem sikerült létrehozni. Nézd át a beállításokat.',
+      error: copy.invalid,
     }
   }
 
@@ -153,7 +187,7 @@ export async function createEventFromDraft(
   if (!user) {
     return {
       ok: false,
-      error: 'Az esemény mentéséhez lépj be.',
+      error: copy.auth,
       reason: 'auth',
     }
   }
@@ -174,7 +208,30 @@ export async function createEventFromDraft(
       .eq('creation_key', creationKey)
       .maybeSingle()
     if (existing) {
-      return { ok: true, destination: `/host/events/${existing.slug}` }
+      return {
+        ok: true,
+        destination: `/host/events/${existing.slug}?lang=${locale}`,
+      }
+    }
+  }
+
+  // Only a genuinely new insert consumes the allowance. Reopening a magic
+  // link or retrying an idempotent draft must always be able to find the row it
+  // already created, even after the account has reached its creation limit.
+  if (
+    !(await consumeRateLimit({
+      scope: 'event-create',
+      identifier: user.id,
+      limit: 10,
+      windowSeconds: 3600,
+    }))
+  ) {
+    return {
+      ok: false,
+      error:
+        locale === 'en'
+          ? 'Too many events were created recently. Try again later.'
+          : 'Nemrég túl sok esemény készült. Próbáld újra később.',
     }
   }
 
@@ -197,6 +254,7 @@ export async function createEventFromDraft(
         event_name: name,
         owner_id: user.id,
         time_zone: timeZone,
+        locale,
         capture_start_at: captureStartAt.toISOString(),
         capture_end_at: captureEndIso,
         reveal_mode: revealModeRaw,
@@ -226,8 +284,11 @@ export async function createEventFromDraft(
           .eq('creation_key', creationKey)
           .maybeSingle()
         if (raced)
-          return { ok: true, destination: `/host/events/${raced.slug}` }
-        return { ok: false, error: 'Nem sikerült létrehozni. Próbáld újra.' }
+          return {
+            ok: true,
+            destination: `/host/events/${raced.slug}?lang=${locale}`,
+          }
+        return { ok: false, error: copy.retry }
       }
       // Otherwise it is a slug collision, which a fresh random suffix clears.
       continue
@@ -235,14 +296,14 @@ export async function createEventFromDraft(
 
     if (error) {
       console.error('Could not create event', error)
-      return { ok: false, error: 'Nem sikerült létrehozni. Próbáld újra.' }
+      return { ok: false, error: copy.retry }
     }
   }
 
   if (!slug || !eventId) {
     return {
       ok: false,
-      error: 'Nem sikerült egyedi linket generálni. Próbáld újra.',
+      error: copy.slug,
     }
   }
 
@@ -253,21 +314,21 @@ export async function createEventFromDraft(
   // only a paid `purchases` row lifts it. So the paid choice means "and now go
   // pay" — a draft that says `full` buys nothing on its own, and an abandoned
   // checkout leaves an ordinary free event.
-  let destination = `/host/events/${slug}`
+  let destination = `/host/events/${slug}?lang=${locale}`
 
   if (planRaw === 'full') {
     // Settings, not the event page, whenever the payment cannot be started
     // here: that is where the billing card is, and it explains the situation —
     // payments not switched on, or try again — better than a silent landing on
     // the QR code would.
-    destination = `/host/events/${slug}/settings`
+    destination = `/host/events/${slug}/settings?lang=${locale}`
     if (stripeIsConfigured()) {
       try {
         // An admin's own events are already unlimited, so there is nothing to
         // sell them. Same predicate the billing card reads.
         const quota = await getEventQuota(eventId)
         if (quota.unlimited) {
-          destination = `/host/events/${slug}`
+          destination = `/host/events/${slug}?lang=${locale}`
         } else {
           destination = await createEventCheckoutUrl({
             eventId,

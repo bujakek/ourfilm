@@ -15,11 +15,15 @@ end of the event, or at a chosen later moment.
 There is no preview and no retake. You press the shutter and find out later what
 you got — that is the format, not an omission.
 
-**Phase: MVP / pilot for one real wedding.** The single question we're answering: do guests actually use the QR to shoot? Nothing else matters yet. There is no validated business model — don't build for scale, don't build for a second customer.
+**Phase: bilingual production hardening.** The disposable-camera product, host
+dashboard, guest capture flow, private storage and Stripe test checkout exist.
+Changes must preserve the real event flow and its security boundaries; this is
+no longer a marketing-only prototype.
 
-**Language:** UI copy is **Hungarian only** today, but the routing and content
-model are locale-prefixed and English-ready — see "Locales" below. Code,
-comments, commit messages, and this doc stay in English.
+**Language:** English and Hungarian are live product locales. Public routes are
+locale-prefixed. Every event stores `events.locale`; every QR, invitation and
+guest URL must retain it. Host and auth-completion screens use the event/draft
+locale. Code, comments, commit messages, and this doc stay in English.
 
 **Mobile-first, always.** Guests arrive almost exclusively on phones via QR or a shared link. Design and test at 390px width before anything else.
 
@@ -67,6 +71,15 @@ Project skills live in `.cursor/skills/`. Read the relevant one _before_ writing
 NEXT_PUBLIC_SUPABASE_URL=       # Supabase dashboard → Project Settings → API Keys
 NEXT_PUBLIC_SUPABASE_ANON_KEY=  # the anon / public key
 SUPABASE_SERVICE_ROLE_KEY=      # service_role; server-only, Stripe webhook
+```
+
+Abuse and storage emergency controls are server-only:
+
+```bash
+OURFILM_UPLOADS_DISABLED=false          # true pauses all new reservations
+OURFILM_EVENT_STORAGE_LIMIT_BYTES=      # optional positive per-event master-byte cap
+RESEND_API_KEY=                         # legal request confirmations
+LEGAL_EMAIL_FROM=                       # optional sender override
 ```
 
 Payments add three more, all server-only — Checkout is a redirect to Stripe's
@@ -117,10 +130,10 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   it describes a product that no longer exists. Read it for the decisions that
   still hold (slug shape, region, ownership scoping, self-serve delete) and
   ignore the phase list.
-- **Marketing landing page** — `app/[locale]/page.tsx` composes the disposable
+- **Bilingual marketing site** — `app/[locale]/page.tsx` composes the disposable
   camera story from `components/site/*`: hero, benefits, how-it-works,
   qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
-  `/hu`, with `/` redirecting to it.
+  camera story for `/en` and `/hu`, with `/` redirecting to English.
 - **The homepage and `/hu/arak` describe the disposable-camera product.** The
   old upload demo, technical quality comparison, occasions carousel and
   instant-arrival pitch are no longer in the homepage flow. The unused

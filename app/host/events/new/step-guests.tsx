@@ -227,42 +227,42 @@ export function StepGuests({
           <span>
             {plan === 'full' ? (
               <>
-                Elfogadom az{' '}
+                {en ? 'I accept the ' : 'Elfogadom az '}
                 <Link
-                  href="/hu/aszf"
+                  href={en ? '/en/terms' : '/hu/aszf'}
                   target="_blank"
                   className="underline underline-offset-2 hover:text-foreground"
                 >
-                  ÁSZF-et
+                  {en ? 'Terms' : 'ÁSZF-et'}
                 </Link>
-                , és kifejezetten kérem, hogy az OurFilm a 14 napos
-                elállási/felmondási időszak vége előtt kezdje meg a
-                szolgáltatást. Tudomásul veszem, hogy felmondás esetén a
-                megszűnésig arányosan teljesített szolgáltatás díját meg kell
-                fizetnem.
+                {en
+                  ? ', and expressly ask OurFilm to start the service before the 14-day cancellation period ends. I understand that, if I cancel after service has started, I may have to pay for the proportion already supplied.'
+                  : ', és kifejezetten kérem, hogy az OurFilm a 14 napos elállási/felmondási időszak vége előtt kezdje meg a szolgáltatást. Tudomásul veszem, hogy felmondás esetén a megszűnésig arányosan teljesített szolgáltatás díját meg kell fizetnem.'}
               </>
             ) : (
               <>
-                Elfogadom az{' '}
+                {en ? 'I accept the ' : 'Elfogadom az '}
                 <Link
-                  href="/hu/aszf"
+                  href={en ? '/en/terms' : '/hu/aszf'}
                   target="_blank"
                   className="underline underline-offset-2 hover:text-foreground"
                 >
-                  ÁSZF-et
+                  {en ? 'Terms' : 'ÁSZF-et'}
                 </Link>
                 .
               </>
             )}{' '}
-            Az{' '}
+            {en ? 'The ' : 'Az '}
             <Link
-              href="/hu/adatvedelem"
+              href={en ? '/en/privacy' : '/hu/adatvedelem'}
               target="_blank"
               className="underline underline-offset-2 hover:text-foreground"
             >
-              adatkezelési tájékoztató
+              {en ? 'Privacy Notice' : 'adatkezelési tájékoztató'}
             </Link>{' '}
-            ismerteti az adatok kezelését.
+            {en
+              ? 'explains how personal data is handled.'
+              : 'ismerteti az adatok kezelését.'}
           </span>
         </label>
       </div>
