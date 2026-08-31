@@ -54,17 +54,30 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_REF" \
             --password "$SUPABASE_DB_PASSWORD"
 
+      # `--include-all` applies migrations whose timestamp predates the last one
+      # already on the remote. Two branches that merge out of order produce
+      # exactly that: #16 merged first and applied 20260831133000 and
+      # 20260831150000, then #17 — branched earlier — brought 20260831120000 and
+      # 20260831121000 along behind them. Without the flag `db push` refuses the
+      # whole batch, which is how production ended up missing `events.locale`
+      # and `rate_limits` while the code that reads them was already deployed.
+      #
+      # The dry run that follows is the safety net the flag removes: it prints
+      # the exact list before anything is applied, and the Production
+      # environment still gates the apply step on a human.
       - name: Preview pending migrations
         run: |
           pnpm supabase db push \
             --linked \
             --dry-run \
+            --include-all \
             --password "$SUPABASE_DB_PASSWORD"
 
       - name: Apply pending migrations
         run: |
           pnpm supabase db push \
             --linked \
+            --include-all \
             --password "$SUPABASE_DB_PASSWORD"
 
       - name: Verify committed types match production
