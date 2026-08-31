@@ -3,7 +3,7 @@
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useActionState, useRef, useState } from 'react'
 
-import { createClient } from '@/lib/supabase/client'
+import { sendSignInLink } from '@/lib/auth-link'
 
 import { Sheet } from '@/components/host/sheet'
 import type { Locale } from '@/lib/i18n'
@@ -15,11 +15,10 @@ const INITIAL: Result = { status: 'idle' }
 /**
  * Asks for an account at the end of the flow, not the start.
  *
- * The same magic link `/host/login` sends, and deliberately the same
- * `signInWithOtp` call with `shouldCreateUser` — one link both signs up and
- * signs in, so there is no "register or log in?" fork to put in front of
- * someone who has already answered four questions. No new provider was added
- * for this.
+ * The same magic link `/host/login` sends, and deliberately through the same
+ * `sendSignInLink` — one link both signs up and signs in, so there is no
+ * "register or log in?" fork to put in front of someone who has already
+ * answered four questions. No new provider was added for this.
  *
  * What is different is where the link comes back to: `returnTo` carries the
  * resume route, so the callback lands on the screen that reads the draft and
@@ -59,27 +58,11 @@ export function AuthDialog({
     if (sendingRef.current) return previous
     sendingRef.current = true
 
-    const supabase = createClient()
-    const callbackUrl = new URL('/auth/callback', window.location.origin)
-    callbackUrl.searchParams.set('next', returnTo)
-    callbackUrl.searchParams.set('lang', locale)
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: callbackUrl.toString(),
-        shouldCreateUser: true,
-        data: { locale },
-      },
-    })
+    const outcome = await sendSignInLink({ email, next: returnTo, locale })
 
-    if (error) {
+    if (outcome.status === 'error') {
       sendingRef.current = false
-      return {
-        status: 'error' as const,
-        message: en
-          ? 'We could not send the link. Please try again in a moment.'
-          : 'Nem sikerült elküldeni. Próbáld újra egy kicsit később.',
-      }
+      return outcome
     }
     return { status: 'sent' as const }
   }

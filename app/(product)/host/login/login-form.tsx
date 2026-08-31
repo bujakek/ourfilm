@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { sendSignInLink } from '@/lib/auth-link'
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useActionState, useRef } from 'react'
 import type { Locale } from '@/lib/i18n'
@@ -42,37 +42,17 @@ export function LoginForm({
     if (sendingRef.current) return previous
     sendingRef.current = true
 
-    const supabase = createClient()
-    const callbackUrl = new URL('/auth/callback', window.location.origin)
-    callbackUrl.searchParams.set('next', `/host?lang=${locale}`)
-    callbackUrl.searchParams.set('lang', locale)
-    const { error } = await supabase.auth.signInWithOtp({
+    const outcome = await sendSignInLink({
       email,
-      options: {
-        // Must also be listed under Redirect URLs in the Supabase dashboard,
-        // or the link comes back rejected.
-        emailRedirectTo: callbackUrl.toString(),
-        // The same link signs in and signs up. Safe because owner_id scoping
-        // is enforced in the database, not the UI: a brand-new account sees an
-        // empty admin, never anyone else's events. Verified with a second real
-        // account.
-        shouldCreateUser: true,
-        // Used as a fallback by the Send Email Hook for legacy callers whose
-        // redirect URL does not carry a locale.
-        data: { locale },
-      },
+      next: `/host?lang=${locale}`,
+      locale,
     })
 
-    if (error) {
+    if (outcome.status === 'error') {
       // Released only on failure. On success the form unmounts for the
       // confirmation card, so there is nothing left to submit twice.
       sendingRef.current = false
-      return {
-        status: 'error',
-        message: en
-          ? 'We could not send the link. Please try again in a moment.'
-          : 'Nem sikerült elküldeni. Próbáld újra egy kicsit később.',
-      }
+      return outcome
     }
 
     return { status: 'sent' }

@@ -39,6 +39,30 @@ The endpoint verifies the Standard Webhooks signature before reading the
 payload and forwards Supabase's webhook ID to Resend as an idempotency key, so
 hook retries cannot duplicate a successful message.
 
+## The hook does not lift the email rate limit
+
+GoTrue applies its email rate limiter **before** it calls the hook, so routing
+delivery through Resend does not exempt the project from it. Two separate
+limits both answer `429 over_email_send_rate_limit`:
+
+- **A 60-second gap between links to the same address** (`max_frequency`). The
+  message names the seconds it still wants, so it is recognisable on sight.
+- **A project-wide hourly cap on auth emails**, Authentication → Rate Limits →
+  "Rate limit for sending emails", whose message is a flat
+  `email rate limit exceeded`. It sits at **2/hour** — for every host combined,
+  which is roughly one sign-in and one retry for the entire product — and
+  Supabase only makes the field editable once **custom SMTP** is configured.
+  An enabled Send Email Hook does **not** unlock it: the hook replaces
+  delivery, not the limiter in front of it.
+
+So production needs Resend configured **twice**: as the hook (which sends and
+picks the language) and as custom SMTP under Authentication → Emails
+(`smtp.resend.com`, user `resend`, password the API key), whose only job is to
+unlock the number. Until then the cap is two auth emails an hour.
+
+`lib/auth-link.ts` maps a 429 to a message that says to wait, rather than to the
+generic "could not send" that invites more tapping.
+
 ## Locale contract
 
 Both `signInWithOtp` callers add the locale in two places:
