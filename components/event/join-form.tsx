@@ -5,8 +5,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useActionState, useState } from 'react'
 
-import { joinEventAction, type JoinState } from '@/app/e/[slug]/actions'
-import type { Locale } from '@/lib/i18n'
+import {
+  joinEventAction,
+  type JoinState,
+} from '@/app/(product)/e/[slug]/actions'
+import { type Locale, localeTag } from '@/lib/i18n'
 
 const initial: JoinState = { error: null }
 
@@ -56,7 +59,13 @@ export function JoinForm({
   if (state.capReached) return <ParticipantCapReached locale={locale} />
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
+    <main
+      className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10"
+      // `/e/` sits outside the locale tree, so the product root layout can only
+      // set the document to the site default. This subtree is in the event's
+      // own language, and marking it is what a screen reader actually reads.
+      lang={localeTag[locale]}
+    >
       {coverUrl ? (
         <div className="relative mb-8 aspect-[4/3] w-full overflow-hidden rounded-3xl">
           <Image
@@ -181,7 +190,10 @@ export function JoinForm({
 function ParticipantCapReached({ locale }: { locale: Locale }) {
   const en = locale === 'en'
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10 text-center">
+    <main
+      className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10 text-center"
+      lang={localeTag[locale]}
+    >
       <h1 className="text-2xl font-semibold tracking-tight text-balance">
         {en
           ? 'This event has reached its guest limit'

@@ -1,27 +1,43 @@
-import { defaultLocale } from '@/lib/i18n'
-import { SITE_URL } from '@/lib/site'
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Manrope } from 'next/font/google'
-import './globals.css'
 
+import { defaultLocale } from '@/lib/i18n'
+import { SITE_URL } from '@/lib/site'
+
+/**
+ * The pieces every root layout needs, in one place.
+ *
+ * There are two root layouts — `app/[locale]` for the public site and
+ * `app/(product)` for `/e`, `/host` and `/auth` — because `<html lang>` has to
+ * vary and only a root layout can set it. Everything below is what they must
+ * agree on: one font instance, one metadata base, one viewport. Duplicating
+ * any of it is how the two halves of the site drift apart.
+ *
+ * `<html>` and `<body>` are deliberately *not* here. Next looks for them in
+ * the root layout itself, and hiding them behind a component is a needless bet
+ * on that detection.
+ */
 const manrope = Manrope({
   subsets: ['latin', 'latin-ext'],
   variable: '--font-manrope',
   display: 'swap',
 })
 
+/** Goes on `<body>` in both root layouts. */
+export const bodyClassName = `${manrope.variable} font-sans antialiased`
+
 /**
- * The site-wide defaults are the homepage's own title and description: /hu
- * inherits them verbatim, and every other public page overrides both. Keeping
- * one pair rather than three near-variants is what stops the tab title, the
- * link preview and the search result from disagreeing about what this is.
+ * The site-wide defaults are the homepage's own title and description: the
+ * locale home inherits them verbatim, and every other public page overrides
+ * both. Keeping one pair rather than three near-variants is what stops the tab
+ * title, the link preview and the search result from disagreeing about what
+ * this is.
  */
 const TITLE = 'OurFilm – Wedding Guest Photo App'
 const DESCRIPTION =
   'Give every wedding guest their own digital roll with one QR code. No app, no accounts and no chasing photos after the wedding.'
 
-export const metadata: Metadata = {
+export const siteMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: TITLE,
   description: DESCRIPTION,
@@ -52,36 +68,9 @@ export const metadata: Metadata = {
   },
 }
 
-export const viewport: Viewport = {
+export const siteViewport: Viewport = {
   colorScheme: 'dark',
   themeColor: '#050505',
   width: 'device-width',
   initialScale: 1,
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
-  return (
-    <html
-      lang={defaultLocale}
-      className="bg-background"
-      suppressHydrationWarning
-    >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "document.documentElement.lang=location.pathname.split('/')[1]==='hu'?'hu':'en'",
-          }}
-        />
-      </head>
-      <body className={`${manrope.variable} font-sans antialiased`}>
-        {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
-      </body>
-    </html>
-  )
 }

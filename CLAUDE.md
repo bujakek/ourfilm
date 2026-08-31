@@ -449,13 +449,32 @@ JS function.
    error listing exactly what needs translating — that is the checklist, and it
    is the reason those maps are typed that way.
 4. Translate the marketing pages under `app/[locale]/`.
-5. **`<html lang>`.** It is fixed at `hu` in the single root layout, which is
-   correct only while Hungarian is the only locale. Making it vary means
-   splitting into two root layouts (`app/(site)/[locale]/layout.tsx` for
-   marketing, `app/(product)/layout.tsx` for `/e/` and `/host`) and deleting
-   `app/layout.tsx`. That also forces the global 404 onto
-   `experimental.globalNotFound`, which is why it was deferred rather than done
-   up front.
+5. **`<html lang>` — done, and this is the shape it left behind.** There is no
+   `app/layout.tsx` any more. Two root layouts render their own
+   `<html>`/`<body>`: `app/[locale]/layout.tsx` for the public site, which sets
+   `lang` from its own segment, and `app/(product)/layout.tsx` for `/e/`,
+   `/host` and `/auth`, which cannot (no locale segment, and a layout gets
+   `params` but never `searchParams`). The product pages mark their own subtree
+   with `lang` instead.
+
+   What it cost, and what not to undo:
+
+   - The route group is transparent, so `/e/<slug>` is still `/e/<slug>` —
+     moving those folders did **not** change a printed QR URL. Verify that in
+     the build's route table if you move them again.
+   - Two root layouts leave no single layout to compose an unmatched-URL 404
+     from, so the global 404 is `app/global-not-found.tsx` behind
+     `experimental.globalNotFound`. It bypasses layout rendering, so it imports
+     `globals.css` and the font class itself and returns a whole document.
+     `app/[locale]/not-found.tsx` and `app/(product)/not-found.tsx` still handle
+     `notFound()` inside their own trees.
+   - Shared shell lives in `lib/document.ts` (one font instance, one metadata
+     base, one viewport). `<html>`/`<body>` stay literal in each root layout.
+
+   The interim fix this replaced was an inline script patching
+   `document.documentElement.lang` after hydration. It left every
+   server-rendered Hungarian page — all the indexed ones — shipping `lang="en"`.
+   Do not reach for it again.
 
 An `en` article already sits in `content/blog/en/` as a worked example. It is
 inert — unread and unvalidated — until step 1.

@@ -1,19 +1,29 @@
-import { isLocale, locales } from '@/lib/i18n'
+import { Analytics } from '@vercel/analytics/next'
 import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
 
+import { bodyClassName, siteMetadata, siteViewport } from '@/lib/document'
+import { isLocale, localeTag, locales } from '@/lib/i18n'
+import '../globals.css'
+
 /**
- * The locale segment every public page now sits under.
+ * The root layout for every public, locale-prefixed page.
  *
- * Deliberately not a visual wrapper — pages still render their own chrome, so
- * this only does two things: prerender the enabled locales, and refuse
- * everything else.
+ * **This is a root layout, not a nested one** — it renders `<html>` and
+ * `<body>` itself, and `app/layout.tsx` no longer exists. That is the whole
+ * reason for the split: `<html lang>` has to say `hu` on a Hungarian page, and
+ * only a layout that knows the locale can set it. It was briefly patched after
+ * hydration by an inline script instead, which meant every server-rendered
+ * Hungarian page — all of the indexed ones — shipped `lang="en"` to crawlers
+ * and to anything reading the initial markup.
  *
- * `<html lang>` is *not* set here. It lives in the single root layout, which
- * is correct while Hungarian is the only locale; making it vary means
- * splitting into two root layouts, which in Next 16 pushes the global 404 onto
- * an experimental flag. That trade is deferred to the day English is enabled —
- * see the checklist in CLAUDE.md.
+ * `app/(product)` is the other root layout, for `/e`, `/host` and `/auth`.
+ * Those sit outside the locale tree (a printed QR code and an auth matcher
+ * both depend on it) so they cannot get their language from a path segment.
+ *
+ * The cost of two root layouts is that unmatched URLs no longer have a single
+ * layout to compose a 404 from — hence `app/global-not-found.tsx` and
+ * `experimental.globalNotFound` in `next.config.mjs`.
  */
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }))
@@ -24,7 +34,10 @@ export function generateStaticParams() {
  *  same ground in dev, where `dynamicParams` does not apply. */
 export const dynamicParams = false
 
-export default async function LocaleLayout({
+export const metadata = siteMetadata
+export const viewport = siteViewport
+
+export default async function LocaleRootLayout({
   children,
   params,
 }: {
@@ -34,5 +47,12 @@ export default async function LocaleLayout({
   const { locale } = await params
   if (!isLocale(locale)) notFound()
 
-  return children
+  return (
+    <html lang={localeTag[locale]} className="bg-background">
+      <body className={bodyClassName}>
+        {children}
+        {process.env.NODE_ENV === 'production' && <Analytics />}
+      </body>
+    </html>
+  )
 }

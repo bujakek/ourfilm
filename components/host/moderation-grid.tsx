@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { useOptimistic, useState, useTransition } from 'react'
-import { setPhotoHidden } from '@/app/host/events/[slug]/actions'
+import { setPhotoHidden } from '@/app/(product)/host/events/[slug]/actions'
 
 /**
  * Stands in for a real `hidden_at` until the server sends one back.
