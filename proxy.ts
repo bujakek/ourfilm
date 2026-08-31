@@ -1,3 +1,4 @@
+import { isLocale } from '@/lib/i18n'
 import { publicSupabaseEnv } from '@/lib/supabase/env'
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
@@ -74,23 +75,39 @@ export async function proxy(request: NextRequest) {
   const isPublicRoute = PUBLIC_ADMIN_PATHS.has(path)
 
   if (!user && !isLoginRoute && !isPublicRoute) {
-    const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = '/host/login'
-    redirectTo.search = ''
-    return NextResponse.redirect(redirectTo)
+    return redirectWithin(request, '/host/login')
   }
 
   // A signed-in host opening the login page is bounced to their events. The
   // public create flow is not: it works the same either way, and the only
   // difference is that they are not asked for an account at the end.
   if (user && isLoginRoute) {
-    const redirectTo = request.nextUrl.clone()
-    redirectTo.pathname = '/host'
-    redirectTo.search = ''
-    return NextResponse.redirect(redirectTo)
+    return redirectWithin(request, '/host')
   }
 
   return response
+}
+
+/**
+ * Redirect inside the host area, keeping `lang` and dropping everything else.
+ *
+ * Dropping the query is deliberate — an inherited `?error=link` or a stale
+ * `?checkout=success` carried into a redirect describes the request that was
+ * refused, not the one being served. `lang` is the exception, because `/host`
+ * and `/host/login` sit outside the locale tree and read their language from
+ * exactly this parameter. Both redirects above used to clear it along with the
+ * rest, so a signed-in host who clicked "Belépés" on `/hu` — a link that does
+ * carry `?lang=hu` — was bounced to an English dashboard, and a signed-out one
+ * reached an English login page. Validated through `isLocale`: it lands in a
+ * URL the browser will show, and it must not echo back whatever was sent.
+ */
+function redirectWithin(request: NextRequest, pathname: string) {
+  const target = request.nextUrl.clone()
+  const lang = target.searchParams.get('lang')
+  target.pathname = pathname
+  target.search = ''
+  if (lang && isLocale(lang)) target.searchParams.set('lang', lang)
+  return NextResponse.redirect(target)
 }
 
 export const config = {

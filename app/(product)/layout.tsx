@@ -20,11 +20,20 @@ import '../globals.css'
  * a container overrides the document for that subtree — and it is the honest
  * answer for a shell that genuinely does not know yet.
  *
+ * Every page under here does that now, on the element it already returns:
  * `components/event/join-form.tsx` and `components/event/guest-event-view.tsx`
- * do this today, which covers the whole guest flow. **The host area does not
- * yet**: its pages read `?lang` (see `app/(product)/host/page.tsx`) but still
- * render inside the default document language. Worth closing, and cheap — the
- * locale is already resolved in each page.
+ * for the guest flow; the four host pages plus
+ * `components/host/onboarding/onboarding-shell.tsx` (one shell, so one
+ * attribute covers all four create-flow steps),
+ * `app/(product)/auth/event-complete/complete-creation.tsx` and
+ * `app/(product)/auth/callback/page.tsx` for the host side. A new page here
+ * needs the same line — the locale is already resolved in each one, so it is a
+ * single attribute, and forgetting it is invisible until someone listens to
+ * the page.
+ *
+ * The two shared screens (`not-found.tsx`, `error.tsx`) render at
+ * `defaultLocale`, which is what this document already declares, so they need
+ * nothing.
  *
  * None of these routes is indexed (`/e` sets `noindex`, `/host` is behind the
  * auth proxy), so the search-engine half of the problem does not arise here.

@@ -17,6 +17,7 @@ import {
   type ShotOption,
 } from '@/lib/camera'
 import { getOwnedEventBySlug } from '@/lib/events'
+import { localeTag } from '@/lib/i18n'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
 import { stripeIsConfigured } from '@/lib/stripe/env'
@@ -94,7 +95,10 @@ export default async function AdminEventSettingsPage({
       : 'event_end'
 
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
+    <main
+      className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16"
+      lang={localeTag[locale]}
+    >
       <Link
         href={`/host/events/${event.slug}?lang=${locale}`}
         className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"

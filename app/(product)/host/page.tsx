@@ -1,6 +1,7 @@
 import { EventList } from '@/components/host/event-list'
 import { EventListSkeleton } from '@/components/host/skeletons'
 import { captureIsOpen, getEventListItems } from '@/lib/events'
+import { localeTag } from '@/lib/i18n'
 import { CalendarPlus, LogOut, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -29,7 +30,13 @@ export default async function AdminPage({
   const locale = lang === 'hu' ? 'hu' : 'en'
   const en = locale === 'en'
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-16">
+    <main
+      className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-16"
+      // See the note in `app/(product)/layout.tsx`: `/host` has no locale
+      // segment, so the document is the site default and the page marks the
+      // language it actually resolved on its own subtree.
+      lang={localeTag[locale]}
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">
           {en ? 'Your events' : 'Eseményeid'}
@@ -42,7 +49,7 @@ export default async function AdminPage({
             <Plus className="size-4" strokeWidth={2.2} />
             {en ? 'New event' : 'Új esemény'}
           </Link>
-          <form action="/auth/signout" method="post">
+          <form action={`/auth/signout?lang=${locale}`} method="post">
             <button
               type="submit"
               className="glass glass-hover inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-medium"

@@ -34,7 +34,7 @@ export async function completeMagicLink({
           type: type as EmailOtpType,
           token_hash: tokenHash,
         })
-      : { error: new Error('Hiányzó belépési kód') }
+      : { error: new Error('Missing sign-in code') }
 
   if (error) {
     redirect('/host/login?error=link', RedirectType.replace)
