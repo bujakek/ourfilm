@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.17"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -387,6 +382,27 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          key: string
+          request_count: number
+          updated_at: string
+          window_started_at: string
+        }
+        Insert: {
+          key: string
+          request_count: number
+          updated_at?: string
+          window_started_at: string
+        }
+        Update: {
+          key?: string
+          request_count?: number
+          updated_at?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       stripe_webhook_events: {
         Row: {
           id: string
@@ -431,6 +447,10 @@ export type Database = {
         Args: { p_key_hash: string }
         Returns: boolean
       }
+      consume_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number }
+        Returns: boolean
+      }
       event_gallery_by_slug: {
         Args: { p_slug: string }
         Returns: {
@@ -450,7 +470,6 @@ export type Database = {
           can_capture: boolean
           can_guest_view_gallery: boolean
           capture_end_at: string
-          capture_open: boolean
           capture_start_at: string
           cover_path: string
           display_name: string
@@ -471,11 +490,6 @@ export type Database = {
         }[]
       }
       event_is_full_plan: { Args: { p_event_id: string }; Returns: boolean }
-      consume_rate_limit: {
-        Args: { p_key: string; p_limit: number; p_window_seconds: number }
-        Returns: boolean
-      }
-      event_ready_photo_bytes: { Args: { p_event_id: string }; Returns: number }
       event_participant_count_capped: {
         Args: { p_cap: number; p_event_id: string }
         Returns: number
@@ -488,6 +502,7 @@ export type Database = {
           unlimited: boolean
         }[]
       }
+      event_ready_photo_bytes: { Args: { p_event_id: string }; Returns: number }
       free_participant_limit: { Args: never; Returns: number }
       is_admin: { Args: never; Returns: boolean }
       join_event: {
@@ -686,3 +701,4 @@ export const Constants = {
     },
   },
 } as const
+
