@@ -42,7 +42,7 @@ export default async function AdminPage({
             <Plus className="size-4" strokeWidth={2.2} />
             {en ? 'New event' : 'Új esemény'}
           </Link>
-          <form action="/auth/signout" method="post">
+          <form action={`/auth/signout?lang=${locale}`} method="post">
             <button
               type="submit"
               className="glass glass-hover inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-medium"
