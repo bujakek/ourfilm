@@ -79,9 +79,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Check generated database types
-        run: |
-          pnpm supabase gen types typescript --local \
-            | diff -u lib/supabase/database.types.ts -
+        run: pnpm types:check:local
 
       - name: Run database integration tests
         run: OURFILM_TEST_SUITE=db pnpm exec vitest run

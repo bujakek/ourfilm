@@ -14,6 +14,10 @@ It has two independent jobs:
   generated TypeScript types with the committed file, and runs the database
   integration tests.
 
+The type comparison ignores only Supabase's environment-specific PostgREST
+version marker. Tables, columns, relationships, functions, enums, and all other
+generated schema details must match exactly.
+
 The pull request workflow does not use production secrets or production data.
 
 ## Production migrations
