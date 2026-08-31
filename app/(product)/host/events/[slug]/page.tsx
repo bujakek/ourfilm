@@ -21,6 +21,7 @@ import { captureWindowState } from '@/lib/camera'
 import { revealModeLabel } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatDeadline } from '@/lib/format'
+import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
 
@@ -71,7 +72,10 @@ export default async function AdminEventPage({ params }: Props) {
   })
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-3xl px-4 pt-8 pb-14 sm:px-6 sm:pt-12">
+    <main
+      className="mx-auto min-h-dvh w-full max-w-3xl px-4 pt-8 pb-14 sm:px-6 sm:pt-12"
+      lang={localeTag[locale]}
+    >
       <Link
         href={`/host?lang=${locale}`}
         className="print-hidden inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"

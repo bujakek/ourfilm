@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 
 import { LoadingStatus } from '@/components/loading-status'
+import { localeTag, type Locale } from '@/lib/i18n'
 import { clearDraft, loadDraft, saveDraft } from '@/lib/event-draft'
 import { createEventFromDraft } from '@/app/(product)/host/events/new/actions'
 
@@ -145,6 +146,7 @@ export function CompleteCreation() {
           }
           href={`/host/events/new?lang=${locale}`}
           cta={en ? 'Create a new event' : 'Új esemény létrehozása'}
+          locale={locale}
         />
       )
     case 'stale-end':
@@ -160,6 +162,7 @@ export function CompleteCreation() {
           // answer still in place, rather than starting over.
           href={`/host/events/new?resume=end&lang=${locale}`}
           cta={en ? 'Choose a time' : 'Időpont választása'}
+          locale={locale}
         />
       )
     case 'error':
@@ -169,11 +172,15 @@ export function CompleteCreation() {
           detail={outcome.message}
           href={`/host/events/new?lang=${locale}`}
           cta={en ? 'Back to settings' : 'Vissza a beállításokhoz'}
+          locale={locale}
         />
       )
     default:
       return (
-        <div className="flex min-h-[100dvh] items-center justify-center px-5">
+        <div
+          className="flex min-h-[100dvh] items-center justify-center px-5"
+          lang={localeTag[locale]}
+        >
           <LoadingStatus
             title={en ? 'Creating your event…' : 'Esemény létrehozása…'}
             description={
@@ -192,14 +199,21 @@ function Outcome({
   detail,
   href,
   cta,
+  locale,
 }: {
   title: string
   detail: string
   href: string
   cta: string
+  locale: Locale
 }) {
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center px-5 text-center">
+    <main
+      className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center px-5 text-center"
+      // The draft's language, on a route with no locale segment to read it
+      // from. See `app/(product)/layout.tsx`.
+      lang={localeTag[locale]}
+    >
       <h1 className="font-display text-2xl font-semibold tracking-tight text-balance">
         {title}
       </h1>

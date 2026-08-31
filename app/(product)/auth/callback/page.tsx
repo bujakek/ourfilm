@@ -1,4 +1,5 @@
 import { BackgroundGlow } from '@/components/site/background-glow'
+import { localeTag } from '@/lib/i18n'
 import { LoadingStatus } from '@/components/loading-status'
 import type { Metadata } from 'next'
 
@@ -28,7 +29,15 @@ export default function AuthCallbackPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <BackgroundGlow />
-      <main className="relative z-10">
+      <main
+        className="relative z-10"
+        // Hardcoded rather than resolved, because the copy below is: this
+        // screen has never been translated. Marking it `hu` is the honest
+        // description of what is on it — the document default would announce
+        // Hungarian text as English. Read `?lang` here when the copy is
+        // localized; the login form already puts it on this URL.
+        lang={localeTag.hu}
+      >
         <LoadingStatus
           title="Belépés…"
           description="Egy pillanat, átirányítunk az eseményeidhez."

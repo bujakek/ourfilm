@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useRef, type ReactNode } from 'react'
-import type { Locale } from '@/lib/i18n'
+import { localeTag, type Locale } from '@/lib/i18n'
 
 export type OnboardingNav = {
   step: number
@@ -54,7 +54,12 @@ export function OnboardingShell({
   const blocked = ctaDisabled || ctaPending
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden px-5 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <div
+      className="flex h-[100dvh] flex-col overflow-hidden px-5 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]"
+      // Every step of the create flow renders through this shell, so marking
+      // the language here covers the whole flow. See `app/(product)/layout.tsx`.
+      lang={localeTag[locale]}
+    >
       <div className="mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col">
         <header>
           {backHref ? (

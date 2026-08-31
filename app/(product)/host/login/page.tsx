@@ -1,4 +1,5 @@
 import { BackgroundGlow } from '@/components/site/background-glow'
+import { localeTag } from '@/lib/i18n'
 import type { Metadata } from 'next'
 import { LoginForm } from './login-form'
 
@@ -19,7 +20,7 @@ export default async function LoginPage({
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <BackgroundGlow />
-      <main className="relative z-10 w-full max-w-sm">
+      <main className="relative z-10 w-full max-w-sm" lang={localeTag[locale]}>
         <h1 className="text-3xl font-semibold tracking-tight text-balance">
           {en ? 'Welcome back' : 'Kezdd el ingyen'}
         </h1>
