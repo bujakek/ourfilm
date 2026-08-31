@@ -60,11 +60,15 @@ export function AuthDialog({
     sendingRef.current = true
 
     const supabase = createClient()
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    callbackUrl.searchParams.set('next', returnTo)
+    callbackUrl.searchParams.set('lang', locale)
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}`,
+        emailRedirectTo: callbackUrl.toString(),
         shouldCreateUser: true,
+        data: { locale },
       },
     })
 

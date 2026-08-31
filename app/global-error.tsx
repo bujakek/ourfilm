@@ -22,7 +22,7 @@ export default function GlobalError({
   }, [error])
 
   return (
-    <html lang="hu">
+    <html lang="en">
       <body
         style={{
           margin: 0,
@@ -38,10 +38,10 @@ export default function GlobalError({
       >
         <main style={{ maxWidth: '28rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 600, margin: 0 }}>
-            Valami félresikerült
+            Something went wrong
           </h1>
           <p style={{ marginTop: '1rem', lineHeight: 1.6, color: '#a1a1aa' }}>
-            Az oldal betöltése nem sikerült. Próbáld meg újra.
+            The page could not be loaded. Please try again.
           </p>
           <button
             type="button"
@@ -58,7 +58,7 @@ export default function GlobalError({
               cursor: 'pointer',
             }}
           >
-            Próbáld újra
+            Try again
           </button>
         </main>
       </body>

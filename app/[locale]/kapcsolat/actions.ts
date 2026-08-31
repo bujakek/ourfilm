@@ -3,6 +3,7 @@
 import { isLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { redirect } from 'next/navigation'
+import { consumeRateLimit, requestFingerprint } from '@/lib/rate-limit'
 
 type LegalRequestType = 'withdrawal' | 'content'
 
@@ -45,6 +46,15 @@ export async function submitLegalRequest(formData: FormData) {
   if (readField(formData, 'website', 200)) {
     redirect(requestPath(locale, type, 'sent'))
   }
+
+  const fingerprint = await requestFingerprint()
+  const allowed = await consumeRateLimit({
+    scope: 'legal-form',
+    identifier: fingerprint,
+    limit: 5,
+    windowSeconds: 3600,
+  })
+  if (!allowed) redirect(requestPath(locale, type, 'error'))
 
   const name = readField(formData, 'name', 200)
   const email = readField(formData, 'email', 320)

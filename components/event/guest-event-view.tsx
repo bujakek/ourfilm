@@ -362,6 +362,15 @@ function refusalMessage(refusal: string, locale: Locale): string {
       return en
         ? 'Your session expired. Refresh the page.'
         : 'Lejárt a munkameneted. Frissítsd az oldalt.'
+    case 'rate_limited':
+      return en
+        ? 'You are taking photos too quickly. Wait a moment and try again.'
+        : 'Túl gyorsan készülnek a képek. Várj egy pillanatot, majd próbáld újra.'
+    case 'uploads_disabled':
+    case 'storage_limit':
+      return en
+        ? 'Uploads are temporarily paused. Ask the host to contact us.'
+        : 'A feltöltés átmenetileg szünetel. Kérd meg a szervezőt, hogy írjon nekünk.'
     default:
       return en
         ? 'The photo did not upload. Please try again.'

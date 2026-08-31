@@ -25,7 +25,14 @@ import { PHOTO_BUCKET } from './storage'
 // guest had already claimed.
 
 export type ShotRefusal =
-  'no_session' | 'not_started' | 'ended' | 'no_shots' | 'error'
+  | 'no_session'
+  | 'not_started'
+  | 'ended'
+  | 'no_shots'
+  | 'rate_limited'
+  | 'uploads_disabled'
+  | 'storage_limit'
+  | 'error'
 
 export type ReservedShot = {
   photoId: string

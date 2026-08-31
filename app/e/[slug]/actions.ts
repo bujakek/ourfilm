@@ -16,6 +16,8 @@ import {
   readParticipantTokenHash,
   writeParticipantCookie,
 } from '@/lib/participants'
+import { consumeRateLimit, requestFingerprint } from '@/lib/rate-limit'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * Everything a guest can do, and the only way they can do it.
@@ -58,6 +60,23 @@ export async function joinEventAction(
     return { error: lang === 'en' ? 'Event not found.' : 'Hiányzó esemény.' }
   if (!name)
     return { error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.' }
+
+  const fingerprint = await requestFingerprint()
+  if (
+    !(await consumeRateLimit({
+      scope: `join:${slug}`,
+      identifier: fingerprint,
+      limit: 30,
+      windowSeconds: 600,
+    }))
+  ) {
+    return {
+      error:
+        lang === 'en'
+          ? 'Too many join attempts. Wait a few minutes and try again.'
+          : 'Túl sok csatlakozási próbálkozás történt. Várj néhány percet, majd próbáld újra.',
+    }
+  }
 
   // A fresh token per join. A guest re-joining on the same device gets a new
   // cookie and, because the RPC upserts on the *old* hash only if it matches,
@@ -125,6 +144,33 @@ export async function reserveShotAction(
 ): Promise<ReserveState> {
   const tokenHash = await readParticipantTokenHash()
   if (!tokenHash) return { ok: false, refusal: 'no_session' }
+
+  if (process.env.OURFILM_UPLOADS_DISABLED === 'true') {
+    return { ok: false, refusal: 'uploads_disabled' }
+  }
+  if (
+    !(await consumeRateLimit({
+      scope: `shot:${eventId}`,
+      identifier: tokenHash,
+      limit: 30,
+      windowSeconds: 60,
+    }))
+  ) {
+    return { ok: false, refusal: 'rate_limited' }
+  }
+
+  const configuredLimit = Number(
+    process.env.OURFILM_EVENT_STORAGE_LIMIT_BYTES ?? '',
+  )
+  if (Number.isFinite(configuredLimit) && configuredLimit > 0) {
+    const db = createAdminClient()
+    const { data, error } = await db.rpc('event_ready_photo_bytes', {
+      p_event_id: eventId,
+    })
+    if (error || Number(data) >= configuredLimit) {
+      return { ok: false, refusal: 'storage_limit' }
+    }
+  }
 
   const result = await reserveShot({ eventId, tokenHash, idempotencyKey })
   if (!result.ok) return { ok: false, refusal: result.refusal }

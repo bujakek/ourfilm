@@ -21,11 +21,14 @@ function Tile({
   photo,
   slug,
   onToggle,
+  locale,
 }: {
   photo: ModerationTile
   slug: string
   onToggle: (photoId: string) => void
+  locale: 'en' | 'hu'
 }) {
+  const en = locale === 'en'
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState(false)
   const hidden = photo.hidden_at !== null
@@ -43,7 +46,11 @@ function Tile({
           // short-lived capability rather than an address this component could
           // have built for itself.
           src={photo.thumbUrl}
-          alt={`${photo.uploaderName} fotója`}
+          alt={
+            en
+              ? `Photo by ${photo.uploaderName}`
+              : `${photo.uploaderName} fotója`
+          }
           fill
           sizes="(max-width: 640px) 50vw, 200px"
           unoptimized
@@ -70,7 +77,15 @@ function Tile({
           })
         }
         aria-pressed={hidden}
-        aria-label={hidden ? 'Kép visszaállítása' : 'Kép elrejtése'}
+        aria-label={
+          hidden
+            ? en
+              ? 'Restore photo'
+              : 'Kép visszaállítása'
+            : en
+              ? 'Hide photo'
+              : 'Kép elrejtése'
+        }
         // No spinner. The icon has already flipped, so a spinner on top of it
         // would be reporting on work the host has been told is done. The dimmed
         // state is enough to say the tap landed and is still settling.
@@ -80,10 +95,14 @@ function Tile({
       </button>
 
       {error ? (
-        <p className="mt-1 text-xs text-destructive">Nem sikerült</p>
+        <p className="mt-1 text-xs text-destructive">
+          {en ? 'Failed' : 'Nem sikerült'}
+        </p>
       ) : null}
       {hidden ? (
-        <p className="mt-1 text-center text-xs text-muted-foreground">Rejtve</p>
+        <p className="mt-1 text-center text-xs text-muted-foreground">
+          {en ? 'Hidden' : 'Rejtve'}
+        </p>
       ) : null}
     </li>
   )
@@ -92,9 +111,11 @@ function Tile({
 export function ModerationGrid({
   photos,
   slug,
+  locale,
 }: {
   photos: ModerationTile[]
   slug: string
+  locale: 'en' | 'hu'
 }) {
   // Held for the whole grid rather than per tile so the "N rejtve" counter
   // moves with the tile it describes. Per-tile state would flip the photo
@@ -110,7 +131,7 @@ export function ModerationGrid({
   if (items.length === 0) {
     return (
       <p className="glass rounded-2xl px-5 py-6 text-center text-sm text-muted-foreground">
-        Még nem érkezett kép.
+        {locale === 'en' ? 'No photos yet.' : 'Még nem érkezett kép.'}
       </p>
     )
   }
@@ -118,7 +139,13 @@ export function ModerationGrid({
   return (
     <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {items.map((photo) => (
-        <Tile key={photo.id} photo={photo} slug={slug} onToggle={toggle} />
+        <Tile
+          key={photo.id}
+          photo={photo}
+          slug={slug}
+          onToggle={toggle}
+          locale={locale}
+        />
       ))}
     </ul>
   )

@@ -16,7 +16,6 @@
     "types:check": "node scripts/check-supabase-types.mjs linked",
     "types:check:local": "node scripts/check-supabase-types.mjs local",
     "seed": "node --env-file=.env.local --experimental-strip-types scripts/seed.ts",
-    "emails:push": "node --env-file=.env.local --experimental-strip-types scripts/push-auth-emails.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "OURFILM_TEST_SUITE=db node --env-file=.env.local node_modules/vitest/vitest.mjs run"
@@ -45,6 +44,7 @@
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
+    "standardwebhooks": "1.0.0",
     "stripe": "^22.5.0",
     "tailwind-merge": "^3.3.1",
     "tw-animate-css": "^1.4.0",

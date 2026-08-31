@@ -31,16 +31,21 @@ export async function startEventCheckout(
   formData: FormData,
 ): Promise<CheckoutState> {
   const slug = String(formData.get('slug') ?? '').trim()
-  if (!slug) return { error: 'Hiányzó esemény.' }
+  const en = formData.get('locale') === 'en'
+  if (!slug) return { error: en ? 'Event not found.' : 'Hiányzó esemény.' }
   if (formData.get('legal_acceptance') !== 'on') {
-    return { error: 'A fizetéshez fogadd el az ÁSZF-et.' }
+    return {
+      error: en
+        ? 'Accept the Terms to continue to payment.'
+        : 'A fizetéshez fogadd el az ÁSZF-et.',
+    }
   }
 
   if (!stripeIsConfigured()) {
     return {
-      error:
-        'A fizetés még nincs beállítva. Szólj nekünk, és elintézzük — addig ' +
-        'az album és a feltöltés változatlanul működik.',
+      error: en
+        ? 'Payments are not configured yet. Contact us and we can help; the album and uploads still work.'
+        : 'A fizetés még nincs beállítva. Szólj nekünk, és elintézzük — addig az album és a feltöltés változatlanul működik.',
     }
   }
 
@@ -48,12 +53,17 @@ export async function startEventCheckout(
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: 'Lejárt a munkameneted. Lépj be újra.' }
+  if (!user)
+    return {
+      error: en
+        ? 'Your session expired. Sign in again.'
+        : 'Lejárt a munkameneted. Lépj be újra.',
+    }
 
   // Null covers both "no such event" and "not yours" — RLS makes them the same
   // answer, which is the correct one to give either way.
   const event = await getOwnedEventBySlug(slug)
-  if (!event) return { error: 'Nincs ilyen esemény.' }
+  if (!event) return { error: en ? 'Event not found.' : 'Nincs ilyen esemény.' }
 
   // The ledger deliberately has no unique index stopping a second paid row, so
   // this is the check that stops a host paying twice for the same album. It
@@ -61,7 +71,11 @@ export async function startEventCheckout(
   // admin-owned event is correctly reported as already unlimited.
   const quota = await getEventQuota(event.id)
   if (quota.unlimited) {
-    return { error: 'Ez az esemény már korlátlan — nincs mit fizetni.' }
+    return {
+      error: en
+        ? 'This event is already unlimited.'
+        : 'Ez az esemény már korlátlan — nincs mit fizetni.',
+    }
   }
 
   let checkoutUrl: string
@@ -75,7 +89,11 @@ export async function startEventCheckout(
     })
   } catch (e) {
     console.error('Stripe checkout session failed', e)
-    return { error: 'Nem sikerült elindítani a fizetést. Próbáld újra.' }
+    return {
+      error: en
+        ? 'Could not start payment. Try again.'
+        : 'Nem sikerült elindítani a fizetést. Próbáld újra.',
+    }
   }
 
   // Outside the try on purpose: redirect() signals by throwing, so catching

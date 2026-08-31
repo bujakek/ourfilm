@@ -14,7 +14,7 @@ import { captureWindowState } from '@/lib/camera'
 import { signPhotoUrl } from '@/lib/photo-urls'
 import { getGalleryPhotosBySlug, toGalleryTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
-import type { Locale } from '@/lib/i18n'
+import { isLocale, type Locale } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,9 +42,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EventPage({ params, searchParams }: Props) {
   const { slug } = await params
   const query = await searchParams
-  const locale: Locale = query.lang === 'hu' ? 'hu' : 'en'
   const event = await getGuestEventState(slug)
   if (!event) notFound()
+  const locale: Locale =
+    query.lang === 'hu' || query.lang === 'en'
+      ? query.lang
+      : isLocale(event.locale)
+        ? event.locale
+        : 'en'
 
   const now = new Date()
   const timing = {
@@ -88,7 +93,7 @@ export default async function EventPage({ params, searchParams }: Props) {
       locale={locale}
       slug={slug}
       eventName={event.event_name}
-      eventUrl={eventUrl(event.slug)}
+      eventUrl={eventUrl(event.slug, locale)}
       captureEndAt={event.capture_end_at}
       initialNow={now.getTime()}
       initialCanCapture={event.can_capture}

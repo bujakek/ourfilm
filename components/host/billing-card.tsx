@@ -18,6 +18,7 @@ const SETTLE_POLL_MS = 2000
 const SETTLE_POLL_TRIES = 6
 
 export type BillingCardProps = {
+  locale: 'en' | 'hu'
   slug: string
   participantLimit: number
   participantCount: number
@@ -39,6 +40,7 @@ export type BillingCardProps = {
  * No per-guest price and no tiers anywhere: one event, one payment.
  */
 export function BillingCard({
+  locale,
   slug,
   participantLimit,
   participantCount,
@@ -47,6 +49,7 @@ export function BillingCard({
   stripeReady,
   checkout,
 }: BillingCardProps) {
+  const en = locale === 'en'
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
 
   // Stripe redirects the host back the instant checkout finishes, which is
@@ -65,10 +68,14 @@ export function BillingCard({
             <Users className="size-5 text-accent" strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
-            <p className="font-medium">Teljes esemény</p>
+            <p className="font-medium">
+              {en ? 'Full event' : 'Teljes esemény'}
+            </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {paidLabel ??
-                'Korlátlan résztvevő — ehhez a fiókhoz nem tartozik keret.'}
+                (en
+                  ? 'Unlimited guests — this account has no participant cap.'
+                  : 'Korlátlan résztvevő — ehhez a fiókhoz nem tartozik keret.')}
             </p>
           </div>
         </div>
@@ -83,14 +90,14 @@ export function BillingCard({
   return (
     <div className="glass rounded-2xl px-5 py-4">
       <div className="flex items-baseline justify-between gap-4">
-        <p className="font-medium">Ingyenes esemény</p>
+        <p className="font-medium">{en ? 'Free event' : 'Ingyenes esemény'}</p>
         <p
           className={cn(
             'text-sm tabular-nums',
             full ? 'text-destructive' : 'text-muted-foreground',
           )}
         >
-          {participantCount} / {participantLimit} résztvevő
+          {participantCount} / {participantLimit} {en ? 'guests' : 'résztvevő'}
         </p>
       </div>
 
@@ -100,7 +107,9 @@ export function BillingCard({
         aria-valuenow={used}
         aria-valuemin={0}
         aria-valuemax={participantLimit}
-        aria-label="Felhasznált résztvevői keret"
+        aria-label={
+          en ? 'Guest allowance used' : 'Felhasznált résztvevői keret'
+        }
       >
         <div
           className={cn(
@@ -115,26 +124,35 @@ export function BillingCard({
 
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {full
-          ? 'A keret betelt — új vendég egyelőre nem tud csatlakozni. Aki már csatlakozott, változatlanul fotózhat.'
-          : `Még ${left} vendég csatlakozhat. Utána új résztvevőt nem tudunk beengedni, amíg fel nem oldod.`}
+          ? en
+            ? 'The allowance is full. Existing guests can still take photos.'
+            : 'A keret betelt — új vendég egyelőre nem tud csatlakozni. Aki már csatlakozott, változatlanul fotózhat.'
+          : en
+            ? `${left} more guests can join before you need to unlock the event.`
+            : `Még ${left} vendég csatlakozhat. Utána új résztvevőt nem tudunk beengedni, amíg fel nem oldod.`}
       </p>
 
       {settling ? (
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-          Feldolgozzuk a fizetést — ez néhány másodperc.
+          {en
+            ? 'Processing the payment — this takes a few seconds.'
+            : 'Feldolgozzuk a fizetést — ez néhány másodperc.'}
         </p>
       ) : null}
 
       {checkout === 'cancelled' && !settling ? (
         <p className="mt-4 text-xs text-muted-foreground">
-          A fizetést megszakítottad. Nem történt terhelés.
+          {en
+            ? 'Payment was cancelled. You were not charged.'
+            : 'A fizetést megszakítottad. Nem történt terhelés.'}
         </p>
       ) : null}
 
       {stripeReady ? (
         <form action={submit} className="mt-4">
           <input type="hidden" name="slug" value={slug} />
+          <input type="hidden" name="locale" value={locale} />
           <label className="mb-4 flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
             <input
               type="checkbox"
@@ -143,24 +161,23 @@ export function BillingCard({
               className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
             />
             <span>
-              Elfogadom az{' '}
+              {en ? 'I accept the ' : 'Elfogadom az '}
               <Link
-                href="/hu/aszf"
+                href={en ? '/en/terms' : '/hu/aszf'}
                 target="_blank"
                 className="underline underline-offset-2 hover:text-foreground"
               >
-                ÁSZF-et
+                {en ? 'Terms' : 'ÁSZF-et'}
               </Link>
-              , és kifejezetten kérem, hogy az OurFilm a 14 napos
-              elállási/felmondási időszak vége előtt kezdje meg a szolgáltatást.
-              Tudomásul veszem, hogy felmondás esetén a megszűnésig arányosan
-              teljesített szolgáltatás díját meg kell fizetnem, valamint az{' '}
+              {en
+                ? ', and ask OurFilm to begin before the 14-day cancellation period ends. I understand I may owe the proportion already supplied. I have read the '
+                : ', és kifejezetten kérem, hogy az OurFilm a 14 napos elállási/felmondási időszak vége előtt kezdje meg a szolgáltatást. Tudomásul veszem, hogy felmondás esetén a megszűnésig arányosan teljesített szolgáltatás díját meg kell fizetnem, valamint az '}
               <Link
-                href="/hu/adatvedelem"
+                href={en ? '/en/privacy' : '/hu/adatvedelem'}
                 target="_blank"
                 className="underline underline-offset-2 hover:text-foreground"
               >
-                adatkezelési tájékoztatót
+                {en ? 'Privacy Notice' : 'adatkezelési tájékoztatót'}
               </Link>
               .
             </span>
@@ -181,19 +198,26 @@ export function BillingCard({
               />
             )}
             {pending
-              ? 'Átirányítás…'
-              : `Teljes esemény feloldása – ${EVENT_PRICE_LABEL}`}
+              ? en
+                ? 'Redirecting…'
+                : 'Átirányítás…'
+              : en
+                ? 'Unlock full event'
+                : `Teljes esemény feloldása – ${EVENT_PRICE_LABEL}`}
           </button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Korlátlan résztvevő, egyszeri fizetéssel.
+            {en
+              ? 'Unlimited guests with one payment. Final price appears at checkout.'
+              : 'Korlátlan résztvevő, egyszeri fizetéssel.'}
           </p>
         </form>
       ) : (
         // Honest about the state of the world rather than offering a button
         // that would 500 — no STRIPE_* variables are set in this environment.
         <p className="mt-4 rounded-xl bg-white/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          A fizetés még nincs bekapcsolva. Amíg nincs, írj nekünk, és feloldjuk
-          neked kézzel.
+          {en
+            ? 'Payments are not enabled yet. Contact us and we can unlock the event manually.'
+            : 'A fizetés még nincs bekapcsolva. Amíg nincs, írj nekünk, és feloldjuk neked kézzel.'}
         </p>
       )}
 

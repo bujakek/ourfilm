@@ -65,7 +65,19 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang={defaultLocale} className="bg-background">
+    <html
+      lang={defaultLocale}
+      className="bg-background"
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "document.documentElement.lang=location.pathname.split('/')[1]==='hu'?'hu':'en'",
+          }}
+        />
+      </head>
       <body className={`${manrope.variable} font-sans antialiased`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

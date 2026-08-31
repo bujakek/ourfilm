@@ -18,11 +18,18 @@ import { CONTACT_EMAIL } from '@/lib/site'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: 'ÁSZF — OurFilm',
-  description:
-    'Az OurFilm általános szerződési feltételei házigazdák és vendégek számára.',
-  ...(hasRealCompanyDetails ? {} : { robots: { index: false, follow: true } }),
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  return {
+    title: locale === 'en' ? 'Terms of Service — OurFilm' : 'ÁSZF — OurFilm',
+    description:
+      locale === 'en'
+        ? 'Terms governing the use of OurFilm by hosts and guests.'
+        : 'Az OurFilm általános szerződési feltételei házigazdák és vendégek számára.',
+    ...(hasRealCompanyDetails
+      ? {}
+      : { robots: { index: false, follow: true } }),
+  }
 }
 
 // Lean pilot terms. They describe the service that exists today and avoid
@@ -32,8 +39,8 @@ const sections: LegalSection[] = [
   {
     title: 'Szolgáltató és kapcsolat',
     body: [
-      `Szolgáltató: ${COMPANY.name} egyéni vállalkozó. Székhely: ${COMPANY.seat}. Nyilvántartási szám: ${COMPANY.registryNumber}; nyilvántartó: ${REGISTRY}. Adószám: ${COMPANY.taxNumber}.`,
-      `E-mail: ${CONTACT_EMAIL}. Telefonszám: ${COMPANY.phone}. Szakmai kamara: ${COMPANY.chamber}. Tárhelyszolgáltató: ${HOSTING_PROVIDER}.`,
+      `Szolgáltató: ${COMPANY.name}. Székhely: ${COMPANY.seat}. Nyilvántartási szám: ${COMPANY.registryNumber}; nyilvántartó: ${REGISTRY}. Adószám: ${COMPANY.taxNumber}.`,
+      `E-mail: ${CONTACT_EMAIL}. Tárhelyszolgáltató: ${HOSTING_PROVIDER}.`,
     ],
   },
   {
@@ -118,18 +125,89 @@ const sections: LegalSection[] = [
   },
 ]
 
+const englishSections: LegalSection[] = [
+  {
+    title: 'Provider and contact',
+    body: [
+      `OurFilm is provided by ${COMPANY.name}, registered office ${COMPANY.seat}, sole trader registration number ${COMPANY.registryNumber} (${REGISTRY}), tax number ${COMPANY.taxNumber}.`,
+      `Email: ${CONTACT_EMAIL}. Hosting provider: ${HOSTING_PROVIDER}.`,
+    ],
+  },
+  {
+    title: 'The service',
+    body: [
+      'OurFilm is a browser-based disposable camera for events. A host creates an event, sets its shooting window, number of shots per guest and reveal time, then shares a QR code or link. Guests can take photos without an app or account. The host can view, hide, download and delete event photos.',
+      'A compatible device, internet connection, browser and camera permission are required. We do not promise uninterrupted or error-free availability.',
+    ],
+  },
+  {
+    title: 'Contract and eligibility',
+    body: [
+      `A host enters into a contract with OurFilm by accepting these Terms and creating an event. A paid order becomes final when payment is completed in Stripe Checkout. OurFilm supplies the digital service; ${PAYMENT_PROCESSOR.merchantOfRecord} acts as Merchant of Record for the purchase transaction. The contract is concluded in English for the English flow, is not separately filed, and can be saved or printed from this page.`,
+      'Hosts must be at least 18 years old and able to enter into a binding contract. A guest accepts the guest rules and acknowledges the Privacy Notice by joining. Guests are not charged.',
+    ],
+  },
+  {
+    title: 'Price and payment',
+    body: [
+      `Up to 5 distinct guests may join a free event. Unlocking the full event removes this participant cap for that event; it is a one-off purchase, not a subscription or per-guest fee. The final price, currency and applicable taxes are shown in Stripe Checkout before purchase. The Hungarian consumer price is ${EVENT_PRICE_LABEL}.`,
+      `${PAYMENT_PROCESSOR.merchantOfRecord} handles the transaction through ${PAYMENT_PROCESSOR.name}. OurFilm does not receive or store card details. Link sends the transaction confirmation and applicable invoice or receipt.`,
+    ],
+  },
+  {
+    title: 'Cancellation and refunds',
+    body: [
+      `Consumers in the EEA generally have 14 days from entering into a paid service contract to withdraw or, after performance begins, terminate without giving a reason. You can send a clear statement to ${CONTACT_EMAIL}. When requesting immediate access, you expressly ask us to begin before that period ends and may owe a proportionate amount for service supplied before cancellation.`,
+      'If the paid unlock has not been used before notice is received—meaning no guest beyond the free five-person allowance has joined—we refund the full price. Mandatory consumer remedies and any stronger rights under the law of your country remain unaffected. Refunds are normally made through Stripe/Link to the original payment method within 14 days.',
+    ],
+  },
+  {
+    title: 'Acceptable use and content',
+    body: [
+      'The host must share the event link only with the intended audience and inform attendees about the shared photography. Users may only create or upload content they are entitled to create and share. Illegal, rights-infringing, hateful, severely violent or sexual content, automated abuse and interference with the service are prohibited.',
+      'Users retain their rights in photos and grant OurFilm only the non-exclusive permission needed to store, display and make them downloadable as part of the service. We may hide, remove or restrict content or events where required by law, safety or serious or repeated misuse.',
+    ],
+  },
+  {
+    title: 'Fair use and availability',
+    body: [
+      '“Unlimited guests” means that a paid event has no ordinary per-guest product cap. It does not permit bots, scraping, denial-of-service activity, bulk automated uploads or use as general-purpose storage. We may apply proportionate technical limits, temporarily pause uploads, or contact the host where activity threatens security, availability or storage capacity. We will avoid disrupting legitimate event use where reasonably possible.',
+      'OurFilm is not a backup service. Hosts should download photos they want to retain. Deleting an event is permanent.',
+    ],
+  },
+  {
+    title: 'Liability, complaints and law',
+    body: [
+      `We remain liable where the law requires, including for defective performance and damage caused by us. We are not responsible for failures outside our reasonable control, user devices or connectivity, or unlawful user content. Complaints may be sent to ${CONTACT_EMAIL}; written complaints are answered in writing within 30 days.`,
+      'Hungarian law governs these Terms. This choice does not deprive a consumer of mandatory protections available under the law of their habitual residence. Courts and alternative dispute-resolution bodies remain available as provided by applicable law.',
+    ],
+  },
+  {
+    title: 'Changes',
+    body: [
+      'We publish changes on this page with a new update date. The version accepted at purchase applies to an already paid event unless law or a more favourable change requires otherwise.',
+    ],
+  },
+]
+
 type Props = { params: Promise<{ locale: string }> }
 
 export default async function AszfPage({ params }: Props) {
   const { locale } = await params
-  if (!isLocale(locale) || locale !== 'hu') notFound()
+  if (!isLocale(locale)) notFound()
 
   return (
     <PageShell
       locale={locale}
-      eyebrow="ÁSZF"
-      title="Általános szerződési feltételek"
-      lead="Röviden és a mostani termékhez igazítva: mit nyújt az OurFilm, hogyan fizetsz, és miért felelnek a résztvevők."
+      eyebrow={locale === 'en' ? 'TERMS' : 'ÁSZF'}
+      title={
+        locale === 'en' ? 'Terms of Service' : 'Általános szerződési feltételek'
+      }
+      lead={
+        locale === 'en'
+          ? 'The terms for creating and joining an OurFilm event, including payment, cancellation and fair use.'
+          : 'Röviden és a mostani termékhez igazítva: mit nyújt az OurFilm, hogyan fizetsz, és miért felelnek a résztvevők.'
+      }
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
@@ -143,10 +221,13 @@ export default async function AszfPage({ params }: Props) {
             </DraftNotice>
           )}
 
-          <LegalSections sections={sections} />
+          <LegalSections
+            sections={locale === 'en' ? englishSections : sections}
+          />
 
           <p className="mt-12 text-sm text-muted-foreground">
-            Utolsó frissítés: {LAST_UPDATED}
+            {locale === 'en' ? 'Last updated' : 'Utolsó frissítés'}:{' '}
+            {LAST_UPDATED}
           </p>
         </div>
       </section>

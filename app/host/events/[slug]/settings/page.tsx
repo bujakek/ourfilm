@@ -63,6 +63,8 @@ export default async function AdminEventSettingsPage({
   const { slug } = await params
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
+  const locale = event.locale
+  const en = locale === 'en'
 
   // Every date field is rendered in the event's own zone, not the server's and
   // not the browser's — a `datetime-local` carries no zone, so handing it any
@@ -94,7 +96,7 @@ export default async function AdminEventSettingsPage({
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16">
       <Link
-        href={`/host/events/${event.slug}`}
+        href={`/host/events/${event.slug}?lang=${locale}`}
         className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
@@ -102,11 +104,12 @@ export default async function AdminEventSettingsPage({
       </Link>
 
       <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance">
-        Beállítások
+        {en ? 'Settings' : 'Beállítások'}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Itt állíthatod be, meddig lehet fotózni, mikor jelenjenek meg a képek,
-        hányat készíthet egy vendég — és itt törölheted az eseményt.
+        {en
+          ? 'Change when shooting ends, when photos appear, each guest’s roll, gallery access, billing and deletion.'
+          : 'Itt állíthatod be, meddig lehet fotózni, mikor jelenjenek meg a képek, hányat készíthet egy vendég — és itt törölheted az eseményt.'}
       </p>
 
       <div className="mt-8 flex flex-col gap-4">
@@ -121,22 +124,29 @@ export default async function AdminEventSettingsPage({
             zone,
           ).slice(0, 10)}
           state={windowState}
+          locale={locale}
         />
 
-        <RevealCard slug={event.slug} mode={revealChoice} />
+        <RevealCard slug={event.slug} mode={revealChoice} locale={locale} />
 
         <ShotsCard
           slug={event.slug}
           shots={event.shots_per_participant as ShotOption}
+          locale={locale}
         />
 
-        <GuestsToggle slug={event.slug} canView={event.guests_can_view} />
+        <GuestsToggle
+          slug={event.slug}
+          canView={event.guests_can_view}
+          locale={locale}
+        />
 
         <Suspense fallback={<BillingCardSkeleton />}>
           <EventBilling
             slug={event.slug}
             eventId={event.id}
             checkout={checkoutState}
+            locale={locale}
           />
         </Suspense>
       </div>
@@ -146,6 +156,7 @@ export default async function AdminEventSettingsPage({
           slug={event.slug}
           eventName={event.event_name}
           eventId={event.id}
+          locale={locale}
         />
       </Suspense>
     </main>
@@ -164,10 +175,12 @@ function BillingCardSkeleton() {
 async function EventBilling({
   slug,
   eventId,
+  locale,
   checkout,
 }: {
   slug: string
   eventId: string
+  locale: 'en' | 'hu'
   checkout: 'success' | 'cancelled' | null
 }) {
   // Contained on purpose. A billing read that throws would take the whole
@@ -185,10 +198,13 @@ async function EventBilling({
     console.error('Could not read billing state', e)
     return (
       <div className="glass rounded-2xl px-5 py-4">
-        <p className="font-medium">Résztvevői keret</p>
+        <p className="font-medium">
+          {locale === 'en' ? 'Guest allowance' : 'Résztvevői keret'}
+        </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Most nem tudjuk lekérdezni. A kamera és a galéria ettől változatlanul
-          működik.
+          {locale === 'en'
+            ? 'We cannot load it right now. The camera and gallery still work.'
+            : 'Most nem tudjuk lekérdezni. A kamera és a galéria ettől változatlanul működik.'}
         </p>
       </div>
     )
@@ -209,11 +225,16 @@ async function EventBilling({
 
   return (
     <BillingCard
+      locale={locale}
       slug={slug}
       participantLimit={quota.participantLimit}
       participantCount={quota.participantCount}
       unlimited={quota.unlimited}
-      paidLabel={receipt ? `Kifizetve — ${receipt}` : null}
+      paidLabel={
+        receipt
+          ? `${locale === 'en' ? 'Paid' : 'Kifizetve'} — ${receipt}`
+          : null
+      }
       stripeReady={stripeIsConfigured()}
       checkout={checkout}
     />
@@ -224,13 +245,20 @@ async function EventDangerZone({
   slug,
   eventName,
   eventId,
+  locale,
 }: {
   slug: string
   eventName: string
   eventId: string
+  locale: 'en' | 'hu'
 }) {
   const photos = await getAllEventPhotos(eventId)
   return (
-    <DangerZone slug={slug} eventName={eventName} photoCount={photos.length} />
+    <DangerZone
+      slug={slug}
+      eventName={eventName}
+      photoCount={photos.length}
+      locale={locale}
+    />
   )
 }

@@ -17,11 +17,21 @@ import { CONTACT_EMAIL } from '@/lib/site'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: 'Adatkezelési tájékoztató — OurFilm',
-  description:
-    'Hogyan kezeli az OurFilm az eseményeket, a vendégek adatait és a fényképeket.',
-  ...(hasRealCompanyDetails ? {} : { robots: { index: false, follow: true } }),
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  return {
+    title:
+      locale === 'en'
+        ? 'Privacy Notice — OurFilm'
+        : 'Adatkezelési tájékoztató — OurFilm',
+    description:
+      locale === 'en'
+        ? 'How OurFilm handles account, event, guest and photo data.'
+        : 'Hogyan kezeli az OurFilm az eseményeket, a vendégek adatait és a fényképeket.',
+    ...(hasRealCompanyDetails
+      ? {}
+      : { robots: { index: false, follow: true } }),
+  }
 }
 
 // This notice follows the data flow in the disposable-camera product. In
@@ -31,7 +41,7 @@ const sections: LegalSection[] = [
   {
     title: 'Ki kezeli az adatokat',
     body: [
-      `OurFilm: ${COMPANY.name} egyéni vállalkozó. Székhely: ${COMPANY.seat}. Nyilvántartási szám: ${COMPANY.registryNumber} (${REGISTRY}). Adószám: ${COMPANY.taxNumber}. Telefonszám: ${COMPANY.phone}. E-mail: ${CONTACT_EMAIL}.`,
+      `OurFilm: ${COMPANY.name}. Székhely: ${COMPANY.seat}. Nyilvántartási szám: ${COMPANY.registryNumber} (${REGISTRY}). Adószám: ${COMPANY.taxNumber}. E-mail: ${CONTACT_EMAIL}.`,
       'Az OurFilm önálló adatkezelő a házigazda fiókja, az esemény, a szerződés, a kapcsolattartás, a szolgáltatás biztonsága és a saját látogatottságmérése tekintetében. A Stripe és a Link a saját fizetési, adózási, számlázási, csalásmegelőzési, vitakezelési és tranzakciós támogatási céljaik tekintetében önálló adatkezelőként járnak el.',
       'Az esemény és a fotók felhasználásának célját alapvetően a házigazda határozza meg. Amennyiben erre az adatvédelmi szabályok alkalmazandók, az OurFilm a házigazda nevében adatfeldolgozóként tárolja és jeleníti meg az esemény tartalmát. Egy magán- vagy családi esemény házigazdájának adatkezelése egyes esetekben háztartási tevékenységnek minősülhet; ezt mindig a konkrét felhasználás dönti el.',
     ],
@@ -116,18 +126,80 @@ const sections: LegalSection[] = [
   },
 ]
 
+const englishSections: LegalSection[] = [
+  {
+    title: 'Controller and roles',
+    body: [
+      `OurFilm is operated by ${COMPANY.name}, registered office ${COMPANY.seat}, registration number ${COMPANY.registryNumber} (${REGISTRY}), tax number ${COMPANY.taxNumber}. Contact: ${CONTACT_EMAIL}.`,
+      'OurFilm is controller for host accounts, contracts, service security, support and its own analytics. Stripe and Link are independent controllers for payment, tax, invoicing, fraud prevention and transaction support. Where data-protection law applies to an event, the host normally decides why event photos are used and OurFilm stores and displays that content on the host’s behalf.',
+    ],
+  },
+  {
+    title: 'Data we handle',
+    body: [
+      'For hosts: email address, user and event identifiers, event name and settings, login and session data. For guests: display name, a random session identifier, shot usage and identifiers connecting the guest to the event and photos. Guests do not need an account or email address.',
+      'For photos: the processed JPEG, capture time, file and image dimensions, format and processing state. Processing removes EXIF metadata, including GPS location. For payments: Stripe session and transaction identifiers, event association, amount, currency and status; OurFilm never receives card numbers.',
+    ],
+  },
+  {
+    title: 'Purposes and legal bases',
+    body: [
+      'Host accounts, events and orders are processed to perform the contract (GDPR Art. 6(1)(b)); records required by tax, accounting or law are processed under legal obligations (Art. 6(1)(c)). Security, session protection, quota enforcement, troubleshooting, abuse prevention and cookie-free aggregate analytics rely on legitimate interests (Art. 6(1)(f)).',
+      'The host is responsible for an appropriate legal basis and event notice for photos and people shown in them where applicable. OurFilm does not use event photos for advertising, facial recognition or profiling.',
+    ],
+  },
+  {
+    title: 'Access and sharing',
+    body: [
+      'Event links contain a long random identifier and photos are stored privately, but anyone can forward a link. The host can access, download and hide every photo. Guests see revealed photos only where the host permits it. Authorised personnel access content only where needed for operations, security or a report.',
+      `We use Supabase for database and private file storage, Vercel for hosting and cookie-free analytics, ${EMAIL_PROVIDER} for login and legal emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
+    ],
+  },
+  {
+    title: 'Retention',
+    body: [
+      'During the pilot, event data, guest display names, sessions and photos remain until the host deletes the event; there is no automatic expiry. Active copies are deleted with the event, while backup copies expire under provider backup cycles and are not ordinarily restored.',
+      'Host account data remains until account deletion; claims-related records remain for the applicable limitation period; OurFilm accounting records are retained for eight years where Hungarian law requires it. Stripe/Link retain their own data under their notices and legal obligations.',
+    ],
+  },
+  {
+    title: 'Cookies and local storage',
+    body: [
+      'Joining sets one strictly necessary, event-specific httpOnly session cookie for up to one year. Supabase Auth uses strictly necessary session cookies for hosts. Before account creation, an event draft stays in the browser’s localStorage for up to seven days. We do not use advertising cookies; Vercel Web Analytics measures aggregate page views without cookies.',
+    ],
+  },
+  {
+    title: 'Your rights',
+    body: [
+      `Depending on the processing, you may request access, correction, deletion, restriction or portability, and object to legitimate-interest processing. Send requests to ${CONTACT_EMAIL}; we normally respond within one month and may ask for the event link or exact photo so we can identify the data without collecting unnecessary information.`,
+      'For a photo of you, contacting the host is often the fastest route. You may also contact us. You can complain to your local EEA supervisory authority or the Hungarian National Authority for Data Protection and Freedom of Information (NAIH), and seek a judicial remedy. Requests concerning Stripe or Link’s independent processing may also need to be sent directly to them.',
+    ],
+  },
+  {
+    title: 'Security, children and changes',
+    body: [
+      'We use HTTPS, private storage, server-side authorisation and database access controls. Raw guest session identifiers remain in httpOnly cookies and only hashes are stored in the database. We assess and document personal-data incidents and notify authorities or affected people where the GDPR requires it.',
+      'Hosts must be adults. Photos may include children; hosts and photographers should take particular care, and a parent or guardian may request that a photo be hidden or removed. Material changes are published here with a new update date and, where appropriate, notified to existing hosts.',
+    ],
+  },
+]
+
 type Props = { params: Promise<{ locale: string }> }
 
 export default async function AdatvedelemPage({ params }: Props) {
   const { locale } = await params
-  if (!isLocale(locale) || locale !== 'hu') notFound()
+  if (!isLocale(locale)) notFound()
 
   return (
     <PageShell
       locale={locale}
-      eyebrow="ADATKEZELÉS"
-      title="Adatkezelési tájékoztató"
-      lead="Mit tárolunk az eseményről, a vendégről és a képekről — az új, digitális eldobható fényképezőgép működéséhez igazítva."
+      eyebrow={locale === 'en' ? 'PRIVACY' : 'ADATKEZELÉS'}
+      title={locale === 'en' ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
+      lead={
+        locale === 'en'
+          ? 'What we store about hosts, events, guests and photos, and why.'
+          : 'Mit tárolunk az eseményről, a vendégről és a képekről — az új, digitális eldobható fényképezőgép működéséhez igazítva.'
+      }
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
@@ -141,10 +213,13 @@ export default async function AdatvedelemPage({ params }: Props) {
             </DraftNotice>
           )}
 
-          <LegalSections sections={sections} />
+          <LegalSections
+            sections={locale === 'en' ? englishSections : sections}
+          />
 
           <p className="mt-12 text-sm text-muted-foreground">
-            Utolsó frissítés: {LAST_UPDATED}
+            {locale === 'en' ? 'Last updated' : 'Utolsó frissítés'}:{' '}
+            {LAST_UPDATED}
           </p>
         </div>
       </section>

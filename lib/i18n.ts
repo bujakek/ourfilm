@@ -48,6 +48,9 @@ export function localePath(locale: Locale, path: string): string {
       '/kapcsolat': '/contact',
       '/alternativak': '/alternatives',
       '/osszehasonlitas': '/comparisons',
+      '/aszf': '/terms',
+      '/adatvedelem': '/privacy',
+      '/impresszum': '/legal',
     }
     for (const [source, destination] of Object.entries(aliases)) {
       if (path === source || path.startsWith(`${source}/`)) {

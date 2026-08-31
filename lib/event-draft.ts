@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { DEFAULT_SHOTS, REVEAL_CHOICES, SHOT_OPTIONS } from '@/lib/camera'
+import { locales } from '@/lib/i18n'
 
 /**
  * The unfinished event in this browser.
@@ -22,11 +23,11 @@ import { DEFAULT_SHOTS, REVEAL_CHOICES, SHOT_OPTIONS } from '@/lib/camera'
 /** Versioned, so a shape change is a fresh start rather than a crash. Bump the
  *  suffix whenever a field changes meaning; the old key is then simply never
  *  read again, and the legacy list below clears it on the next load. */
-export const DRAFT_KEY = 'ourfilm:event-draft:v2'
+export const DRAFT_KEY = 'ourfilm:event-draft:v3'
 
 /** Keys from earlier shapes, cleared on load so a browser does not carry an
  *  unreadable blob forever. Add the previous key here when bumping. */
-const LEGACY_KEYS = ['ourfilm:event-draft:v1']
+const LEGACY_KEYS = ['ourfilm:event-draft:v1', 'ourfilm:event-draft:v2']
 
 /** How long a draft stays resumable. A week covers "I started this on the bus
  *  and finished it at home"; past that, the dates in it are usually wrong
@@ -36,6 +37,7 @@ export const DRAFT_TTL_DAYS = 7
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const draftSchema = z.object({
+  locale: z.enum(locales),
   name: z.string().max(80),
   /** `YYYY-MM-DDTHH:mm`, or empty while the host is editing the time field. */
   endLocal: z.string().max(20),
@@ -82,9 +84,11 @@ export function emptyDraft(
   now: Date,
   timeZone: string,
   creationKey: string,
+  locale: (typeof locales)[number] = 'en',
 ): EventDraft {
   const stamp = now.toISOString()
   return {
+    locale,
     name: '',
     endLocal: '',
     timeZone,

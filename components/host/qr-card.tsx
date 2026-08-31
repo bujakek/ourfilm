@@ -5,6 +5,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { useRef, useState } from 'react'
 
 import { Sheet } from '@/components/host/sheet'
+import type { Locale } from '@/lib/i18n'
 
 /**
  * Keeps the downloadable QR available without making it the whole event page.
@@ -20,11 +21,14 @@ export function QrCard({
   name,
   url,
   shots,
+  locale,
 }: {
   name: string
   url: string
   shots: number
+  locale: Locale
 }) {
+  const en = locale === 'en'
   const [open, setOpen] = useState(false)
   const qrRef = useRef<HTMLCanvasElement>(null)
 
@@ -39,7 +43,7 @@ export function QrCard({
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '')
 
-    const fileName = `${safeName || 'ourfilm'}-qr-kod.png`
+    const fileName = `${safeName || 'ourfilm'}-qr-code.png`
     const dataUrl = canvas.toDataURL('image/png')
     const binary = atob(dataUrl.split(',')[1])
     const bytes = Uint8Array.from(binary, (character) =>
@@ -52,7 +56,7 @@ export function QrCard({
       try {
         await navigator.share({
           files: [file],
-          title: `${name} QR-kód`,
+          title: `${name} QR code`,
         })
         return
       } catch (error) {
@@ -78,14 +82,14 @@ export function QrCard({
         className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-base font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
       >
         <QrCode className="size-5" strokeWidth={1.8} aria-hidden="true" />
-        QR-kód
+        {en ? 'QR code' : 'QR-kód'}
       </button>
 
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        closeLabel="QR-kód bezárása"
-        title="QR-kód"
+        closeLabel={en ? 'Close QR code' : 'QR-kód bezárása'}
+        title={en ? 'QR code' : 'QR-kód'}
       >
         {/* The one deliberately light surface in the product: this is the
               thing that gets printed and stood on a table, and a dark card is
@@ -95,7 +99,7 @@ export function QrCard({
             {name}
           </p>
           <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-black/50">
-            ELDOBHATÓ KAMERA
+            {en ? 'DISPOSABLE CAMERA' : 'ELDOBHATÓ KAMERA'}
           </p>
 
           <div className="my-7 flex justify-center">
@@ -114,8 +118,9 @@ export function QrCard({
           </div>
 
           <p className="mx-auto max-w-[15rem] text-sm leading-relaxed text-black/70">
-            Olvasd be a QR-kódot, és {shots} képet készíthetsz — app és
-            regisztráció nélkül.
+            {en
+              ? `Scan the QR code and take ${shots} photos — no app or account needed.`
+              : `Olvasd be a QR-kódot, és ${shots} képet készíthetsz — app és regisztráció nélkül.`}
           </p>
           <div className="mt-6 border-t border-black/10 pt-4">
             <p className="truncate text-xs font-medium text-black/50">
@@ -130,7 +135,7 @@ export function QrCard({
           className="glass glass-hover mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold"
         >
           <Download className="size-4" aria-hidden="true" />
-          QR-kód letöltése
+          {en ? 'Download QR code' : 'QR-kód letöltése'}
         </button>
       </Sheet>
     </>

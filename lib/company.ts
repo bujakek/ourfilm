@@ -9,31 +9,22 @@
  * consumer-facing page for an EV is simply a false statement, so the fields
  * below are shaped for the entity that actually exists.
  *
- * **Every value marked TODO must be filled in before the pages are
- * published.** They are the details only the business has, and inventing them
- * would be worse than leaving them visibly blank. `hasRealCompanyDetails`
- * below is what un-drafts the pages, so filling these in and flipping that
- * flag is the whole job.
- *
- * Hungarian law requires each of these on a consumer-facing service:
- * 45/2014. (II. 26.) Korm. rendelet 11. § and the Elker tv. (2001. évi CVIII.).
+ * These are the operator's registered details. `hasRealCompanyDetails` below
+ * is the single switch that publishes the legal and pricing pages once the
+ * values have been verified.
  */
 export const COMPANY = {
   /** Full name as registered, e.g. "Példa Péter e.v." */
-  name: '[NÉV — TODO]',
+  name: 'Buják László e.v.',
   /** Székhely, full postal address. */
-  seat: '[SZÉKHELY — TODO]',
+  seat: '1039 Budapest, Juhász Gyula utca 2., 8. em. 75.',
   /**
    * Nyilvántartási szám from the EVNY — **not** a cégjegyzékszám. It is the
    * number on the egyéni vállalkozói igazolvány / the EVNY record.
    */
-  registryNumber: '[NYILVÁNTARTÁSI SZÁM — TODO]',
+  registryNumber: '61847981',
   /** Adószám, e.g. "12345678-1-42". */
-  taxNumber: '[ADÓSZÁM — TODO]',
-  /** A reachable phone number. Required; an email address alone is not enough. */
-  phone: '[TELEFONSZÁM — TODO]',
-  /** Chamber of commerce, e.g. "Budapesti Kereskedelmi és Iparkamara". */
-  chamber: '[SZAKMAI KAMARA — TODO]',
+  taxNumber: '91762351-1-41',
 } as const
 
 /**
@@ -80,7 +71,7 @@ export const EMAIL_PROVIDER = 'Resend'
  * order. Keep this stable until the terms materially change; a display date is
  * not a useful audit trail on its own.
  */
-export const LEGAL_VERSION = '2026-08-29-mor-hu'
+export const LEGAL_VERSION = '2026-08-31-mor-hu'
 
 /** Shown at the foot of the legal pages. Update when their text changes. */
 export const LAST_UPDATED = '2026. augusztus 31.'
@@ -91,10 +82,8 @@ export const LAST_UPDATED = '2026. augusztus 31.'
  * /arak carries no banner any more — its copy is final — but it stays out of
  * search results on the same flag, for the reason below.
  *
- * Keep false until COMPANY above is real. Publishing a privacy notice that
- * says `[NÉV — TODO]` is worse than not publishing one, and /arak is gated on
- * the same flag for a sharper reason — a price a stranger can find in Google
- * is an offer, and an offer cannot lawfully be made to a consumer while the
- * mandatory identifiers are placeholders.
+ * This stays true while COMPANY above contains verified operator details. If
+ * those details ever become incomplete during a change, switch it off in the
+ * same commit so draft identifiers cannot be published.
  */
-export const hasRealCompanyDetails = false
+export const hasRealCompanyDetails = true
