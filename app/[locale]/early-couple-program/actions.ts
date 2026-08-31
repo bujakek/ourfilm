@@ -1,7 +1,5 @@
 'use server'
 
-import { createHmac } from 'node:crypto'
-
 import {
   earlyCoupleError,
   parseEarlyCoupleApplication,
@@ -9,6 +7,7 @@ import {
 } from '@/lib/early-couple'
 import { isLocale, type Locale } from '@/lib/i18n'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { consumeRateLimit, requestFingerprint } from '@/lib/rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { headers } from 'next/headers'
 
@@ -46,14 +45,6 @@ function successState(locale: Locale): EarlyCoupleFormState {
   }
 }
 
-function clientAddress(requestHeaders: Headers) {
-  return (
-    requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    requestHeaders.get('x-real-ip')?.trim() ||
-    'unknown'
-  )
-}
-
 function nullable(value: string) {
   return value || null
 }
@@ -75,12 +66,6 @@ export async function submitEarlyCoupleApplication(
     }
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceKey) {
-    console.error('Early Couple application failed: service key is missing')
-    return { status: 'error', message: genericError(locale) }
-  }
-
   const db = createAdminClient()
   const application = parsed.application
 
@@ -99,25 +84,13 @@ export async function submitEarlyCoupleApplication(
   if (existing) return successState(locale)
 
   const requestHeaders = await headers()
-  const rateLimitKey = createHmac(
-    'sha256',
-    `${serviceKey}:early-couple-rate-limit`,
-  )
-    .update(clientAddress(requestHeaders))
-    .digest('hex')
 
-  const { data: allowed, error: rateLimitFailure } = await db.rpc(
-    'consume_early_couple_rate_limit',
-    { p_key_hash: rateLimitKey },
-  )
-
-  if (rateLimitFailure) {
-    console.error(
-      'Could not rate-limit Early Couple application',
-      rateLimitFailure,
-    )
-    return { status: 'error', message: genericError(locale) }
-  }
+  const allowed = await consumeRateLimit({
+    scope: 'early-couple',
+    identifier: await requestFingerprint(),
+    limit: 5,
+    windowSeconds: 900,
+  })
   if (!allowed) return { status: 'error', message: rateLimitError(locale) }
 
   const { error: insertError } = await db

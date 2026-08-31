@@ -15,7 +15,6 @@ import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
-import { consumeRateLimit } from '@/lib/rate-limit'
 
 /** What the browser sends. Every field is re-derived or re-checked below — it
  *  comes out of `localStorage`, which is a JSON blob any visitor can edit. */
@@ -212,26 +211,6 @@ export async function createEventFromDraft(
         ok: true,
         destination: `/host/events/${existing.slug}?lang=${locale}`,
       }
-    }
-  }
-
-  // Only a genuinely new insert consumes the allowance. Reopening a magic
-  // link or retrying an idempotent draft must always be able to find the row it
-  // already created, even after the account has reached its creation limit.
-  if (
-    !(await consumeRateLimit({
-      scope: 'event-create',
-      identifier: user.id,
-      limit: 10,
-      windowSeconds: 3600,
-    }))
-  ) {
-    return {
-      ok: false,
-      error:
-        locale === 'en'
-          ? 'Too many events were created recently. Try again later.'
-          : 'Nemrég túl sok esemény készült. Próbáld újra később.',
     }
   }
 

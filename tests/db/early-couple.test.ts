@@ -57,11 +57,12 @@ describe('Early Couple application privacy', () => {
     expect(data ?? []).toHaveLength(0)
   })
 
-  it('does not expose the rate-limit RPC to the public key', async () => {
-    const { error } = await anonClient().rpc(
-      'consume_early_couple_rate_limit',
-      { p_key_hash: 'a'.repeat(64) },
-    )
+  it('does not expose the shared rate-limit RPC to the public key', async () => {
+    const { error } = await anonClient().rpc('consume_rate_limit', {
+      p_key: 'early-couple:test',
+      p_limit: 5,
+      p_window_seconds: 900,
+    })
 
     expect(error).toBeTruthy()
   })

@@ -16,7 +16,6 @@ import {
   readParticipantTokenHash,
   writeParticipantCookie,
 } from '@/lib/participants'
-import { consumeRateLimit, requestFingerprint } from '@/lib/rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -60,23 +59,6 @@ export async function joinEventAction(
     return { error: lang === 'en' ? 'Event not found.' : 'Hiányzó esemény.' }
   if (!name)
     return { error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.' }
-
-  const fingerprint = await requestFingerprint()
-  if (
-    !(await consumeRateLimit({
-      scope: `join:${slug}`,
-      identifier: fingerprint,
-      limit: 30,
-      windowSeconds: 600,
-    }))
-  ) {
-    return {
-      error:
-        lang === 'en'
-          ? 'Too many join attempts. Wait a few minutes and try again.'
-          : 'Túl sok csatlakozási próbálkozás történt. Várj néhány percet, majd próbáld újra.',
-    }
-  }
 
   // A fresh token per join. A guest re-joining on the same device gets a new
   // cookie and, because the RPC upserts on the *old* hash only if it matches,
@@ -147,16 +129,6 @@ export async function reserveShotAction(
 
   if (process.env.OURFILM_UPLOADS_DISABLED === 'true') {
     return { ok: false, refusal: 'uploads_disabled' }
-  }
-  if (
-    !(await consumeRateLimit({
-      scope: `shot:${eventId}`,
-      identifier: tokenHash,
-      limit: 30,
-      windowSeconds: 60,
-    }))
-  ) {
-    return { ok: false, refusal: 'rate_limited' }
   }
 
   const configuredLimit = Number(

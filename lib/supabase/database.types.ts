@@ -132,24 +132,6 @@ export type Database = {
           },
         ]
       }
-      early_couple_rate_limits: {
-        Row: {
-          key_hash: string
-          submission_count: number
-          window_started_at: string
-        }
-        Insert: {
-          key_hash: string
-          submission_count?: number
-          window_started_at?: string
-        }
-        Update: {
-          key_hash?: string
-          submission_count?: number
-          window_started_at?: string
-        }
-        Relationships: []
-      }
       events: {
         Row: {
           capture_end_at: string
@@ -442,10 +424,6 @@ export type Database = {
           committed: boolean
           shots_remaining: number
         }[]
-      }
-      consume_early_couple_rate_limit: {
-        Args: { p_key_hash: string }
-        Returns: boolean
       }
       consume_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number }

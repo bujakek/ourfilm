@@ -29,7 +29,6 @@ export type ShotRefusal =
   | 'not_started'
   | 'ended'
   | 'no_shots'
-  | 'rate_limited'
   | 'uploads_disabled'
   | 'storage_limit'
   | 'error'
