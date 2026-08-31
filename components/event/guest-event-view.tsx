@@ -18,10 +18,10 @@ import {
   commitShotAction,
   releaseShotAction,
   reserveShotAction,
-} from '@/app/e/[slug]/actions'
+} from '@/app/(product)/e/[slug]/actions'
 import { prepareForUpload } from '@/lib/image'
 import { uploadShotRenders } from '@/lib/upload-shot'
-import type { Locale } from '@/lib/i18n'
+import { type Locale, localeTag } from '@/lib/i18n'
 
 import { InviteButton } from './invite-button'
 import { PhotoGrid } from './photo-grid'
@@ -141,7 +141,13 @@ export function GuestEventView({
   )
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-3xl px-4 pt-10 pb-14 sm:px-6 sm:pt-14">
+    <main
+      className="mx-auto min-h-dvh w-full max-w-3xl px-4 pt-10 pb-14 sm:px-6 sm:pt-14"
+      // See the note in `app/(product)/layout.tsx`: the document language is
+      // the site default because this route has no locale segment, so the
+      // event's own language is marked on its subtree instead.
+      lang={localeTag[locale]}
+    >
       <header>
         <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
           {eventName}

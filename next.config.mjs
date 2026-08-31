@@ -2,6 +2,14 @@ import createMDX from '@next/mdx'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // The app has two root layouts — `app/[locale]` and `app/(product)` — so
+    // `<html lang>` can be correct on both halves. That leaves no single
+    // layout for Next to compose an unmatched-URL 404 from, which is what
+    // `app/global-not-found.tsx` replaces. Without this flag that file is
+    // inert and 404s silently fall back to Next's built-in page.
+    globalNotFound: true,
+  },
   async headers() {
     const csp = [
       "default-src 'self'",

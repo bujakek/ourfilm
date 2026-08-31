@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { LoadingStatus } from '@/components/loading-status'
 import { clearDraft, loadDraft, saveDraft } from '@/lib/event-draft'
-import { createEventFromDraft } from '@/app/host/events/new/actions'
+import { createEventFromDraft } from '@/app/(product)/host/events/new/actions'
 
 /**
  * What this screen can end up showing. Success is not among them: it navigates

@@ -3,7 +3,7 @@
 import {
   type CheckoutState,
   startEventCheckout,
-} from '@/app/host/events/[slug]/billing-actions'
+} from '@/app/(product)/host/events/[slug]/billing-actions'
 import { EVENT_PRICE_LABEL } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'

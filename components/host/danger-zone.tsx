@@ -1,6 +1,6 @@
 'use client'
 
-import { deleteEvent } from '@/app/host/events/[slug]/actions'
+import { deleteEvent } from '@/app/(product)/host/events/[slug]/actions'
 import { Sheet } from '@/components/host/sheet'
 import { Loader2, Trash2, TriangleAlert } from 'lucide-react'
 import { useState, useTransition } from 'react'

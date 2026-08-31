@@ -3,7 +3,7 @@
 import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
 import { useState, useTransition } from 'react'
 
-import { setCaptureEnd } from '@/app/host/events/[slug]/actions'
+import { setCaptureEnd } from '@/app/(product)/host/events/[slug]/actions'
 import { MonthCalendar } from '@/components/host/month-calendar'
 import { Sheet } from '@/components/host/sheet'
 import { formatEventDate } from '@/lib/format'

@@ -1,11 +1,20 @@
 'use client'
 
-import { BackgroundGlow } from '@/components/site/background-glow'
 import Link from 'next/link'
 import { useEffect } from 'react'
+
+import { BackgroundGlow } from '@/components/site/background-glow'
 import { defaultLocale, localePath } from '@/lib/i18n'
 
-export default function Error({
+/**
+ * The body of every `error.tsx` in the app.
+ *
+ * There is one `error.tsx` per root layout — the public site and the product
+ * area each own their own document — and neither is a good place to keep a
+ * second copy of this markup. English only: an error boundary renders when the
+ * page that knew the locale is the thing that failed.
+ */
+export function ErrorScreen({
   error,
   reset,
 }: {

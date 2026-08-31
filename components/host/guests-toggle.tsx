@@ -1,6 +1,6 @@
 'use client'
 
-import { setGuestsCanView } from '@/app/host/events/[slug]/actions'
+import { setGuestsCanView } from '@/app/(product)/host/events/[slug]/actions'
 import { cn } from '@/lib/utils'
 import { useOptimistic, useState, useTransition } from 'react'
 
