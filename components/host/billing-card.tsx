@@ -23,8 +23,13 @@ export type BillingCardProps = {
   participantLimit: number
   participantCount: number
   unlimited: boolean
-  /** Set when the cap is lifted by a payment rather than by the owner's role. */
-  paidLabel: string | null
+  /**
+   * Why the cap is lifted, already phrased for the host — a receipt, an Early
+   * Couple Program line, an operator unlock. Null falls back to the card's own
+   * copy, which is what an admin-owned event gets. Built by `planNote()` so the
+   * reasons cannot drift into describing each other.
+   */
+  planNote: string | null
   stripeReady: boolean
   checkout: 'success' | 'cancelled' | null
 }
@@ -45,7 +50,7 @@ export function BillingCard({
   participantLimit,
   participantCount,
   unlimited,
-  paidLabel,
+  planNote,
   stripeReady,
   checkout,
 }: BillingCardProps) {
@@ -72,7 +77,7 @@ export function BillingCard({
               {en ? 'Full event' : 'Teljes esemény'}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {paidLabel ??
+              {planNote ??
                 (en
                   ? 'Unlimited guests — this account has no participant cap.'
                   : 'Korlátlan résztvevő — ehhez a fiókhoz nem tartozik keret.')}

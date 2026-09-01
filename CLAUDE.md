@@ -568,6 +568,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 - **`purchases`** — `event_id`, `owner_id`, `stripe_checkout_session_id` (unique), `stripe_payment_intent_id`, `stripe_customer_id`, `amount_minor`, `currency`, `status` (`pending` | `paid` | `refunded` | `failed` | `expired`), `created_at`, `paid_at`, `refunded_at`, `failed_at`, `expired_at`. A ledger, not a flag: every terminal Checkout outcome remains explainable, which is why `getEventPurchase()` sorts on `paid_at` before `created_at`.
 
+- **`event_grants`** — why an event is uncapped without a payment: `event_id`, `reason` (`early_couple` | `operator`), `granted_by` (nullable — the CLI has no `auth.uid()`), `note`, `granted_at`, `revoked_at`. A ledger like `purchases`: revoking sets `revoked_at`, and a partial unique index on `event_id where revoked_at is null` allows one _active_ grant while keeping the history. RLS on with no policies at all, and `revoke all … from anon, authenticated` by name — a host must not be able to grant themselves anything.
+
 - **`stripe_checkout_attempts`** — one short-lived reservation per event. The host-only `reserve_event_checkout` RPC atomically returns one attempt id and canonical terms-acceptance timestamp to concurrent callers; that attempt id is the Stripe idempotency key. The table has RLS and no policies, so hosts cannot list or edit reservations directly. After 45 minutes a new request rotates the attempt and creates a fresh Checkout Session.
 
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
@@ -629,6 +631,32 @@ Price, so a translated label cannot silently choose the other currency.
   a host can type it, and a host who closes the tab on Stripe's success page
   still deserves their album. `purchases` has no update policy at all, so the
   service role is the only writer of `status = 'paid'`.
+- **A comped event is an `event_grants` row, never a hand-written `paid`
+  purchase and never a 100% Stripe coupon.** Both shortcuts were considered and
+  rejected: `purchases.stripe_checkout_session_id` is `not null unique`, so
+  faking a payment needs a fabricated session id and puts phantom revenue in
+  the one table that has to stay explainable at invoicing time; and a
+  fully-discounted Checkout Session completes with
+  `payment_status = 'no_payment_required'`, which the webhook deliberately
+  ignores — the couple would pay nothing and stay capped — besides being a
+  bearer token that is unlimited guests for anyone it leaks to.
+- **`public.event_plan_source()` is the single answer to "why is this
+  uncapped".** It returns `'paid' | 'early_couple' | 'operator' | 'admin' |
+null` — the grant's own `reason`, not a flat `'grant'`, because an Early
+  Couple comp and an operator unlock are not the same sentence to put in front
+  of a host. `event_is_full_plan()` is now just a null check over it, so
+  `join_event`, the guest state view and the checkout guard picked the new
+  clause up without changing. `lib/plan-copy.ts` turns it into the host's line;
+  a comped event must never read "Kifizetve — 12 900 Ft".
+- **Granting is `pnpm grant <slug> [--reason …] [--note …]`** — a CLI over
+  service-role-only RPCs (`grant_event_plan`, `revoke_event_plan`), because
+  there is no operator console and a grant should need the service role rather
+  than a session. Idempotent: a second run reports the first run's grant.
+  `--revoke` is an **emergency lever, not a lifecycle step** — the predicate is
+  consulted on every join, so revoking mid-wedding starts turning guests away.
+  In particular, never wire it to an `early_couple_applications.status`
+  transition: that column moves to `completed` after the wedding and would
+  re-cap a live album.
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
 - **Invoicing is still on the never-start list.** A Hungarian company selling to

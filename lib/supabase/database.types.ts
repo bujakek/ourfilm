@@ -137,6 +137,44 @@ export type Database = {
           },
         ]
       }
+      event_grants: {
+        Row: {
+          event_id: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          note: string | null
+          reason: string
+          revoked_at: string | null
+        }
+        Insert: {
+          event_id: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          note?: string | null
+          reason: string
+          revoked_at?: string | null
+        }
+        Update: {
+          event_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          note?: string | null
+          reason?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_grants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           capture_end_at: string
@@ -520,11 +558,26 @@ export type Database = {
         Returns: {
           participant_count: number
           participant_limit: number
+          plan_source: string
           unlimited: boolean
         }[]
       }
+      event_plan_source: { Args: { p_event_id: string }; Returns: string }
       event_ready_photo_bytes: { Args: { p_event_id: string }; Returns: number }
       free_participant_limit: { Args: never; Returns: number }
+      grant_event_plan: {
+        Args: {
+          p_event_slug: string
+          p_granted_by?: string
+          p_note?: string
+          p_reason: string
+        }
+        Returns: {
+          already_active: boolean
+          grant_id: string
+          granted_event_id: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       join_event: {
         Args: { p_name: string; p_slug: string; p_token_hash: string }
@@ -589,6 +642,10 @@ export type Database = {
           thumb_path: string
           view_path: string
         }[]
+      }
+      revoke_event_plan: {
+        Args: { p_event_slug: string; p_note?: string }
+        Returns: boolean
       }
       shot_reservation_ttl: { Args: never; Returns: string }
     }
