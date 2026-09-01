@@ -16,14 +16,17 @@
 export type StripeEnv = {
   secretKey: string
   webhookSecret: string
-  /** Price ID of the one-time per-event purchase, e.g. `price_1ABC…`. */
+  /** HUF Price ID of the one-time per-event purchase. */
   eventPriceId: string
+  /** USD Price ID of the one-time per-event purchase. */
+  eventPriceUsdId: string
 }
 
 const KEYS = {
   secretKey: 'STRIPE_SECRET_KEY',
   webhookSecret: 'STRIPE_WEBHOOK_SECRET',
   eventPriceId: 'STRIPE_PRICE_EVENT',
+  eventPriceUsdId: 'STRIPE_PRICE_EVENT_USD',
 } as const
 
 function read(): Partial<StripeEnv> {
@@ -31,6 +34,7 @@ function read(): Partial<StripeEnv> {
     secretKey: process.env[KEYS.secretKey],
     webhookSecret: process.env[KEYS.webhookSecret],
     eventPriceId: process.env[KEYS.eventPriceId],
+    eventPriceUsdId: process.env[KEYS.eventPriceUsdId],
   }
 }
 
@@ -44,7 +48,12 @@ function read(): Partial<StripeEnv> {
  */
 export function stripeIsConfigured(): boolean {
   const env = read()
-  return Boolean(env.secretKey && env.webhookSecret && env.eventPriceId)
+  return Boolean(
+    env.secretKey &&
+    env.webhookSecret &&
+    env.eventPriceId &&
+    env.eventPriceUsdId,
+  )
 }
 
 export function stripeEnv(): StripeEnv {
@@ -57,8 +66,8 @@ export function stripeEnv(): StripeEnv {
     throw new Error(
       `Missing ${missing.join(', ')}. Create the Stripe account, then add ` +
         `these to .env.local and to the Vercel project. STRIPE_PRICE_EVENT ` +
-        `is the Price ID (price_…) of the one-time per-event product, not ` +
-        `the Product ID (prod_…).`,
+        `and STRIPE_PRICE_EVENT_USD are Price IDs (price_…) of the one-time ` +
+        `per-event product, not the Product ID (prod_…).`,
     )
   }
 

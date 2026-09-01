@@ -23,6 +23,7 @@ import { getOwnedEventBySlug } from '@/lib/events'
 import { formatDeadline } from '@/lib/format'
 import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
+import { eventPriceLabel } from '@/lib/pricing'
 import { eventUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
@@ -300,7 +301,7 @@ function PlanBanner({
               ? 'New guests can join after the full event is unlocked.'
               : 'Új vendégek csak a teljes esemény feloldása után csatlakozhatnak.'
             : en
-              ? 'Unlock full event'
+              ? `Unlock full event — ${eventPriceLabel(locale)}`
               : 'Teljes esemény feloldása — 12 900 Ft'}
         </span>
       </span>

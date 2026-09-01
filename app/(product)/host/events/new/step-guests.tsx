@@ -11,7 +11,7 @@ import {
 } from '@/components/host/onboarding/onboarding-shell'
 import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
-import { EVENT_PRICE_LABEL } from '@/lib/pricing'
+import { eventPriceLabel } from '@/lib/pricing'
 import type { Locale } from '@/lib/i18n'
 
 export function StepGuests({
@@ -96,9 +96,7 @@ export function StepGuests({
               title={en ? 'Unlimited' : 'Korlátlan'}
               detail={
                 paymentsEnabled
-                  ? en
-                    ? 'HUF 12,900'
-                    : EVENT_PRICE_LABEL
+                  ? eventPriceLabel(locale)
                   : en
                     ? 'Coming soon'
                     : 'Hamarosan'

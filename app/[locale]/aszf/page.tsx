@@ -13,7 +13,7 @@ import {
   PAYMENT_PROCESSOR,
 } from '@/lib/company'
 import { isLocale } from '@/lib/i18n'
-import { EVENT_PRICE_LABEL } from '@/lib/pricing'
+import { EVENT_PRICE_LABEL, EVENT_PRICE_LABELS } from '@/lib/pricing'
 import { CONTACT_EMAIL } from '@/lib/site'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -150,7 +150,7 @@ const englishSections: LegalSection[] = [
   {
     title: 'Price and payment',
     body: [
-      `Up to 5 distinct guests may join a free event. Unlocking the full event removes this participant cap for that event; it is a one-off purchase, not a subscription or per-guest fee. The final price, currency and applicable taxes are shown in Stripe Checkout before purchase. The Hungarian consumer price is ${EVENT_PRICE_LABEL}.`,
+      `Up to 5 distinct guests may join a free event. Unlocking the full event removes this participant cap for that event; it is a one-off purchase, not a subscription or per-guest fee. The final price, currency and applicable taxes are shown in Stripe Checkout before purchase. The English price is ${EVENT_PRICE_LABELS.en}.`,
       `${PAYMENT_PROCESSOR.merchantOfRecord} handles the transaction through ${PAYMENT_PROCESSOR.name}. OurFilm does not receive or store card details. Link sends the transaction confirmation and applicable invoice or receipt.`,
     ],
   },

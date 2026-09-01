@@ -84,16 +84,17 @@ SEND_EMAIL_HOOK_SECRET=                 # Supabase Send Email Hook signature
 AUTH_EMAIL_FROM=                        # optional auth sender override
 ```
 
-Payments add three more, all server-only — Checkout is a redirect to Stripe's
+Payments add four more, all server-only — Checkout is a redirect to Stripe's
 hosted page, so the browser never needs a publishable key:
 
 ```bash
 STRIPE_SECRET_KEY=              # sk_test_… while piloting
 STRIPE_WEBHOOK_SECRET=          # whsec_…, from the endpoint or `stripe listen`
 STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
+STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
 
-**The Stripe account exists and test mode is wired up locally.** All three
+**The Stripe account exists and test mode is wired up locally.** All four
 are filled in in `.env.local`, so `stripeIsConfigured()` is true and the admin
 billing card offers checkout. Nothing is set on Vercel yet, so payments are
 still off in every deployed environment — `stripeIsConfigured()` is what keeps
@@ -106,6 +107,9 @@ that UI honest.
   product name is what a host reads on Stripe's hosted checkout page, so it is
   copy, not a label. Live mode needs its own Price; test and live objects
   never cross.
+- `STRIPE_PRICE_EVENT_USD` is `price_1UAr8Y35IJWm7mhtF4tTDhTO` — the active,
+  tax-inclusive test Price for 39 USD on the same product. English events use
+  this Price; Hungarian events use `STRIPE_PRICE_EVENT`.
 
   **List before you create.** A second product/price pair with the same
   12 900 Ft amount was created here by accident and archived again
@@ -562,7 +566,9 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 - **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `created_at`. One row per account, written by a trigger at signup. Read it through `lib/roles.ts`, never inline.
 
-- **`purchases`** — `event_id`, `owner_id`, `stripe_checkout_session_id` (unique), `stripe_payment_intent_id`, `stripe_customer_id`, `amount_minor`, `currency`, `status` (`pending` | `paid` | `refunded`), `created_at`, `paid_at`, `refunded_at`. A ledger, not a flag: abandoned checkouts leave `pending` rows on purpose, which is why `getEventPurchase()` sorts on `paid_at` before `created_at`.
+- **`purchases`** — `event_id`, `owner_id`, `stripe_checkout_session_id` (unique), `stripe_payment_intent_id`, `stripe_customer_id`, `amount_minor`, `currency`, `status` (`pending` | `paid` | `refunded` | `failed` | `expired`), `created_at`, `paid_at`, `refunded_at`, `failed_at`, `expired_at`. A ledger, not a flag: every terminal Checkout outcome remains explainable, which is why `getEventPurchase()` sorts on `paid_at` before `created_at`.
+
+- **`stripe_checkout_attempts`** — one short-lived reservation per event. The host-only `reserve_event_checkout` RPC atomically returns one attempt id and canonical terms-acceptance timestamp to concurrent callers; that attempt id is the Stripe idempotency key. The table has RLS and no policies, so hosts cannot list or edit reservations directly. After 45 minutes a new request rotates the attempt and creates a fresh Checkout Session.
 
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
 
@@ -597,7 +603,9 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
 
 ## Billing (settled)
 
-**One-time purchase per event, 12 900 Ft.** No subscription, no per-guest fee.
+**One-time purchase per event: 39 USD in English, 12 900 Ft in Hungarian.** No
+subscription, no per-guest fee. The event's stored locale selects the Stripe
+Price, so a translated label cannot silently choose the other currency.
 
 - **The free tier is a _participant_ cap, not a photo cap:** an event is free for
   up to **5 distinct participants** (`public.free_participant_limit()`). Every
@@ -637,7 +645,7 @@ points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
 `app/host/events/[slug]/billing-actions.ts`,
 `components/host/billing-card.tsx`, `app/host/events/new/step-guests.tsx`.
 
-**`/hu/arak` mirrors this model.** It presents one paid event rather than a
+**`/hu/arak` and `/en/pricing` mirror this model.** They present one paid event rather than a
 three-tier SaaS table: up to five participants are free, one payment admits
 unlimited participants, and every participant still has the host's chosen roll.
 The page remains `noindex` while `hasRealCompanyDetails` is false.

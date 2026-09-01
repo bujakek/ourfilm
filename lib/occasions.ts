@@ -1,6 +1,7 @@
 import { Cake, GlassWater, Heart, Plane } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Locale } from './i18n'
+import { EVENT_PRICE_LABELS } from './pricing'
 
 /**
  * The one definition of an occasion.
@@ -213,8 +214,7 @@ const englishOccasions: Record<string, OccasionCopy> = {
       heading: 'See the day through your guests’ eyes.',
       body: 'Create your camera, choose the roll length and decide when the photos should be revealed.',
       button: 'Create your camera',
-      helper:
-        'Free for up to 5 guests. No card required. The full event costs HUF 12,900 once.',
+      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Wedding Guest Camera – OurFilm',
@@ -242,8 +242,7 @@ const englishOccasions: Record<string, OccasionCopy> = {
       heading: 'Turn the whole birthday into one shared roll.',
       body: 'Create the event, choose the number of shots and decide when the gallery opens.',
       button: 'Create your camera',
-      helper:
-        'Free for up to 5 guests. No card required. The full event costs HUF 12,900 once.',
+      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Digital Guest Camera for Birthdays – OurFilm',
@@ -271,8 +270,7 @@ const englishOccasions: Record<string, OccasionCopy> = {
       heading: 'Relive the trip together.',
       body: 'Create your shared camera, send it to the group and choose when the photos are revealed.',
       button: 'Create your camera',
-      helper:
-        'Free for up to 5 guests. No card required. The full event costs HUF 12,900 once.',
+      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Shared Digital Camera for Group Trips – OurFilm',
@@ -300,8 +298,7 @@ const englishOccasions: Record<string, OccasionCopy> = {
       heading: 'See the party from every angle.',
       body: 'Create your camera, choose the roll length and decide when the gallery opens.',
       button: 'Create your camera',
-      helper:
-        'Free for up to 5 guests. No card required. The full event costs HUF 12,900 once.',
+      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Digital Guest Camera for Parties – OurFilm',

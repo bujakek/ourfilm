@@ -314,6 +314,7 @@ export async function createEventFromDraft(
             slug,
             ownerId: user.id,
             ownerEmail: user.email ?? null,
+            locale,
             termsAcceptedAt: new Date().toISOString(),
           })
         }

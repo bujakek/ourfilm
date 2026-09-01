@@ -32,9 +32,8 @@ export function formatAmount(
   currency: string | null,
 ): string | null {
   if (amountMinor === null) return null
-  // Only HUF is ever sold — the product is Hungarian-only. Anything else means
-  // a Price was created in the wrong currency, which is worth showing plainly
-  // rather than rendering as forints.
+  // English events are sold in USD. Keep non-HUF ledger entries explicit
+  // rather than accidentally formatting them as forints.
   if (currency && currency.toLowerCase() !== 'huf') {
     return `${amountMinor / 100} ${currency.toUpperCase()}`
   }
@@ -91,12 +90,12 @@ export const getEventQuota = cache(
  * way, exactly as with `getOwnedEventBySlug`.
  *
  * Ordered by `paid_at` before `created_at`, which is not the obvious choice
- * and matters. A host who abandons checkout leaves a `pending` row behind, and
- * those rows are kept on purpose as a ledger of attempts. Newest-first would
- * then surface the abandoned attempt over the payment that actually went
- * through and report a paid album as unpaid. Only settled rows carry a
- * `paid_at`, so sorting on it puts real outcomes first and leaves the pending
- * ones where they belong.
+ * and matters. Open or unreconciled checkouts are `pending`; Stripe later turns
+ * abandoned and delayed-failure attempts into `expired` or `failed` rows. Those
+ * outcomes are kept on purpose as a ledger. Newest-first could surface one of
+ * them over the payment that actually went through and report a paid album as
+ * unpaid. Only settled rows carry a `paid_at`, so sorting on it puts real
+ * outcomes first and leaves attempts where they belong.
  *
  * This is for showing the host what happened. Whether the cap is lifted is not
  * decided here — `getEventQuota().unlimited` is, because it also answers the

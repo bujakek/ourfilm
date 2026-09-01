@@ -85,6 +85,7 @@ export async function startEventCheckout(
       slug: event.slug,
       ownerId: user.id,
       ownerEmail: user.email ?? null,
+      locale: event.locale,
       termsAcceptedAt: new Date().toISOString(),
     })
   } catch (e) {

@@ -4,7 +4,7 @@ import {
   type CheckoutState,
   startEventCheckout,
 } from '@/app/(product)/host/events/[slug]/billing-actions'
-import { EVENT_PRICE_LABEL } from '@/lib/pricing'
+import { eventPriceLabel } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -202,8 +202,8 @@ export function BillingCard({
                 ? 'Redirecting…'
                 : 'Átirányítás…'
               : en
-                ? 'Unlock full event'
-                : `Teljes esemény feloldása – ${EVENT_PRICE_LABEL}`}
+                ? `Unlock full event – ${eventPriceLabel(locale)}`
+                : `Teljes esemény feloldása – ${eventPriceLabel(locale)}`}
           </button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {en

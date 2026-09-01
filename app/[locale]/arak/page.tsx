@@ -2,7 +2,7 @@ import { PageShell } from '@/components/site/page-shell'
 import { hasRealCompanyDetails } from '@/lib/company'
 import { isLocale, localePath } from '@/lib/i18n'
 import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
-import { EVENT_PRICE_LABEL } from '@/lib/pricing'
+import { EVENT_PRICE_LABEL, EVENT_PRICE_LABELS } from '@/lib/pricing'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { Check } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -12,12 +12,12 @@ import { notFound } from 'next/navigation'
 const copy = {
   en: {
     title: 'Pricing – OurFilm',
-    description: `One complete wedding guest camera for HUF 12,900. Try it free with up to ${FREE_PARTICIPANT_LIMIT} guests.`,
+    description: `One complete wedding guest camera for ${EVENT_PRICE_LABELS.en}. Try it free with up to ${FREE_PARTICIPANT_LIMIT} guests.`,
     eyebrow: 'PRICING',
     heading: 'One wedding. One camera. One price.',
     lead: 'No subscription and no per-guest fee. Pay once and invite everyone.',
     plan: 'FULL EVENT',
-    price: 'HUF 12,900',
+    price: EVENT_PRICE_LABELS.en,
     payment: 'one-time payment',
     body: 'Every guest gets their own roll. Reveal the photos right away or wait until the event ends.',
     create: 'Create your camera',

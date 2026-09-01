@@ -94,6 +94,14 @@ export async function POST(request: Request) {
         await recordPaidSession(db, event.data.object)
         break
 
+      case 'checkout.session.async_payment_failed':
+        await recordTerminalSession(db, event.data.object, 'failed')
+        break
+
+      case 'checkout.session.expired':
+        await recordTerminalSession(db, event.data.object, 'expired')
+        break
+
       case 'charge.refunded':
         await recordRefund(db, event.data.object)
         break
@@ -144,14 +152,76 @@ async function recordPaidSession(
   // hand out an album for money that has not arrived.
   if (session.payment_status !== 'paid') return
 
+  const identity = await sessionIdentity(db, session)
+  if (!identity) return
+
+  const { error } = await db.from('purchases').upsert(
+    {
+      event_id: identity.eventId,
+      owner_id: identity.ownerId,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id: idOf(session.payment_intent),
+      stripe_customer_id: idOf(session.customer),
+      amount_minor: session.amount_total,
+      currency: session.currency,
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      failed_at: null,
+      expired_at: null,
+    },
+    { onConflict: 'stripe_checkout_session_id' },
+  )
+
+  if (error) throw error
+}
+
+/**
+ * Keep failed and abandoned attempts in the ledger without granting access.
+ *
+ * These are terminal states for one Checkout Session, not for the event. A host
+ * can start a new attempt after the reservation expires, and a later paid row
+ * for that event still lifts the cap normally.
+ */
+async function recordTerminalSession(
+  db: AdminClient,
+  session: Stripe.Checkout.Session,
+  status: 'failed' | 'expired',
+) {
+  const identity = await sessionIdentity(db, session)
+  if (!identity) return
+
+  const terminalAt = new Date().toISOString()
+  const { error } = await db.from('purchases').upsert(
+    {
+      event_id: identity.eventId,
+      owner_id: identity.ownerId,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id: idOf(session.payment_intent),
+      stripe_customer_id: idOf(session.customer),
+      amount_minor: session.amount_total,
+      currency: session.currency,
+      status,
+      failed_at: status === 'failed' ? terminalAt : null,
+      expired_at: status === 'expired' ? terminalAt : null,
+    },
+    { onConflict: 'stripe_checkout_session_id' },
+  )
+
+  if (error) throw error
+}
+
+/** Resolve the application identifiers shared by every Session handler. */
+async function sessionIdentity(
+  db: AdminClient,
+  session: Stripe.Checkout.Session,
+): Promise<{ eventId: string; ownerId: string } | null> {
   const eventId = session.metadata?.event_id ?? session.client_reference_id
   if (!eventId) {
-    // Nothing to attach the payment to. Throwing would make Stripe retry an
-    // event that can never succeed, so this is logged loudly and accepted —
-    // the session id is in the log and the dashboard, which is enough to
-    // reconcile it by hand.
+    // Nothing to attach the event to. Retrying the identical payload cannot add
+    // metadata, so retain the Stripe event in the audit table and reconcile it
+    // from the Dashboard rather than asking Stripe to retry for three days.
     console.error(`Checkout session ${session.id} carried no event_id`)
-    return
+    return null
   }
 
   let ownerId = session.metadata?.owner_id ?? null
@@ -165,25 +235,10 @@ async function recordPaidSession(
   }
   if (!ownerId) {
     console.error(`No owner for event ${eventId} (session ${session.id})`)
-    return
+    return null
   }
 
-  const { error } = await db.from('purchases').upsert(
-    {
-      event_id: eventId,
-      owner_id: ownerId,
-      stripe_checkout_session_id: session.id,
-      stripe_payment_intent_id: idOf(session.payment_intent),
-      stripe_customer_id: idOf(session.customer),
-      amount_minor: session.amount_total,
-      currency: session.currency,
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-    },
-    { onConflict: 'stripe_checkout_session_id' },
-  )
-
-  if (error) throw error
+  return { eventId, ownerId }
 }
 
 /**

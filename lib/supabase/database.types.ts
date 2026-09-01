@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -317,6 +322,8 @@ export type Database = {
           created_at: string
           currency: string | null
           event_id: string
+          expired_at: string | null
+          failed_at: string | null
           id: string
           owner_id: string
           paid_at: string | null
@@ -331,6 +338,8 @@ export type Database = {
           created_at?: string
           currency?: string | null
           event_id: string
+          expired_at?: string | null
+          failed_at?: string | null
           id?: string
           owner_id: string
           paid_at?: string | null
@@ -345,6 +354,8 @@ export type Database = {
           created_at?: string
           currency?: string | null
           event_id?: string
+          expired_at?: string | null
+          failed_at?: string | null
           id?: string
           owner_id?: string
           paid_at?: string | null
@@ -384,6 +395,38 @@ export type Database = {
           window_started_at?: string
         }
         Relationships: []
+      }
+      stripe_checkout_attempts: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          event_id: string
+          expires_at: string
+          terms_accepted_at: string
+        }
+        Insert: {
+          attempt_id?: string
+          created_at?: string
+          event_id: string
+          expires_at: string
+          terms_accepted_at: string
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          event_id?: string
+          expires_at?: string
+          terms_accepted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_checkout_attempts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stripe_webhook_events: {
         Row: {
@@ -520,6 +563,18 @@ export type Database = {
         Args: { p_photo_id: string; p_token_hash: string }
         Returns: undefined
       }
+      reserve_event_checkout: {
+        Args: {
+          p_event_id: string
+          p_terms_accepted_at: string
+          p_ttl_seconds?: number
+        }
+        Returns: {
+          attempt_id: string
+          expires_at: string
+          terms_accepted_at: string
+        }[]
+      }
       reserve_shot: {
         Args: {
           p_event_id: string
@@ -540,7 +595,7 @@ export type Database = {
     Enums: {
       app_role: "user" | "admin"
       photo_status: "pending" | "ready"
-      purchase_status: "pending" | "paid" | "refunded"
+      purchase_status: "pending" | "paid" | "refunded" | "failed" | "expired"
       reveal_mode: "instant" | "event_end" | "custom"
     }
     CompositeTypes: {
@@ -674,9 +729,8 @@ export const Constants = {
     Enums: {
       app_role: ["user", "admin"],
       photo_status: ["pending", "ready"],
-      purchase_status: ["pending", "paid", "refunded"],
+      purchase_status: ["pending", "paid", "refunded", "failed", "expired"],
       reveal_mode: ["instant", "event_end", "custom"],
     },
   },
 } as const
-
