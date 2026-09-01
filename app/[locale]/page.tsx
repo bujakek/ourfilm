@@ -17,12 +17,12 @@ type Props = { params: Promise<{ locale: string }> }
 
 const metadataCopy = {
   en: {
-    title: 'OurFilm – Wedding Guest Photo App',
+    title: 'OurFilm — Your Wedding, Through Their Eyes',
     description:
       'Give every wedding guest their own digital roll with one QR code. No app, no accounts and no chasing photos after the wedding.',
   },
   hu: {
-    title: 'OurFilm – Digitális eldobható fényképezőgép esküvőre',
+    title: 'OurFilm — Az esküvőtök, a vendégeitek szemével',
     description:
       'A vendégek QR-kóddal nyitják meg a saját digitális tekercsüket. Nincs app, nincs előnézet, a képek pedig akkor jelennek meg, amikor ti szeretnétek.',
   },
