@@ -20,6 +20,7 @@ import { getOwnedEventBySlug } from '@/lib/events'
 import { localeTag } from '@/lib/i18n'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
+import { planNote } from '@/lib/plan-copy'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -214,9 +215,10 @@ async function EventBilling({
     )
   }
 
-  // Only shown when a payment is what lifted the cap. An admin-owned event is
-  // also unlimited and has no receipt to show, and inventing one would be a
-  // lie in the one place a host looks to check they were charged correctly.
+  // The receipt is only ever read by `planNote`'s `paid` branch. An event that
+  // is uncapped for any other reason has no receipt to show, and inventing one
+  // would be a lie in the one place a host looks to check what they were
+  // charged.
   const receipt =
     purchase?.status === 'paid'
       ? [
@@ -234,11 +236,7 @@ async function EventBilling({
       participantLimit={quota.participantLimit}
       participantCount={quota.participantCount}
       unlimited={quota.unlimited}
-      paidLabel={
-        receipt
-          ? `${locale === 'en' ? 'Paid' : 'Kifizetve'} — ${receipt}`
-          : null
-      }
+      planNote={planNote(quota.planSource, locale, receipt || null)}
       stripeReady={stripeIsConfigured()}
       checkout={checkout}
     />

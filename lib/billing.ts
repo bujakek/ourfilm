@@ -2,6 +2,7 @@ import 'server-only'
 
 import { cache } from 'react'
 
+import { type PlanSource, toPlanSource } from './plan-copy'
 import type { Database } from './supabase/database.types'
 import { createClient } from './supabase/server'
 
@@ -45,8 +46,17 @@ export type EventQuota = {
   participantLimit: number
   /** How many have joined so far. */
   participantCount: number
-  /** True when the event is paid for, or owned by an admin. */
+  /** True when the cap is lifted, for any of the reasons below. */
   unlimited: boolean
+  /**
+   * *Why* it is lifted — a payment, an Early Couple Program comp, an operator
+   * unlock, or the owner's admin role — and null when it is not.
+   *
+   * `unlimited` is exactly `planSource !== null`; both are returned because
+   * every caller wants the boolean and only the settings screen wants the
+   * reason.
+   */
+  planSource: PlanSource | null
 }
 
 /**
@@ -78,6 +88,7 @@ export const getEventQuota = cache(
       participantLimit: data.participant_limit,
       participantCount: data.participant_count,
       unlimited: data.unlimited,
+      planSource: toPlanSource(data.plan_source),
     }
   },
 )
