@@ -73,10 +73,17 @@ describe('Stripe checkout attempt reservation', () => {
         .single()
       if (original.error) throw original.error
 
-      await serviceClient()
+      const forcedExpiry = '2000-01-01T00:00:00.000Z'
+      const expiryUpdate = await serviceClient()
         .from('stripe_checkout_attempts')
-        .update({ expires_at: new Date(Date.now() - 1_000).toISOString() })
+        .update({ expires_at: forcedExpiry })
         .eq('event_id', event.id)
+        .select('expires_at')
+        .single()
+      if (expiryUpdate.error) throw expiryUpdate.error
+      expect(new Date(expiryUpdate.data.expires_at).getTime()).toBe(
+        new Date(forcedExpiry).getTime(),
+      )
 
       const replacementAcceptance = new Date().toISOString()
       const replacement = await hostDb
