@@ -12,6 +12,7 @@ import { useRef } from 'react'
 import { Reveal } from './reveal'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
+import { T, still } from '@/lib/motion'
 
 const photos = [
   {
@@ -81,7 +82,7 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
                       initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-                      transition={{ duration: reduceMotion ? 0 : 0.18 }}
+                      transition={reduceMotion ? still : T.settle}
                       className="flex items-center gap-1.5 text-[10px] text-accent"
                     >
                       {developed ? (
@@ -108,10 +109,11 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
                                 scale: 1.025,
                               }
                         }
+                        // The marketing surface's version of the thing the
+                        // product does, so it takes the product's curve.
                         transition={{
-                          duration: reduceMotion ? 0 : 0.55,
+                          ...(reduceMotion ? still : T.develop),
                           delay: reduceMotion ? 0 : index * 0.08,
-                          ease: [0.16, 1, 0.3, 1],
                         }}
                         className="relative aspect-square overflow-hidden rounded-xl"
                       >
@@ -133,7 +135,7 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
                       scale: developed ? 0.98 : 1,
                     }}
                     transition={{
-                      duration: reduceMotion ? 0 : 0.28,
+                      ...(reduceMotion ? still : T.settle),
                       delay: developed && !reduceMotion ? 0.12 : 0,
                     }}
                     aria-hidden={developed}

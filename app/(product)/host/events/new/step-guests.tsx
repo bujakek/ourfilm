@@ -14,6 +14,7 @@ import { DEFAULT_SHOTS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { eventPriceLabel } from '@/lib/pricing'
 import type { Locale } from '@/lib/i18n'
+import { T, still } from '@/lib/motion'
 
 /**
  * The last question, and the one that was eight glass surfaces on one 390px
@@ -174,7 +175,7 @@ export function StepGuests({
                   initial={reduceMotion ? false : { opacity: 0, y: 3 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.14 }}
+                  transition={reduceMotion ? still : T.settle}
                   className="mt-0.5 block text-[12px] leading-snug text-pretty text-muted-foreground"
                 >
                   {guestsCanView
@@ -291,11 +292,7 @@ function PlanTile({
           layoutId="plan-selection"
           aria-hidden="true"
           className="absolute -inset-px rounded-lg border-[1.5px] border-accent bg-accent/9"
-          transition={
-            reduceMotion
-              ? { duration: 0 }
-              : { type: 'spring', stiffness: 480, damping: 38 }
-          }
+          transition={reduceMotion ? still : T.snap}
         />
       ) : null}
       <input

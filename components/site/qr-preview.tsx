@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react'
 import { Reveal } from './reveal'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
+import { T, still } from '@/lib/motion'
 
 export function QrPreview({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].qr
@@ -80,11 +81,10 @@ export function QrPreview({ locale }: { locale: Locale }) {
                     key={url}
                     initial={reduceMotion ? false : { scale: 0.96 }}
                     animate={{ scale: 1 }}
-                    transition={{
-                      type: reduceMotion ? 'tween' : 'spring',
-                      stiffness: 420,
-                      damping: 24,
-                    }}
+                    // The code re-keys as the visitor types their event name,
+                    // so this is a finger moving something: `snap`, not
+                    // `settle`.
+                    transition={reduceMotion ? still : T.snap}
                     className="w-full max-w-[200px] rounded-2xl bg-white p-3 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)] sm:p-4"
                   >
                     <QRCodeSVG

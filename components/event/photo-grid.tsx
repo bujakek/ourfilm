@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { Lightbox } from './lightbox'
 import type { Locale } from '@/lib/i18n'
+import { T } from '@/lib/motion'
 
 export function PhotoGrid({
   photos,
@@ -27,11 +28,7 @@ export function PhotoGrid({
             key={photo.id}
             initial={{ opacity: 0, y: 10, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{
-              duration: 0.28,
-              delay: Math.min(i, 10) * 0.025,
-              ease: [0.16, 1, 0.3, 1],
-            }}
+            transition={{ ...T.settle, delay: Math.min(i, 10) * 0.025 }}
           >
             <motion.button
               type="button"

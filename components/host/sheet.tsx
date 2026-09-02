@@ -4,7 +4,12 @@ import { X } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
-const EXIT_MS = 180
+import { T, still } from '@/lib/motion'
+
+/** The dialog is closed by hand, so the timeout has to know the exit curve.
+ *  Derived rather than typed out, because two copies of 180 in two files is
+ *  exactly the drift `lib/motion.ts` exists to stop. */
+const EXIT_MS = T.exit.duration * 1000
 
 export function Sheet({
   open,
@@ -91,13 +96,7 @@ export function Sheet({
                 ? { opacity: 0 }
                 : { opacity: 0, y: 28, scale: 0.985 }
           }
-          transition={
-            reduceMotion
-              ? { duration: 0 }
-              : panelVisible
-                ? { type: 'spring', stiffness: 430, damping: 36, mass: 0.8 }
-                : { duration: EXIT_MS / 1000, ease: [0.4, 0, 1, 1] }
-          }
+          transition={reduceMotion ? still : panelVisible ? T.snap : T.exit}
           className="glass-overlay pointer-events-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-2xl sm:rounded-2xl"
         >
           <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">

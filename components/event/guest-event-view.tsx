@@ -17,6 +17,7 @@ import { captureStatus, formatLine, ownRollNote } from '@/lib/event-copy'
 import { prepareForUpload } from '@/lib/image'
 import { uploadShotRenders } from '@/lib/upload-shot'
 import { type Locale, localeTag } from '@/lib/i18n'
+import { T, still } from '@/lib/motion'
 
 import { FilmStrip } from './film-strip'
 import { InviteButton } from './invite-button'
@@ -226,7 +227,7 @@ export function GuestEventView({
               initial={reduceMotion ? false : { opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={reduceMotion ? undefined : { opacity: 0, y: -24 }}
-              transition={{ duration: reduceMotion ? 0 : 0.2 }}
+              transition={reduceMotion ? still : T.settle}
             >
               {remaining}
             </motion.span>
@@ -315,7 +316,7 @@ export function GuestEventView({
             initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-            transition={{ duration: reduceMotion ? 0 : 0.2 }}
+            transition={reduceMotion ? still : T.settle}
             className={`mt-3 text-center text-sm ${
               flash.kind === 'error'
                 ? 'text-destructive'
@@ -330,7 +331,7 @@ export function GuestEventView({
             aria-live="polite"
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.25 }}
+            transition={reduceMotion ? still : T.settle}
             className="mt-3 text-center text-sm font-medium text-muted-foreground"
           >
             {en

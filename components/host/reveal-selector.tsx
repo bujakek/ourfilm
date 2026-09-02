@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'motion/react'
 
 import type { RevealChoice } from '@/lib/camera'
 import type { Locale } from '@/lib/i18n'
+import { T, still } from '@/lib/motion'
 
 export function RevealSelector({
   value,
@@ -56,11 +57,7 @@ export function RevealSelector({
                 layoutId={`${name}-selection`}
                 aria-hidden="true"
                 className="absolute inset-0 rounded-lg bg-accent/10 ring-2 ring-accent ring-inset"
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 480, damping: 38 }
-                }
+                transition={reduceMotion ? still : T.snap}
               />
             ) : null}
             <input

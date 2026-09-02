@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { localeTag, type Locale } from '@/lib/i18n'
+import { T } from '@/lib/motion'
 
 export type OnboardingNav = {
   step: number
@@ -141,7 +142,7 @@ export function OnboardingShell({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={T.settle}
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className={compact ? 'mt-5' : 'mt-7'}>
