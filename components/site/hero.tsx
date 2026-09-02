@@ -9,28 +9,31 @@ import { buttonVariants } from '@/components/ui/button'
 
 const galleryImages = [
   {
-    src: '/images/wedding-dance.webp',
+    src: '/images/landing/hero-dance-crowd.webp',
     alt: {
-      en: 'A wedding first dance under string lights',
-      hu: 'Esküvői első tánc fényfüzérek alatt',
+      en: 'A bride dancing in the middle of her guests',
+      hu: 'Menyasszony táncol a vendégei között',
     },
   },
   {
-    src: '/images/wedding-cake.webp',
-    alt: { en: 'Cutting the wedding cake', hu: 'Tortavágás az esküvőn' },
-  },
-  {
-    src: '/images/guests-laughing.webp',
+    src: '/images/landing/hero-sunglasses-couple.webp',
     alt: {
-      en: 'Wedding guests laughing at a table',
-      hu: 'Nevető vendégek az asztalnál',
+      en: 'A wedding couple posing in sunglasses',
+      hu: 'Napszemüvegben pózoló ifjú pár',
     },
   },
   {
-    src: '/images/garden-party.webp',
+    src: '/images/landing/hero-bride-party.webp',
     alt: {
-      en: 'An evening garden party under string lights',
-      hu: 'Esti kerti buli fényfüzérekkel',
+      en: 'A bride celebrating on the dance floor',
+      hu: 'Menyasszony ünnepel a táncparketten',
+    },
+  },
+  {
+    src: '/images/landing/hero-dance-floor.webp',
+    alt: {
+      en: 'Wedding guests piling onto the dance floor',
+      hu: 'Vendégek a táncparkett közepén',
     },
   },
 ]
@@ -119,11 +122,11 @@ export function Hero({ locale }: { locale: Locale }) {
               <div className="glass glass-hover overflow-hidden rounded-2xl p-1.5">
                 <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
                   <Image
-                    src="/images/wedding-portrait.webp"
+                    src="/images/landing/hero-bride-portrait.webp"
                     alt={
                       locale === 'en'
-                        ? 'A wedding portrait of the couple'
-                        : 'Esküvői portré a párról'
+                        ? 'A candid flash portrait of the bride'
+                        : 'Vakus pillanatkép a menyasszonyról'
                     }
                     fill
                     sizes="150px"
@@ -140,11 +143,11 @@ export function Hero({ locale }: { locale: Locale }) {
               <div className="glass glass-hover overflow-hidden rounded-2xl p-1.5">
                 <div className="relative aspect-square overflow-hidden rounded-xl">
                   <Image
-                    src="/images/evening-party.webp"
+                    src="/images/landing/hero-couple-dance.webp"
                     alt={
                       locale === 'en'
-                        ? 'An evening party under string lights'
-                        : 'Esti fényfüzéres buli'
+                        ? 'A newlywed couple dancing among their guests'
+                        : 'Az ifjú pár a vendégekkel táncol'
                     }
                     fill
                     sizes="160px"

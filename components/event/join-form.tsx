@@ -80,18 +80,7 @@ export function JoinForm({
             className="object-cover"
           />
         </div>
-      ) : (
-        // No cover is the common case, so the fallback has to look intentional
-        // rather than like a failed image.
-        <div
-          aria-hidden="true"
-          className="glass-strong mb-8 flex aspect-[4/3] w-full items-center justify-center rounded-3xl"
-        >
-          <span className="text-gradient-accent text-5xl font-semibold tracking-tight">
-            {eventName.slice(0, 1).toUpperCase()}
-          </span>
-        </div>
-      )}
+      ) : null}
 
       <h1 className="text-3xl font-semibold tracking-tight text-balance">
         {eventName}

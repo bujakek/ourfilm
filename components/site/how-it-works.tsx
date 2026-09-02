@@ -10,28 +10,34 @@ const visuals = [
   {
     number: '01',
     icon: CalendarPlus,
-    image: '/images/wedding-portrait.webp',
+    image: '/images/landing/how-couple.webp',
     alt: {
-      en: 'A wedding portrait of the couple',
-      hu: 'Esküvői portré a párról',
+      en: 'The newlyweds sharing a quiet moment at their table',
+      hu: 'Az ifjú pár egy közös pillanata az asztalnál',
     },
+    imageClassName: 'object-cover object-[center_35%]',
     note: null,
   },
   {
     number: '02',
     icon: QrCode,
-    image: '/images/garden-party.webp',
+    image: '/images/landing/how-cameras.webp',
     alt: {
-      en: 'A garden party under string lights',
-      hu: 'Kerti buli fényfüzérek alatt',
+      en: 'Disposable cameras set out for wedding guests',
+      hu: 'A vendégeknek kikészített eldobható fényképezőgépek',
     },
+    imageClassName: 'object-cover object-center',
     note: null,
   },
   {
     number: '03',
     icon: Camera,
-    image: '/images/evening-party.webp',
-    alt: { en: 'Guests at an evening party', hu: 'Esti buli vendégekkel' },
+    image: '/images/landing/how-guest-photo.webp',
+    alt: {
+      en: 'A wedding guest caught mid-dance',
+      hu: 'Tánc közben elkapott esküvői vendég',
+    },
+    imageClassName: 'object-cover object-[center_40%]',
     note: null,
   },
 ]
@@ -93,7 +99,7 @@ export function HowItWorks({ locale }: { locale: Locale }) {
                           alt={step.alt[locale]}
                           fill
                           sizes="(max-width: 1024px) 100vw, 520px"
-                          className="object-cover"
+                          className={step.imageClassName}
                         />
                         {i === 1 && (
                           <div className="glass-strong absolute bottom-4 left-4 flex items-center gap-3 rounded-2xl p-3">
