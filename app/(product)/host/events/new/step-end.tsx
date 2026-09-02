@@ -53,6 +53,7 @@ export function StepEnd({
       <OnboardingShell
         {...nav}
         locale={locale}
+        eyebrow={en ? 'SHOOTING ENDS' : 'A FOTÓZÁS VÉGE'}
         title={
           en ? 'When should the camera close?' : 'Mikor érjen véget az esemény?'
         }

@@ -47,8 +47,8 @@ export function RevealSelector({
         return (
           <label
             key={choice}
-            className={`glass relative flex min-h-28 cursor-pointer flex-col justify-between overflow-hidden rounded-lg p-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-              active ? 'text-accent' : ''
+            className={`relative flex min-h-28 cursor-pointer flex-col justify-between overflow-hidden rounded-lg border p-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+              active ? 'border-transparent text-accent' : 'border-white/13'
             } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
           >
             {active ? (

@@ -1,13 +1,11 @@
 'use client'
 
-import { Pencil } from 'lucide-react'
 import type { Locale } from '@/lib/i18n'
 
 import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
-import { inputSurfaceClassName } from '@/components/ui/input'
 
 /**
  * Question one: what is this film called?
@@ -37,6 +35,7 @@ export function StepName({
     <OnboardingShell
       {...nav}
       locale={locale}
+      eyebrow={en ? 'THE FILM NAME' : 'A FILM NEVE'}
       title={
         en ? 'What should we call your event?' : 'Mi legyen az esemény neve?'
       }
@@ -48,14 +47,12 @@ export function StepName({
       cta={en ? 'Continue' : 'Tovább'}
       ctaDisabled={!canAdvance}
     >
-      <div className={inputSurfaceClassName}>
-        <Pencil
-          className="size-4 shrink-0 text-muted-foreground"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-        {/* No visible label: the heading two lines up is the question, and a
-            second "Esemény neve" above the box would be the same words twice. */}
+      {/* A rule under a 22px field, not a filled box. The `Pencil` icon went
+          with the box: at this size the rule is already unambiguous, and the
+          icon was a second thing saying "you may type here". No visible label
+          either — the heading two lines up is the question, and a second
+          "Esemény neve" above the field would be the same words twice. */}
+      <div>
         <input
           aria-label={en ? 'Event name' : 'Az esemény neve'}
           maxLength={80}
@@ -74,26 +71,28 @@ export function StepName({
             if (canAdvance) nav.onNext?.()
           }}
           placeholder={en ? 'Enter your event name' : 'Írd be a filmed nevét'}
-          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground/50"
+          className="w-full border-b-[1.5px] border-white/20 bg-transparent pb-3 text-[22px] outline-none placeholder:text-foreground/28 focus:border-white/45"
         />
       </div>
 
       <p
         id="name-suggestions-label"
-        className="mt-8 text-xs tracking-[0.2em] text-muted-foreground/70"
+        className="mt-8.5 font-mono text-[9.5px] font-medium tracking-[0.2em] text-foreground/38"
       >
         {en ? 'IDEAS' : 'ÖTLETEK'}
       </p>
+      {/* Wrapping in a row rather than stacking: three suggestions cost one or
+          two lines instead of four, which is the room the 40px question needs. */}
       <ul
         aria-labelledby="name-suggestions-label"
-        className="mt-3 flex flex-col items-start gap-2.5"
+        className="mt-3.5 flex flex-wrap gap-2"
       >
         {suggestions.map((suggestion) => (
           <li key={suggestion}>
             <button
               type="button"
               onClick={() => setName(suggestion)}
-              className="glass min-h-11 rounded-full px-5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-full border border-white/13 px-3.5 py-2.5 text-[13px] text-foreground/72 transition-colors hover:border-white/30 hover:text-foreground"
             >
               {suggestion}
             </button>

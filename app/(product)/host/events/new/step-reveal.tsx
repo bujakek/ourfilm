@@ -26,21 +26,29 @@ export function StepReveal({
   locale: Locale
 }) {
   const en = locale === 'en'
+  // A readout, not a sentence — it is set in the mono now, and the rule for
+  // that face is that it counts things rather than saying them. Same three
+  // states as before, in caps.
   const badge =
     mode === 'instant'
       ? en
-        ? 'Photos appear right away'
-        : 'A képek azonnal láthatók'
+        ? 'VISIBLE NOW'
+        : 'AZONNAL LÁTHATÓ'
       : revealIso
-        ? `${en ? 'Opens' : 'Megjelenik'}: ${formatRevealBadge(revealIso, timeZone, locale)}`
+        ? `${en ? 'OPENS' : 'MEGNYÍLIK'} · ${formatRevealBadge(
+            revealIso,
+            timeZone,
+            locale,
+          ).toUpperCase()}`
         : en
-          ? 'Opens after the event'
-          : 'Az esemény után jelenik meg'
+          ? 'AFTER THE EVENT'
+          : 'AZ ESEMÉNY VÉGÉN'
 
   return (
     <OnboardingShell
       {...nav}
       locale={locale}
+      eyebrow={en ? 'DEVELOPING' : 'AZ ELŐHÍVÁS'}
       title={
         en ? 'When should the photos appear?' : 'Mikor jelenjenek meg a képek?'
       }

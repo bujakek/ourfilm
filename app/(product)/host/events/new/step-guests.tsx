@@ -1,6 +1,5 @@
 'use client'
 
-import { Check } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 
@@ -11,11 +10,20 @@ import {
 } from '@/components/host/onboarding/onboarding-shell'
 import { ShotsSelector } from '@/components/host/shots-selector'
 import { SwitchTrack } from '@/components/ui/switch'
-import type { ShotOption } from '@/lib/camera'
+import { DEFAULT_SHOTS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { eventPriceLabel } from '@/lib/pricing'
 import type { Locale } from '@/lib/i18n'
 
+/**
+ * The last question, and the one that was eight glass surfaces on one 390px
+ * screen. The fix is mostly subtraction: two bordered cards, one segmented
+ * control, one switch with a real label, and the legal checkbox — with ruled
+ * dividers doing the grouping that eight separate materials were doing badly.
+ *
+ * Three controls rather than three screens because they are the same decision
+ * from three sides: how big is this party and how much film does it need.
+ */
 export function StepGuests({
   nav,
   plan,
@@ -53,12 +61,12 @@ export function StepGuests({
     <OnboardingShell
       {...nav}
       locale={locale}
+      compact
+      eyebrow={en ? 'THE GUESTS' : 'A VENDÉGEK'}
       title={en ? 'How many guests are coming?' : 'Hány vendéged lesz?'}
-      detail={
-        en
-          ? 'Give everyone a chance to capture part of the day.'
-          : 'Mindenki kapjon esélyt, hogy elkapja a pillanatot.'
-      }
+      // No `detail` here, unlike the other three screens: this one carries
+      // three controls and a legal checkbox, and the room is worth more than
+      // the sentence.
       cta={
         plan === 'full'
           ? en
@@ -72,47 +80,49 @@ export function StepGuests({
       ctaPending={pending}
       note={<AccountNotice locale={locale} />}
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4.5">
         <fieldset>
-          <SectionLabel>{en ? 'GUESTS' : 'VENDÉGEK'}</SectionLabel>
           <legend className="sr-only">
             {en ? 'How many guests can join' : 'Hány vendég csatlakozhat'}
           </legend>
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          {/* The number first. A host choosing between tiers is comparing two
+              quantities, and "Legfeljebb 5" set in body copy buried the only
+              part of the tile that answers the question. */}
+          <div className="grid grid-cols-2 gap-2.5">
             <PlanTile
               value="free"
               plan={plan}
               setPlan={setPlan}
-              title={
-                en
-                  ? `Up to ${FREE_PARTICIPANT_LIMIT}`
-                  : `Legfeljebb ${FREE_PARTICIPANT_LIMIT}`
-              }
-              detail={en ? 'Free' : 'Ingyenes'}
+              figure={String(FREE_PARTICIPANT_LIMIT)}
+              label={en ? 'GUESTS · FREE' : 'VENDÉGIG · INGYENES'}
               reduceMotion={reduceMotion}
             />
             <PlanTile
               value="full"
               plan={plan}
               setPlan={setPlan}
-              title={en ? 'Unlimited' : 'Korlátlan'}
-              detail={
+              figure="∞"
+              label={`${en ? 'UNLIMITED' : 'KORLÁTLAN'} · ${
                 paymentsEnabled
-                  ? eventPriceLabel(locale)
+                  ? // Non-breaking spaces inside the price. Martian Mono is wide
+                    // enough that this label wraps in a 134px card, and the one
+                    // place it must never wrap is between the thousands and the
+                    // hundreds — "12 / 900 FT" reads as two numbers.
+                    eventPriceLabel(locale)
+                      .toUpperCase()
+                      .replace(/ /g, '\u00a0')
                   : en
-                    ? 'Coming soon'
-                    : 'Hamarosan'
-              }
+                    ? 'COMING\u00a0SOON'
+                    : 'HAMAROSAN'
+              }`}
               disabled={!paymentsEnabled}
               reduceMotion={reduceMotion}
             />
           </div>
         </fieldset>
 
-        <fieldset className="border-t border-border pt-5">
-          <SectionLabel>
-            {en ? 'SHOTS PER GUEST' : 'KÉPEK VENDÉGENKÉNT'}
-          </SectionLabel>
+        <fieldset className="border-t border-border pt-4.5">
+          <SectionLabel>{en ? 'ROLL LENGTH' : 'TEKERCS HOSSZA'}</SectionLabel>
           <legend className="sr-only">
             {en ? 'Shots per guest' : 'Képek száma vendégenként'}
           </legend>
@@ -124,40 +134,64 @@ export function StepGuests({
               locale={locale}
             />
           </div>
+          {/* Says what the number means, which five bare numerals cannot. */}
+          <p className="mt-2.5 text-[12px] leading-[1.5] text-muted-foreground">
+            {en
+              ? `Every guest gets ${shots} shots.`
+              : `Minden vendég ${shots} képet kap.`}
+            {shots === DEFAULT_SHOTS
+              ? en
+                ? ' That is the classic roll length.'
+                : ' Ez a klasszikus tekercshossz.'
+              : ''}
+          </p>
         </fieldset>
 
-        <div className="border-t border-border pt-5">
-          <SectionLabel>{en ? 'GALLERY ACCESS' : 'LÁTHATÓSÁG'}</SectionLabel>
+        <div className="border-t border-border pt-4.5">
+          {/* A real label pair, with the switch to the right of it. The switch
+              used to sit first with a single sentence beside it that changed
+              underneath — which meant the control had no stable name, only a
+              description of its current state. */}
           <button
             type="button"
             role="switch"
             aria-checked={guestsCanView}
             onClick={() => setGuestsCanView(!guestsCanView)}
-            className="mt-3 flex w-full items-center gap-3 text-left"
+            className="flex w-full items-center justify-between gap-4 text-left"
           >
+            <span className="min-w-0">
+              <span className="block text-[13.5px] font-medium">
+                {en
+                  ? 'Guests can see the gallery'
+                  : 'A vendégek látják a galériát'}
+              </span>
+              {/* Still optimistic, still on the label rather than the track:
+                  a switch that sits still for a round trip is one a host taps
+                  twice. */}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={guestsCanView ? 'visible' : 'private'}
+                  initial={reduceMotion ? false : { opacity: 0, y: 3 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.14 }}
+                  className="mt-0.5 block text-[12px] leading-snug text-pretty text-muted-foreground"
+                >
+                  {guestsCanView
+                    ? en
+                      ? 'Turn off and only you see the photos.'
+                      : 'Kikapcsolva csak te látod a képeket.'
+                    : en
+                      ? 'Only you can see the photos.'
+                      : 'Most csak te látod a képeket.'}
+                </motion.span>
+              </AnimatePresence>
+            </span>
             <SwitchTrack checked={guestsCanView} />
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={guestsCanView ? 'visible' : 'private'}
-                initial={reduceMotion ? false : { opacity: 0, y: 3 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
-                transition={{ duration: reduceMotion ? 0 : 0.14 }}
-                className="text-sm leading-snug text-pretty"
-              >
-                {guestsCanView
-                  ? en
-                    ? 'Guests can see the full gallery.'
-                    : 'A vendégek is látják az összes képet.'
-                  : en
-                    ? 'Only you can see the photos.'
-                    : 'Csak te látod a képeket.'}
-              </motion.span>
-            </AnimatePresence>
           </button>
         </div>
 
-        <label className="flex cursor-pointer items-start gap-3 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">
+        <label className="flex cursor-pointer items-start gap-3 border-t border-border pt-4.5 text-[11.5px] leading-[1.6] text-muted-foreground">
           <input
             type="checkbox"
             checked={legalAccepted}
@@ -212,41 +246,51 @@ export function StepGuests({
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <p className="text-xs tracking-[0.2em] text-muted-foreground/70">
+    <p className="font-mono text-[9.5px] font-medium tracking-[0.2em] text-foreground/38">
       {children}
     </p>
   )
 }
 
+/**
+ * One tier, led by its number.
+ *
+ * Selection is a 1.5px lilac border and a faint lilac wash rather than a tick:
+ * the border is the thing the eye already uses to tell the two cards apart, so
+ * thickening and colouring it is the cheapest possible signal — and the tick
+ * was competing with the numeral for the same corner.
+ */
 function PlanTile({
   value,
   plan,
   setPlan,
-  title,
-  detail,
+  figure,
+  label,
   disabled = false,
   reduceMotion,
 }: {
   value: EventPlan
   plan: EventPlan
   setPlan: (value: EventPlan) => void
-  title: string
-  detail: string
+  figure: string
+  label: string
   disabled?: boolean
   reduceMotion: boolean | null
 }) {
   const active = plan === value
   return (
     <label
-      className={`glass relative flex min-h-20 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
-      } ${active ? 'text-accent' : ''}`}
+      className={`relative flex flex-col justify-between rounded-lg px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+        active
+          ? 'border-[1.5px] border-transparent text-accent'
+          : 'border border-white/13'
+      } ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
     >
       {active ? (
         <motion.span
           layoutId="plan-selection"
           aria-hidden="true"
-          className="absolute inset-0 rounded-lg bg-accent/10 ring-2 ring-accent ring-inset"
+          className="absolute -inset-px rounded-lg border-[1.5px] border-accent bg-accent/9"
           transition={
             reduceMotion
               ? { duration: 0 }
@@ -263,27 +307,15 @@ function PlanTile({
         onChange={() => setPlan(value)}
         className="sr-only"
       />
-      <span className="relative z-10 flex items-center gap-1.5 text-base font-semibold">
-        <AnimatePresence initial={false}>
-          {active ? (
-            <motion.span
-              initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={reduceMotion ? undefined : { opacity: 0, scale: 0.6 }}
-              transition={{ duration: reduceMotion ? 0 : 0.14 }}
-            >
-              <Check className="size-4" strokeWidth={2.4} aria-hidden="true" />
-            </motion.span>
-          ) : null}
-        </AnimatePresence>
-        {title}
+      <span className="relative z-10 font-mono text-[26px] leading-none font-medium tracking-[-0.04em]">
+        {figure}
       </span>
       <span
-        className={`relative z-10 text-xs ${
-          active ? 'text-accent/80' : 'text-muted-foreground'
+        className={`relative z-10 mt-2 font-mono text-[9px] font-medium tracking-[0.14em] ${
+          active ? 'text-accent' : 'text-foreground/55'
         }`}
       >
-        {detail}
+        {label}
       </span>
     </label>
   )

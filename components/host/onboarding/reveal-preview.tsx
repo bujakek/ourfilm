@@ -38,7 +38,7 @@ export function RevealPreview({
           // photo of nobody the host knows, and the sentence that matters — when
           // the album opens — is the badge below, which is real text.
           aria-hidden="true"
-          className="relative overflow-hidden rounded-[1.75rem] border border-border"
+          className="relative overflow-hidden rounded-2xl border border-border"
         >
           <Image
             src={photo.src}
@@ -66,9 +66,9 @@ export function RevealPreview({
           film over a warm blurred photo turns brown. No `backdrop-blur` either
           — the same reason `.glass` drops its own on touch devices, and here it
           would be re-blurring an already-blurred layer. */}
-      <p className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto flex w-fit max-w-full -translate-y-1/2 items-center gap-2 rounded-full border border-border-strong bg-background/80 px-4 py-2.5 text-sm font-medium">
+      <p className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto flex w-fit max-w-full -translate-y-1/2 items-center gap-2 rounded-full border border-border-strong bg-background/80 px-3.5 py-2.5 text-center font-mono text-[10px] leading-[1.5] font-medium tracking-[0.08em] text-balance">
         <Clock
-          className="size-4 shrink-0"
+          className="size-3.5 shrink-0"
           strokeWidth={1.8}
           aria-hidden="true"
         />
