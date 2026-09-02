@@ -1,5 +1,10 @@
+'use client'
+
 import { Clock } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
+
+import { T, still } from '@/lib/motion'
 
 /**
  * Two sample guest photos, and the promise the screen is actually making.
@@ -25,6 +30,15 @@ export function RevealPreview({
   /** What the badge over the pair says — either "now" or a resolved moment. */
   badge: string
 }) {
+  const reduceMotion = useReducedMotion()
+  // `develop` at half length. It is the same event the product is named for —
+  // a photograph becoming visible — but here it is a preview answering a
+  // question the host is still holding, so it resolves in half the time the
+  // real thing takes.
+  const lift = reduceMotion
+    ? still
+    : { ...T.develop, duration: T.develop.duration / 2 }
+
   return (
     // flex-1 up to a cap: the pair grows into whatever the screen has spare and
     // stops at roughly the 7:10 tiles the design calls for, so a tall phone gets
@@ -40,18 +54,29 @@ export function RevealPreview({
           aria-hidden="true"
           className="relative overflow-hidden rounded-2xl border border-border"
         >
-          <Image
-            src={photo.src}
-            alt=""
-            fill
-            sizes="(max-width: 448px) 50vw, 224px"
-            // scale-105 under the blur: a blurred layer samples past its own
-            // edge, so an unscaled image fades to transparent at the corners
-            // and the card reads as a bug rather than as a hidden photo.
-            className={`object-cover transition-[filter,transform] duration-300 ${
-              blurred ? 'scale-105 blur-[14px]' : ''
-            }`}
-          />
+          {/* The 14px blur lifts rather than switching, so the host watches
+              their own answer take effect. */}
+          <motion.span
+            className="absolute inset-0 block"
+            initial={false}
+            animate={{
+              // scale 1.05 under the blur: a blurred layer samples past its
+              // own edge, so an unscaled image fades to transparent at the
+              // corners and the card reads as a bug rather than a hidden
+              // photo.
+              filter: blurred ? 'blur(14px)' : 'blur(0px)',
+              scale: blurred ? 1.05 : 1,
+            }}
+            transition={lift}
+          >
+            <Image
+              src={photo.src}
+              alt=""
+              fill
+              sizes="(max-width: 448px) 50vw, 224px"
+              className="object-cover"
+            />
+          </motion.span>
           <span className="absolute top-3 left-3 text-sm font-medium text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]">
             {photo.name}
           </span>

@@ -40,3 +40,19 @@ export const T = {
  * start keyframe.
  */
 export const still = { duration: 0 } as const satisfies Transition
+
+/**
+ * A ticket being handed over: it drops a little and straightens.
+ *
+ * Exported as one object rather than written out twice, because it belongs to
+ * two surfaces — the guest's join stub and the QR sheet at the end of the
+ * create flow. Same object in the product, so it has to be the same motion;
+ * two copies of three numbers is how that stops being true.
+ *
+ * Pair it with a `transition` from `T` at the call site: the curve is
+ * `settle`, but where it sits in a load sequence is the caller's business.
+ */
+export const ticket = {
+  initial: { opacity: 0, y: -14, rotate: -0.6 },
+  animate: { opacity: 1, y: 0, rotate: 0 },
+} as const

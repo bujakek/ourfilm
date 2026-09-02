@@ -38,11 +38,14 @@ import { cn } from '@/lib/utils'
 export function Odometer({
   value,
   dir,
+  pad = 1,
   className,
 }: {
   value: number
   /** `'down'` for a decrementing count, `'up'` for an incrementing one. */
   dir: 'up' | 'down'
+  /** Minimum digits, zero-padded. `01 / 04` reads as a set; `1 / 4` does not. */
+  pad?: number
   className?: string
 }) {
   const reduceMotion = useReducedMotion()
@@ -53,7 +56,8 @@ export function Odometer({
   // state derived from props: the box may grow when the count crosses a digit
   // boundary, but it must never shrink while the wider value is still sliding
   // out of it.
-  const digits = String(value).length
+  const shown = String(value).padStart(pad, '0')
+  const digits = shown.length
   const [widest, setWidest] = useState(digits)
   if (digits > widest) setWidest(digits)
 
@@ -77,7 +81,7 @@ export function Odometer({
           transition={reduceMotion ? still : T.advance}
           className="absolute inset-0 block"
         >
-          {value}
+          {shown}
         </motion.span>
       </AnimatePresence>
     </span>

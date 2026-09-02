@@ -13,6 +13,7 @@ import {
 import { revealSummary } from '@/lib/event-copy'
 import { formatEventDay } from '@/lib/format'
 import { type Locale, localeTag } from '@/lib/i18n'
+import { ticket } from '@/lib/motion'
 import { useEntrance } from '@/lib/use-entrance'
 
 const initial: JoinState = { error: null }
@@ -113,8 +114,7 @@ export function JoinForm({
             two notches have to bleed past both edges to read as punched out of
             the sheet rather than drawn on it. */}
         <motion.div
-          initial={{ opacity: 0, y: -14, rotate: -0.6 }}
-          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          {...ticket}
           transition={stage(1)}
           className="paper relative rounded-lg px-6 pt-6.5"
         >
