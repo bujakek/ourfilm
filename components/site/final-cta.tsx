@@ -9,23 +9,32 @@ import { marketingCopy } from '@/lib/marketing-copy'
 
 const floatingPhotos = [
   {
-    src: '/images/wedding-dance.webp',
-    alt: 'Esküvői tánc',
+    src: '/images/landing/final-rings.webp',
+    alt: { en: 'The newlyweds showing their rings', hu: 'Az ifjú pár gyűrűi' },
     className: 'left-[4%] top-[18%] w-24 rotate-[-8deg] sm:w-28',
   },
   {
-    src: '/images/birthday.webp',
-    alt: 'Születésnap',
+    src: '/images/landing/final-wedding-dog.webp',
+    alt: {
+      en: 'A dog walking down the wedding aisle',
+      hu: 'Kutya sétál végig az esküvői sorok között',
+    },
     className: 'right-[6%] top-[12%] w-24 rotate-[7deg] sm:w-32',
   },
   {
-    src: '/images/group-lookout.webp',
-    alt: 'Csoportkép',
+    src: '/images/landing/final-couple-table.webp',
+    alt: {
+      en: 'A candid portrait of the newlyweds at their table',
+      hu: 'Pillanatkép az ifjú párról az asztalnál',
+    },
     className: 'left-[8%] bottom-[14%] w-24 rotate-[6deg] sm:w-28',
   },
   {
-    src: '/images/garden-party.webp',
-    alt: 'Kerti buli',
+    src: '/images/landing/final-dance-circle.webp',
+    alt: {
+      en: 'Wedding guests cheering around the dance floor',
+      hu: 'Esküvői vendégek ünnepelnek a táncparketten',
+    },
     className: 'right-[5%] bottom-[16%] w-24 rotate-[-6deg] sm:w-32',
   },
 ]
@@ -63,7 +72,7 @@ export function FinalCta({ locale }: { locale: Locale }) {
                   <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
                     <Image
                       src={p.src}
-                      alt={p.alt}
+                      alt={p.alt[locale]}
                       fill
                       sizes="128px"
                       className="object-cover"

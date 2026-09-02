@@ -15,31 +15,31 @@ import { marketingCopy } from '@/lib/marketing-copy'
 
 const photos = [
   {
-    src: '/images/wedding-cake.webp',
+    src: '/images/landing/reveal-couple-toast.webp',
     alt: {
-      en: 'A wedding photo being revealed',
-      hu: 'Előhívás alatt álló esküvői fotó',
+      en: 'The newlyweds sharing a drink',
+      hu: 'Az ifjú pár együtt koccint',
     },
   },
   {
-    src: '/images/guests-laughing.webp',
+    src: '/images/landing/reveal-bride-friends.webp',
     alt: {
-      en: 'A guest photo being revealed',
-      hu: 'Előhívás alatt álló vendégfotó',
+      en: 'The bride celebrating with friends',
+      hu: 'A menyasszony a barátaival ünnepel',
     },
   },
   {
-    src: '/images/evening-party.webp',
+    src: '/images/landing/reveal-limbo.webp',
     alt: {
-      en: 'An evening party photo being revealed',
-      hu: 'Előhívás alatt álló fotó az esti buliról',
+      en: 'A bride dancing under a limbo stick',
+      hu: 'A menyasszony limbózik a táncparketten',
     },
   },
   {
-    src: '/images/group-lookout.webp',
+    src: '/images/landing/reveal-celebration.webp',
     alt: {
-      en: 'A group photo being revealed',
-      hu: 'Előhívás alatt álló csoportkép',
+      en: 'The newlyweds celebrating with their guests',
+      hu: 'Az ifjú pár a vendégekkel ünnepel',
     },
   },
 ]
