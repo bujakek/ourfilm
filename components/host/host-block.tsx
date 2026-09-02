@@ -6,19 +6,23 @@ import type { ReactNode } from 'react'
 import { useEntrance } from '@/lib/use-entrance'
 
 /**
- * One block of the host console, arriving.
+ * One block of a host screen, arriving.
  *
  * Shallower and faster than the guest's load — 8px and 60ms apart against 10px
- * and 45ms — because this is a page a host returns to rather than a screen
- * they see once. He leaves it open on a laptop for six hours while numbers
- * change without him, so nothing on it is allowed to announce itself.
+ * and 45ms — because these are pages a host returns to rather than a screen
+ * they see once. He leaves the console open on a laptop for six hours while
+ * numbers change without him, so nothing on it is allowed to announce itself.
+ *
+ * The dashboard's contact-sheet rows use the same beat. **Stagger rows, never
+ * cells**: eight thumbnails per row each animating individually turns a busy
+ * event into a shimmer.
  *
  * There is no `once` key, unlike the guest roll. Nothing hands this page to
  * another app mid-task: a mount here really is a first paint, and the
  * moderation actions that re-render it go through `router.refresh()`, which
  * reconciles rather than remounting.
  */
-export function ConsoleBlock({
+export function HostBlock({
   index,
   className,
   children,

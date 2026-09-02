@@ -1,3 +1,5 @@
+import { HostBlock } from '@/components/host/host-block'
+import { LiveDot } from '@/components/ui/live-dot'
 import type { EventListItem } from '@/lib/events'
 import { captureIsOpen } from '@/lib/events'
 import { shortTimeRemaining } from '@/lib/event-copy'
@@ -123,63 +125,74 @@ function metadataParts(event: EventListItem, en: boolean): string[] {
 function EventRow({
   event,
   locale,
+  index,
 }: {
   event: EventListItem
   locale: 'en' | 'hu'
+  /** Position in the load sequence. Rows stagger; the cells inside never do. */
+  index: number
 }) {
   const en = locale === 'en'
   const open = captureIsOpen(event)
 
   return (
     <li>
-      <Link
-        href={`/host/events/${event.slug}?lang=${event.locale}`}
-        className={`block overflow-hidden rounded-lg border transition-colors ${
-          open
-            ? 'border-white/12 hover:border-white/25'
-            : 'border-white/9 hover:border-white/20'
-        }`}
-      >
-        <div className="flex items-start justify-between gap-5 px-5 pt-4.5 pb-3.5">
-          <div className="min-w-0 flex-1">
-            <h3
-              className={`font-display text-[28px] leading-[1.05] text-balance ${
-                // A closed event is still the host's, just no longer the thing
-                // they are watching. It drops a step rather than greying out.
-                open ? '' : 'text-foreground/85'
-              }`}
-            >
-              {event.event_name}
-            </h3>
-            <p className="mt-2 font-mono text-[10.5px] tracking-[0.08em] text-foreground/50">
-              {open ? (
-                <span className="text-accent">
-                  ● {en ? 'LIVE' : 'NYITVA'}{' '}
-                  {shortTimeRemaining(
-                    new Date(event.capture_end_at),
-                    new Date(),
-                    locale,
-                  )}
-                </span>
-              ) : null}
-              {open ? ' · ' : ''}
-              {metadataParts(event, en).join(' · ')}
-            </p>
+      {/* The row animates inside the list item rather than as one, so the
+          markup stays a real `<ul>` of `<li>`s. */}
+      <HostBlock index={index}>
+        <Link
+          href={`/host/events/${event.slug}?lang=${event.locale}`}
+          className={`block overflow-hidden rounded-lg border transition-colors ${
+            open
+              ? 'border-white/12 hover:border-white/25'
+              : 'border-white/9 hover:border-white/20'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-5 px-5 pt-4.5 pb-3.5">
+            <div className="min-w-0 flex-1">
+              <h3
+                className={`font-display text-[28px] leading-[1.05] text-balance ${
+                  // A closed event is still the host's, just no longer the thing
+                  // they are watching. It drops a step rather than greying out.
+                  open ? '' : 'text-foreground/85'
+                }`}
+              >
+                {event.event_name}
+              </h3>
+              <p className="mt-2 font-mono text-[10.5px] tracking-[0.08em] text-foreground/50">
+                {/* Only a running event breathes. A closed one is a record,
+                    and a record that pulses is asking to be looked at. */}
+                {open ? (
+                  <span className="inline-flex items-center gap-1.5 text-accent">
+                    <LiveDot />
+                    {en ? 'LIVE' : 'NYITVA'}{' '}
+                    {shortTimeRemaining(
+                      new Date(event.capture_end_at),
+                      new Date(),
+                      locale,
+                    )}
+                  </span>
+                ) : null}
+                {open ? ' · ' : ''}
+                {metadataParts(event, en).join(' · ')}
+              </p>
+            </div>
+
+            {/* An event that has stopped admitting guests is the one thing
+                on this screen a host has to act on, so it gets the
+                destructive treatment rather than another clause in the mono
+                line. */}
+            {!event.isFullPlan &&
+            event.participantCount >= FREE_PARTICIPANT_LIMIT ? (
+              <span className="shrink-0 rounded-full border border-destructive/35 bg-destructive/8 px-3 py-1.5 font-mono text-[9.5px] font-medium tracking-[0.12em] text-destructive">
+                {en ? 'GUEST CAP FULL' : 'KERET BETELT'}
+              </span>
+            ) : null}
           </div>
 
-          {/* An event that has stopped admitting guests is the one thing on
-              this screen a host has to act on, so it gets the destructive
-              treatment rather than another clause in the mono line. */}
-          {!event.isFullPlan &&
-          event.participantCount >= FREE_PARTICIPANT_LIMIT ? (
-            <span className="shrink-0 rounded-full border border-destructive/35 bg-destructive/8 px-3 py-1.5 font-mono text-[9.5px] font-medium tracking-[0.12em] text-destructive">
-              {en ? 'GUEST CAP FULL' : 'KERET BETELT'}
-            </span>
-          ) : null}
-        </div>
-
-        <PreviewStrip event={event} />
-      </Link>
+          <PreviewStrip event={event} />
+        </Link>
+      </HostBlock>
     </li>
   )
 }
@@ -204,8 +217,13 @@ export function EventList({
             {en ? 'RUNNING NOW' : 'MOST FUT'}
           </h2>
           <ul className="mt-3.5 flex flex-col gap-3">
-            {active.map((event) => (
-              <EventRow key={event.id} event={event} locale={locale} />
+            {active.map((event, i) => (
+              <EventRow
+                key={event.id}
+                event={event}
+                locale={locale}
+                index={i}
+              />
             ))}
           </ul>
         </section>
@@ -217,8 +235,15 @@ export function EventList({
             {en ? 'CLOSED' : 'LEZÁRULT'}
           </h2>
           <ul className="mt-3.5 flex flex-col gap-3">
-            {closed.map((event) => (
-              <EventRow key={event.id} event={event} locale={locale} />
+            {/* The closed section continues the count rather than restarting
+                it, so the page assembles top to bottom as one sheet. */}
+            {closed.map((event, i) => (
+              <EventRow
+                key={event.id}
+                event={event}
+                locale={locale}
+                index={active.length + i}
+              />
             ))}
           </ul>
         </section>

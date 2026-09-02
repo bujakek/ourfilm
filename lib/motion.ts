@@ -56,3 +56,17 @@ export const ticket = {
   initial: { opacity: 0, y: -14, rotate: -0.6 },
   animate: { opacity: 1, y: 0, rotate: 0 },
 } as const
+
+/**
+ * The live dot's breath, and the only looping animation in the product.
+ *
+ * A period rather than a transition, which is why it is not in `T` — nothing
+ * is travelling between two states here. It is in this file anyway because two
+ * surfaces show the same dot, and rule 7 only holds while there is exactly one
+ * of these: a second looping element and neither of them means anything.
+ */
+export const breath = {
+  duration: 2.4,
+  repeat: Infinity,
+  ease: 'easeOut',
+} as const satisfies Transition

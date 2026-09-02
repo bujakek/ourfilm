@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { ConsoleBlock } from '@/components/host/console-block'
+import { HostBlock } from '@/components/host/host-block'
 import { ModerationGrid } from '@/components/host/moderation-grid'
 import { QrCard } from '@/components/host/qr-card'
 import { QuotaBanner } from '@/components/host/quota-banner'
@@ -80,7 +80,7 @@ export default async function AdminEventPage({ params }: Props) {
       {/* Utility row. The settings gear stops being a lone lilac icon button:
           it is a destination, not a state, and lilac now means the film is
           live. */}
-      <ConsoleBlock
+      <HostBlock
         index={0}
         className="print-hidden flex items-center justify-between gap-4"
       >
@@ -104,10 +104,10 @@ export default async function AdminEventPage({ params }: Props) {
             {en ? 'Settings' : 'Beállítások'}
           </Link>
         </div>
-      </ConsoleBlock>
+      </HostBlock>
 
       <div className="mt-6 grid gap-7 sm:grid-cols-[1fr_260px] sm:items-start">
-        <ConsoleBlock index={1} className="min-w-0">
+        <HostBlock index={1} className="min-w-0">
           <CapturePill
             state={windowState}
             captureEndAt={event.capture_end_at}
@@ -158,20 +158,20 @@ export default async function AdminEventPage({ params }: Props) {
           {quota && !quota.unlimited ? (
             <QuotaBanner slug={event.slug} quota={quota} locale={locale} />
           ) : null}
-        </ConsoleBlock>
+        </HostBlock>
 
         {/* 260px of paper answering the one question a host has at a venue. */}
-        <ConsoleBlock index={2} className="sm:sticky sm:top-7">
+        <HostBlock index={2} className="sm:sticky sm:top-7">
           <QrCard
             name={event.event_name}
             url={url}
             shots={event.shots_per_participant}
             locale={locale}
           />
-        </ConsoleBlock>
+        </HostBlock>
       </div>
 
-      <ConsoleBlock index={3}>
+      <HostBlock index={3}>
         <section className="print-hidden mt-9 border-t border-border pt-5">
           <ModerationGrid
             photos={tiles}
@@ -207,7 +207,7 @@ export default async function AdminEventPage({ params }: Props) {
           </ConfigCell>
           <ConfigCell divided>/E/{event.slug.toUpperCase()}</ConfigCell>
         </div>
-      </ConsoleBlock>
+      </HostBlock>
     </main>
   )
 }

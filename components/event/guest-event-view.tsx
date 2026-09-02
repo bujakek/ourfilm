@@ -19,6 +19,7 @@ import { uploadShotRenders } from '@/lib/upload-shot'
 import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import { useEntrance } from '@/lib/use-entrance'
+import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
 import { FilmStrip } from './film-strip'
@@ -43,15 +44,6 @@ type Capture = {
   progress: number
   confirmed: boolean
 }
-
-/**
- * The live dot's breath: the one looping animation in the product.
- *
- * A period, not a transition, which is why it is here rather than in
- * `lib/motion.ts` — and rule 7 is what keeps it the only one. A second
- * looping element and neither of them means anything.
- */
-const BREATH = { duration: 2.4, repeat: Infinity, ease: 'easeOut' } as const
 
 /**
  * The guest's whole screen, counter first.
@@ -292,23 +284,7 @@ export function GuestEventView({
             status.live ? 'text-accent' : 'text-foreground/40'
           }`}
         >
-          {status.live ? (
-            <span
-              aria-hidden="true"
-              className="relative flex size-[5px] items-center justify-center"
-            >
-              {/* The event is happening, said as a pulse rather than a word.
-                  It is the only looping animation in the product. */}
-              {reduceMotion ? null : (
-                <motion.span
-                  animate={{ scale: [1, 1.6], opacity: [0.7, 0] }}
-                  transition={BREATH}
-                  className="absolute size-[5px] rounded-full bg-accent"
-                />
-              )}
-              <span className="size-[5px] rounded-full bg-accent" />
-            </span>
-          ) : null}
+          {status.live ? <LiveDot /> : null}
           {status.label}
         </span>
       </motion.div>
