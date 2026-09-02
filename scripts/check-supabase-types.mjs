@@ -73,8 +73,31 @@ function normalize(source) {
       continue
     }
 
-    output.push(line.trimEnd())
+    output.push(unparenthesise(line.trimEnd()))
   }
 
   return output.join('\n').trimEnd()
+}
+
+/**
+ * Erase one purely cosmetic difference between the two generators.
+ *
+ * `supabase gen types --local` and `--linked` do not emit the same static
+ * helper-type template: newer pg-meta wraps the conditional type in a type
+ * parameter's constraint in parentheses, older pg-meta does not. The hosted
+ * project and the pinned local stack are on different sides of that change, so
+ * whichever one produced the committed file, the other check failed — on a pair
+ * of brackets, in a block that has nothing to do with the schema.
+ *
+ * Only these two exact line shapes are rewritten, and neither can carry schema
+ * content: `Tables`, `Views`, `Functions` and `Enums` are objects of plain
+ * fields, so a real drift still shows up.
+ *
+ * This is the same call the `__InternalSupabase` skip above already makes — that
+ * block differs between the two targets too, and for the same reason.
+ */
+function unparenthesise(line) {
+  return line
+    .replace(/^(\s*\w+ extends )\((\w+ extends \{)$/, '$1$2')
+    .replace(/^(\s*: never)\)( = never,)$/, '$1$2')
 }
