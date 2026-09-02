@@ -10,6 +10,7 @@ import { CreditCard, Loader2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useActionState, useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
 
 const INITIAL: CheckoutState = { error: null }
 
@@ -182,11 +183,11 @@ export function BillingCard({
               .
             </span>
           </label>
-          <button
+          <Button
             type="submit"
             disabled={pending}
             aria-busy={pending}
-            className="btn-shine inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            className="w-full"
           >
             {pending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -204,7 +205,7 @@ export function BillingCard({
               : en
                 ? `Unlock full event – ${eventPriceLabel(locale)}`
                 : `Teljes esemény feloldása – ${eventPriceLabel(locale)}`}
-          </button>
+          </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {en
               ? 'Unlimited guests with one payment. Final price appears at checkout.'

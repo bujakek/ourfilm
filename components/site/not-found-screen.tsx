@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { BackgroundGlow } from '@/components/site/background-glow'
+import { buttonVariants } from '@/components/ui/button'
 import { defaultLocale, type Locale, localePath } from '@/lib/i18n'
 
 const copy = {
@@ -49,7 +50,7 @@ export function NotFoundScreen({
         </p>
         <Link
           href={localePath(locale, '/')}
-          className="btn-shine mt-8 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+          className={buttonVariants({ className: 'mt-8' })}
         >
           {text.cta}
         </Link>

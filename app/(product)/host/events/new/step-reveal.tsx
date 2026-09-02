@@ -1,13 +1,11 @@
 'use client'
 
-import { Clock, Hourglass } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
-
 import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
 import { RevealPreview } from '@/components/host/onboarding/reveal-preview'
+import { RevealSelector } from '@/components/host/reveal-selector'
 import type { RevealChoice } from '@/lib/camera'
 import { formatRevealBadge } from '@/lib/format'
 import type { Locale } from '@/lib/i18n'
@@ -27,16 +25,7 @@ export function StepReveal({
   timeZone: string
   locale: Locale
 }) {
-  const reduceMotion = useReducedMotion()
   const en = locale === 'en'
-  const choices: { mode: RevealChoice; label: string; Icon: typeof Clock }[] = [
-    { mode: 'instant', label: en ? 'Right away' : 'Azonnal', Icon: Hourglass },
-    {
-      mode: 'event_end',
-      label: en ? 'When the event ends' : 'Az esemény végén',
-      Icon: Clock,
-    },
-  ]
   const badge =
     mode === 'instant'
       ? en
@@ -68,54 +57,12 @@ export function StepReveal({
         <legend className="sr-only">
           {en ? 'Gallery reveal time' : 'A galéria megnyílásának időpontja'}
         </legend>
-        <div className="grid grid-cols-2 gap-2.5">
-          {choices.map(({ mode: choice, label, Icon }) => {
-            const active = choice === mode
-            return (
-              <label
-                key={choice}
-                className={`glass relative flex min-h-28 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl p-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-                  active ? 'font-semibold text-accent' : ''
-                }`}
-              >
-                {active ? (
-                  <motion.span
-                    layoutId="reveal-selection"
-                    aria-hidden="true"
-                    className="absolute inset-0 rounded-2xl bg-accent/10 ring-2 ring-accent ring-inset"
-                    transition={
-                      reduceMotion
-                        ? { duration: 0 }
-                        : { type: 'spring', stiffness: 480, damping: 38 }
-                    }
-                  />
-                ) : null}
-                <input
-                  type="radio"
-                  name="reveal_mode_choice"
-                  value={choice}
-                  checked={active}
-                  onChange={() => setMode(choice)}
-                  className="sr-only"
-                />
-                <motion.span
-                  className="relative z-10 inline-flex"
-                  animate={{ scale: active ? 1.08 : 1 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.16 }}
-                >
-                  <Icon
-                    className="size-5"
-                    strokeWidth={active ? 2 : 1.6}
-                    aria-hidden="true"
-                  />
-                </motion.span>
-                <span className="relative z-10 text-sm leading-snug text-balance">
-                  {label}
-                </span>
-              </label>
-            )
-          })}
-        </div>
+        <RevealSelector
+          value={mode}
+          onChange={setMode}
+          name="reveal_mode_choice"
+          locale={locale}
+        />
       </fieldset>
     </OnboardingShell>
   )

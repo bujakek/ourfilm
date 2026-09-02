@@ -4,6 +4,7 @@ import { type Hub, hubs } from '@/lib/content/kinds'
 import { type Locale, localePath } from '@/lib/i18n'
 import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
 
 /**
  * The foot of every hub: the other hubs, and every money landing page.
@@ -53,7 +54,7 @@ export function HubLinks({
           <Link
             key={hub}
             href={localePath(locale, `/${hub}`)}
-            className="glass glass-hover inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-medium"
+            className={buttonVariants({ variant: 'secondary', size: 'sm' })}
           >
             {hubCopy[locale][hub].label}
             <ArrowUpRight className="size-4 text-accent" aria-hidden="true" />

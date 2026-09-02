@@ -100,7 +100,7 @@ export function MonthCalendar({
           onClick={() => step(-1)}
           disabled={!canGoBack}
           aria-label={locale === 'en' ? 'Previous month' : 'Előző hónap'}
-          className="flex size-11 items-center justify-center rounded-[0.85rem] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-25"
+          className="flex size-11 items-center justify-center rounded-control-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
@@ -113,7 +113,7 @@ export function MonthCalendar({
           type="button"
           onClick={() => step(1)}
           aria-label={locale === 'en' ? 'Next month' : 'Következő hónap'}
-          className="flex size-11 items-center justify-center rounded-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
+          className="flex size-11 items-center justify-center rounded-control-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>
@@ -161,7 +161,7 @@ export function MonthCalendar({
                   // the whole scale (`--radius-xl` is 1.5rem), which on a 44px
                   // cell rounds it into a circle. The selected day is a
                   // squircle, and that shape is one of the two signals.
-                  'flex size-11 items-center justify-center rounded-[0.85rem] text-base transition-colors',
+                  'flex size-11 items-center justify-center rounded-control-sm text-base transition-colors',
                   // Two signals, not one: the selected day is the only cell
                   // wearing a ring, so the choice survives a colourblind reader
                   // and a phone in bright sun.

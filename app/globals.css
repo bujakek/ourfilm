@@ -32,6 +32,11 @@
   --radius-lg: 1.25rem;
   --radius-xl: 1.5rem;
   --radius-2xl: 2rem;
+  --radius-control: 1rem;
+  --radius-control-sm: 0.875rem;
+  --radius-control-lg: 1.25rem;
+  --radius-card: 1.5rem;
+  --radius-hero: 2rem;
 
   --animate-float-slow: float-slow 9s ease-in-out infinite;
   --animate-float-slower: float-slow 13s ease-in-out infinite;

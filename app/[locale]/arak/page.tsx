@@ -7,6 +7,7 @@ import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { Check } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
 import { notFound } from 'next/navigation'
 
 const copy = {
@@ -120,7 +121,7 @@ export default async function ArakPage({ params }: Props) {
 
                 <Link
                   href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-                  className="btn-shine mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+                  className={buttonVariants({ className: 'mt-8' })}
                 >
                   {current.create}
                 </Link>

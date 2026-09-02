@@ -14,6 +14,7 @@ import { Check, Download, ImagePlus, Loader2, RotateCcw } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
 import { Reveal } from './reveal'
+import { Button } from '@/components/ui/button'
 
 const basePhotos = [
   { src: '/images/wedding-dance.webp', alt: 'Esküvői tánc' },
@@ -143,15 +144,14 @@ export function LiveDemoFallback() {
                       Válassz egy képet, és töltsd fel.
                     </p>
                     <div className="mt-auto pt-6">
-                      <button
+                      <Button
                         type="button"
                         onClick={handleUpload}
                         disabled={uploading || uploaded}
+                        variant={uploaded ? 'secondary' : 'default'}
                         className={cn(
-                          'btn-shine flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all',
-                          uploaded
-                            ? 'bg-accent/20 text-accent'
-                            : 'bg-primary text-primary-foreground hover:scale-[1.02]',
+                          'w-full',
+                          uploaded ? 'border-accent/30 text-accent' : '',
                         )}
                       >
                         {uploading ? (
@@ -169,7 +169,7 @@ export function LiveDemoFallback() {
                             <ImagePlus className="size-4" /> Próbakép feltöltése
                           </>
                         )}
-                      </button>
+                      </Button>
                       {uploaded && (
                         <button
                           type="button"
@@ -196,13 +196,10 @@ export function LiveDemoFallback() {
                           {photos.length} fotó
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        className="btn-shine flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
-                      >
+                      <Button type="button" className="w-full">
                         <Download className="size-4" aria-hidden="true" /> Az
                         egész album letöltése
-                      </button>
+                      </Button>
                     </div>
                   </>
                 )}

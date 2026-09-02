@@ -4,6 +4,8 @@ import { sendSignInLink } from '@/lib/auth-link'
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useActionState, useRef } from 'react'
 import type { Locale } from '@/lib/i18n'
+import { Button } from '@/components/ui/button'
+import { inputClassName } from '@/components/ui/input'
 
 type Result = { status: 'idle' | 'sent' | 'error'; message?: string }
 
@@ -94,7 +96,7 @@ export function LoginForm({
           autoFocus
           disabled={pending}
           placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
-          className="glass min-h-14 w-full rounded-2xl px-5 text-base text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-accent disabled:opacity-60"
+          className={inputClassName}
         />
       </div>
 
@@ -108,11 +110,12 @@ export function LoginForm({
         </p>
       ) : null}
 
-      <button
+      <Button
         type="submit"
         disabled={pending}
         aria-busy={pending}
-        className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground disabled:opacity-60"
+        size="lg"
+        className="w-full"
       >
         {pending ? (
           <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -126,7 +129,7 @@ export function LoginForm({
           : en
             ? 'Send sign-in link'
             : 'Kérem a belépési linket'}
-      </button>
+      </Button>
     </form>
   )
 }

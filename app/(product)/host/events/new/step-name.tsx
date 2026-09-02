@@ -7,6 +7,7 @@ import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
+import { inputSurfaceClassName } from '@/components/ui/input'
 
 /**
  * Question one: what is this film called?
@@ -47,7 +48,7 @@ export function StepName({
       cta={en ? 'Continue' : 'Tovább'}
       ctaDisabled={!canAdvance}
     >
-      <div className="glass flex min-h-16 items-center gap-3 rounded-2xl px-5">
+      <div className={inputSurfaceClassName}>
         <Pencil
           className="size-4 shrink-0 text-muted-foreground"
           strokeWidth={1.8}

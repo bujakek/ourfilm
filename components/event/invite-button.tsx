@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { Check, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import type { Locale } from '@/lib/i18n'
@@ -49,12 +50,14 @@ export function InviteButton({
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={invite}
       aria-label={en ? 'Share invite link' : 'Meghívólink megosztása'}
+      variant="secondary"
+      size="lg"
       className={cn(
-        'glass glass-hover inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-medium transition-all',
+        'w-full px-3 text-sm',
         copied ? 'text-accent' : 'text-foreground',
       )}
     >
@@ -80,6 +83,6 @@ export function InviteButton({
             : 'Link kimásolva a vágólapra'
           : ''}
       </span>
-    </button>
+    </Button>
   )
 }

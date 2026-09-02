@@ -6,6 +6,8 @@ import { useActionState, useRef, useState } from 'react'
 import { sendSignInLink } from '@/lib/auth-link'
 
 import { Sheet } from '@/components/host/sheet'
+import { Button } from '@/components/ui/button'
+import { inputClassName } from '@/components/ui/input'
 import type { Locale } from '@/lib/i18n'
 
 type Result = { status: 'idle' | 'sent' | 'error'; message?: string }
@@ -114,7 +116,7 @@ export function AuthDialog({
           disabled={pending}
           placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
           aria-label={en ? 'Email address' : 'E-mail-cím'}
-          className="glass min-h-14 w-full rounded-2xl px-5 text-base outline-none placeholder:text-muted-foreground/50 focus:border-accent disabled:opacity-60"
+          className={inputClassName}
         />
 
         {result.status === 'error' ? (
@@ -123,11 +125,12 @@ export function AuthDialog({
           </p>
         ) : null}
 
-        <button
+        <Button
           type="submit"
           disabled={pending}
           aria-busy={pending}
-          className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-base font-semibold text-primary-foreground disabled:opacity-60"
+          size="lg"
+          className="w-full"
         >
           {pending ? (
             <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -141,7 +144,7 @@ export function AuthDialog({
             : en
               ? 'Send me the link'
               : 'Küldjétek a linket'}
-        </button>
+        </Button>
 
         {/* One link signs up and signs in, so this changes the wording rather
             than the flow — but a host who already has an account needs to see

@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import { submitLegalRequest } from './actions'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { inputClassName, textareaClassName } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 const copy = {
   en: {
@@ -89,7 +92,7 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
             </p>
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="btn-shine mt-7 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+              className={buttonVariants({ className: 'mt-7' })}
             >
               <Mail className="size-4" strokeWidth={2} aria-hidden="true" />
               {CONTACT_EMAIL}
@@ -292,12 +295,9 @@ function LegalRequestCard({
           </>
         )}
 
-        <button
-          type="submit"
-          className="btn-shine inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
-        >
+        <Button type="submit">
           {isWithdrawal ? 'Elállás megerősítése' : 'Kérelem elküldése'}
-        </button>
+        </Button>
         <p className="text-xs leading-relaxed text-muted-foreground">
           A megadott adatokat kizárólag a kérelem kezelésére használjuk.
         </p>
@@ -330,7 +330,7 @@ function FormField({
         type={type}
         autoComplete={autoComplete}
         placeholder={placeholder}
-        className="mt-2 min-h-12 w-full rounded-2xl border border-border bg-white/5 px-4 text-base font-normal transition-colors outline-none placeholder:text-muted-foreground/60 focus:border-accent sm:text-sm"
+        className={cn(inputClassName, 'mt-2 px-4')}
       />
     </label>
   )
@@ -352,7 +352,7 @@ function FormTextArea({
         required={required}
         name={name}
         rows={4}
-        className="mt-2 w-full resize-y rounded-2xl border border-border bg-white/5 px-4 py-3 text-base font-normal transition-colors outline-none focus:border-accent sm:text-sm"
+        className={cn(textareaClassName, 'mt-2 px-4 py-3')}
       />
     </label>
   )

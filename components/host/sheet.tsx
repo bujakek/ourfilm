@@ -125,7 +125,7 @@ export function Sheet({
                     !busy && !reduceMotion ? { scale: 0.92 } : undefined
                   }
                   aria-label={closeLabel}
-                  className="glass -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[0.875rem] disabled:opacity-40"
+                  className="glass -mt-1 flex size-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50"
                 >
                   <X className="size-4" aria-hidden="true" />
                 </motion.button>

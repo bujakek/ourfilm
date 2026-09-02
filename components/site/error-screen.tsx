@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect } from 'react'
 
 import { BackgroundGlow } from '@/components/site/background-glow'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { defaultLocale, localePath } from '@/lib/i18n'
 
 /**
@@ -40,16 +41,12 @@ export function ErrorScreen({
           they have not been lost.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <button
-            type="button"
-            onClick={reset}
-            className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
-          >
+          <Button type="button" onClick={reset}>
             Try again
-          </button>
+          </Button>
           <Link
             href={localePath(defaultLocale, '/')}
-            className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"
+            className={buttonVariants({ variant: 'secondary' })}
           >
             Back to home
           </Link>

@@ -1,12 +1,12 @@
 'use client'
 
-import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
 import { useState, useTransition } from 'react'
 
 import { setCaptureEnd } from '@/app/(product)/host/events/[slug]/actions'
+import { EventEndFields } from '@/components/host/event-end-fields'
 import { MonthCalendar } from '@/components/host/month-calendar'
 import { Sheet } from '@/components/host/sheet'
-import { formatEventDate } from '@/lib/format'
+import { Button } from '@/components/ui/button'
 
 /**
  * Moves the moment the camera closes.
@@ -91,7 +91,7 @@ export function CaptureEndCard({
                 : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
         </p>
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-4">
           {/* The same two cards and the same sheet as the create flow's second
             screen. Editing an event and creating one are the same question,
             and a host who has just answered it once should not have to learn a
@@ -100,70 +100,20 @@ export function CaptureEndCard({
             It also has to be a sheet. `MonthCalendar` is seven 44px cells, so
             it needs 308px; expanded inside this card at 390px it gets about
             302 and the grid is squeezed. */}
-          <button
-            type="button"
-            onClick={() => setCalendarOpen(true)}
-            className="glass flex min-h-16 w-full items-center gap-4 rounded-xl px-4 text-left"
-          >
-            <CalendarDays
-              className="size-5 shrink-0 text-accent"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
-                {en ? 'DATE' : 'DÁTUM'}
-              </span>
-              <span className="mt-0.5 block text-sm font-medium">
-                {formatEventDate(day)}
-              </span>
-            </span>
-            <ChevronRight
-              className="size-5 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-          </button>
-
-          {/* The card is ours, the picker is the phone's. Keeping the native
-            input over the whole surface gives iOS and Android a direct tap
-            target without exposing their differently styled text fields. */}
-          <label className="glass relative flex min-h-16 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-xl px-4 text-left has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
-            <Clock3
-              className="size-5 shrink-0 text-accent"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[0.6875rem] tracking-[0.2em] text-muted-foreground/70">
-                {en ? 'TIME' : 'IDŐPONT'}
-              </span>
-              <span className="mt-0.5 block text-sm font-medium tabular-nums">
-                {time}
-              </span>
-            </span>
-            <ChevronRight
-              className="size-5 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              type="time"
-              step={60}
-              required
-              aria-label={
-                en ? 'Shooting end time' : 'A fotózás végének időpontja'
-              }
-              value={time}
-              onChange={(event) => {
-                setTime(event.target.value)
-                setSaved(false)
-              }}
-              className="absolute inset-0 size-full cursor-pointer opacity-0"
-            />
-          </label>
+          <EventEndFields
+            day={day}
+            time={time}
+            onChooseDay={() => setCalendarOpen(true)}
+            onTimeChange={(value) => {
+              setTime(value)
+              setSaved(false)
+            }}
+            locale={locale}
+            timeLabel={en ? 'Shooting end time' : 'A fotózás végének időpontja'}
+          />
         </div>
 
-        <button
-          type="button"
+        <Button
           disabled={pending || end === endValue}
           onClick={() =>
             startTransition(async () => {
@@ -182,7 +132,7 @@ export function CaptureEndCard({
               }
             })
           }
-          className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          className="mt-4 w-full"
         >
           {pending
             ? en
@@ -191,7 +141,7 @@ export function CaptureEndCard({
             : en
               ? 'Save changes'
               : 'Változtatások mentése'}
-        </button>
+        </Button>
 
         {error ? (
           <p className="mt-2 text-xs text-destructive">{error}</p>

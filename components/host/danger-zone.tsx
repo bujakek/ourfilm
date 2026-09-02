@@ -4,6 +4,7 @@ import { deleteEvent } from '@/app/(product)/host/events/[slug]/actions'
 import { Sheet } from '@/components/host/sheet'
 import { Loader2, Trash2, TriangleAlert } from 'lucide-react'
 import { useState, useTransition } from 'react'
+import { Button } from '@/components/ui/button'
 
 /**
  * Permanent deletion, behind a confirmation sheet.
@@ -71,14 +72,16 @@ export function DangerZone({
 
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
 
-      <button
+      <Button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-destructive/40 px-5 text-sm font-semibold text-destructive"
+        variant="destructive-outline"
+        size="sm"
+        className="mt-4"
       >
         <Trash2 className="size-4" />
         {en ? 'Permanently delete event' : 'Esemény végleges törlése'}
-      </button>
+      </Button>
 
       <Sheet
         open={open}
@@ -105,11 +108,12 @@ export function DangerZone({
         }
       >
         <div className="flex flex-col gap-2">
-          <button
+          <Button
             type="button"
             disabled={pending}
             onClick={confirmDelete}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-destructive/90 px-5 text-sm font-semibold text-white disabled:opacity-60"
+            variant="destructive"
+            className="w-full"
           >
             {pending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -117,8 +121,8 @@ export function DangerZone({
               <Trash2 className="size-4" />
             )}
             {en ? 'Yes, delete permanently' : 'Igen, végleg törlöm'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={pending}
             // Enter must never be the delete. `autoFocus` asks for this
@@ -127,10 +131,11 @@ export function DangerZone({
             // neither of them is "Igen, végleg törlöm".
             autoFocus
             onClick={() => setOpen(false)}
-            className="glass glass-hover inline-flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-medium disabled:opacity-60"
+            variant="secondary"
+            className="w-full"
           >
             {en ? 'Cancel' : 'Mégse'}
-          </button>
+          </Button>
         </div>
       </Sheet>
     </section>

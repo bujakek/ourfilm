@@ -9,6 +9,9 @@ import {
 } from './actions'
 import { guestCountRanges } from '@/lib/early-couple'
 import type { Locale } from '@/lib/i18n'
+import { Button } from '@/components/ui/button'
+import { inputClassName, textareaClassName } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 type Tracking = Partial<
   Record<
@@ -166,7 +169,7 @@ export function EarlyCoupleApplicationForm({
             required
             name="guestCountRange"
             defaultValue=""
-            className="mt-2 min-h-14 w-full rounded-2xl border border-border bg-background-secondary px-4 text-base font-normal text-foreground outline-none focus:border-accent sm:text-sm"
+            className={cn(inputClassName, 'mt-2 px-4')}
           >
             <option value="" disabled>
               {copy.guestsPlaceholder}
@@ -189,7 +192,7 @@ export function EarlyCoupleApplicationForm({
           maxLength={2_000}
           rows={5}
           placeholder={copy.whyPlaceholder}
-          className="mt-2 w-full resize-y rounded-2xl border border-border bg-white/5 px-4 py-3 text-base font-normal outline-none placeholder:text-muted-foreground/60 focus:border-accent sm:text-sm"
+          className={cn(textareaClassName, 'mt-2 px-4 py-3')}
         />
       </label>
 
@@ -210,11 +213,12 @@ export function EarlyCoupleApplicationForm({
         </p>
       ) : null}
 
-      <button
+      <Button
         type="submit"
         disabled={pending}
         aria-busy={pending}
-        className="btn-shine mt-6 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground disabled:opacity-60"
+        size="lg"
+        className="mt-6 w-full"
       >
         {pending ? (
           <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -222,7 +226,7 @@ export function EarlyCoupleApplicationForm({
           <Send className="size-5" strokeWidth={1.8} aria-hidden="true" />
         )}
         {pending ? copy.submitting : copy.submit}
-      </button>
+      </Button>
       <p className="mt-4 text-center text-xs leading-relaxed text-pretty text-muted-foreground">
         {copy.privacy}
       </p>
@@ -269,7 +273,7 @@ function Field({
         placeholder={placeholder}
         maxLength={maxLength}
         min={min}
-        className="mt-2 min-h-14 w-full rounded-2xl border border-border bg-white/5 px-4 text-base font-normal outline-none placeholder:text-muted-foreground/60 focus:border-accent sm:text-sm"
+        className={cn(inputClassName, 'mt-2 px-4')}
       />
     </label>
   )

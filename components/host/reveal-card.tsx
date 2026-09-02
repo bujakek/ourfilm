@@ -3,20 +3,9 @@
 import { useState, useTransition } from 'react'
 
 import { setReveal } from '@/app/(product)/host/events/[slug]/actions'
+import { RevealSelector } from '@/components/host/reveal-selector'
+import { Button } from '@/components/ui/button'
 import type { RevealChoice } from '@/lib/camera'
-
-const CHOICES: { mode: RevealChoice; title: string; detail: string }[] = [
-  {
-    mode: 'instant',
-    title: 'Azonnal',
-    detail: 'A vendégek már az esemény alatt láthatják az elkészült képeket.',
-  },
-  {
-    mode: 'event_end',
-    title: 'Az esemény végén',
-    detail: 'A galéria akkor nyílik meg, amikor a fotózás véget ér.',
-  },
-]
 
 /**
  * When the album develops.
@@ -48,50 +37,23 @@ export function RevealCard({
     <div className="glass rounded-2xl px-5 py-4">
       <p className="font-medium">{en ? 'Photo reveal' : 'Képek megjelenése'}</p>
 
-      <fieldset className="mt-4 flex flex-col gap-2">
+      <fieldset className="mt-4">
         <legend className="sr-only">
           {en ? 'Photo reveal time' : 'Leleplezés időpontja'}
         </legend>
-        {CHOICES.map((choice) => (
-          <label
-            key={choice.mode}
-            className={`glass flex cursor-pointer gap-3 rounded-xl p-3 ${
-              mode === choice.mode ? 'border-accent' : ''
-            }`}
-          >
-            <input
-              type="radio"
-              name="reveal_mode_setting"
-              value={choice.mode}
-              checked={mode === choice.mode}
-              onChange={() => {
-                setMode(choice.mode)
-                setSaved(false)
-              }}
-              className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]"
-            />
-            <span className="min-w-0">
-              <span className="block text-sm font-medium">
-                {en
-                  ? choice.mode === 'instant'
-                    ? 'Immediately'
-                    : 'At the end of the event'
-                  : choice.title}
-              </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                {en
-                  ? choice.mode === 'instant'
-                    ? 'Guests can see photos during the event.'
-                    : 'The gallery opens when shooting ends.'
-                  : choice.detail}
-              </span>
-            </span>
-          </label>
-        ))}
+        <RevealSelector
+          value={mode}
+          onChange={(value) => {
+            setMode(value)
+            setSaved(false)
+          }}
+          name="reveal_mode_setting"
+          locale={locale}
+          disabled={pending}
+        />
       </fieldset>
 
-      <button
-        type="button"
+      <Button
         disabled={pending || !dirty}
         onClick={() =>
           startTransition(async () => {
@@ -110,7 +72,7 @@ export function RevealCard({
             }
           })
         }
-        className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+        className="mt-4 w-full"
       >
         {pending
           ? en
@@ -119,7 +81,7 @@ export function RevealCard({
           : en
             ? 'Save changes'
             : 'Változtatások mentése'}
-      </button>
+      </Button>
 
       {error ? (
         <p className="mt-2 text-xs text-destructive">{error}</p>

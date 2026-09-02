@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { localeTag, type Locale } from '@/lib/i18n'
+import { buttonVariants } from '@/components/ui/button'
 
 export type OnboardingNav = {
   step: number
@@ -68,7 +69,10 @@ export function OnboardingShell({
               aria-label={
                 locale === 'en' ? 'Back to events' : 'Vissza az eseményekhez'
               }
-              className="glass flex size-12 items-center justify-center rounded-[0.875rem]"
+              className={buttonVariants({
+                variant: 'secondary',
+                size: 'icon-lg',
+              })}
             >
               <ArrowLeft className="size-5" aria-hidden="true" />
             </Link>
@@ -82,7 +86,10 @@ export function OnboardingShell({
                   ? 'Back to the previous question'
                   : 'Vissza az előző kérdéshez'
               }
-              className="glass flex size-12 items-center justify-center rounded-[0.875rem]"
+              className={buttonVariants({
+                variant: 'secondary',
+                size: 'icon-lg',
+              })}
             >
               <ArrowLeft className="size-5" aria-hidden="true" />
             </motion.button>
@@ -157,7 +164,7 @@ export function OnboardingShell({
               spent.current = step
               onNext?.()
             }}
-            className="btn-shine inline-flex min-h-14 items-center gap-2 rounded-[1.25rem] bg-primary px-6 text-base font-semibold text-primary-foreground transition-opacity disabled:opacity-30"
+            className={buttonVariants({ size: 'lg' })}
           >
             {ctaPending ? (
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />

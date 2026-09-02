@@ -1,6 +1,7 @@
 'use client'
 
 import { Sheet } from '@/components/host/sheet'
+import { Button } from '@/components/ui/button'
 import type { Locale } from '@/lib/i18n'
 
 /**
@@ -34,20 +35,18 @@ export function DraftRestoreDialog({
       }
     >
       <div className="flex flex-col gap-2.5">
-        <button
-          type="button"
-          onClick={onResume}
-          className="btn-shine inline-flex min-h-14 items-center justify-center rounded-2xl bg-primary px-6 text-base font-semibold text-primary-foreground"
-        >
+        <Button type="button" onClick={onResume} size="lg" className="w-full">
           {en ? 'Continue' : 'Folytatás'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={onDiscard}
-          className="glass inline-flex min-h-14 items-center justify-center rounded-2xl px-6 text-base font-semibold"
+          variant="secondary"
+          size="lg"
+          className="w-full"
         >
           {en ? 'Start over' : 'Újrakezdés'}
-        </button>
+        </Button>
       </div>
     </Sheet>
   )

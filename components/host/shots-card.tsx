@@ -1,10 +1,10 @@
 'use client'
 
-import { Check } from 'lucide-react'
 import { useOptimistic, useState, useTransition } from 'react'
 
 import { setShotsPerParticipant } from '@/app/(product)/host/events/[slug]/actions'
-import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
+import { ShotsSelector } from '@/components/host/shots-selector'
+import type { ShotOption } from '@/lib/camera'
 
 /**
  * How many frames each guest gets.
@@ -48,52 +48,23 @@ export function ShotsCard({
         <legend className="sr-only">
           {en ? 'Photos per guest' : 'Képek száma vendégenként'}
         </legend>
-        <div className="grid grid-cols-5 gap-2">
-          {SHOT_OPTIONS.map((option) => {
-            const active = option === optimisticShots
-            return (
-              <label
-                key={option}
-                className={`glass flex min-h-16 cursor-pointer flex-col items-center justify-center rounded-xl ${
-                  active ? 'border-accent' : ''
-                } ${pending ? 'opacity-70' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="shots_setting"
-                  value={option}
-                  checked={active}
-                  disabled={pending}
-                  onChange={() =>
-                    startTransition(async () => {
-                      setError(false)
-                      setOptimisticShots(option)
-                      try {
-                        await setShotsPerParticipant(slug, option)
-                      } catch {
-                        setError(true)
-                      }
-                    })
-                  }
-                  className="sr-only"
-                />
-                {/* The check mark carries the selection alongside the border,
-                    so the choice is not signalled by colour alone. */}
-                <span className="flex items-center gap-1 text-base font-semibold">
-                  {active ? (
-                    <Check className="size-3.5 text-accent" strokeWidth={2.4} />
-                  ) : null}
-                  {option}
-                </span>
-                {option === DEFAULT_SHOTS ? (
-                  <span className="mt-0.5 text-[10px] text-accent">
-                    {en ? 'Recommended' : 'Ajánlott'}
-                  </span>
-                ) : null}
-              </label>
-            )
-          })}
-        </div>
+        <ShotsSelector
+          value={optimisticShots}
+          onChange={(option) =>
+            startTransition(async () => {
+              setError(false)
+              setOptimisticShots(option)
+              try {
+                await setShotsPerParticipant(slug, option)
+              } catch {
+                setError(true)
+              }
+            })
+          }
+          name="shots_setting"
+          locale={locale}
+          disabled={pending}
+        />
       </fieldset>
 
       {error ? (
