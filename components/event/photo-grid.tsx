@@ -18,7 +18,10 @@ export function PhotoGrid({
 
   return (
     <>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {/* Three columns, not two: at 390px that is 122px tiles, still well
+          inside what a ~400px `thumb_path` can fill, and a contact sheet reads
+          as a shared roll where a two-up grid reads as a feed. */}
+      <ul className="grid grid-cols-3 gap-1.5">
         {photos.map((photo, i) => (
           <motion.li
             key={photo.id}
@@ -48,14 +51,6 @@ export function PhotoGrid({
                 unoptimized
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pt-6 pb-1.5 text-left"
-              >
-                <span className="block truncate text-[11px] font-medium text-white/90">
-                  {photo.uploaderName}
-                </span>
-              </span>
             </motion.button>
           </motion.li>
         ))}

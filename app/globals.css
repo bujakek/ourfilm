@@ -15,6 +15,7 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-blue: var(--accent-blue);
   --color-accent-silver: var(--accent-silver);
   --color-destructive: var(--destructive);
@@ -93,6 +94,11 @@
      `--accent-silver` or plain `--muted-foreground`; prices go to
      `--foreground` in the mono; links keep `--foreground` and an underline. */
   --accent: #c3b6ff;
+  /* What sits *on* a lilac fill, which is now a rare enough thing to be worth
+     naming: the join screen's one accent button, and the active cell of the
+     roll-length control. A near-black with the lilac's own hue in it rather
+     than `--background`, so the fill reads as a colour and not as a hole. */
+  --accent-foreground: #0f0d1a;
   --accent-blue: #9db4ff;
   --accent-silver: #d8dae5;
   /* The only warm colour in an otherwise lilac-on-near-black palette, and it is

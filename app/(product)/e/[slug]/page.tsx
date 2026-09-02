@@ -11,6 +11,7 @@ import {
 } from '@/lib/events'
 import { galleryLock, joinStateLabel } from '@/lib/event-copy'
 import { captureWindowState } from '@/lib/camera'
+import { getMyFrames } from '@/lib/frames'
 import { signPhotoUrl } from '@/lib/photo-urls'
 import { getGalleryPhotosBySlug, toGalleryTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
@@ -71,6 +72,9 @@ export default async function EventPage({ params, searchParams }: Props) {
         hostName={event.host_name}
         coverUrl={coverUrl}
         shotsPerParticipant={event.shots_per_participant}
+        revealMode={event.reveal_mode}
+        captureEndAt={event.capture_end_at}
+        timeZone={event.time_zone}
         stateLabel={joinStateLabel(timing, event.shots_per_participant, locale)}
         // `can_capture` requires a participant and there is none yet, so the
         // button's label comes from the window itself.
@@ -80,8 +84,13 @@ export default async function EventPage({ params, searchParams }: Props) {
   }
 
   const lock = galleryLock(timing, locale)
-  const [participantCount, tiles] = await Promise.all([
+  // The guest's own frames are fetched whether or not the gallery is open —
+  // they are theirs, and the reveal exists so the *group* sees the night
+  // together, not to withhold your own shots from you. `my_frames` is a
+  // separate, narrower read than the gallery's; see `lib/frames.ts`.
+  const [participantCount, frames, tiles] = await Promise.all([
     getGuestParticipantCount(event.id),
+    getMyFrames(event.id),
     lock.open
       ? getGalleryPhotosBySlug(slug).then(toGalleryTiles)
       : Promise.resolve([]),
@@ -94,10 +103,13 @@ export default async function EventPage({ params, searchParams }: Props) {
       slug={slug}
       eventName={event.event_name}
       eventUrl={eventUrl(event.slug, locale)}
+      captureStartAt={event.capture_start_at}
       captureEndAt={event.capture_end_at}
       initialNow={now.getTime()}
       initialCanCapture={event.can_capture}
       initialShotsRemaining={event.shots_remaining}
+      shotsPerParticipant={event.shots_per_participant}
+      frames={frames}
       participantCount={participantCount}
       gallery={lock}
       photos={tiles}
