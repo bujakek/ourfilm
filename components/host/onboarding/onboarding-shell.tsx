@@ -106,7 +106,7 @@ export function OnboardingShell({
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="mt-6 text-center">
-              <h1 className="font-display text-[1.75rem] leading-[1.15] font-semibold tracking-tight text-balance">
+              <h1 className="font-display text-[1.75rem] leading-[1.15] tracking-tight text-balance">
                 {title}
               </h1>
               <p className="mx-auto mt-3 max-w-[19rem] text-sm leading-relaxed text-pretty text-muted-foreground">

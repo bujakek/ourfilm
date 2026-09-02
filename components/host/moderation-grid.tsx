@@ -37,7 +37,7 @@ function Tile({
     <li className="relative">
       <div
         className={cn(
-          'relative aspect-square overflow-hidden rounded-2xl transition-opacity',
+          'relative aspect-square overflow-hidden rounded-sm transition-opacity',
           hidden && 'opacity-35',
         )}
       >

@@ -27,7 +27,7 @@ export function CreateOwnAlbum() {
   if (!eligible || dismissed) return null
 
   return (
-    <div className="glass relative mt-8 rounded-3xl p-6">
+    <div className="glass relative mt-8 rounded-2xl p-6">
       <button
         type="button"
         onClick={() => {
@@ -40,7 +40,7 @@ export function CreateOwnAlbum() {
         <X className="size-4" aria-hidden="true" />
       </button>
 
-      <span className="glass flex size-11 items-center justify-center rounded-2xl">
+      <span className="glass flex size-11 items-center justify-center rounded-lg">
         <Sparkles
           className="size-5 text-accent"
           strokeWidth={1.6}

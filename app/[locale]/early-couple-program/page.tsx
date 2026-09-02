@@ -218,9 +218,9 @@ export default async function EarlyCoupleProgramPage({
               return (
                 <article
                   key={title}
-                  className="glass flex h-full flex-col rounded-3xl p-7"
+                  className="glass flex h-full flex-col rounded-2xl p-7"
                 >
-                  <span className="glass flex size-12 items-center justify-center rounded-2xl">
+                  <span className="glass flex size-12 items-center justify-center rounded-lg">
                     <Icon
                       className="size-6 text-accent"
                       strokeWidth={1.6}
@@ -249,7 +249,7 @@ export default async function EarlyCoupleProgramPage({
             <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
               {current.exchangeHeading}
             </h2>
-            <div className="glass mt-8 rounded-3xl p-7">
+            <div className="glass mt-8 rounded-2xl p-7">
               <h3 className="font-semibold">{current.fitHeading}</h3>
               <p className="mt-3 text-sm leading-relaxed text-pretty text-muted-foreground">
                 {current.fitBody}
@@ -261,7 +261,7 @@ export default async function EarlyCoupleProgramPage({
             {current.steps.map(([title, text], index) => (
               <li
                 key={title}
-                className="glass flex gap-4 rounded-3xl p-6 sm:gap-5 sm:p-7"
+                className="glass flex gap-4 rounded-2xl p-6 sm:gap-5 sm:p-7"
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">
                   {index + 1}

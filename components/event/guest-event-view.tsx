@@ -286,7 +286,7 @@ export function GuestEventView({
         </div>
 
         {!gallery.open ? (
-          <div className="glass mt-5 rounded-3xl px-6 py-9 text-center">
+          <div className="glass mt-5 rounded-2xl px-6 py-9 text-center">
             <h3 className="text-base font-semibold text-balance">
               {gallery.heading}
             </h3>

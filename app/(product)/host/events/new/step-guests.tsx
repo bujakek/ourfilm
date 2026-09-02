@@ -238,7 +238,7 @@ function PlanTile({
   const active = plan === value
   return (
     <label
-      className={`glass relative flex min-h-20 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-control-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+      className={`glass relative flex min-h-20 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
         disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
       } ${active ? 'text-accent' : ''}`}
     >
@@ -246,7 +246,7 @@ function PlanTile({
         <motion.span
           layoutId="plan-selection"
           aria-hidden="true"
-          className="absolute inset-0 rounded-control-lg bg-accent/10 ring-2 ring-accent ring-inset"
+          className="absolute inset-0 rounded-lg bg-accent/10 ring-2 ring-accent ring-inset"
           transition={
             reduceMotion
               ? { duration: 0 }

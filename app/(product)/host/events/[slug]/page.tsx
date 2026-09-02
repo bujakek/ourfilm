@@ -164,7 +164,7 @@ export default async function AdminEventPage({ params }: Props) {
         <ModerationGrid photos={tiles} slug={event.slug} locale={locale} />
       </section>
 
-      <details className="glass group print-hidden mt-9 rounded-3xl">
+      <details className="glass group print-hidden mt-9 rounded-2xl">
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
           {en ? 'Event details' : 'Esemény részletei'}
           <ChevronDown
@@ -282,7 +282,7 @@ function PlanBanner({
   return (
     <Link
       href={`/host/events/${slug}/settings?lang=${locale}`}
-      className="glass glass-hover print-hidden mt-4 flex items-center justify-between gap-4 rounded-3xl px-5 py-4"
+      className="glass glass-hover print-hidden mt-4 flex items-center justify-between gap-4 rounded-2xl px-5 py-4"
     >
       <span className="min-w-0">
         <span

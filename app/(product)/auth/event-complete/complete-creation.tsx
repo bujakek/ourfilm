@@ -215,7 +215,7 @@ function Outcome({
       // from. See `app/(product)/layout.tsx`.
       lang={localeTag[locale]}
     >
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-balance">
+      <h1 className="font-display text-2xl tracking-tight text-balance">
         {title}
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-pretty text-muted-foreground">

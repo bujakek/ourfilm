@@ -69,7 +69,7 @@ export function JoinForm({
       lang={localeTag[locale]}
     >
       {coverUrl ? (
-        <div className="relative mb-8 aspect-[4/3] w-full overflow-hidden rounded-3xl">
+        <div className="relative mb-8 aspect-[4/3] w-full overflow-hidden rounded-2xl">
           <Image
             src={coverUrl}
             alt={en ? `${eventName} cover photo` : `${eventName} borítóképe`}

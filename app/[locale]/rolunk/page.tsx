@@ -109,9 +109,9 @@ export default async function RolunkPage({ params }: Props) {
             {facts.map((fact) => (
               <article
                 key={fact.title}
-                className="glass flex h-full flex-col rounded-3xl p-7"
+                className="glass flex h-full flex-col rounded-2xl p-7"
               >
-                <span className="glass flex size-12 items-center justify-center rounded-2xl">
+                <span className="glass flex size-12 items-center justify-center rounded-lg">
                   <fact.icon
                     className="size-6 text-accent"
                     strokeWidth={1.6}
@@ -126,7 +126,7 @@ export default async function RolunkPage({ params }: Props) {
             ))}
           </div>
 
-          <div className="glass-strong mt-14 rounded-3xl p-8 sm:p-10">
+          <div className="glass-strong mt-14 rounded-2xl p-8 sm:p-10">
             <h2 className="text-2xl font-semibold tracking-tight text-balance">
               {current.question}
             </h2>

@@ -47,7 +47,7 @@ export function RevealSelector({
         return (
           <label
             key={choice}
-            className={`glass relative flex min-h-28 cursor-pointer flex-col justify-between overflow-hidden rounded-control-lg p-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+            className={`glass relative flex min-h-28 cursor-pointer flex-col justify-between overflow-hidden rounded-lg p-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
               active ? 'text-accent' : ''
             } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
           >
@@ -55,7 +55,7 @@ export function RevealSelector({
               <motion.span
                 layoutId={`${name}-selection`}
                 aria-hidden="true"
-                className="absolute inset-0 rounded-control-lg bg-accent/10 ring-2 ring-accent ring-inset"
+                className="absolute inset-0 rounded-lg bg-accent/10 ring-2 ring-accent ring-inset"
                 transition={
                   reduceMotion
                     ? { duration: 0 }

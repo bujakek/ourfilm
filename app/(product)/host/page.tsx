@@ -72,7 +72,7 @@ async function OwnedEventList({ locale }: { locale: 'en' | 'hu' }) {
 
   if (events.length === 0) {
     return (
-      <div className="glass mt-10 flex flex-col items-center gap-3 rounded-3xl px-6 py-10 text-center">
+      <div className="glass mt-10 flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center">
         <span className="flex size-14 items-center justify-center rounded-full bg-accent/20">
           <CalendarPlus className="size-7 text-accent" strokeWidth={1.8} />
         </span>

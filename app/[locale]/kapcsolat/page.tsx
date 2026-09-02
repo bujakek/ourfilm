@@ -76,8 +76,8 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
-          <div className="glass-strong mt-12 rounded-3xl p-8 sm:p-10">
-            <span className="glass flex size-12 items-center justify-center rounded-2xl">
+          <div className="glass-strong mt-12 rounded-2xl p-8 sm:p-10">
+            <span className="glass flex size-12 items-center justify-center rounded-lg">
               <Mail
                 className="size-6 text-accent"
                 strokeWidth={1.6}
@@ -100,8 +100,8 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <article className="glass flex h-full flex-col rounded-3xl p-7">
-              <span className="glass flex size-12 items-center justify-center rounded-2xl">
+            <article className="glass flex h-full flex-col rounded-2xl p-7">
+              <span className="glass flex size-12 items-center justify-center rounded-lg">
                 <HelpCircle
                   className="size-6 text-accent"
                   strokeWidth={1.6}
@@ -120,8 +120,8 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
               </Link>
             </article>
 
-            <article className="glass flex h-full flex-col rounded-3xl p-7">
-              <span className="glass flex size-12 items-center justify-center rounded-2xl">
+            <article className="glass flex h-full flex-col rounded-2xl p-7">
+              <span className="glass flex size-12 items-center justify-center rounded-lg">
                 <ReceiptText
                   className="size-6 text-accent"
                   strokeWidth={1.6}
@@ -195,9 +195,9 @@ function LegalRequestCard({
   const isWithdrawal = icon === 'withdrawal'
 
   return (
-    <article id={id} className="glass scroll-mt-24 rounded-3xl p-7 sm:p-8">
+    <article id={id} className="glass scroll-mt-24 rounded-2xl p-7 sm:p-8">
       <div className="flex items-start gap-4">
-        <span className="glass flex size-11 shrink-0 items-center justify-center rounded-2xl">
+        <span className="glass flex size-11 shrink-0 items-center justify-center rounded-lg">
           <Icon
             className="size-5 text-accent"
             strokeWidth={1.6}

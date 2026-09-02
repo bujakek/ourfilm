@@ -49,7 +49,7 @@ export function QrPreview({ locale }: { locale: Locale }) {
                 onChange={(e) => setName(e.target.value)}
                 maxLength={40}
                 placeholder={copy.placeholder}
-                className="glass w-full min-w-0 rounded-2xl px-5 py-3.5 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground/60 focus:border-accent"
+                className="glass w-full min-w-0 rounded-md px-5 py-3.5 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground/60 focus:border-accent"
               />
               <div className="mt-4 flex min-w-0 items-center gap-2 text-sm">
                 <span className="shrink-0 text-muted-foreground">

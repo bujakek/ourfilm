@@ -23,7 +23,7 @@ function PreviewStrip({ event, en }: { event: EventListItem; en: boolean }) {
       {event.previewUrls.map((url) => (
         <div
           key={url}
-          className="relative size-14 shrink-0 overflow-hidden rounded-xl"
+          className="relative size-14 shrink-0 overflow-hidden rounded-sm"
         >
           <Image
             src={url}
@@ -36,7 +36,7 @@ function PreviewStrip({ event, en }: { event: EventListItem; en: boolean }) {
         </div>
       ))}
       {overflow > 0 ? (
-        <span className="glass flex size-14 shrink-0 items-center justify-center rounded-xl text-sm font-medium text-muted-foreground">
+        <span className="glass flex size-14 shrink-0 items-center justify-center rounded-sm text-sm font-medium text-muted-foreground">
           +{overflow}
         </span>
       ) : null}

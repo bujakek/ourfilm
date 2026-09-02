@@ -19,24 +19,52 @@
   --color-accent-silver: var(--accent-silver);
   --color-destructive: var(--destructive);
   --color-ring: var(--ring);
+  --color-paper: var(--paper);
+  --color-paper-foreground: var(--paper-foreground);
+  --color-film: var(--film);
 
+  /* Three voices, and the rule for which is which is not a matter of taste:
+     Manrope says what the product says, the serif names things, and the mono
+     is reserved for what the camera counts.
+
+       --font-sans     body copy, labels, buttons, anything a guest types
+       --font-display  event names, page headlines, section headings.
+                       Instrument Serif ships 400 only — never pair it with a
+                       `font-semibold`, which only buys a synthetic bold — and
+                       never set it below 20px, where the modulation muddies.
+       --font-mono     frame counts, countdowns, guest counts, prices, slugs,
+                       timestamps, all-caps eyebrows. Never a sentence.
+
+     Martian Mono is wide. Large numerals (>=30px) want `tracking-[-0.05em]`
+     and uppercase labels (<=11px) want `0.14em`-`0.24em`; above about 14px in
+     running text it stops being legible as prose, which is the same rule as
+     "never a sentence" from the other side.
+
+     `--font-display` was aliased to Manrope for a long time, so the display
+     slot existed in the token layer and did nothing. */
   --font-sans:
     var(--font-manrope), 'Manrope Fallback', ui-sans-serif, system-ui,
     sans-serif;
   --font-display:
-    var(--font-manrope), 'Manrope Fallback', ui-sans-serif, system-ui,
-    sans-serif;
+    var(--font-instrument-serif), 'Instrument Serif Fallback', Georgia, serif;
+  --font-mono:
+    var(--font-martian-mono), 'Martian Mono Fallback', ui-monospace, monospace;
 
-  --radius-sm: 0.75rem;
-  --radius-md: 1rem;
-  --radius-lg: 1.25rem;
-  --radius-xl: 1.5rem;
-  --radius-2xl: 2rem;
-  --radius-control: 1rem;
-  --radius-control-sm: 0.875rem;
-  --radius-control-lg: 1.25rem;
-  --radius-card: 1.5rem;
-  --radius-hero: 2rem;
+  /* One ascending scale, and it has to stay ascending. The previous block
+     overrode `sm`-`2xl` but left `--radius-3xl` at Tailwind's default 1.5rem,
+     so `rounded-2xl` (2rem) was rounder than `rounded-3xl` — which is how the
+     join screen ended up with an input rounder than the card holding it, and
+     56px thumbnails at `rounded-xl` reading as blobs.
+
+     The comments are the mapping. A caller picking a step by its name rather
+     than by what it is on is how the scale inverts again. */
+  --radius-xs: 0.25rem; /* film frames, contact-sheet cells */
+  --radius-sm: 0.5rem; /* photo tiles, thumbnails */
+  --radius-md: 0.75rem; /* inputs, segmented controls */
+  --radius-lg: 0.875rem; /* selection tiles, icon buttons */
+  --radius-xl: 1.25rem; /* primary buttons, sheets */
+  --radius-2xl: 1.75rem; /* cards, panels */
+  --radius-3xl: 2.25rem; /* the largest surface on a screen */
 
   --animate-float-slow: float-slow 9s ease-in-out infinite;
   --animate-float-slower: float-slow 13s ease-in-out infinite;
@@ -55,6 +83,15 @@
   --border-strong: rgba(255, 255, 255, 0.16);
   --primary: #f7f7f7;
   --primary-foreground: #050505;
+  /* Lilac means the film is live. The capture-window pill, the frames-remaining
+     bar, the active step marker, the current selection. Nothing else.
+
+     It used to be on the nav aperture, the section-label icons, the prices, the
+     links, the radio rings, the settings gear, the calendar and clock glyphs
+     and the "no card required" badge — nine unrelated things, which is the same
+     as signalling nothing. Anything decorative that loses it takes
+     `--accent-silver` or plain `--muted-foreground`; prices go to
+     `--foreground` in the mono; links keep `--foreground` and an underline. */
   --accent: #c3b6ff;
   --accent-blue: #9db4ff;
   --accent-silver: #d8dae5;
@@ -67,7 +104,15 @@
      read as a refusal. */
   --destructive: #ff8a8a;
   --ring: rgba(195, 182, 255, 0.5);
-  --radius: 1.25rem;
+
+  /* Paper and film: the two materials that are not glass. Values live here
+     beside the rest of the palette; the utilities that spend them are at the
+     bottom of the file. */
+  --paper: #fbfaf7;
+  --paper-foreground: #141312;
+  --film: #101012;
+
+  --radius: 0.875rem;
 }
 
 @layer base {
@@ -135,7 +180,52 @@
     border: 1px solid var(--border);
   }
 
-  /* Liquid glass surface */
+  /* Paper. The material of anything issued or printed: the QR sheet, a guest's
+     stub, the price. It started as one hardcoded gradient inside
+     `components/host/qr-card.tsx`, whose own comment already called it paper —
+     the strongest-designed surface in the product, and it stopped at that one
+     sheet.
+
+     Deliberately NOT a filtered surface, and that is the point rather than a
+     saving: paper has to look identical on a phone, in a screenshot and out of
+     a laser printer, so it must not depend on a `backdrop-filter` that the
+     `(pointer: coarse)` block below switches off. Do not add one. */
+  .paper {
+    background: linear-gradient(180deg, var(--paper) 0%, #efece6 100%);
+    color: var(--paper-foreground);
+    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.9);
+  }
+  /* A rule drawn on paper, and the muted ink on it. Both are the paper's own
+     near-black at low alpha rather than a grey, so they hold their relationship
+     to the sheet at any brightness. `.paper-muted` is ~5.4:1 on the gradient's
+     darker end and passes AA for body text. */
+  .paper-rule {
+    border-color: rgba(20, 19, 18, 0.12);
+  }
+  .paper-muted {
+    color: rgba(20, 19, 18, 0.55);
+  }
+
+  /* Film. The strip a roll is drawn on, and the perforations down its edges.
+     Darker than `--background` so the strip reads as a thing lying on the page
+     rather than a hole cut in it. Unfiltered for the same reason as `.paper`. */
+  .film {
+    background: var(--film);
+  }
+  .film-perf {
+    background: rgba(255, 255, 255, 0.13);
+  }
+
+  /* Liquid glass surface.
+
+     `.glass` itself is unchanged — the compositing notes below are hard-won and
+     still correct. What is narrowing is *where it is allowed*: inert secondary
+     surfaces only, meaning secondary buttons, disabled tiles and the nav pill.
+     It stops being the text input, the selection tile, the suggestion chip and
+     the card, because a material every surface wears is a material that ranks
+     none of them. Those become a 1px `border-border` outline on the page
+     background, which is both cheaper to composite and legible as a hierarchy.
+     `.paper` above is what a surface wears when it is the subject. */
   .glass {
     background: linear-gradient(
       180deg,

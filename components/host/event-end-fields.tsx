@@ -27,7 +27,7 @@ export function EventEndFields({
       <button
         type="button"
         onClick={onChooseDay}
-        className="glass hover:border-strong flex min-h-16 w-full items-center gap-4 rounded-control-lg px-4 text-left transition-colors"
+        className="glass hover:border-strong flex min-h-16 w-full items-center gap-4 rounded-lg px-4 text-left transition-colors"
       >
         <CalendarDays
           className="size-5 shrink-0 text-accent"
@@ -48,7 +48,7 @@ export function EventEndFields({
         />
       </button>
 
-      <label className="glass hover:border-strong relative flex min-h-16 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-control-lg px-4 text-left transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
+      <label className="glass hover:border-strong relative flex min-h-16 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-lg px-4 text-left transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
         <Clock3
           className="size-5 shrink-0 text-accent"
           strokeWidth={1.8}

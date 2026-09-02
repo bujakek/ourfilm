@@ -100,20 +100,20 @@ export function MonthCalendar({
           onClick={() => step(-1)}
           disabled={!canGoBack}
           aria-label={locale === 'en' ? 'Previous month' : 'Előző hónap'}
-          className="flex size-11 items-center justify-center rounded-control-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
         {/* aria-live so a screen reader hears the month change: the arrows move
             focus nowhere, so nothing else would announce it. */}
-        <h2 aria-live="polite" className="font-display text-lg font-medium">
+        <h2 aria-live="polite" className="text-lg font-medium">
           {heading}
         </h2>
         <button
           type="button"
           onClick={() => step(1)}
           aria-label={locale === 'en' ? 'Next month' : 'Következő hónap'}
-          className="flex size-11 items-center justify-center rounded-control-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>
@@ -157,11 +157,12 @@ export function MonthCalendar({
                   if (outside) setVisible(monthOf(day))
                 }}
                 className={[
-                  // An explicit radius, not `rounded-xl`: this project rebinds
-                  // the whole scale (`--radius-xl` is 1.5rem), which on a 44px
-                  // cell rounds it into a circle. The selected day is a
-                  // squircle, and that shape is one of the two signals.
-                  'flex size-11 items-center justify-center rounded-control-sm text-base transition-colors',
+                  // `rounded-lg` (0.875rem), not `rounded-xl`: this project
+                  // rebinds the whole scale, and `--radius-xl` is 1.25rem,
+                  // which on a 44px cell is most of the way to a circle. The
+                  // selected day is a squircle, and that shape is one of the
+                  // two signals.
+                  'flex size-11 items-center justify-center rounded-lg text-base transition-colors',
                   // Two signals, not one: the selected day is the only cell
                   // wearing a ring, so the choice survives a colourblind reader
                   // and a phone in bright sun.

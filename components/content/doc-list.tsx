@@ -27,7 +27,7 @@ export function DocList({
         <li key={doc.href}>
           <Link
             href={doc.href}
-            className="glass glass-hover group flex flex-col rounded-3xl p-7"
+            className="glass glass-hover group flex flex-col rounded-2xl p-7"
           >
             {showDate ? (
               <time

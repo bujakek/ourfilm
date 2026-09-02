@@ -150,7 +150,7 @@ export function Navbar({ locale }: { locale: Locale }) {
         inert={!open}
       >
         <div className="absolute inset-0 -z-10 bg-background/80 backdrop-blur-2xl" />
-        <div className="glass-strong flex flex-col gap-1 rounded-3xl p-4">
+        <div className="glass-strong flex flex-col gap-1 rounded-2xl p-4">
           {navLinks.map((link) => (
             <Link
               key={link.href}

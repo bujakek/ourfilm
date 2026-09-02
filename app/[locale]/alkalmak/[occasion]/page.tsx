@@ -82,7 +82,7 @@ export default async function OccasionPage({ params }: Props) {
             ))}
           </div>
 
-          <div className="glass-strong mt-14 rounded-3xl p-8 sm:p-10">
+          <div className="glass-strong mt-14 rounded-2xl p-8 sm:p-10">
             <h2 className="text-2xl font-semibold tracking-tight text-balance">
               {copy.cta.heading}
             </h2>

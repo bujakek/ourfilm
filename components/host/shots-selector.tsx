@@ -29,7 +29,7 @@ export function ShotsSelector({
         return (
           <label
             key={option}
-            className={`glass relative flex min-h-16 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-control has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${pendingClass(
+            className={`glass relative flex min-h-16 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${pendingClass(
               disabled,
             )} ${active ? 'text-accent' : ''}`}
           >
@@ -37,7 +37,7 @@ export function ShotsSelector({
               <motion.span
                 layoutId={`${name}-selection`}
                 aria-hidden="true"
-                className="absolute inset-0 rounded-control bg-accent/10 ring-2 ring-accent ring-inset"
+                className="absolute inset-0 rounded-lg bg-accent/10 ring-2 ring-accent ring-inset"
                 transition={
                   reduceMotion
                     ? { duration: 0 }

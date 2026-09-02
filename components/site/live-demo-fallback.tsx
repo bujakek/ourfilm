@@ -113,7 +113,7 @@ export function LiveDemoFallback() {
                   <div
                     key={`${p.src}-${i}`}
                     className={cn(
-                      'relative aspect-square overflow-hidden rounded-2xl',
+                      'relative aspect-square overflow-hidden rounded-sm',
                       uploaded &&
                         p.src === newPhoto.src &&
                         'ring-2 ring-accent',

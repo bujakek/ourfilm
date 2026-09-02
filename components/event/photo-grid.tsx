@@ -34,7 +34,7 @@ export function PhotoGrid({
               type="button"
               onClick={() => setOpenIndex(i)}
               whileTap={{ scale: 0.975 }}
-              className="group relative block aspect-square w-full overflow-hidden rounded-2xl"
+              className="group relative block aspect-square w-full overflow-hidden rounded-sm"
             >
               <Image
                 src={photo.thumbUrl}

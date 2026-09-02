@@ -15,7 +15,7 @@ export function ModerationGridSkeleton() {
       {Array.from({ length: 6 }, (_, i) => (
         <li
           key={i}
-          className="skeleton aspect-square animate-pulse rounded-2xl"
+          className="skeleton aspect-square animate-pulse rounded-sm"
         />
       ))}
     </ul>

@@ -22,7 +22,7 @@ function StatCard({ stat, delay }: { stat: Stat; delay: number }) {
   return (
     <div
       ref={ref}
-      className="glass glass-hover flex flex-col items-center rounded-3xl px-6 py-8 text-center"
+      className="glass glass-hover flex flex-col items-center rounded-2xl px-6 py-8 text-center"
       style={{ transitionDelay: `${delay}ms` }}
     >
       <span className="text-gradient text-4xl font-semibold tracking-tight sm:text-5xl">
