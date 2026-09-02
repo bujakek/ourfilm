@@ -19,6 +19,11 @@ export const marketingCopy = {
       create: 'Create your camera',
       how: 'See how it works',
       helper: 'No app. No guest accounts.',
+      /** The one word the headline turns on, italicised inside `titleEnd`. */
+      emphasis: 'guests’',
+      /** The format, in the counting voice. All four are enforced in the
+       *  product — see the landing-page promises in `CLAUDE.md`. */
+      claims: ['NO APP', 'NO SIGN-UP', 'NO PREVIEW', 'FREE UP TO 5 GUESTS'],
       gallery: 'Shared gallery',
       couple: 'Anna & Peter',
     },
@@ -135,6 +140,13 @@ export const marketingCopy = {
       create: 'Hozd létre ingyen',
       how: 'Így működik',
       helper: 'Nincs app. Nincs vendégregisztráció.',
+      emphasis: 'vendégeitek',
+      claims: [
+        'NINCS APP',
+        'NINCS REGISZTRÁCIÓ',
+        'NINCS ELŐNÉZET',
+        '5 VENDÉGIG INGYEN',
+      ],
       gallery: 'Közös galéria',
       couple: 'Anna & Péter',
     },

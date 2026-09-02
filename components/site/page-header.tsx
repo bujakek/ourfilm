@@ -22,10 +22,13 @@ export function PageHeader({ eyebrow, title, lead }: PageHeaderProps) {
   return (
     <section className="relative px-4 pt-32 pb-10 sm:px-6 sm:pt-40 sm:pb-14">
       <div className="mx-auto max-w-3xl">
-        <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
+        {/* A label, not a chip. The glass pill made every page open with the
+            same material its cards were made of, and the lilac on it was one
+            of the nine decorative uses that left the colour meaning nothing. */}
+        <p className="font-mono text-[10px] font-medium tracking-[0.24em] text-accent">
           {eyebrow}
-        </span>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+        </p>
+        <h1 className="mt-5 font-display text-[40px] leading-[1.02] tracking-[-0.015em] text-balance sm:text-[58px]">
           {title}
         </h1>
         {lead ? (

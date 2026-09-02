@@ -44,13 +44,20 @@ export function Navbar({ locale }: { locale: Locale }) {
   }, [open])
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
+    // A full-width bar on a rule, not a floating pill. The hero underneath is
+    // one photograph now, and a pill hovering over it was a second object
+    // competing with the ticket for the same attention.
+    //
+    // `.glass-nav` stays as the material, and so does its `saturate(220%)`-only
+    // touch-device override: this is still the one surface in the product that
+    // genuinely sits over photography, which is the case that comment in
+    // `globals.css` was written for.
+    <header className="fixed inset-x-0 top-0 z-50">
       <nav
         className={cn(
-          'glass-nav flex w-full max-w-4xl items-center rounded-full',
-          'gap-2 py-2 pr-2 pl-4 sm:gap-6 sm:py-2.5 sm:pr-3 sm:pl-5',
-          scrolled &&
-            'glass-nav-scrolled py-1.5 pl-3 sm:gap-4 sm:py-1.5 sm:pr-2 sm:pl-4',
+          'glass-nav flex w-full items-center rounded-none border-x-0 border-t-0 border-b border-border',
+          'gap-2 px-4 py-2.5 sm:gap-6 sm:px-6 sm:py-3',
+          scrolled && 'glass-nav-scrolled py-2 sm:py-2',
         )}
         aria-label={copy.aria}
       >
@@ -66,7 +73,7 @@ export function Navbar({ locale }: { locale: Locale }) {
             )}
           >
             <Aperture
-              className="size-4 text-accent"
+              className="size-4 text-accent-silver"
               strokeWidth={1.6}
               aria-hidden="true"
             />
@@ -81,10 +88,7 @@ export function Navbar({ locale }: { locale: Locale }) {
             <li key={link.href}>
               <Link
                 href={localePath(locale, link.href)}
-                className={cn(
-                  'rounded-full text-foreground/80 transition-all duration-200 hover:text-foreground',
-                  scrolled ? 'px-2.5 py-1.5 text-[13px]' : 'px-3 py-2 text-sm',
-                )}
+                className="rounded-full px-3 py-2 font-mono text-[10.5px] font-medium tracking-[0.14em] text-foreground/70 transition-colors hover:text-foreground"
               >
                 {link.label}
               </Link>
@@ -94,10 +98,7 @@ export function Navbar({ locale }: { locale: Locale }) {
 
         <Link
           href={`${LOGIN_PATH}?lang=${locale}`}
-          className={cn(
-            'hidden shrink-0 rounded-full text-foreground/80 transition-all duration-200 hover:text-foreground md:inline-flex',
-            scrolled ? 'px-2.5 py-1.5 text-[13px]' : 'px-3 py-2 text-sm',
-          )}
+          className="hidden shrink-0 rounded-full px-3 py-2 font-mono text-[10.5px] font-medium tracking-[0.14em] text-foreground/70 transition-colors hover:text-foreground md:inline-flex"
         >
           {copy.login}
         </Link>
