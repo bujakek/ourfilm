@@ -28,25 +28,49 @@ export type SignedUpload = { path: string; token: string }
 export async function uploadShotRenders({
   prepared,
   uploads,
+  onProgress,
 }: {
   prepared: PreparedPhoto
   uploads: { full: SignedUpload; view: SignedUpload; thumb: SignedUpload }
+  /**
+   * Called with the fraction of the shot's bytes that have landed, weighted by
+   * render size, as each render completes.
+   *
+   * Three coarse steps rather than a byte-level readout: `uploadToSignedUrl`
+   * goes through `fetch`, which reports no upload progress at all, and the
+   * alternative is hand-rolling the signed-URL request over XHR to get a
+   * number that only feeds an animation. The renders differ in size by nearly
+   * two orders of magnitude, so weighting by bytes makes those three steps
+   * land roughly where the time goes — the ~40KB thumbnail early, the ~2MB
+   * master last.
+   */
+  onProgress?: (fraction: number) => void
 }): Promise<void> {
   const supabase = createGuestClient()
 
+  const renders = [
+    [uploads.full, prepared.full],
+    [uploads.view, prepared.view],
+    [uploads.thumb, prepared.thumb],
+  ] as const
+
+  const total = renders.reduce((sum, [, body]) => sum + body.size, 0)
+  let landed = 0
+
   const puts = await Promise.all(
-    (
-      [
-        [uploads.full, prepared.full],
-        [uploads.view, prepared.view],
-        [uploads.thumb, prepared.thumb],
-      ] as const
-    ).map(([slot, body]) =>
+    renders.map(([slot, body]) =>
       supabase.storage
         .from(PHOTO_BUCKET)
         .uploadToSignedUrl(slot.path, slot.token, body, {
           contentType: 'image/jpeg',
           cacheControl: '31536000',
+        })
+        .then((result) => {
+          if (!result.error) {
+            landed += body.size
+            onProgress?.(total > 0 ? landed / total : 1)
+          }
+          return result
         }),
     ),
   )

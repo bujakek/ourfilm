@@ -1,10 +1,12 @@
 'use client'
 
+import { AnimatePresence, motion, type Transition } from 'motion/react'
 import Image from 'next/image'
 import { useEffect, useRef } from 'react'
 
 import type { Frame } from '@/lib/frames'
 import type { Locale } from '@/lib/i18n'
+import { T } from '@/lib/motion'
 
 /**
  * The roll, drawn as film.
@@ -31,10 +33,29 @@ const CELL = 52
 const CELL_GAP = 4
 const PERFS_PER_FRAME = 4
 
+/**
+ * A frame that has been claimed but not yet confirmed.
+ *
+ * `previewUrl` is an object URL for the file the OS camera just handed over —
+ * the only copy of the photo that exists on this device, and the reason there
+ * is no spinner anywhere on this screen. The cell fills with it immediately at
+ * full blur and resolves as the bytes land, so the development *is* the
+ * progress indicator.
+ */
+export type PendingFrame = {
+  previewUrl: string
+  /** 0–1, the fraction of the shot's bytes that have reached Storage. */
+  progress: number
+  /** True only once `commit_shot` has returned. */
+  confirmed: boolean
+}
+
 export function FilmStrip({
   frames,
   total,
   locale,
+  pending = null,
+  entrance,
   className,
 }: {
   /** The exposed frames, oldest first. */
@@ -42,10 +63,16 @@ export function FilmStrip({
   /** The host's roll length — how many cells the strip has in all. */
   total: number
   locale: Locale
+  pending?: PendingFrame | null
+  /** How the perforation rows arrive. See the note at the call site. */
+  entrance?: Transition
   className?: string
 }) {
   const scroller = useRef<HTMLDivElement>(null)
-  const exposed = frames.length
+  // A claimed frame is a spent frame: `reserve_shot` took it inside the row
+  // lock before a single byte was uploaded, so it counts here the moment the
+  // shutter is handed off, not when the server confirms.
+  const exposed = frames.length + (pending ? 1 : 0)
 
   useEffect(() => {
     const el = scroller.current
@@ -83,7 +110,7 @@ export function FilmStrip({
         aria-hidden="true"
         className="film [scroll-snap-type:x_mandatory] [scrollbar-width:none] overflow-x-auto rounded-xs py-1.5 [&::-webkit-scrollbar]:hidden"
       >
-        <Perforations count={total * PERFS_PER_FRAME} />
+        <Perforations count={total * PERFS_PER_FRAME} entrance={entrance} />
 
         <div className="flex gap-1 px-2 py-1.5">
           {cells.map((frame, i) =>
@@ -103,6 +130,8 @@ export function FilmStrip({
                   />
                 ) : null}
               </span>
+            ) : pending && i === frames.length ? (
+              <DevelopingCell key={`frame-${i}`} pending={pending} />
             ) : (
               <span
                 key={`frame-${i}`}
@@ -114,21 +143,89 @@ export function FilmStrip({
           )}
         </div>
 
-        <Perforations count={total * PERFS_PER_FRAME} />
+        <Perforations count={total * PERFS_PER_FRAME} entrance={entrance} />
       </div>
     </div>
   )
 }
 
-function Perforations({ count }: { count: number }) {
+/**
+ * The frame the guest just spent, developing.
+ *
+ * It never reaches clear on its own. The blur bottoms out short of zero while
+ * the request is still open and only snaps clear on the server's 200 — because
+ * a photograph that finished developing above a pending upload is a lie, and
+ * this cell is the only thing telling the guest their shot is safe.
+ */
+function DevelopingCell({ pending }: { pending: PendingFrame }) {
+  const { previewUrl, progress, confirmed } = pending
+
   return (
-    <div className="flex gap-1.5 px-2">
+    <span className="relative size-13 shrink-0 snap-start overflow-hidden rounded-xs bg-white/8">
+      <motion.span
+        className="absolute inset-0 block"
+        initial={{ filter: 'grayscale(1) blur(6px)' }}
+        animate={{
+          filter: confirmed
+            ? 'grayscale(0) blur(0px)'
+            : `grayscale(${1 - 0.6 * progress}) blur(${6 - 4.6 * progress}px)`,
+        }}
+        transition={confirmed ? T.settle : T.develop}
+      >
+        {/* A local object URL, so `next/image` has nothing to optimise and no
+            dimensions to reason about. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={previewUrl} alt="" className="size-full object-cover" />
+      </motion.span>
+
+      <AnimatePresence>
+        {confirmed ? (
+          <motion.span
+            initial={{ opacity: 0, scale: 1.14 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={T.settle}
+            className="absolute inset-0 rounded-xs ring-[1.5px] ring-accent ring-inset"
+          />
+        ) : null}
+      </AnimatePresence>
+    </span>
+  )
+}
+
+function Perforations({
+  count,
+  entrance,
+}: {
+  count: number
+  entrance?: Transition
+}) {
+  if (!entrance) {
+    return (
+      <div className="flex gap-1.5 px-2">
+        {Array.from({ length: count }, (_, i) => (
+          <span
+            key={i}
+            className="film-perf h-[5px] w-2 shrink-0 rounded-[1.5px]"
+          />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <motion.div
+      className="flex gap-1.5 px-2"
+      initial={{ x: -16, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={entrance}
+    >
       {Array.from({ length: count }, (_, i) => (
         <span
           key={i}
           className="film-perf h-[5px] w-2 shrink-0 rounded-[1.5px]"
         />
       ))}
-    </div>
+    </motion.div>
   )
 }
