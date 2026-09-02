@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { buttonVariants } from '@/components/ui/button'
 
 /**
  * The components an article can use without importing anything.
@@ -31,10 +32,7 @@ export function Cta({
           {children}
         </div>
       ) : null}
-      <Link
-        href={href}
-        className="btn-shine mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground"
-      >
+      <Link href={href} className={buttonVariants({ className: 'mt-5' })}>
         {label}
       </Link>
     </aside>

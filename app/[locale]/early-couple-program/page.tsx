@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
 import { notFound } from 'next/navigation'
 
 const programPath = '/early-couple-program'
@@ -191,10 +192,7 @@ export default async function EarlyCoupleProgramPage({
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-3xl">
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-            <Link
-              href="#apply"
-              className="btn-shine inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
-            >
+            <Link href="#apply" className={buttonVariants()}>
               {current.cta}
             </Link>
             <p className="text-xs leading-relaxed text-muted-foreground">

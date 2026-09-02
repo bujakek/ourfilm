@@ -5,6 +5,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { useRef, useState } from 'react'
 
 import { Sheet } from '@/components/host/sheet'
+import { Button } from '@/components/ui/button'
 import type { Locale } from '@/lib/i18n'
 
 /**
@@ -76,14 +77,15 @@ export function QrCard({
 
   return (
     <>
-      <button
+      <Button
         type="button"
         onClick={() => setOpen(true)}
-        className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-base font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
+        size="lg"
+        className="w-full px-4"
       >
         <QrCode className="size-5" strokeWidth={1.8} aria-hidden="true" />
         {en ? 'QR code' : 'QR-kód'}
-      </button>
+      </Button>
 
       <Sheet
         open={open}
@@ -129,14 +131,15 @@ export function QrCard({
           </div>
         </div>
 
-        <button
+        <Button
           type="button"
           onClick={downloadQrCode}
-          className="glass glass-hover mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold"
+          variant="secondary"
+          className="mt-3 w-full"
         >
           <Download className="size-4" aria-hidden="true" />
           {en ? 'Download QR code' : 'QR-kód letöltése'}
-        </button>
+        </Button>
       </Sheet>
     </>
   )

@@ -5,6 +5,7 @@ import { useGuestState } from '@/lib/use-guest-state'
 import { Sparkles, X } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
+import { buttonVariants } from '@/components/ui/button'
 
 /**
  * Invites a guest who has seen an album to host their own event next time.
@@ -57,7 +58,7 @@ export function CreateOwnAlbum() {
 
       <Link
         href="/host/login"
-        className="btn-shine mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
+        className={buttonVariants({ className: 'mt-5 w-full' })}
       >
         Saját album indítása — ingyen
       </Link>

@@ -25,6 +25,7 @@ import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventPriceLabel } from '@/lib/pricing'
 import { eventUrl } from '@/lib/site'
+import { buttonVariants } from '@/components/ui/button'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,7 +95,7 @@ export default async function AdminEventPage({ params }: Props) {
             href={`/host/events/${event.slug}/settings?lang=${locale}`}
             aria-label={en ? 'Settings' : 'Beállítások'}
             title={en ? 'Settings' : 'Beállítások'}
-            className="glass glass-hover inline-flex size-11 shrink-0 items-center justify-center rounded-full"
+            className={buttonVariants({ variant: 'secondary', size: 'icon' })}
           >
             <Settings className="size-5 text-accent" strokeWidth={1.8} />
           </Link>

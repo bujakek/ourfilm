@@ -1,15 +1,14 @@
 'use client'
 
-import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
 import { useState } from 'react'
 
+import { EventEndFields } from '@/components/host/event-end-fields'
 import { MonthCalendar } from '@/components/host/month-calendar'
 import { Sheet } from '@/components/host/sheet'
 import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
-import { formatEventDate } from '@/lib/format'
 import type { Locale } from '@/lib/i18n'
 
 /**
@@ -65,65 +64,14 @@ export function StepEnd({
         cta={en ? 'Continue' : 'Tovább'}
         ctaDisabled={!canAdvance}
       >
-        <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => setCalendarOpen(true)}
-            className="glass flex min-h-20 w-full items-center gap-4 rounded-2xl px-5 text-left"
-          >
-            <CalendarDays
-              className="size-5 shrink-0 text-accent"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-xs tracking-[0.2em] text-muted-foreground/70">
-                {en ? 'DATE' : 'DÁTUM'}
-              </span>
-              <span className="mt-1 block text-base font-medium">
-                {formatEventDate(day, locale)}
-              </span>
-            </span>
-            <ChevronRight
-              className="size-5 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-          </button>
-
-          {/* The card is ours, the picker is the phone's. Keeping the native
-              input over the whole surface gives iOS and Android a direct tap
-              target without exposing their differently styled text fields. */}
-          <label className="glass relative flex min-h-20 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-2xl px-5 text-left has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
-            <Clock3
-              className="size-5 shrink-0 text-accent"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-xs tracking-[0.2em] text-muted-foreground/70">
-                {en ? 'TIME' : 'IDŐPONT'}
-              </span>
-              <span className="mt-1 block text-base font-medium tabular-nums">
-                {time}
-              </span>
-            </span>
-            <ChevronRight
-              className="size-5 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              type="time"
-              step={60}
-              required
-              aria-label={
-                en ? 'Event end time' : 'Az esemény végének időpontja'
-              }
-              value={time}
-              onChange={(event) => setTime(event.target.value)}
-              className="absolute inset-0 size-full cursor-pointer opacity-0"
-            />
-          </label>
-        </div>
+        <EventEndFields
+          day={day}
+          time={time}
+          onChooseDay={() => setCalendarOpen(true)}
+          onTimeChange={setTime}
+          locale={locale}
+          timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
+        />
       </OnboardingShell>
 
       <Sheet

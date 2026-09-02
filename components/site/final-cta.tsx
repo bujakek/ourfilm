@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
+import { buttonVariants } from '@/components/ui/button'
 
 const floatingPhotos = [
   {
@@ -84,7 +85,7 @@ export function FinalCta({ locale }: { locale: Locale }) {
               <div className="mt-9 flex justify-center">
                 <Link
                   href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-                  className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+                  className={buttonVariants({ size: 'lg' })}
                 >
                   {copy.create}
                 </Link>

@@ -6,6 +6,7 @@ import { LoadingStatus } from '@/components/loading-status'
 import { localeTag, type Locale } from '@/lib/i18n'
 import { clearDraft, loadDraft, saveDraft } from '@/lib/event-draft'
 import { createEventFromDraft } from '@/app/(product)/host/events/new/actions'
+import { buttonVariants } from '@/components/ui/button'
 
 /**
  * What this screen can end up showing. Success is not among them: it navigates
@@ -222,7 +223,7 @@ function Outcome({
       </p>
       <a
         href={href}
-        className="btn-shine mt-7 inline-flex min-h-14 items-center justify-center rounded-2xl bg-primary px-7 text-base font-semibold text-primary-foreground"
+        className={buttonVariants({ size: 'lg', className: 'mt-7' })}
       >
         {cta}
       </a>

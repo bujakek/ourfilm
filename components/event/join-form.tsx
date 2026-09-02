@@ -10,6 +10,8 @@ import {
   type JoinState,
 } from '@/app/(product)/e/[slug]/actions'
 import { type Locale, localeTag } from '@/lib/i18n'
+import { Button } from '@/components/ui/button'
+import { inputClassName } from '@/components/ui/input'
 
 const initial: JoinState = { error: null }
 
@@ -125,7 +127,7 @@ export function JoinForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={en ? 'Enter your name' : 'Írd be a neved'}
-            className="glass min-h-14 w-full rounded-2xl px-5 text-base outline-none placeholder:text-muted-foreground/60 focus:border-accent"
+            className={inputClassName}
           />
         </div>
 
@@ -133,10 +135,11 @@ export function JoinForm({
           <p className="text-sm text-destructive">{state.error}</p>
         ) : null}
 
-        <button
+        <Button
           type="submit"
           disabled={pending || !name.trim()}
-          className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-semibold text-primary-foreground disabled:opacity-60"
+          size="lg"
+          className="w-full"
         >
           {pending ? (
             <Loader2 className="size-5 animate-spin" />
@@ -150,7 +153,7 @@ export function JoinForm({
             : en
               ? 'Join event'
               : 'Csatlakozom'}
-        </button>
+        </Button>
 
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
           {en

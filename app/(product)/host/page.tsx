@@ -6,6 +6,7 @@ import { CalendarPlus, LogOut, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { Button, buttonVariants } from '@/components/ui/button'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,19 +45,16 @@ export default async function AdminPage({
         <div className="flex items-center gap-2">
           <Link
             href={`/host/events/new?lang=${locale}`}
-            className="btn-shine inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
+            className={buttonVariants({ size: 'sm' })}
           >
             <Plus className="size-4" strokeWidth={2.2} />
             {en ? 'New event' : 'Új esemény'}
           </Link>
           <form action={`/auth/signout?lang=${locale}`} method="post">
-            <button
-              type="submit"
-              className="glass glass-hover inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-medium"
-            >
+            <Button type="submit" variant="secondary" size="sm">
               <LogOut className="size-4" />
               {en ? 'Sign out' : 'Kilépés'}
-            </button>
+            </Button>
           </form>
         </div>
       </div>
@@ -88,7 +86,7 @@ async function OwnedEventList({ locale }: { locale: 'en' | 'hu' }) {
         </p>
         <Link
           href={`/host/events/new?lang=${locale}`}
-          className="btn-shine mt-3 inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground"
+          className={buttonVariants({ className: 'mt-3' })}
         >
           <Plus className="size-4" strokeWidth={2.2} />
           {en ? 'Create your first event' : 'Első esemény létrehozása'}

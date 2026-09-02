@@ -5,6 +5,7 @@ import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { HeroQrDemo } from './hero-qr-demo'
+import { buttonVariants } from '@/components/ui/button'
 
 const galleryImages = [
   {
@@ -60,13 +61,13 @@ export function Hero({ locale }: { locale: Locale }) {
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-              className="btn-shine inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+              className={buttonVariants()}
             >
               {copy.create}
             </Link>
             <a
               href="#how-it-works"
-              className="glass glass-hover inline-flex items-center justify-center rounded-full px-7 py-3.5 text-sm font-semibold text-foreground"
+              className={buttonVariants({ variant: 'secondary' })}
             >
               {copy.how}
             </a>

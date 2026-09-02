@@ -9,7 +9,9 @@ import {
   OnboardingShell,
   type OnboardingNav,
 } from '@/components/host/onboarding/onboarding-shell'
-import { DEFAULT_SHOTS, SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
+import { ShotsSelector } from '@/components/host/shots-selector'
+import { SwitchTrack } from '@/components/ui/switch'
+import type { ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { eventPriceLabel } from '@/lib/pricing'
 import type { Locale } from '@/lib/i18n'
@@ -114,54 +116,13 @@ export function StepGuests({
           <legend className="sr-only">
             {en ? 'Shots per guest' : 'Képek száma vendégenként'}
           </legend>
-          <div className="mt-3 grid grid-cols-5 gap-2">
-            {SHOT_OPTIONS.map((option) => {
-              const active = option === shots
-              return (
-                <label
-                  key={option}
-                  className={`glass relative flex min-h-16 cursor-pointer items-center justify-center overflow-hidden rounded-[1.1rem] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-                    active
-                      ? 'text-lg font-bold text-accent'
-                      : 'text-base font-medium'
-                  }`}
-                >
-                  {active ? (
-                    <motion.span
-                      layoutId="shots-selection"
-                      aria-hidden="true"
-                      className="absolute inset-0 rounded-[1.1rem] bg-accent/10 ring-2 ring-accent ring-inset"
-                      transition={
-                        reduceMotion
-                          ? { duration: 0 }
-                          : { type: 'spring', stiffness: 520, damping: 38 }
-                      }
-                    />
-                  ) : null}
-                  <input
-                    type="radio"
-                    name="shots_choice"
-                    value={option}
-                    checked={active}
-                    onChange={() => setShots(option)}
-                    className="sr-only"
-                  />
-                  <motion.span
-                    className="relative z-10"
-                    animate={{ scale: active ? 1.06 : 1 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.16 }}
-                  >
-                    {option}
-                  </motion.span>
-                  {option === DEFAULT_SHOTS ? (
-                    <span className="sr-only">
-                      {' '}
-                      — {en ? 'recommended' : 'ajánlott'}
-                    </span>
-                  ) : null}
-                </label>
-              )
-            })}
+          <div className="mt-3">
+            <ShotsSelector
+              value={shots}
+              onChange={setShots}
+              name="shots_choice"
+              locale={locale}
+            />
           </div>
         </fieldset>
 
@@ -174,26 +135,7 @@ export function StepGuests({
             onClick={() => setGuestsCanView(!guestsCanView)}
             className="mt-3 flex w-full items-center gap-3 text-left"
           >
-            <motion.span
-              aria-hidden="true"
-              animate={{
-                backgroundColor: guestsCanView
-                  ? 'var(--color-accent)'
-                  : 'color-mix(in oklab, var(--color-muted-foreground) 30%, transparent)',
-              }}
-              transition={{ duration: reduceMotion ? 0 : 0.18 }}
-              className="relative h-7 w-12 shrink-0 rounded-full"
-            >
-              <motion.span
-                className="absolute top-1 left-1 size-5 rounded-full bg-white"
-                animate={{ x: guestsCanView ? 20 : 0 }}
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 600, damping: 38 }
-                }
-              />
-            </motion.span>
+            <SwitchTrack checked={guestsCanView} />
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={guestsCanView ? 'visible' : 'private'}
@@ -296,7 +238,7 @@ function PlanTile({
   const active = plan === value
   return (
     <label
-      className={`glass relative flex min-h-20 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[1.25rem] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+      className={`glass relative flex min-h-20 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-control-lg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
         disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
       } ${active ? 'text-accent' : ''}`}
     >
@@ -304,7 +246,7 @@ function PlanTile({
         <motion.span
           layoutId="plan-selection"
           aria-hidden="true"
-          className="absolute inset-0 rounded-[1.25rem] bg-accent/10 ring-2 ring-accent ring-inset"
+          className="absolute inset-0 rounded-control-lg bg-accent/10 ring-2 ring-accent ring-inset"
           transition={
             reduceMotion
               ? { duration: 0 }

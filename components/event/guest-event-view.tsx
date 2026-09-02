@@ -25,6 +25,7 @@ import { type Locale, localeTag } from '@/lib/i18n'
 
 import { InviteButton } from './invite-button'
 import { PhotoGrid } from './photo-grid'
+import { buttonVariants } from '@/components/ui/button'
 
 type GalleryState =
   { open: true } | { open: false; heading: string; detail: string | null }
@@ -199,7 +200,10 @@ export function GuestEventView({
             whileTap={
               canTakePhoto && !reduceMotion ? { scale: 0.98 } : undefined
             }
-            className="btn-shine inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-base font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
+            className={buttonVariants({
+              size: 'lg',
+              className: 'w-full px-4',
+            })}
           >
             {busy ? (
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />

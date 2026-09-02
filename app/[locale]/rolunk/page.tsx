@@ -2,6 +2,7 @@ import { PageShell } from '@/components/site/page-shell'
 import { Camera, Heart, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
 import { isLocale, localePath } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 
@@ -134,7 +135,7 @@ export default async function RolunkPage({ params }: Props) {
             </p>
             <Link
               href={localePath(locale, '/kapcsolat')}
-              className="btn-shine mt-7 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+              className={buttonVariants({ className: 'mt-7' })}
             >
               {current.contact}
             </Link>

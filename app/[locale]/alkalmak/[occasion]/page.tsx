@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
 
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { notFound } from 'next/navigation'
@@ -90,7 +91,7 @@ export default async function OccasionPage({ params }: Props) {
             </p>
             <Link
               href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-              className="btn-shine mt-7 inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+              className={buttonVariants({ className: 'mt-7' })}
             >
               {copy.cta.button}
             </Link>

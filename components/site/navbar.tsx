@@ -2,6 +2,7 @@
 
 import { type Locale, localePath } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Aperture, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 
@@ -112,26 +113,28 @@ export function Navbar({ locale }: { locale: Locale }) {
         <Link
           href={`${CREATE_EVENT_PATH}?lang=${locale}`}
           className={cn(
-            'btn-shine hidden shrink-0 rounded-full bg-primary font-semibold text-primary-foreground transition-all duration-200 hover:scale-[1.03] md:inline-flex',
-            scrolled ? 'px-3.5 py-1.5 text-[13px]' : 'px-4 py-2 text-sm',
+            buttonVariants({ size: 'sm' }),
+            'hidden md:inline-flex',
           )}
         >
           {copy.create}
         </Link>
 
-        <button
+        <Button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? copy.close : copy.open}
           aria-expanded={open}
-          className="ml-auto flex size-10 shrink-0 items-center justify-center rounded-full bg-white/5 text-foreground md:hidden"
+          variant="ghost"
+          size="icon"
+          className="ml-auto md:hidden"
         >
           {open ? (
             <X className="size-5" aria-hidden="true" />
           ) : (
             <Menu className="size-5" aria-hidden="true" />
           )}
-        </button>
+        </Button>
       </nav>
 
       {/* Mobile full-screen panel */}
@@ -176,7 +179,10 @@ export function Navbar({ locale }: { locale: Locale }) {
           <Link
             href={`${CREATE_EVENT_PATH}?lang=${locale}`}
             onClick={() => setOpen(false)}
-            className="btn-shine mt-2 rounded-2xl bg-primary px-5 py-4 text-center text-lg font-semibold text-primary-foreground"
+            className={buttonVariants({
+              size: 'lg',
+              className: 'mt-2 w-full text-lg',
+            })}
           >
             {copy.create}
           </Link>

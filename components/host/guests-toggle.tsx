@@ -1,7 +1,7 @@
 'use client'
 
 import { setGuestsCanView } from '@/app/(product)/host/events/[slug]/actions'
-import { cn } from '@/lib/utils'
+import { Switch } from '@/components/ui/switch'
 import { useOptimistic, useState, useTransition } from 'react'
 
 /**
@@ -54,37 +54,22 @@ export function GuestsToggle({
           </p>
         </div>
 
-        <button
-          type="button"
-          role="switch"
-          aria-checked={optimisticCanView}
-          aria-label={
-            en ? 'Guest gallery access' : 'Vendégek galéria-hozzáférése'
-          }
+        <Switch
+          checked={optimisticCanView}
+          label={en ? 'Guest gallery access' : 'Vendégek galéria-hozzáférése'}
           disabled={pending}
-          onClick={() =>
+          onCheckedChange={(checked) =>
             startTransition(async () => {
               setError(false)
-              setOptimisticCanView(!optimisticCanView)
+              setOptimisticCanView(checked)
               try {
-                await setGuestsCanView(slug, !optimisticCanView)
+                await setGuestsCanView(slug, checked)
               } catch {
                 setError(true)
               }
             })
           }
-          className={cn(
-            'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors disabled:opacity-70',
-            optimisticCanView ? 'bg-accent/70' : 'bg-white/10',
-          )}
-        >
-          <span
-            className={cn(
-              'absolute size-6 rounded-full bg-white transition-transform',
-              optimisticCanView ? 'translate-x-7' : 'translate-x-1',
-            )}
-          />
-        </button>
+        />
       </div>
 
       {error ? (
