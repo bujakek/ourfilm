@@ -604,6 +604,7 @@ export type Database = {
           event_name: string
           guests_can_view: boolean
           id: string
+          is_full_plan: boolean
           locale: string
           participant_count: number
           photo_count: number

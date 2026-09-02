@@ -1,0 +1,26 @@
+-- Let the host dashboard's own query call the predicate it now selects.
+--
+-- `owned_events_with_previews` is SECURITY INVOKER, deliberately: the host's
+-- ownership policies are the authorization boundary, and a definer function
+-- there would quietly become a way to read every event in the system. The cost
+-- of that choice is that everything it calls has to be executable *as the
+-- host* — and Postgres checks EXECUTE against the calling role even when the
+-- callee is itself SECURITY DEFINER.
+--
+-- So the previous migration, which added `event_is_full_plan(e.id)` to that
+-- select list, took the whole dashboard down with
+-- `42501 permission denied for function event_is_full_plan`. It applied
+-- cleanly, generated correct types and passed every check that does not hold a
+-- host's JWT; `tests/db/owned-events.test.ts` now does hold one.
+--
+-- This is a separate file rather than an edit to that migration because
+-- migrations here are append-only: the previous one has already run against
+-- the linked project, and rewriting it would leave the repo unable to describe
+-- what production actually executed.
+--
+-- Granting it is the same trade `20260825080000_lock_down_capture_rpcs.sql`
+-- already made for `event_participant_quota`, which hands `authenticated` a
+-- participant count *and* the limit for any event id. One boolean about an id
+-- a signed-in user already holds is strictly less than that, and the id is only
+-- obtainable from an event they can already read.
+grant execute on function public.event_is_full_plan(uuid) to authenticated;

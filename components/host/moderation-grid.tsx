@@ -2,7 +2,7 @@
 
 import type { ModerationTile } from '@/lib/photos'
 import { cn } from '@/lib/utils'
-import { Eye, EyeOff } from 'lucide-react'
+import { Download, Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
 import { useOptimistic, useState, useTransition } from 'react'
 import { setPhotoHidden } from '@/app/(product)/host/events/[slug]/actions'
@@ -16,6 +16,8 @@ import { setPhotoHidden } from '@/app/(product)/host/events/[slug]/actions'
  * React may call more than once.
  */
 const OPTIMISTIC_HIDDEN = 'optimistic'
+
+type Filter = 'all' | 'hidden'
 
 function Tile({
   photo,
@@ -37,8 +39,12 @@ function Tile({
     <li className="relative">
       <div
         className={cn(
-          'relative aspect-square overflow-hidden rounded-sm transition-opacity',
-          hidden && 'opacity-35',
+          'relative aspect-square overflow-hidden rounded-sm transition-[filter,opacity]',
+          // Grayscale as well as dimmed: opacity alone on a bright wedding
+          // photo still reads as "in the album, slightly faded". Draining the
+          // colour is what makes a hidden frame legible as withheld at a
+          // glance down a grid of forty.
+          hidden && 'opacity-40 grayscale',
         )}
       >
         <Image
@@ -58,6 +64,11 @@ function Tile({
         />
       </div>
 
+      {/* A caption bar rather than a floating circle. The name was only in the
+          alt text before, so a host moderating had no way to see whose frame
+          they were about to hide without opening it; and a lone round button
+          over the corner of a photo covers the part of it most likely to
+          matter. The gradient carries both. */}
       <button
         type="button"
         disabled={pending}
@@ -80,28 +91,37 @@ function Tile({
         aria-label={
           hidden
             ? en
-              ? 'Restore photo'
-              : 'Kép visszaállítása'
+              ? `Restore photo by ${photo.uploaderName}`
+              : `${photo.uploaderName} fotójának visszaállítása`
             : en
-              ? 'Hide photo'
-              : 'Kép elrejtése'
+              ? `Hide photo by ${photo.uploaderName}`
+              : `${photo.uploaderName} fotójának elrejtése`
         }
         // No spinner. The icon has already flipped, so a spinner on top of it
         // would be reporting on work the host has been told is done. The dimmed
         // state is enough to say the tap landed and is still settling.
-        className="glass-strong absolute right-2 bottom-2 flex size-11 items-center justify-center rounded-full text-foreground transition-opacity disabled:opacity-70"
+        className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 rounded-b-sm bg-gradient-to-t from-black/80 to-transparent px-2 pt-6 pb-1.5 text-left transition-opacity disabled:opacity-70"
       >
-        {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+        <span className="truncate font-mono text-[9px] tracking-[0.06em] text-white/85">
+          {hidden
+            ? en
+              ? 'HIDDEN'
+              : 'REJTVE'
+            : photo.uploaderName.toUpperCase()}
+        </span>
+        {hidden ? (
+          <Eye className="size-3.5 shrink-0 text-white/90" aria-hidden="true" />
+        ) : (
+          <EyeOff
+            className="size-3.5 shrink-0 text-white/75"
+            aria-hidden="true"
+          />
+        )}
       </button>
 
       {error ? (
         <p className="mt-1 text-xs text-destructive">
           {en ? 'Failed' : 'Nem sikerült'}
-        </p>
-      ) : null}
-      {hidden ? (
-        <p className="mt-1 text-center text-xs text-muted-foreground">
-          {en ? 'Hidden' : 'Rejtve'}
         </p>
       ) : null}
     </li>
@@ -112,11 +132,18 @@ export function ModerationGrid({
   photos,
   slug,
   locale,
+  title,
+  albumHref,
 }: {
   photos: ModerationTile[]
   slug: string
   locale: 'en' | 'hu'
+  /** The section heading, rendered beside the toolbar it belongs with. */
+  title: string
+  /** The ZIP export, or null when there is nothing to export. */
+  albumHref: string | null
 }) {
+  const en = locale === 'en'
   // Held for the whole grid rather than per tile so the "N rejtve" counter
   // moves with the tile it describes. Per-tile state would flip the photo
   // instantly and leave the count a round trip behind, which reads as a bug.
@@ -127,26 +154,90 @@ export function ModerationGrid({
         : p,
     ),
   )
+  const [filter, setFilter] = useState<Filter>('all')
 
-  if (items.length === 0) {
-    return (
-      <p className="glass rounded-2xl px-5 py-6 text-center text-sm text-muted-foreground">
-        {locale === 'en' ? 'No photos yet.' : 'Még nem érkezett kép.'}
-      </p>
-    )
-  }
+  const hiddenCount = items.filter((p) => p.hidden_at !== null).length
+  const shown = filter === 'hidden' ? items.filter((p) => p.hidden_at) : items
 
   return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {items.map((photo) => (
-        <Tile
-          key={photo.id}
-          photo={photo}
-          slug={slug}
-          onToggle={toggle}
-          locale={locale}
-        />
-      ))}
-    </ul>
+    <>
+      {/* The counts live in here rather than on the page, because they are read
+          off the same optimistic state the tiles are — a server-rendered count
+          beside an optimistic grid is a count that lags every tap. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
+        <h2 className="font-display text-[26px] leading-none">{title}</h2>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {items.length > 0 ? (
+            <p className="font-mono text-[10px] tracking-[0.1em] text-foreground/45">
+              {items.length} {en ? 'PHOTOS' : 'KÉP'}
+              {hiddenCount > 0
+                ? ` · ${hiddenCount} ${en ? 'HIDDEN' : 'REJTVE'}`
+                : ''}
+            </p>
+          ) : null}
+
+          {/* Moderation stops being a scavenger hunt: with forty photos and one
+              hidden, finding the hidden one meant scrolling for a dimmed tile. */}
+          {hiddenCount > 0 ? (
+            <div
+              role="group"
+              aria-label={en ? 'Filter photos' : 'Képek szűrése'}
+              className="flex overflow-hidden rounded-full border border-white/14"
+            >
+              {(['all', 'hidden'] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={filter === value}
+                  onClick={() => setFilter(value)}
+                  className={`px-3.5 py-1.5 text-[11px] font-medium transition-colors ${
+                    filter === value
+                      ? 'bg-white/10 text-foreground'
+                      : 'text-foreground/60 hover:text-foreground'
+                  }`}
+                >
+                  {value === 'all'
+                    ? en
+                      ? 'All'
+                      : 'Mind'
+                    : en
+                      ? 'Hidden'
+                      : 'Rejtett'}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {albumHref ? (
+            <a
+              href={albumHref}
+              className="inline-flex items-center gap-2 rounded-full border border-white/14 px-3.5 py-1.5 text-[11px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground"
+            >
+              <Download className="size-3.5" aria-hidden="true" />
+              {en ? 'Album' : 'Album'}
+            </a>
+          ) : null}
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="mt-4.5 rounded-2xl border border-border px-5 py-6 text-center text-sm text-muted-foreground">
+          {en ? 'No photos yet.' : 'Még nem érkezett kép.'}
+        </p>
+      ) : (
+        <ul className="mt-4.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {shown.map((photo) => (
+            <Tile
+              key={photo.id}
+              photo={photo}
+              slug={slug}
+              onToggle={toggle}
+              locale={locale}
+            />
+          ))}
+        </ul>
+      )}
+    </>
   )
 }

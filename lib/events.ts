@@ -148,6 +148,14 @@ export const getOwnedEventBySlug = cache(
 export type EventWithPreview = OwnedEvent & {
   photoCount: number
   participantCount: number
+  /**
+   * Whether the free participant cap is lifted for this event, by any of the
+   * reasons `event_is_full_plan` accepts. Read from the predicate rather than
+   * derived from `participantCount`, because a count cannot tell a capped
+   * event from a paid or admin-owned one — and the list's "keret betelt" pill
+   * would then appear on exactly the events that are not capped.
+   */
+  isFullPlan: boolean
   /** A few thumbnails for the list, newest first. */
   previews: string[]
 }
@@ -169,7 +177,13 @@ export async function getOwnedEventsWithPreviews(): Promise<
   if (error) throw error
 
   return (data ?? []).map(
-    ({ photo_count, participant_count, cover_path, ...event }) => ({
+    ({
+      photo_count,
+      participant_count,
+      is_full_plan,
+      cover_path,
+      ...event
+    }) => ({
       ...event,
       // The generator types a table-returning function's columns as
       // non-nullable, so it claims `cover_path: string` for a column that is
@@ -179,6 +193,7 @@ export async function getOwnedEventsWithPreviews(): Promise<
       locale: event.locale as Locale,
       photoCount: photo_count,
       participantCount: participant_count,
+      isFullPlan: is_full_plan,
     }),
   )
 }
