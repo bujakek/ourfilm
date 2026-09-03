@@ -1,5 +1,4 @@
 import { BackgroundGlow } from '@/components/site/background-glow'
-import { Benefits } from '@/components/site/benefits'
 import { Faq } from '@/components/site/faq'
 import { FinalCta } from '@/components/site/final-cta'
 import { Footer } from '@/components/site/footer'
@@ -67,9 +66,13 @@ export default async function Page({ params }: Props) {
             Both only ever held invented numbers and invented quotes, and the
             pilot has no verified ones to put in their place. The components
             stay, take their content as props, and can come back the day there
-            is something true to show. */}
+            is something true to show.
+
+            <Benefits /> joins them, for a different reason: it was one heading
+            and one sentence, the heading is `footer.tagline` word for word,
+            and the sentence is now the supporting line of the step section it
+            sat above. Nothing it said has left the page. */}
         <Hero locale={locale} />
-        <Benefits locale={locale} />
         <HowItWorks locale={locale} />
         <QrPreview locale={locale} />
         <PhotoReveal locale={locale} />

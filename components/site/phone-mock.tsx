@@ -234,6 +234,31 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
         </div>
       </div>
 
+      {/* The moderation grid the real console puts under the ticket. Without
+          it the mock is a ticket floating in a phone, which is not what a host
+          sees — and the empty half of the screen reads as a crop. */}
+      <div className="mt-4 grid grid-cols-4 gap-1.5">
+        {[
+          'reveal-bride-friends',
+          'reveal-celebration',
+          'how-couple',
+          'reveal-limbo',
+        ].map((photo) => (
+          <span
+            key={photo}
+            className="relative aspect-square overflow-hidden rounded-xs"
+          >
+            <Image
+              src={`/images/landing/${photo}.webp`}
+              alt=""
+              fill
+              sizes="52px"
+              className="object-cover"
+            />
+          </span>
+        ))}
+      </div>
+
       <span className="flex-1" />
     </PhoneMock>
   )
@@ -311,6 +336,40 @@ export function ScreenCamera({ locale }: { locale: Locale }) {
           ? '7 GUESTS · NO PREVIEW · NO RETAKES'
           : '7 VENDÉG · NINCS ELŐNÉZET · NINCS ÚJRAPRÓBÁLÁS'}
       </p>
+
+      {/* The shared gallery, which is the rest of the guest's screen. The
+          mock had a third of a phone of nothing under the format line; this is
+          what is actually there. */}
+      <div className="mt-4.5 border-t border-border pt-3.5">
+        <div className="flex items-baseline justify-between">
+          <span className="font-display text-[17px] leading-none">
+            {en ? 'Shared photos' : 'Közös képek'}
+          </span>
+          <span className={`${MONO_LABEL} text-[8px] text-foreground/40`}>
+            42 {en ? 'PHOTOS' : 'KÉP'}
+          </span>
+        </div>
+        <div className="mt-2.5 grid grid-cols-3 gap-1">
+          {[
+            'reveal-celebration',
+            'hero-dance-crowd',
+            'hero-sunglasses-couple',
+          ].map((photo) => (
+            <span
+              key={photo}
+              className="relative aspect-square overflow-hidden rounded-sm"
+            >
+              <Image
+                src={`/images/landing/${photo}.webp`}
+                alt=""
+                fill
+                sizes="68px"
+                className="object-cover"
+              />
+            </span>
+          ))}
+        </div>
+      </div>
 
       <span className="flex-1" />
 

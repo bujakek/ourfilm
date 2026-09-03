@@ -1,76 +1,50 @@
-'use client'
-
-import { cn } from '@/lib/utils'
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
 import { Reveal } from './reveal'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
 
+/**
+ * Seven questions on ruled rows, with their answers showing.
+ *
+ * It was seven glass cards with a disclosure each, which meant seven taps to
+ * read a page of text that is four hundred words long in total, and a `'use
+ * client'` boundary for the privilege. The answers are short, the questions are
+ * the ones every visitor has, and there is nothing here worth hiding — so
+ * nothing is hidden, and the section is a Server Component again.
+ *
+ * The heading sits in its own column rather than centred above, so the rows
+ * start at the top of the section instead of a third of the way down it.
+ */
 export function Faq({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].faq
-  const faqs = copy.items.map(([q, a]) => ({ q, a }))
-  const [open, setOpen] = useState<number | null>(0)
 
   return (
-    <section id="faq" className="relative px-4 py-24 sm:px-6 lg:py-32">
-      <div className="mx-auto max-w-3xl">
-        <Reveal className="text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+    <section
+      id="faq"
+      className="relative border-t border-border px-4 py-22 sm:px-6 lg:px-10 lg:py-24"
+    >
+      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+        <Reveal>
+          <h2 className="font-display text-[34px] leading-[1.03] tracking-[-0.015em] text-balance sm:text-[44px]">
             {copy.title}
           </h2>
         </Reveal>
 
-        <Reveal className="mt-12" delay={80}>
-          <ul className="flex flex-col gap-3">
-            {faqs.map((item, i) => {
-              const isOpen = open === i
-              const panelId = `faq-panel-${i}`
-              const buttonId = `faq-button-${i}`
-              return (
-                <li key={item.q} className="glass overflow-hidden rounded-2xl">
-                  <h3>
-                    <button
-                      type="button"
-                      id={buttonId}
-                      aria-expanded={isOpen}
-                      aria-controls={panelId}
-                      onClick={() => setOpen(isOpen ? null : i)}
-                      className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-                    >
-                      <span className="text-base font-medium sm:text-lg">
-                        {item.q}
-                      </span>
-                      <Plus
-                        className={cn(
-                          'size-5 shrink-0 text-accent transition-transform duration-300',
-                          isOpen && 'rotate-45',
-                        )}
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </h3>
-                  <div
-                    id={panelId}
-                    role="region"
-                    aria-labelledby={buttonId}
-                    className={cn(
-                      'grid transition-all duration-400 ease-out',
-                      isOpen
-                        ? 'grid-rows-[1fr] opacity-100'
-                        : 'grid-rows-[0fr] opacity-0',
-                    )}
-                  >
-                    <div className="overflow-hidden">
-                      <p className="px-6 pb-6 text-sm leading-relaxed text-pretty text-muted-foreground">
-                        {item.a}
-                      </p>
-                    </div>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+        <Reveal delay={80}>
+          <dl>
+            {copy.items.map(([question, answer]) => (
+              <div
+                key={question}
+                className="border-b border-white/11 py-5 first:pt-0"
+              >
+                <dt className="text-[16.5px] leading-[1.4] font-medium text-foreground/90">
+                  {question}
+                </dt>
+                <dd className="mt-2.5 max-w-[38rem] text-[14.5px] leading-relaxed text-pretty text-muted-foreground">
+                  {answer}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </Reveal>
       </div>
     </section>
