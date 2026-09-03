@@ -111,6 +111,18 @@ export const marketingCopy = {
       create: 'Create your camera',
       helper: 'No app. No guest accounts.',
     },
+    /**
+     * The persistent camera card. The only strings in the marketing site that
+     * are not describing a section — it is a thing on the page rather than a
+     * part of the page, which is why it has its own block.
+     */
+    card: {
+      eyebrow: 'TRY OURFILM',
+      title: 'Your camera is ready.',
+      lead: 'Scan it — no app, no sign-up.',
+      dismiss: 'Dismiss',
+      reopen: 'TRY THE CAMERA',
+    },
     footer: {
       tagline: 'One camera for the whole wedding.',
       aria: 'Footer',
@@ -234,6 +246,13 @@ export const marketingCopy = {
       lead: 'Hozd létre az eseményt, oszd meg a QR-kódot, és a vendégek már fotózhatnak is.',
       create: 'Hozd létre ingyen',
       helper: 'Nincs app. Nincs vendégregisztráció.',
+    },
+    card: {
+      eyebrow: 'PRÓBÁLD KI',
+      title: 'A kamerád készen áll.',
+      lead: 'Olvasd be — app és regisztráció nélkül.',
+      dismiss: 'Bezárás',
+      reopen: 'PRÓBÁLD KI A KAMERÁT',
     },
     footer: {
       tagline: 'Egy kamera az egész násznépnek.',

@@ -8,6 +8,7 @@ import { HowItWorks } from '@/components/site/how-it-works'
 import { Navbar } from '@/components/site/navbar'
 import { PhotoReveal } from '@/components/site/photo-reveal'
 import { QrPreview } from '@/components/site/qr-preview'
+import { TryCameraCard } from '@/components/site/try-camera-card'
 import { isLocale } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -76,6 +77,10 @@ export default async function Page({ params }: Props) {
         <FinalCta locale={locale} />
       </main>
       <Footer locale={locale} />
+      {/* Outside `<main>`: it is an offer that follows the reader down the
+          page, not a part of the document's outline. Desktop only — see the
+          component. */}
+      <TryCameraCard locale={locale} />
     </div>
   )
 }
