@@ -11,6 +11,7 @@ import {
   Hourglass,
   Settings,
   Share2,
+  Wifi,
 } from 'lucide-react'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
@@ -55,18 +56,93 @@ import { eventUrl } from '@/lib/site'
  *   with an icon, a title and a line of explanation, not radio rows.
  */
 
-/** The hardware. Arbitrary radii on purpose: this is a picture of a phone, not
- *  a product surface, so it is not on the radius scale. */
+/**
+ * The hardware: a titanium rim, a black bezel, and the screen.
+ *
+ * It was a `#16161a` box with a 30px radius — a rectangle standing in for a
+ * phone, which is fine right up until the thing inside it is a faithful
+ * product screen. Then the frame is the only unconvincing part of the picture,
+ * and a mock is only worth drawing if a visitor reads it as a phone before
+ * they read it as a diagram.
+ *
+ * Three layers, because a real edge is three: a 2px rim carrying a gradient
+ * that runs light–dark–light–dark–light across 155°, which is how brushed
+ * titanium catches a room; a `#07070a` bezel inside it; then the screen.
+ * Nested radii descend 47 → 45 → 38 so the curves stay concentric rather than
+ * pinching at the corners.
+ *
+ * **The screen grew 568 → 648.** The island and the home indicator each need
+ * clearance the old frame never reserved, and `pt-[50px]` / `pb-6.5` are that
+ * clearance. Without it `ScreenTicket` overflowed by 22px and its moderation
+ * tiles were sliced by the bezel rather than by the fold. Every screen keeps a
+ * trailing `flex-1` spacer for the same reason: the indicator has to sit on
+ * empty screen, never on top of a photograph.
+ */
 export function PhoneMock({ children }: { children: ReactNode }) {
   return (
     <div
       aria-hidden="true"
-      className="w-[252px] shrink-0 rounded-[30px] border border-white/10 bg-[#16161a] p-2 shadow-[0_40px_80px_-34px_rgba(0,0,0,0.95)]"
+      className="w-[254px] shrink-0 rounded-[47px] p-[2px] shadow-[0_40px_80px_-34px_rgba(0,0,0,0.95)]"
+      style={{
+        backgroundImage:
+          'linear-gradient(155deg,#7b7b87,#26262c 26%,#9a9aa6 50%,#22222a 74%,#63636e)',
+      }}
     >
-      <div className="flex h-[568px] flex-col overflow-hidden rounded-[23px] bg-background px-5 pt-6.5 pb-5">
-        {children}
+      <div className="rounded-[45px] bg-[#07070a] p-[7px]">
+        <div className="relative flex h-[648px] flex-col overflow-hidden rounded-[38px] bg-background px-3.5 pt-[50px] pb-6.5">
+          {children}
+          <StatusBar />
+          <DynamicIsland />
+          {/* Drawn last so it sits over whatever the screen ends with, the way
+              iOS draws it — though every screen leaves it empty room anyway. */}
+          <span className="absolute bottom-2 left-1/2 z-20 h-[4px] w-[98px] -translate-x-1/2 rounded-full bg-foreground/55" />
+        </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * 9:41, signal, wifi, battery.
+ *
+ * `px-4.5`, not the 24px a full-size iOS inset would be. The island is 32% of
+ * the screen's width here exactly as it is on the device, but the icons are
+ * held near full size for legibility — the same trade the type scale makes —
+ * so the right cluster is proportionally wider than iOS's and a 24px inset
+ * pushed its first cellular bar under the island. 18px on a 236px screen is
+ * 7.6%, which is nearer iOS's true 7.1% than 24px was anyway.
+ */
+function StatusBar() {
+  return (
+    <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4.5 pt-4.5">
+      <span className="text-[12px] font-semibold tracking-[-0.01em]">9:41</span>
+      <span className="flex items-center gap-[4px]">
+        <span className="flex items-end gap-[1.5px]">
+          {['h-[4px]', 'h-[6px]', 'h-[8px]', 'h-[10px]'].map((h) => (
+            <span
+              key={h}
+              className={`w-[2.5px] rounded-[1px] bg-foreground ${h}`}
+            />
+          ))}
+        </span>
+        <Wifi className="size-[13px]" strokeWidth={2.2} />
+        {/* 72%: a phone someone has been using all day, which is the phone
+            this product is held on. */}
+        <span className="relative flex h-[11px] w-[21px] items-center rounded-[3px] border border-foreground/45 p-[1.5px]">
+          <span className="h-full w-[72%] rounded-[1.5px] bg-foreground" />
+          <span className="absolute -right-[3px] h-[4px] w-[1.5px] rounded-r-[1px] bg-foreground/45" />
+        </span>
+      </span>
+    </div>
+  )
+}
+
+/** The island, with the lens ringed the way glass rings under a black mask. */
+function DynamicIsland() {
+  return (
+    <span className="absolute top-[11px] left-1/2 z-20 flex h-[24px] w-[76px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-[7px]">
+      <span className="size-[8px] rounded-full bg-[#0b0e14] ring-[1.5px] ring-[rgba(130,150,190,0.4)] ring-inset" />
+    </span>
   )
 }
 

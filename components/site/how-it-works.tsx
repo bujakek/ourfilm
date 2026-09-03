@@ -44,7 +44,14 @@ export function HowItWorks({ locale }: { locale: Locale }) {
           </div>
         </Reveal>
 
-        <div className="mt-14 grid gap-14 lg:mt-16 lg:grid-cols-3">
+        {/* `grid-cols-3` is already `repeat(3,minmax(0,1fr))` in Tailwind v4,
+            so the columns were never the thing that overflowed — a fixed 254px
+            phone in a 56px-gutter row simply needs more width than the
+            breakpoint hands it just after `lg`. The gutter now shrinks with the
+            viewport instead of holding at 56px, the row is capped at the width
+            three phones and their gutters actually want, and the phones are
+            centred in their columns rather than left in them. */}
+        <div className="mx-auto mt-14 grid max-w-[1120px] justify-items-center gap-[clamp(20px,3vw,56px)] lg:mt-16 lg:grid-cols-3">
           {copy.steps.map(([title, text], i) => {
             const Screen = screens[i]
             return (
