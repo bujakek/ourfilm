@@ -5,10 +5,7 @@ import { useState } from 'react'
 import { EventEndFields } from '@/components/host/event-end-fields'
 import { MonthCalendar } from '@/components/host/month-calendar'
 import { Sheet } from '@/components/host/sheet'
-import {
-  OnboardingShell,
-  type OnboardingNav,
-} from '@/components/host/onboarding/onboarding-shell'
+import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import type { Locale } from '@/lib/i18n'
 
 /**
@@ -23,8 +20,7 @@ import type { Locale } from '@/lib/i18n'
  * browser and stores it with the event, so the guests, the badge and the
  * settings page all agree without anyone being asked.
  */
-export function StepEnd({
-  nav,
+export function endScreen({
   day,
   setDay,
   time,
@@ -33,7 +29,6 @@ export function StepEnd({
   canAdvance,
   locale,
 }: {
-  nav: OnboardingNav
   /** `YYYY-MM-DD` */
   day: string
   setDay: (value: string) => void
@@ -44,37 +39,62 @@ export function StepEnd({
   today: string
   canAdvance: boolean
   locale: Locale
+}): StepScreen {
+  const en = locale === 'en'
+  return {
+    eyebrow: en ? 'SHOOTING ENDS' : 'A FOTÓZÁS VÉGE',
+    title: en
+      ? 'When should the camera close?'
+      : 'Mikor érjen véget az esemény?',
+    detail: en
+      ? 'The camera opens now. Guests can keep shooting until this time.'
+      : 'A film most indul, a vendégek pedig a megadott időpontig készíthetnek képeket.',
+    cta: en ? 'Continue' : 'Tovább',
+    ctaDisabled: !canAdvance,
+    content: (
+      <EndFields
+        day={day}
+        setDay={setDay}
+        time={time}
+        setTime={setTime}
+        today={today}
+        locale={locale}
+      />
+    ),
+  }
+}
+
+function EndFields({
+  day,
+  setDay,
+  time,
+  setTime,
+  today,
+  locale,
+}: {
+  day: string
+  setDay: (value: string) => void
+  time: string
+  setTime: (value: string) => void
+  today: string
+  locale: Locale
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const en = locale === 'en'
 
   return (
     <>
-      <OnboardingShell
-        {...nav}
+      <EventEndFields
+        day={day}
+        time={time}
+        onChooseDay={() => setCalendarOpen(true)}
+        onTimeChange={setTime}
         locale={locale}
-        eyebrow={en ? 'SHOOTING ENDS' : 'A FOTÓZÁS VÉGE'}
-        title={
-          en ? 'When should the camera close?' : 'Mikor érjen véget az esemény?'
-        }
-        detail={
-          en
-            ? 'The camera opens now. Guests can keep shooting until this time.'
-            : 'A film most indul, a vendégek pedig a megadott időpontig készíthetnek képeket.'
-        }
-        cta={en ? 'Continue' : 'Tovább'}
-        ctaDisabled={!canAdvance}
-      >
-        <EventEndFields
-          day={day}
-          time={time}
-          onChooseDay={() => setCalendarOpen(true)}
-          onTimeChange={setTime}
-          locale={locale}
-          timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
-        />
-      </OnboardingShell>
+        timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
+      />
 
+      {/* A `<dialog>` opened with `showModal()` renders in the top layer, so it
+          is unaffected by the scrolling column it now sits inside. */}
       <Sheet
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}

@@ -1,10 +1,12 @@
 'use client'
 
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Odometer } from '@/components/ui/odometer'
 import { localeTag, type Locale } from '@/lib/i18n'
+import { T, still } from '@/lib/motion'
 
 export type OnboardingNav = {
   step: number
@@ -13,6 +15,33 @@ export type OnboardingNav = {
   onBack?: () => void
   onNext?: () => void
   error?: string | null
+}
+
+/**
+ * One question, as data.
+ *
+ * The four screens used to render a shell each. That made the shell a
+ * different element on every step, so React tore it down and built a new one —
+ * and an `AnimatePresence` that remounts can never play an exit, a counter
+ * that remounts can never roll, and a progress rule that remounts is cut and
+ * redrawn rather than grown. All three are the elements that are supposed to
+ * survive a step change, which is what makes four screens read as one sheet.
+ *
+ * So the shell is rendered once, above the step, and a step describes itself.
+ * Each step file exports a plain function returning this: its own copy, its
+ * own CTA, and its fields as a child element that owns whatever hooks it
+ * needs.
+ */
+export type StepScreen = {
+  eyebrow: string
+  title: string
+  detail?: string
+  cta: string
+  ctaDisabled?: boolean
+  ctaPending?: boolean
+  compact?: boolean
+  note?: ReactNode
+  content: ReactNode
 }
 
 /**
@@ -80,7 +109,39 @@ export function OnboardingShell({
 
   const blocked = ctaDisabled || ctaPending
   const en = locale === 'en'
-  const pad = (n: number) => String(n).padStart(2, '0')
+  const reduceMotion = useReducedMotion()
+
+  // Which way the flow is travelling, adjusted during render the way React
+  // documents for state derived from props. The shell is the only thing that
+  // sees both the old step and the new one, so deriving it here leaves all
+  // four screens unchanged — none of them has to know it is going backwards.
+  const [seen, setSeen] = useState(step)
+  const [dir, setDir] = useState(1)
+  if (seen !== step) {
+    setDir(step > seen ? 1 : -1)
+    setSeen(step)
+  }
+
+  // Forward and back are mirror images: the question leaves toward the
+  // direction of travel and the next one arrives from the opposite side. It
+  // leaves on `exit` and arrives on `settle`, because a screen being replaced
+  // should get out of the way faster than its replacement takes to land.
+  const question = useMemo(
+    () => ({
+      enter: (d: number) => ({ opacity: 0, x: d * 16 }),
+      center: {
+        opacity: 1,
+        x: 0,
+        transition: reduceMotion ? still : T.settle,
+      },
+      exit: (d: number) => ({
+        opacity: 0,
+        x: d * -16,
+        transition: reduceMotion ? still : T.exit,
+      }),
+    }),
+    [reduceMotion],
+  )
 
   return (
     <div
@@ -120,9 +181,11 @@ export function OnboardingShell({
               a worse answer than the sentence the list already carried. */}
           <p
             aria-hidden="true"
-            className="font-mono text-[11px] font-medium tracking-[0.14em] text-foreground/40"
+            className="flex items-center font-mono text-[11px] font-medium tracking-[0.14em] text-foreground/40"
           >
-            {pad(step + 1)} / {pad(stepCount)}
+            <Odometer value={step + 1} dir={dir > 0 ? 'up' : 'down'} pad={2} />
+            <span className="px-1">/</span>
+            {String(stepCount).padStart(2, '0')}
           </p>
           <ol aria-label={en ? 'Steps' : 'Lépések'} className="sr-only">
             {Array.from({ length: stepCount }, (_, i) => (
@@ -135,13 +198,14 @@ export function OnboardingShell({
           </ol>
         </header>
 
-        <AnimatePresence mode="popLayout" initial={false}>
+        <AnimatePresence mode="wait" initial={false} custom={dir}>
           <motion.div
             key={step}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            custom={dir}
+            variants={question}
+            initial="enter"
+            animate="center"
+            exit="exit"
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className={compact ? 'mt-5' : 'mt-7'}>
@@ -190,22 +254,34 @@ export function OnboardingShell({
             aria-hidden="true"
             className="h-0.5 flex-1 overflow-hidden rounded-[2px] bg-white/10"
           >
-            <span
-              className="block h-full bg-accent transition-[width] duration-300 ease-out"
-              style={{ width: `${((step + 1) / stepCount) * 100}%` }}
+            {/* The one element that crosses every step change unchanged, which
+                is what makes four screens read as one sheet. So it grows on
+                `advance` — a mechanical move — and is never cut and redrawn. */}
+            <motion.span
+              className="block h-full bg-accent"
+              initial={false}
+              animate={{ width: `${((step + 1) / stepCount) * 100}%` }}
+              transition={reduceMotion ? still : T.advance}
             />
           </div>
 
+          {/* Submitted: the button holds at half strength rather than
+              flickering between states. The dim is an `animate` value, not
+              `disabled:opacity-50`, because motion writes an inline opacity
+              and the two would otherwise fight over the same property. */}
           <motion.button
             type="button"
             disabled={blocked}
-            whileTap={blocked ? undefined : { scale: 0.97 }}
+            initial={false}
+            animate={{ opacity: blocked ? 0.5 : 1 }}
+            whileTap={blocked || reduceMotion ? undefined : { scale: 0.97 }}
+            transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
             onClick={() => {
               if (spent.current === step) return
               spent.current = step
               onNext?.()
             }}
-            className="paper btn-shine inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-xl px-6.5 text-[15px] font-semibold disabled:pointer-events-none disabled:opacity-50"
+            className="paper btn-shine inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-xl px-6.5 text-[15px] font-semibold disabled:pointer-events-none"
           >
             {ctaPending ? (
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />

@@ -147,34 +147,14 @@
 }
 
 @layer utilities {
-  /* One of the three drifting blobs behind every page (`BackgroundGlow`).
-     Blur and animation live here rather than as `blur-3xl animate-glow-drift`
-     in the markup, because the two together are the most expensive thing the
-     app draws and the decision about when to stop drawing them belongs in one
-     place. Size, position and gradient stay in the component. */
-  .glow-blob {
-    filter: blur(64px);
-    animation: glow-drift 22s ease-in-out infinite alternate;
+  /* A scroll container with no visible scrollbar. Used by the step carousel,
+     where the bar would sit across the bottom card edge on every trackpad Mac
+     and say nothing a peeking card does not already say. */
+  .scrollbar-none {
+    scrollbar-width: none;
   }
-
-  /* Touch devices get the blobs flat and still: no animation, no blur.
-     Stopping the animation is what fixed the idle burn — an animated blur
-     costs a full-screen convolution every frame and, worse, invalidates the
-     backdrop of every `.glass` surface above it, so the page recomposited at
-     60Hz with the phone untouched on a table. Measured on device: compositing
-     after the initial load fell from 1417ms to 26.6ms across a recording.
-
-     Dropping `filter` as well is the second half. "A static blur is rasterized
-     once and then free" is true, but that once is not cheap: three
-     screen-sized layers at a 64px radius and 3x DPR, and the first composite
-     span did not improve at all when only the animation went. The source is
-     already a radial gradient fading to `transparent 70%`, so a blur on top of
-     it buys very little — verify at 390px before assuming otherwise. */
-  @media (pointer: coarse) {
-    .glow-blob {
-      filter: none;
-      animation: none;
-    }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 
   /* Loading placeholder. Deliberately NOT `.glass`: `animate-pulse` on a
@@ -442,21 +422,6 @@
   }
   50% {
     transform: translateY(-18px) rotate(var(--rot, 0deg));
-  }
-}
-
-/* Translate only — emphatically no scale().
-   These keyframes drive `.glow-blob`, which carries a 64px blur. A blurred
-   layer being translated can be rasterized once and moved by the compositor;
-   scaling one changes the blur's rendered footprint, so every frame has to
-   re-run the convolution over a layer the size of the screen. That was three
-   full-screen blurs re-rasterizing at 60-120Hz, forever, on every route. */
-@keyframes glow-drift {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(40px, -30px, 0);
   }
 }
 

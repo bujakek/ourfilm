@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
+import { T, still } from '@/lib/motion'
 
 export function HeroQrDemo({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].demo
@@ -35,7 +36,7 @@ export function HeroQrDemo({ locale }: { locale: Locale }) {
         animate={
           complete && !reduceMotion ? { scale: [1, 1.025, 1] } : { scale: 1 }
         }
-        transition={{ duration: reduceMotion ? 0 : 0.32 }}
+        transition={reduceMotion ? still : T.settle}
         className="glass-strong relative overflow-hidden rounded-2xl p-3"
       >
         <div className="flex items-center justify-center rounded-xl bg-white p-2">
@@ -58,6 +59,10 @@ export function HeroQrDemo({ locale }: { locale: Locale }) {
                 ? { y: -28, opacity: 0 }
                 : { y: 72, opacity: [0, 0.7, 0.7, 0] }
             }
+            // The one duration left outside `lib/motion.ts`. It is not a
+            // transition between two states — it is the length of a decorative
+            // sweep, and folding it into a token would either change what the
+            // scanner looks like or add a token nothing else can use.
             transition={{ duration: 1.15, ease: 'linear' }}
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-3 top-3 h-7 rounded-lg bg-gradient-to-b from-accent/45 to-transparent"
@@ -72,7 +77,7 @@ export function HeroQrDemo({ locale }: { locale: Locale }) {
             initial={reduceMotion ? false : { opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
-            transition={{ duration: reduceMotion ? 0 : 0.14 }}
+            transition={reduceMotion ? still : T.settle}
             className="flex items-center gap-1"
           >
             {complete ? (

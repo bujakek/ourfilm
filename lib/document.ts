@@ -81,7 +81,7 @@ export const siteMetadata: Metadata = {
         url: '/images/og-cover.jpg',
         width: 1200,
         height: 630,
-        alt: 'A wedding first dance captured with the OurFilm digital guest camera',
+        alt: 'Wedding guests lifting the groom, captured on the OurFilm digital guest camera',
       },
     ],
   },

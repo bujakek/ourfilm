@@ -3,16 +3,18 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { HostBlock } from '@/components/host/host-block'
 import { ModerationGrid } from '@/components/host/moderation-grid'
 import { QrCard } from '@/components/host/qr-card'
-import { getEventQuota, type EventQuota } from '@/lib/billing'
+import { QuotaBanner } from '@/components/host/quota-banner'
+import { Odometer } from '@/components/ui/odometer'
+import { getEventQuota } from '@/lib/billing'
 import { captureWindowState } from '@/lib/camera'
 import { revealSummary, shortTimeRemaining } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatDeadline } from '@/lib/format'
 import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
-import { eventPriceLabel } from '@/lib/pricing'
 import { eventUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
@@ -78,7 +80,10 @@ export default async function AdminEventPage({ params }: Props) {
       {/* Utility row. The settings gear stops being a lone lilac icon button:
           it is a destination, not a state, and lilac now means the film is
           live. */}
-      <div className="print-hidden flex items-center justify-between gap-4">
+      <HostBlock
+        index={0}
+        className="print-hidden flex items-center justify-between gap-4"
+      >
         <Link
           href={`/host?lang=${locale}`}
           className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.1em] text-foreground/45 transition-colors hover:text-foreground"
@@ -99,10 +104,10 @@ export default async function AdminEventPage({ params }: Props) {
             {en ? 'Settings' : 'Beállítások'}
           </Link>
         </div>
-      </div>
+      </HostBlock>
 
       <div className="mt-6 grid gap-7 sm:grid-cols-[1fr_260px] sm:items-start">
-        <div className="min-w-0">
+        <HostBlock index={1} className="min-w-0">
           <CapturePill
             state={windowState}
             captureEndAt={event.capture_end_at}
@@ -123,16 +128,13 @@ export default async function AdminEventPage({ params }: Props) {
               a long label wraps inside its own cell instead. */}
           <div className="mt-6 grid grid-cols-3 border-y border-border">
             <Figure
-              value={String(photos.length)}
+              value={photos.length}
               label={en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'}
             />
             {quota ? (
               <Figure
-                value={
-                  quota.unlimited
-                    ? String(quota.participantCount)
-                    : `${quota.participantCount}/${quota.participantLimit}`
-                }
+                value={quota.participantCount}
+                of={quota.unlimited ? null : quota.participantLimit}
                 label={
                   overQuota
                     ? en
@@ -147,7 +149,7 @@ export default async function AdminEventPage({ params }: Props) {
               />
             ) : null}
             <Figure
-              value={String(event.shots_per_participant)}
+              value={event.shots_per_participant}
               label={en ? 'SHOTS EACH' : 'KÉP FEJENKÉNT'}
               divided
             />
@@ -156,54 +158,56 @@ export default async function AdminEventPage({ params }: Props) {
           {quota && !quota.unlimited ? (
             <QuotaBanner slug={event.slug} quota={quota} locale={locale} />
           ) : null}
-        </div>
+        </HostBlock>
 
         {/* 260px of paper answering the one question a host has at a venue. */}
-        <div className="sm:sticky sm:top-7">
+        <HostBlock index={2} className="sm:sticky sm:top-7">
           <QrCard
             name={event.event_name}
             url={url}
             shots={event.shots_per_participant}
             locale={locale}
           />
-        </div>
+        </HostBlock>
       </div>
 
-      <section className="print-hidden mt-9 border-t border-border pt-5">
-        <ModerationGrid
-          photos={tiles}
-          slug={event.slug}
-          locale={locale}
-          title={en ? 'Photos' : 'Elkészült képek'}
-          albumHref={
-            photos.length > 0 ? `/host/events/${event.slug}/export` : null
-          }
-        />
-      </section>
+      <HostBlock index={3}>
+        <section className="print-hidden mt-9 border-t border-border pt-5">
+          <ModerationGrid
+            photos={tiles}
+            slug={event.slug}
+            locale={locale}
+            title={en ? 'Photos' : 'Elkészült képek'}
+            albumHref={
+              photos.length > 0 ? `/host/events/${event.slug}/export` : null
+            }
+          />
+        </section>
 
-      {/* Four values read once. They do not need a 56px disclosure; they need
+        {/* Four values read once. They do not need a 56px disclosure; they need
           to be legible and out of the way. */}
-      <div className="print-hidden mt-8 flex flex-wrap border-t border-border pt-4 font-mono text-[11px] tracking-[0.06em] text-foreground/45">
-        <ConfigCell>
-          {en ? 'ENDS' : 'VÉGE'} ·{' '}
-          {formatDeadline(event.capture_end_at, event.time_zone, locale)}
-        </ConfigCell>
-        <ConfigCell divided>
-          {en ? 'DEVELOPING' : 'ELŐHÍVÁS'} ·{' '}
-          {revealSummary(event.reveal_mode, locale)}
-        </ConfigCell>
-        <ConfigCell divided>
-          {en ? 'GALLERY' : 'GALÉRIA'} ·{' '}
-          {event.guests_can_view
-            ? en
-              ? 'GUESTS CAN SEE IT'
-              : 'VENDÉGEK LÁTJÁK'
-            : en
-              ? 'ONLY YOU'
-              : 'CSAK TE'}
-        </ConfigCell>
-        <ConfigCell divided>/E/{event.slug.toUpperCase()}</ConfigCell>
-      </div>
+        <div className="print-hidden mt-8 flex flex-wrap border-t border-border pt-4 font-mono text-[11px] tracking-[0.06em] text-foreground/45">
+          <ConfigCell>
+            {en ? 'ENDS' : 'VÉGE'} ·{' '}
+            {formatDeadline(event.capture_end_at, event.time_zone, locale)}
+          </ConfigCell>
+          <ConfigCell divided>
+            {en ? 'DEVELOPING' : 'ELŐHÍVÁS'} ·{' '}
+            {revealSummary(event.reveal_mode, locale)}
+          </ConfigCell>
+          <ConfigCell divided>
+            {en ? 'GALLERY' : 'GALÉRIA'} ·{' '}
+            {event.guests_can_view
+              ? en
+                ? 'GUESTS CAN SEE IT'
+                : 'VENDÉGEK LÁTJÁK'
+              : en
+                ? 'ONLY YOU'
+                : 'CSAK TE'}
+          </ConfigCell>
+          <ConfigCell divided>/E/{event.slug.toUpperCase()}</ConfigCell>
+        </div>
+      </HostBlock>
     </main>
   )
 }
@@ -249,13 +253,23 @@ function CapturePill({
   )
 }
 
+/**
+ * One number a host watches.
+ *
+ * It rolls, and nothing else on the page responds — no toast, no highlighted
+ * row. A figure that changes while the host is looking elsewhere should be
+ * correct when he looks back, not something that demanded he look now.
+ */
 function Figure({
   value,
+  of = null,
   label,
   alarming = false,
   divided = false,
 }: {
-  value: string
+  value: number
+  /** The cap this figure is measured against, when it has one. */
+  of?: number | null
   label: string
   alarming?: boolean
   divided?: boolean
@@ -263,11 +277,12 @@ function Figure({
   return (
     <div className={`py-4 ${divided ? 'border-l border-border px-5' : 'pr-5'}`}>
       <p
-        className={`font-mono text-[30px] leading-none font-medium tracking-[-0.05em] ${
+        className={`flex items-baseline font-mono text-[30px] leading-none font-medium tracking-[-0.05em] ${
           alarming ? 'text-destructive' : ''
         }`}
       >
-        {value}
+        <Odometer value={value} dir="up" />
+        {of === null ? null : <span>/{of}</span>}
       </p>
       <p
         className={`mt-1.5 font-mono text-[9px] font-medium tracking-[0.16em] ${
@@ -293,66 +308,5 @@ function ConfigCell({
     >
       {children}
     </span>
-  )
-}
-
-/**
- * The free tier's edge, seen from the host's side.
- *
- * Unlike the guest's version of this message, the host is the person who can
- * act on it — so this one ends in a price and a button rather than a shrug.
- * The button goes to the billing card rather than straight to Stripe on
- * purpose: `startEventCheckout` requires the consumer-law acceptance, and that
- * checkbox is where it is shown.
- */
-function QuotaBanner({
-  slug,
-  quota,
-  locale,
-}: {
-  slug: string
-  quota: EventQuota
-  locale: 'en' | 'hu'
-}) {
-  const full = quota.participantCount >= quota.participantLimit
-  const en = locale === 'en'
-
-  return (
-    <div
-      className={`print-hidden mt-4.5 flex flex-wrap items-center justify-between gap-4 rounded-lg border px-4.5 py-3.5 ${
-        full
-          ? 'border-destructive/30 bg-destructive/8'
-          : 'border-border bg-white/3'
-      }`}
-    >
-      <div className="min-w-0">
-        <p
-          className={`text-[13.5px] font-semibold ${full ? 'text-destructive' : ''}`}
-        >
-          {full
-            ? en
-              ? 'New guests cannot join'
-              : 'Új vendégek nem tudnak csatlakozni'
-            : en
-              ? 'Free event'
-              : 'Ingyenes esemény'}
-        </p>
-        <p className="mt-1 text-[12.5px] leading-[1.5] text-muted-foreground">
-          {full
-            ? en
-              ? `The free allowance filled up at ${quota.participantLimit} guests. Everyone already in can keep shooting.`
-              : `Az ingyenes keret ${quota.participantLimit} vendégnél betelt. A már csatlakozottak tovább fotózhatnak.`
-            : en
-              ? `Up to ${quota.participantLimit} guests are free on this event.`
-              : `Ezen az eseményen ${quota.participantLimit} vendégig ingyenes.`}
-        </p>
-      </div>
-      <Link
-        href={`/host/events/${slug}/settings?lang=${locale}#billing`}
-        className="shrink-0 rounded-full bg-primary px-4.5 py-2.5 text-[12.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-      >
-        {en ? 'Unlock' : 'Feloldás'} — {eventPriceLabel(locale)}
-      </Link>
-    </div>
   )
 }

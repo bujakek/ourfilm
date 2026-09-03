@@ -1,4 +1,4 @@
-import { BackgroundGlow } from '@/components/site/background-glow'
+import { PageGrain } from '@/components/site/page-grain'
 import { localeTag } from '@/lib/i18n'
 import { LoadingStatus } from '@/components/loading-status'
 import type { Metadata } from 'next'
@@ -49,7 +49,7 @@ export default async function AuthCallbackPage({ searchParams }: Props) {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-      <BackgroundGlow />
+      <PageGrain />
       <main
         className="relative z-10"
         // See the note in `app/(product)/layout.tsx`: `/auth` has no locale

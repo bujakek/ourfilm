@@ -740,13 +740,16 @@ Full pipeline in `.cursor/skills/ourfilm-upload/SKILL.md`.
 The homepage and pricing page describe the **disposable-camera product**. These
 claims are live and load-bearing:
 
-- **ZIP download of the whole album** (`benefits.tsx`) — works
+- **ZIP download of the whole album** (the FAQ's `Letölthetők a képek?`) —
+  works. It was cited here as `benefits.tsx` for a while, which was already
+  wrong — that section only ever held a heading and one sentence — and became
+  wronger when the marketing page stopped rendering it.
 - **High-resolution, print-ready photos** (`photo-quality.tsx`, FAQ) — satisfied
   by the 4096px/92% policy above. The pitch is "chat apps crush your photos, we
   don't", which stays true; never re-add claims of literally uncompressed
   originals
-- **Private, unindexed album** (`benefits.tsx`, FAQ) — event routes are
-  `noindex`, and the bucket is now private as well
+- **Private, unindexed album** (FAQ) — event routes are `noindex`, and the
+  bucket is now private as well
 - **Host can hide unwanted photos** (FAQ) — `hidden_at`
 
 - **Up to five participants are free; the paid event admits unlimited

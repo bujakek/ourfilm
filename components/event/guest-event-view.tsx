@@ -2,7 +2,7 @@
 
 import type { Frame } from '@/lib/frames'
 import type { GalleryTile } from '@/lib/photos'
-import { Camera, Loader2 } from 'lucide-react'
+import { Camera } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -17,6 +17,10 @@ import { captureStatus, formatLine, ownRollNote } from '@/lib/event-copy'
 import { prepareForUpload } from '@/lib/image'
 import { uploadShotRenders } from '@/lib/upload-shot'
 import { type Locale, localeTag } from '@/lib/i18n'
+import { T, still } from '@/lib/motion'
+import { useEntrance } from '@/lib/use-entrance'
+import { LiveDot } from '@/components/ui/live-dot'
+import { Odometer } from '@/components/ui/odometer'
 
 import { FilmStrip } from './film-strip'
 import { InviteButton } from './invite-button'
@@ -25,7 +29,36 @@ import { PhotoGrid } from './photo-grid'
 type GalleryState =
   { open: true } | { open: false; heading: string; detail: string | null }
 
-type Flash = { kind: 'saved' | 'error'; message: string } | null
+/**
+ * What the screen says when something goes wrong.
+ *
+ * There is no success case any more. A landed shot already announces itself
+ * three times over — the frame develops into the strip, the progress fills,
+ * and the counter rolls down — and a line of text under all that was the
+ * fourth telling of the same news. Failures still need words, because nothing
+ * else on the screen changes when an upload dies.
+ */
+type Flash = string | null
+
+/**
+ * A shot in flight, from the shutter to the server's 200. There can be
+ * several: the shutter does not wait for an upload to finish.
+ *
+ * `index` is where the frame sits on the roll — captured at the moment the
+ * shutter was pressed, so the cell can hand itself back to the real frame when
+ * `router.refresh()` brings it down.
+ */
+type Capture = {
+  /** The shot's idempotency key, and its identity for the whole of its life. */
+  id: string
+  previewUrl: string
+  index: number
+  progress: number
+  confirmed: boolean
+}
+
+/** A photo the guest has taken and the uploader has not reached yet. */
+type Queued = { id: string; file: File }
 
 /**
  * The guest's whole screen, counter first.
@@ -89,13 +122,65 @@ export function GuestEventView({
   const reduceMotion = useReducedMotion()
   const inputRef = useRef<HTMLInputElement>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
-  const [busy, setBusy] = useState(false)
   const [flash, setFlash] = useState<Flash>(null)
   const [now, setNow] = useState(initialNow)
+  const [handedOff, setHandedOff] = useState(false)
+  const [captures, setCaptures] = useState<Capture[]>([])
+  // The queue itself is a ref, not state: it is the uploader's private work
+  // list and nothing renders from it. `captures` is what the screen draws.
+  const queue = useRef<Queued[]>([])
+  const draining = useRef(false)
+
+  // Once per session, not once per mount. This page is left and re-entered on
+  // every single shot — see `lib/use-entrance.ts`.
+  const stage = useEntrance({ once: `ourfilm:entered:${slug}`, step: 0.045 })
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!handedOff) return
+    // Tapping the shutter hands the screen to the OS camera, and the only
+    // reliable signal that the guest is back is the page becoming visible
+    // again. `change` covers the case where a photo was taken; nothing at all
+    // fires when the camera is cancelled, which is what this listener is for.
+    const back = () => {
+      if (document.visibilityState === 'visible') setHandedOff(false)
+    }
+    document.addEventListener('visibilitychange', back)
+    window.addEventListener('focus', back)
+    return () => {
+      document.removeEventListener('visibilitychange', back)
+      window.removeEventListener('focus', back)
+    }
+  }, [handedOff])
+
+  // Released when a capture leaves the list, never before. A preview is the
+  // only copy of that photo on this device until the real thumbnail comes
+  // down, so revoking it early blanks the developing cell mid-upload — which
+  // is exactly what a per-capture cleanup effect would have done the moment a
+  // second shot replaced the first.
+  const shownUrls = useRef(new Set<string>())
+  useEffect(() => {
+    const live = shownUrls.current
+    const shown = new Set(
+      captures.filter((c) => frames.length <= c.index).map((c) => c.previewUrl),
+    )
+    for (const url of live) {
+      if (!shown.has(url)) {
+        URL.revokeObjectURL(url)
+        live.delete(url)
+      }
+    }
+    for (const url of shown) live.add(url)
+  }, [captures, frames.length])
+  useEffect(() => {
+    const live = shownUrls.current
+    return () => {
+      for (const url of live) URL.revokeObjectURL(url)
+    }
   }, [])
 
   useEffect(() => {
@@ -106,7 +191,22 @@ export function GuestEventView({
 
   const captureEnd = new Date(captureEndAt).getTime()
   const captureIsOpen = initialCanCapture && now <= captureEnd
-  const canTakePhoto = captureIsOpen && remaining > 0 && !busy
+
+  // Shots taken but not yet confirmed by `commit_shot`. `remaining` is server
+  // truth and stays server truth — it is only ever what a commit returned —
+  // but the *gate* has to subtract what is still in flight. Without that, a
+  // guest on their last frame could press twice and have the second photo
+  // refused after it was taken, and there is no retake in this product.
+  const outstanding = captures.filter((c) => !c.confirmed).length
+  const canTakePhoto = captureIsOpen && remaining - outstanding > 0
+  const uploading = outstanding > 0
+
+  // Derived rather than cleared in an effect: once `router.refresh()` has
+  // brought the real frames down, the strip renders those instead and the
+  // developing cells simply stop being shown. Indices are handed out
+  // consecutively from `frames.length`, so this filter also keeps them in
+  // order without sorting.
+  const developing = captures.filter((c) => frames.length <= c.index)
 
   const status = captureStatus(
     {
@@ -122,30 +222,52 @@ export function GuestEventView({
     locale,
   )
 
-  const uploadPhoto = useCallback(
-    async (file: File) => {
-      if (busy || remaining <= 0) return
+  /**
+   * Uploads one queued shot, start to finish.
+   *
+   * Deliberately knows nothing about `remaining` or `frames.length` — it is
+   * handed a file and a frame that has already been claimed on screen, and
+   * every decision it makes comes back from the server.
+   */
+  const runCapture = useCallback(
+    async (item: Queued) => {
+      const own = (next: (capture: Capture) => Capture) =>
+        setCaptures((current) =>
+          current.map((c) => (c.id === item.id ? next(c) : c)),
+        )
+      const drop = () =>
+        setCaptures((current) => current.filter((c) => c.id !== item.id))
 
-      setBusy(true)
-      setFlash(null)
-      const idempotencyKey = crypto.randomUUID()
+      // A refusal is about this guest or this event, never about this file, so
+      // whatever is behind it in the queue would hit the same wall. Abandon
+      // the rest rather than showing the same sentence once per photo.
+      const abandonQueue = () => {
+        const doomed = new Set(queue.current.map((q) => q.id))
+        queue.current = []
+        setCaptures((current) =>
+          current.filter((c) => c.id !== item.id && !doomed.has(c.id)),
+        )
+      }
+
       let photoId: string | null = null
 
       try {
-        const reserved = await reserveShotAction(eventId, idempotencyKey)
+        const reserved = await reserveShotAction(eventId, item.id)
 
         if (!reserved.ok) {
+          abandonQueue()
           if (reserved.refusal === 'no_shots') setRemaining(0)
-          setFlash({
-            kind: 'error',
-            message: refusalMessage(reserved.refusal, locale),
-          })
+          setFlash(refusalMessage(reserved.refusal, locale))
           return
         }
 
         photoId = reserved.photoId
-        const prepared = await prepareForUpload(file)
-        await uploadShotRenders({ prepared, uploads: reserved.uploads })
+        const prepared = await prepareForUpload(item.file)
+        await uploadShotRenders({
+          prepared,
+          uploads: reserved.uploads,
+          onProgress: (progress) => own((c) => ({ ...c, progress })),
+        })
 
         const committed = await commitShotAction({
           slug,
@@ -158,26 +280,89 @@ export function GuestEventView({
 
         if (!committed.committed) throw new Error('commit refused')
 
+        // State lands first and the animation is a consequence: the counter is
+        // set to what the server returned and the odometer rolls from an
+        // already-correct value. Commits are strictly ordered because the
+        // queue is drained one at a time, so a later commit can never overwrite
+        // this count with a staler one. Nothing here is gated on an animation
+        // finishing — `onAnimationComplete` never fires while the tab is
+        // hidden, and this tab has just spent a minute hidden behind a camera.
         setRemaining(committed.shotsRemaining)
-        setFlash({
-          kind: 'saved',
-          message: en ? 'Photo saved.' : 'Elmentettük a képet.',
-        })
+        own((c) => ({ ...c, progress: 1, confirmed: true }))
         router.refresh()
       } catch (error) {
         console.error('Native camera upload failed', error)
+        drop()
         if (photoId) await releaseShotAction(photoId)
-        setFlash({
-          kind: 'error',
-          message: en
+        setFlash(
+          en
             ? 'The photo did not upload. Please try again.'
             : 'A kép nem töltődött fel. Próbáld újra.',
-        })
-      } finally {
-        setBusy(false)
+        )
       }
     },
-    [busy, en, eventId, locale, remaining, router, slug],
+    [en, eventId, locale, router, slug],
+  )
+
+  /**
+   * Drains the queue, one shot at a time.
+   *
+   * **One at a time on purpose.** The database is ready for the other
+   * answer — `reserve_shot` takes `for update` on the *participant* row
+   * precisely so one guest's concurrent captures serialise — but the network
+   * is not. These uploads happen on venue wifi shared by a hundred phones, and
+   * two 2MB PUTs racing each other there finish later than the same two in a
+   * row and fail more often. Nothing is gained by overlapping them either: the
+   * guest is inside the OS camera while the queue drains, not watching it.
+   *
+   * The re-entrancy guard is a ref rather than state because it must be true
+   * before the next line runs, not after the next render.
+   */
+  const drainQueue = useCallback(async () => {
+    if (draining.current) return
+    draining.current = true
+    try {
+      for (let next = queue.current.shift(); next; next = queue.current.shift())
+        await runCapture(next)
+    } finally {
+      draining.current = false
+    }
+  }, [runCapture])
+
+  /**
+   * What the shutter does: claim a frame on screen, and get out of the way.
+   *
+   * The button used to stay disabled until the previous photo had committed,
+   * which on a slow connection is the length of a whole moment. A roll of film
+   * does not stop you pressing the shutter because the last frame is still
+   * winding on.
+   */
+  const takePhoto = useCallback(
+    (file: File) => {
+      const id = crypto.randomUUID()
+      queue.current.push({ id, file })
+      setFlash(null)
+      // The cell fills with the file the camera just handed over, before a
+      // single byte has been sent. That development is the progress
+      // indicator, which is why there is no spinner anywhere on this screen.
+      setCaptures((current) => [
+        ...current,
+        {
+          id,
+          previewUrl: URL.createObjectURL(file),
+          // Frames are claimed in the order they were shot, so the next one
+          // sits immediately after everything already on the strip —
+          // the landed frames plus whatever is still developing on top.
+          index:
+            frames.length +
+            current.filter((c) => frames.length <= c.index).length,
+          progress: 0,
+          confirmed: false,
+        },
+      ])
+      void drainQueue()
+    },
+    [drainQueue, frames.length],
   )
 
   return (
@@ -188,7 +373,12 @@ export function GuestEventView({
       // event's own language is marked on its subtree instead.
       lang={localeTag[locale]}
     >
-      <div className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={stage(0)}
+        className="flex items-center justify-between"
+      >
         <span className="font-mono text-[9.5px] font-medium tracking-[0.18em] text-foreground/40">
           OURFILM
         </span>
@@ -197,40 +387,36 @@ export function GuestEventView({
             status.live ? 'text-accent' : 'text-foreground/40'
           }`}
         >
-          {status.live ? (
-            <span
-              aria-hidden="true"
-              className="size-[5px] rounded-full bg-accent"
-            />
-          ) : null}
+          {status.live ? <LiveDot /> : null}
           {status.label}
         </span>
-      </div>
+      </motion.div>
 
-      <h1 className="mt-3 font-display text-[36px] leading-[1.02] tracking-[-0.005em] text-balance">
+      <motion.h1
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={stage(1)}
+        className="mt-3 font-display text-[36px] leading-[1.02] tracking-[-0.005em] text-balance"
+      >
         {eventName}
-      </h1>
+      </motion.h1>
 
-      <div className="mt-6 flex items-end gap-3">
-        {/* The number is the subject of the screen, so the swap animation it
-            already had simply gets five times the type size. It is still not
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={stage(2)}
+        className="mt-6 flex items-end gap-3"
+      >
+        {/* The number is the subject of the screen, and it is the same rolling
+            number the create flow and the host console use. It is still not
             optimistic: this renders whatever `commit_shot` returned, because a
             client-side decrement is a display and the database is the count. */}
-        <span
-          aria-live="polite"
-          className="relative flex h-[54px] items-end overflow-hidden font-mono text-[66px] leading-[0.82] font-medium tracking-[-0.06em]"
-        >
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span
-              key={remaining}
-              initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -24 }}
-              transition={{ duration: reduceMotion ? 0 : 0.2 }}
-            >
-              {remaining}
-            </motion.span>
-          </AnimatePresence>
+        <span aria-live="polite" className="flex items-end">
+          <Odometer
+            value={remaining}
+            dir="down"
+            className="font-mono text-[66px] leading-[0.82] font-medium tracking-[-0.06em]"
+          />
         </span>
         <span className="pb-1.5 font-mono text-[20px] tracking-[-0.03em] text-foreground/35">
           /{shotsPerParticipant}
@@ -250,36 +436,70 @@ export function GuestEventView({
             </>
           )}
         </span>
-      </div>
+      </motion.div>
 
-      <FilmStrip
-        className="mt-5"
-        frames={frames}
-        total={shotsPerParticipant}
-        locale={locale}
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={stage(3)}
+      >
+        {/* The perforations keep their place in the same count and arrive on
+            `advance` rather than `settle` — the strip is the one mechanical
+            object on the screen, and it should read as film being pulled
+            through rather than as another card landing. */}
+        <FilmStrip
+          className="mt-5"
+          frames={frames}
+          total={shotsPerParticipant}
+          locale={locale}
+          pending={developing}
+          entrance={stage(6, T.advance)}
+        />
+      </motion.div>
 
-      <div className="mt-5.5 flex items-center gap-3.5">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={stage(4)}
+        className="mt-5.5 flex items-center gap-3.5"
+      >
+        {/* The shutter dims because a boolean says the screen has been handed
+            to the OS camera — never because an animation was left mid-flight.
+            A guest can be away for a minute, and every frame-driven timer in
+            this tab is frozen for all of it.
+
+            The dim is the `animate` opacity rather than `disabled:opacity-50`,
+            because an inline style would win over the class and the two would
+            fight. Springs for the finger, a tween for the state: the scale is
+            `snap` and the opacity is `settle`, named separately. */}
         <motion.button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => {
+            setHandedOff(true)
+            inputRef.current?.click()
+          }}
           disabled={!canTakePhoto}
-          whileTap={canTakePhoto && !reduceMotion ? { scale: 0.98 } : undefined}
-          className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-xl text-[15px] font-semibold disabled:pointer-events-none disabled:opacity-50"
+          initial={false}
+          animate={{ opacity: handedOff || !canTakePhoto ? 0.5 : 1 }}
+          whileTap={
+            canTakePhoto && !reduceMotion ? { scale: 0.972 } : undefined
+          }
+          transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
+          className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-xl text-[15px] font-semibold disabled:pointer-events-none"
         >
-          {busy ? (
-            <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-          ) : (
-            <Camera className="size-5" strokeWidth={1.8} aria-hidden="true" />
-          )}
-          {busy
+          <Camera className="size-5" strokeWidth={1.8} aria-hidden="true" />
+          {remaining <= 0
             ? en
-              ? 'Saving…'
-              : 'Mentés…'
-            : remaining <= 0
-              ? en
-                ? 'Roll finished'
-                : 'Elfogyott a tekercs'
+              ? 'Roll finished'
+              : 'Elfogyott a tekercs'
+            : uploading && !canTakePhoto
+              ? // The roll is spent but the last frames are still going up.
+                // The only moment this screen says "saving" — while a shot is
+                // uploading with film left, the shutter still reads "Kamera",
+                // because it still works.
+                en
+                ? 'Saving…'
+                : 'Mentés…'
               : en
                 ? 'Camera'
                 : 'Kamera'}
@@ -302,27 +522,25 @@ export function GuestEventView({
           onChange={(event) => {
             const file = event.target.files?.[0]
             event.target.value = ''
-            if (file) void uploadPhoto(file)
+            setHandedOff(false)
+            if (file) takePhoto(file)
           }}
         />
-      </div>
+      </motion.div>
 
       <AnimatePresence initial={false} mode="wait">
         {flash ? (
           <motion.p
-            key={`${flash.kind}-${flash.message}`}
+            key={flash}
+            role="alert"
             aria-live="polite"
             initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-            transition={{ duration: reduceMotion ? 0 : 0.2 }}
-            className={`mt-3 text-center text-sm ${
-              flash.kind === 'error'
-                ? 'text-destructive'
-                : 'text-muted-foreground'
-            }`}
+            transition={reduceMotion ? still : T.settle}
+            className="mt-3 text-center text-sm text-destructive"
           >
-            {flash.message}
+            {flash}
           </motion.p>
         ) : remaining <= 0 ? (
           <motion.p
@@ -330,7 +548,7 @@ export function GuestEventView({
             aria-live="polite"
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.25 }}
+            transition={reduceMotion ? still : T.settle}
             className="mt-3 text-center text-sm font-medium text-muted-foreground"
           >
             {en
@@ -343,11 +561,21 @@ export function GuestEventView({
       {/* The format, said out loud. The guest count moved here from the deleted
           `<dl>`; the other two clauses are the thing the whole product is and
           had never appeared on the screen holding the camera. */}
-      <p className="mt-3 text-center font-mono text-[10px] tracking-[0.06em] text-foreground/35">
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={stage(4)}
+        className="mt-3 text-center font-mono text-[10px] tracking-[0.06em] text-foreground/35"
+      >
         {formatLine(participantCount, locale)}
-      </p>
+      </motion.p>
 
-      <div className="mt-6.5 border-t border-border pt-4.5">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={stage(5)}
+        className="mt-6.5 border-t border-border pt-4.5"
+      >
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="font-display text-[22px] leading-none">
             {en ? 'Shared photos' : 'Közös képek'}
@@ -387,7 +615,7 @@ export function GuestEventView({
             <PhotoGrid photos={photos} locale={locale} />
           </div>
         )}
-      </div>
+      </motion.div>
     </main>
   )
 }

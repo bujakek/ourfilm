@@ -1,10 +1,10 @@
-import { BackgroundGlow } from '@/components/site/background-glow'
+import { PageGrain } from '@/components/site/page-grain'
 import type { ReactNode } from 'react'
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="relative min-h-screen">
-      <BackgroundGlow />
+      <PageGrain />
       <div className="relative z-10">{children}</div>
     </div>
   )

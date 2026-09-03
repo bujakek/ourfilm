@@ -47,14 +47,23 @@ export type OccasionCopy = Pick<
 >
 
 /**
- * While true, every `/alkalmak` page carries `noindex` and `app/sitemap.ts`
- * leaves the routes out — a sitemap that advertises noindex URLs sends
- * crawlers two contradictory instructions.
+ * While true, the occasion pages are not part of the site.
  *
- * The copy below is final, so the pages no longer show a draft banner. What
- * this still holds back is indexing: these pages link to /arak, which stays
- * out of search results until `hasRealCompanyDetails` is true. Flip to false
- * when the occasion pages are meant to be found; nothing else needs editing.
+ * Three things read this flag and there is nothing else to edit:
+ *
+ *   - every `/alkalmak` page carries `noindex`
+ *   - `app/sitemap.ts` and `/llms.txt` leave the routes out — a sitemap that
+ *     advertises noindex URLs sends crawlers two contradictory instructions
+ *   - the navbar and the footer do not link to them
+ *
+ * The routes still resolve. A page nobody links to and nobody indexes is
+ * withdrawn from the site without being deleted from it, which is what a
+ * section awaiting a rewrite wants: the copy, the images and the routing all
+ * stay put and one boolean brings them back.
+ *
+ * `components/site/occasions.tsx` — the homepage carousel — is dormant for
+ * the same reason but by a different mechanism: `app/[locale]/page.tsx`
+ * simply does not render it, the way it does not render `<Stats />`.
  */
 export const OCCASIONS_ARE_DRAFT = true
 

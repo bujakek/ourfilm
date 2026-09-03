@@ -1,4 +1,4 @@
-import { BackgroundGlow } from '@/components/site/background-glow'
+import { PageGrain } from '@/components/site/page-grain'
 import { Footer } from '@/components/site/footer'
 import { Navbar } from '@/components/site/navbar'
 import { PageHeader } from '@/components/site/page-header'
@@ -33,7 +33,7 @@ export function PageShell({
 }: PageShellProps) {
   return (
     <div className="relative min-h-screen">
-      <BackgroundGlow />
+      <PageGrain />
       <Navbar locale={locale} />
       <main className="relative z-10">
         <PageHeader eyebrow={eyebrow} title={title} lead={lead} />

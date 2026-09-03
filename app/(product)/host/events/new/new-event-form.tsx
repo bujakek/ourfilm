@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
 import { AuthDialog } from '@/components/host/onboarding/auth-dialog'
 import { DraftRestoreDialog } from '@/components/host/onboarding/draft-restore-dialog'
-import type { OnboardingNav } from '@/components/host/onboarding/onboarding-shell'
+import { OnboardingShell } from '@/components/host/onboarding/onboarding-shell'
 import { useBrowserTimeZone } from '@/components/host/onboarding/use-browser-time-zone'
 import {
   invalidateStoredDraft,
@@ -23,10 +23,10 @@ import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
 import type { EventPlan } from '@/lib/onboarding'
 import type { Locale } from '@/lib/i18n'
 import { createEventFromDraft } from './actions'
-import { StepEnd } from './step-end'
-import { StepGuests } from './step-guests'
-import { StepName } from './step-name'
-import { StepReveal } from './step-reveal'
+import { endScreen } from './step-end'
+import { guestsScreen } from './step-guests'
+import { nameScreen } from './step-name'
+import { revealScreen } from './step-reveal'
 
 /** Four questions: name, end, reveal, and the party's size — guests, roll
  *  length and who may look, which share the last screen. The dots at the bottom
@@ -291,25 +291,20 @@ function OnboardingFlow({
     else window.location.assign(destination)
   }
 
-  const nav = (extra?: Partial<OnboardingNav>): OnboardingNav => ({
-    step,
-    stepCount: STEP_COUNT,
-    backHref: step === 0 ? '/host' : undefined,
-    onBack: step === 0 ? undefined : () => setStep((s) => s - 1),
-    onNext: () => setStep((s) => Math.min(LAST_STEP, s + 1)),
-    error,
-    ...extra,
-  })
+  const advance = () => setStep((s) => Math.min(LAST_STEP, s + 1))
 
-  return (
-    <>
-      {step === 0 ? (
-        <StepName
-          locale={locale}
-          nav={nav()}
-          name={name}
-          setName={setName}
-          suggestions={
+  // One shell, four questions. Each step file returns its own copy, its own
+  // CTA and its fields; the shell above them is the same element on every
+  // step, which is the only way the step counter can roll and the progress
+  // rule can grow rather than being cut and redrawn. See `StepScreen`.
+  const { content, ...screen } =
+    step === 0
+      ? nameScreen({
+          locale,
+          name,
+          setName,
+          onAdvance: advance,
+          suggestions:
             locale === 'en'
               ? [
                   'Our wedding',
@@ -318,57 +313,60 @@ function OnboardingFlow({
                   'Anniversary',
                   'One unforgettable night',
                 ]
-              : suggestions
-          }
-          canAdvance={name.trim().length > 0}
-        />
-      ) : null}
+              : suggestions,
+          canAdvance: name.trim().length > 0,
+        })
+      : step === END_STEP
+        ? endScreen({
+            locale,
+            day,
+            setDay: (value) => setChosenEnd(`${value}T${time}`),
+            time,
+            setTime: (value) => setChosenEnd(`${day}T${value}`),
+            today,
+            canAdvance: endIsFuture,
+          })
+        : step === 2
+          ? revealScreen({
+              locale,
+              mode: revealMode,
+              setMode: setRevealMode,
+              revealIso,
+              timeZone,
+            })
+          : guestsScreen({
+              locale,
+              plan,
+              setPlan: (value) => {
+                setPlan(value)
+                // The paid wording also contains the early-performance
+                // request, so changing plan requires a fresh, explicit choice.
+                setLegalAccepted(false)
+              },
+              shots,
+              setShots,
+              guestsCanView,
+              setGuestsCanView,
+              legalAccepted,
+              setLegalAccepted,
+              paymentsEnabled,
+              pending,
+            })
 
-      {step === END_STEP ? (
-        <StepEnd
-          locale={locale}
-          nav={nav()}
-          day={day}
-          setDay={(value) => setChosenEnd(`${value}T${time}`)}
-          time={time}
-          setTime={(value) => setChosenEnd(`${day}T${value}`)}
-          today={today}
-          canAdvance={endIsFuture}
-        />
-      ) : null}
-
-      {step === 2 ? (
-        <StepReveal
-          locale={locale}
-          nav={nav()}
-          mode={revealMode}
-          setMode={setRevealMode}
-          revealIso={revealIso}
-          timeZone={timeZone}
-        />
-      ) : null}
-
-      {step === LAST_STEP ? (
-        <StepGuests
-          locale={locale}
-          nav={nav({ onNext: create })}
-          plan={plan}
-          setPlan={(value) => {
-            setPlan(value)
-            // The paid wording also contains the early-performance request,
-            // so changing plan requires a fresh, explicit choice.
-            setLegalAccepted(false)
-          }}
-          shots={shots}
-          setShots={setShots}
-          guestsCanView={guestsCanView}
-          setGuestsCanView={setGuestsCanView}
-          legalAccepted={legalAccepted}
-          setLegalAccepted={setLegalAccepted}
-          paymentsEnabled={paymentsEnabled}
-          pending={pending}
-        />
-      ) : null}
+  return (
+    <>
+      <OnboardingShell
+        {...screen}
+        locale={locale}
+        step={step}
+        stepCount={STEP_COUNT}
+        backHref={step === 0 ? '/host' : undefined}
+        onBack={step === 0 ? undefined : () => setStep((s) => s - 1)}
+        onNext={step === LAST_STEP ? create : advance}
+        error={error}
+      >
+        {content}
+      </OnboardingShell>
 
       <AuthDialog
         locale={locale}

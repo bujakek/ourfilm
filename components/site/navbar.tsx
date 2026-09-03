@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Aperture, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 
+import { OCCASIONS_ARE_DRAFT } from '@/lib/occasions'
 import { CREATE_EVENT_PATH, LOGIN_PATH } from '@/lib/routes'
 import { marketingCopy } from '@/lib/marketing-copy'
 import { useEffect, useState } from 'react'
@@ -18,14 +19,21 @@ import { useEffect, useState } from 'react'
  *
  * The ids themselves stay English — an anchor ends up in the address bar.
  */
-const navHrefs = ['/#how-it-works', '/alkalmak', '/arak', '/rolunk']
+const NAV_ITEMS = [
+  { href: '/#how-it-works' },
+  { href: '/alkalmak', draft: OCCASIONS_ARE_DRAFT },
+  { href: '/arak' },
+  { href: '/rolunk' },
+]
 
 export function Navbar({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].nav
-  const navLinks = navHrefs.map((href, index) => ({
-    href,
+  // Labelled before it is filtered: `copy.links` is index-mapped to the list
+  // above, so dropping an entry first would shift every label after it by one.
+  const navLinks = NAV_ITEMS.map((item, index) => ({
+    ...item,
     label: copy.links[index],
-  }))
+  })).filter((item) => !item.draft)
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -63,7 +71,7 @@ export function Navbar({ locale }: { locale: Locale }) {
       >
         <Link
           href={localePath(locale, '/')}
-          className="flex shrink-0 items-center gap-2"
+          className="flex min-h-11 shrink-0 items-center gap-2"
           aria-label={copy.home}
         >
           <span
@@ -73,7 +81,7 @@ export function Navbar({ locale }: { locale: Locale }) {
             )}
           >
             <Aperture
-              className="size-4 text-accent-silver"
+              className="size-4 text-accent"
               strokeWidth={1.6}
               aria-hidden="true"
             />
@@ -113,10 +121,10 @@ export function Navbar({ locale }: { locale: Locale }) {
 
         <Link
           href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-          className={cn(
-            buttonVariants({ size: 'sm' }),
-            'hidden md:inline-flex',
-          )}
+          // Paper, not `bg-primary`: this is the same action as the hero's
+          // primary button and the dashboard's `Új kamera`, and it is the one
+          // material the pass gives to the thing that makes something.
+          className="paper btn-shine hidden min-h-10 items-center rounded-full px-5 text-[12.5px] font-semibold md:inline-flex"
         >
           {copy.create}
         </Link>

@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowRight, Loader2 } from 'lucide-react'
+import { motion } from 'motion/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useActionState, useState } from 'react'
@@ -12,6 +13,8 @@ import {
 import { revealSummary } from '@/lib/event-copy'
 import { formatEventDay } from '@/lib/format'
 import { type Locale, localeTag } from '@/lib/i18n'
+import { ticket } from '@/lib/motion'
+import { useEntrance } from '@/lib/use-entrance'
 
 const initial: JoinState = { error: null }
 
@@ -64,6 +67,10 @@ export function JoinForm({
   const en = locale === 'en'
   const [state, action, pending] = useActionState(joinEventAction, initial)
   const [name, setName] = useState('')
+  // The stub is torn off and handed over: it drops a little and straightens.
+  // The same variant carries the QR sheet at the end of the create flow —
+  // same object, same motion, both surfaces.
+  const stage = useEntrance({ step: 0.12 })
   // No effect watching for success, and no `router.refresh()` — the navigation
   // to the camera happens inside `joinEventAction`, which redirects. An effect
   // keyed on `useActionState`'s state has no stable resting point, since that
@@ -106,7 +113,11 @@ export function JoinForm({
         {/* The ticket. `overflow-hidden` is deliberately absent: the tear line's
             two notches have to bleed past both edges to read as punched out of
             the sheet rather than drawn on it. */}
-        <div className="paper relative rounded-lg px-6 pt-6.5">
+        <motion.div
+          {...ticket}
+          transition={stage(1)}
+          className="paper relative rounded-lg px-6 pt-6.5"
+        >
           <p className="paper-muted font-mono text-[9.5px] font-medium tracking-[0.2em]">
             {en ? 'OURFILM · DISPOSABLE CAMERA' : 'OURFILM · ELDOBHATÓ KAMERA'}
           </p>
@@ -170,7 +181,7 @@ export function JoinForm({
               className="mt-2.5 w-full border-b-[1.5px] border-[rgba(20,19,18,.22)] bg-transparent pb-2.5 text-[19px] text-[color:var(--paper-foreground)] outline-none placeholder:text-[rgba(20,19,18,.32)] focus:border-[rgba(20,19,18,.5)]"
             />
           </div>
-        </div>
+        </motion.div>
 
         {state.error ? (
           <p className="mt-4 text-center text-sm text-destructive">

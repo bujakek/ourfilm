@@ -1,5 +1,4 @@
-import { BackgroundGlow } from '@/components/site/background-glow'
-import { Benefits } from '@/components/site/benefits'
+import { PageGrain } from '@/components/site/page-grain'
 import { Faq } from '@/components/site/faq'
 import { FinalCta } from '@/components/site/final-cta'
 import { Footer } from '@/components/site/footer'
@@ -8,6 +7,7 @@ import { HowItWorks } from '@/components/site/how-it-works'
 import { Navbar } from '@/components/site/navbar'
 import { PhotoReveal } from '@/components/site/photo-reveal'
 import { QrPreview } from '@/components/site/qr-preview'
+import { TryCameraCard } from '@/components/site/try-camera-card'
 import { isLocale } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -59,16 +59,20 @@ export default async function Page({ params }: Props) {
 
   return (
     <div className="relative min-h-screen">
-      <BackgroundGlow />
+      <PageGrain />
       <Navbar locale={locale} />
       <main className="relative z-10">
         {/* <Stats /> and <Testimonials /> are deliberately not rendered.
             Both only ever held invented numbers and invented quotes, and the
             pilot has no verified ones to put in their place. The components
             stay, take their content as props, and can come back the day there
-            is something true to show. */}
+            is something true to show.
+
+            <Benefits /> joins them, for a different reason: it was one heading
+            and one sentence, the heading is `footer.tagline` word for word,
+            and the sentence is now the supporting line of the step section it
+            sat above. Nothing it said has left the page. */}
         <Hero locale={locale} />
-        <Benefits locale={locale} />
         <HowItWorks locale={locale} />
         <QrPreview locale={locale} />
         <PhotoReveal locale={locale} />
@@ -76,6 +80,10 @@ export default async function Page({ params }: Props) {
         <FinalCta locale={locale} />
       </main>
       <Footer locale={locale} />
+      {/* Outside `<main>`: it is an offer that follows the reader down the
+          page, not a part of the document's outline. Desktop only — see the
+          component. */}
+      <TryCameraCard locale={locale} />
     </div>
   )
 }

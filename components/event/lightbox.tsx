@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef } from 'react'
 import type { Locale } from '@/lib/i18n'
+import { T } from '@/lib/motion'
 
 const SWIPE_THRESHOLD = 50
 
@@ -84,7 +85,7 @@ export function Lightbox({
         initial={{ opacity: 0, scale: 0.985 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.99 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={T.settle}
         className="fixed inset-0 flex flex-col"
       >
         <div className="flex items-center justify-between px-4 py-3">
@@ -109,7 +110,7 @@ export function Lightbox({
               initial={{ opacity: 0, scale: 0.99 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.01 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              transition={T.settle}
               className="absolute inset-0"
             >
               <Image

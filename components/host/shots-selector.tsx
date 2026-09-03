@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'motion/react'
 
 import { SHOT_OPTIONS, type ShotOption } from '@/lib/camera'
 import type { Locale } from '@/lib/i18n'
+import { T, still } from '@/lib/motion'
 
 /**
  * The roll length, as one control.
@@ -56,11 +57,7 @@ export function ShotsSelector({
                 layoutId={`${name}-selection`}
                 aria-hidden="true"
                 className="absolute inset-0 bg-accent"
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 520, damping: 38 }
-                }
+                transition={reduceMotion ? still : T.snap}
               />
             ) : null}
             <input

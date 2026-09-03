@@ -1,18 +1,78 @@
-import { QrCode } from 'lucide-react'
 import Image from 'next/image'
-import { Reveal } from './reveal'
 import Link from 'next/link'
 
 import { CREATE_EVENT_PATH } from '@/lib/routes'
-import type { Locale } from '@/lib/i18n'
+import { type Locale, localePath } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
-import { buttonVariants } from '@/components/ui/button'
+import { Reveal } from './reveal'
 
-const floatingPhotos = [
+/**
+ * The last thing on the page.
+ *
+ * The photograph used to sit *behind* the words at 22% — a scrim over an
+ * image doing neither job well. It moves below them instead, as a full-bleed
+ * band of four frames at full strength: the words get a clean dark field, and
+ * the photographs stop being wallpaper and become the thing being offered.
+ * They are the four `final-*` images the old floating collage used, laid flat.
+ *
+ * The whole second line is italic here, where the hero italicises one word.
+ * The hero's sentence turns on `vendégeitek`; this one is an instruction, and
+ * the emphasis is the whole of what you would be looking at.
+ */
+export function FinalCta({ locale }: { locale: Locale }) {
+  const copy = marketingCopy[locale].final
+
+  return (
+    <section id="get-started" className="relative">
+      <Reveal className="mx-auto max-w-6xl px-5 py-24 text-center sm:px-6 lg:py-28">
+        <h2 className="mx-auto max-w-[26rem] font-display text-[clamp(34px,9vw,56px)] leading-[1.04] tracking-[-0.02em] text-balance sm:max-w-[34rem]">
+          {copy.titleStart} <em className="italic">{copy.titleEnd}</em>
+        </h2>
+        <p className="mx-auto mt-5.5 max-w-[34rem] text-[17px] leading-[1.6] text-pretty text-foreground/64">
+          {copy.lead}
+        </p>
+
+        <div className="mt-8.5 flex flex-col flex-wrap items-center justify-center gap-3.5 sm:flex-row">
+          <Link
+            href={`${CREATE_EVENT_PATH}?lang=${locale}`}
+            className="paper btn-shine inline-flex items-center justify-center rounded-xl px-7.5 py-4.5 text-[15px] font-semibold transition-transform hover:scale-[1.03]"
+          >
+            {copy.create}
+          </Link>
+          <Link
+            href={localePath(locale, '/arak')}
+            className="inline-flex items-center justify-center rounded-xl border border-white/18 px-7.5 py-4.5 text-[15px] font-semibold text-foreground/85 transition-[transform,border-color] hover:scale-[1.03] hover:border-white/35"
+          >
+            {marketingCopy[locale].nav.links[2]}
+          </Link>
+        </div>
+
+        {/* `final.helper` in the counting voice. Derived rather than written
+            out again, so the claim cannot drift from the sentence the pricing
+            page and the hero also make. */}
+        <p className="mt-5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-foreground/40">
+          {asReadout(copy.helper)}
+        </p>
+      </Reveal>
+
+      <FinalStrip locale={locale} />
+    </section>
+  )
+}
+
+/** `Nincs app. Nincs vendégregisztráció.` → `NINCS APP · NINCS VENDÉGREGISZTRÁCIÓ` */
+function asReadout(sentence: string): string {
+  return sentence
+    .toUpperCase()
+    .replace(/\.\s*$/, '')
+    .split(/\.\s+/)
+    .join(' · ')
+}
+
+const STRIP = [
   {
     src: '/images/landing/final-rings.webp',
     alt: { en: 'The newlyweds showing their rings', hu: 'Az ifjú pár gyűrűi' },
-    className: 'left-[4%] top-[18%] w-24 rotate-[-8deg] sm:w-28',
   },
   {
     src: '/images/landing/final-wedding-dog.webp',
@@ -20,7 +80,6 @@ const floatingPhotos = [
       en: 'A dog walking down the wedding aisle',
       hu: 'Kutya sétál végig az esküvői sorok között',
     },
-    className: 'right-[6%] top-[12%] w-24 rotate-[7deg] sm:w-32',
   },
   {
     src: '/images/landing/final-couple-table.webp',
@@ -28,7 +87,6 @@ const floatingPhotos = [
       en: 'A candid portrait of the newlyweds at their table',
       hu: 'Pillanatkép az ifjú párról az asztalnál',
     },
-    className: 'left-[8%] bottom-[14%] w-24 rotate-[6deg] sm:w-28',
   },
   {
     src: '/images/landing/final-dance-circle.webp',
@@ -36,76 +94,30 @@ const floatingPhotos = [
       en: 'Wedding guests cheering around the dance floor',
       hu: 'Esküvői vendégek ünnepelnek a táncparketten',
     },
-    className: 'right-[5%] bottom-[16%] w-24 rotate-[-6deg] sm:w-32',
   },
 ]
 
-export function FinalCta({ locale }: { locale: Locale }) {
-  const copy = marketingCopy[locale].final
+/**
+ * Four frames, edge to edge, with no gap between them.
+ *
+ * A contact sheet rather than a gallery: the frames touch, because that is
+ * what a strip of film does and what the host's dashboard rows already do.
+ * Two across on a phone, where four would be 97px each.
+ */
+function FinalStrip({ locale }: { locale: Locale }) {
   return (
-    <section id="get-started" className="relative px-4 py-20 sm:px-6 lg:py-28">
-      <div className="mx-auto max-w-6xl">
-        <Reveal>
-          <div className="glass-strong relative overflow-hidden rounded-[2.5rem] px-6 py-20 text-center sm:px-10 sm:py-28">
-            {/* glow + qr motif */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-            >
-              <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(150,120,255,0.22),transparent_70%)] blur-3xl" />
-              <QrCode
-                className="absolute top-1/2 left-1/2 size-[26rem] -translate-x-1/2 -translate-y-1/2 text-white/[0.03]"
-                strokeWidth={0.5}
-              />
-            </div>
-
-            {/* floating photos (hidden on small screens to avoid overflow) */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 hidden sm:block"
-            >
-              {floatingPhotos.map((p, i) => (
-                <div
-                  key={p.src}
-                  className={`glass absolute animate-float-slow overflow-hidden rounded-2xl p-1 ${p.className}`}
-                  style={{ animationDelay: `${i * -3}s` }}
-                >
-                  <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
-                    <Image
-                      src={p.src}
-                      alt={p.alt[locale]}
-                      fill
-                      sizes="128px"
-                      className="object-cover"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="relative mx-auto max-w-2xl">
-              <h2 className="text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                <span className="text-gradient">{copy.titleStart}</span>{' '}
-                <span className="text-gradient-accent">{copy.titleEnd}</span>
-              </h2>
-              <p className="mx-auto mt-6 max-w-lg leading-relaxed text-pretty text-muted-foreground">
-                {copy.lead}
-              </p>
-              <div className="mt-9 flex justify-center">
-                <Link
-                  href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-                  className={buttonVariants({ size: 'lg' })}
-                >
-                  {copy.create}
-                </Link>
-              </div>
-              <p className="mt-5 text-sm text-muted-foreground">
-                {copy.helper}
-              </p>
-            </div>
-          </div>
-        </Reveal>
-      </div>
-    </section>
+    <div className="grid grid-cols-2 sm:grid-cols-4">
+      {STRIP.map((photo) => (
+        <div key={photo.src} className="relative aspect-square">
+          <Image
+            src={photo.src}
+            alt={photo.alt[locale]}
+            fill
+            sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover"
+          />
+        </div>
+      ))}
+    </div>
   )
 }
