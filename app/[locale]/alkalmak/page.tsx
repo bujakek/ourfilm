@@ -62,7 +62,7 @@ export default async function AlkalmakPage({ params }: Props) {
                 <li key={occasion.slug}>
                   <Link
                     href={localePath(locale, `/alkalmak/${occasion.slug}`)}
-                    className="glass glass-hover group flex h-full flex-col overflow-hidden rounded-3xl"
+                    className="glass glass-hover group flex h-full flex-col overflow-hidden rounded-2xl"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden">
                       <Image

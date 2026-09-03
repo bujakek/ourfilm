@@ -339,6 +339,38 @@ export function formatHuCalendarDay(day: string): string {
   return HU_LONG_DAY.format(new Date(`${day}T00:00:00Z`))
 }
 
+const EVENT_DAY_CACHE = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * `szept. 5.` — the event's day, with no year and no clock.
+ *
+ * For the guest's ticket, which names the occasion rather than holding anyone
+ * to a deadline: the times that matter there are already on it as a roll length
+ * and a reveal rule. `formatDeadline` is the wrong tool because its year and
+ * `23:00` are precisely what a ticket should not lead with.
+ *
+ * Rendered in the event's own zone like every other instant here — a party that
+ * runs past midnight must not be dated to the next day for a guest whose phone
+ * is somewhere else.
+ */
+export function formatEventDay(
+  iso: string,
+  zone = EVENT_TIME_ZONE,
+  locale: KnownLocale = 'hu',
+): string {
+  const key = `${locale}:${zone}`
+  return memoFormatter(
+    EVENT_DAY_CACHE,
+    key,
+    () =>
+      new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'hu-HU', {
+        month: 'short',
+        day: 'numeric',
+        timeZone: zone,
+      }),
+  ).format(new Date(iso))
+}
+
 const REVEAL_BADGE_CACHE = new Map<string, Intl.DateTimeFormat>()
 
 /**

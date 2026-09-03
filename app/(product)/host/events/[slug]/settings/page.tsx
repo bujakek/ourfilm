@@ -146,14 +146,18 @@ export default async function AdminEventSettingsPage({
           locale={locale}
         />
 
-        <Suspense fallback={<BillingCardSkeleton />}>
-          <EventBilling
-            slug={event.slug}
-            eventId={event.id}
-            checkout={checkoutState}
-            locale={locale}
-          />
-        </Suspense>
+        {/* The event page's quota banner links straight here — the unlock has
+            to be reached with its consumer-law checkbox, not around it. */}
+        <div id="billing" className="scroll-mt-6">
+          <Suspense fallback={<BillingCardSkeleton />}>
+            <EventBilling
+              slug={event.slug}
+              eventId={event.id}
+              checkout={checkoutState}
+              locale={locale}
+            />
+          </Suspense>
+        </div>
       </div>
 
       <Suspense fallback={null}>

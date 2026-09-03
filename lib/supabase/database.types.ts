@@ -587,6 +587,13 @@ export type Database = {
           participant_id: string
         }[]
       }
+      my_frames: {
+        Args: { p_event_id: string; p_token_hash: string }
+        Returns: {
+          frame_index: number
+          thumb_path: string
+        }[]
+      }
       owned_events_with_previews: {
         Args: never
         Returns: {
@@ -597,6 +604,7 @@ export type Database = {
           event_name: string
           guests_can_view: boolean
           id: string
+          is_full_plan: boolean
           locale: string
           participant_count: number
           photo_count: number

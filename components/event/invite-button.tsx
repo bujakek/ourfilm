@@ -20,9 +20,19 @@ import type { Locale } from '@/lib/i18n'
 export function InviteButton({
   url,
   locale = 'hu',
+  iconOnly = false,
 }: {
   url: string
   locale?: Locale
+  /**
+   * The guest surface's shape: a 58px bordered square beside the shutter, with
+   * no label. The whole share/clipboard mechanism below is unchanged — what
+   * goes is `.glass` (no longer what a secondary control wears) and the word,
+   * which was competing with the one button on the screen that matters. The
+   * copied state still reads as a tick, and the `aria-live` line below still
+   * announces it.
+   */
+  iconOnly?: boolean
 }) {
   const en = locale === 'en'
   const [copied, setCopied] = useState(false)
@@ -47,6 +57,41 @@ export function InviteButton({
       // Clipboard needs a secure context and can still be refused. Nothing
       // useful to offer here beyond leaving the button as it was.
     }
+  }
+
+  const announcement = (
+    <span aria-live="polite" className="sr-only">
+      {copied
+        ? en
+          ? 'Link copied to clipboard'
+          : 'Link kimásolva a vágólapra'
+        : ''}
+    </span>
+  )
+
+  if (iconOnly) {
+    return (
+      <button
+        type="button"
+        onClick={invite}
+        aria-label={en ? 'Share invite link' : 'Meghívólink megosztása'}
+        className={cn(
+          'flex size-[58px] shrink-0 items-center justify-center rounded-xl border border-white/15 transition-colors hover:border-white/30',
+          copied ? 'text-accent' : 'text-foreground/75',
+        )}
+      >
+        {copied ? (
+          <Check className="size-5" strokeWidth={2.2} aria-hidden="true" />
+        ) : (
+          <Share2
+            className="size-[18px]"
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
+        )}
+        {announcement}
+      </button>
+    )
   }
 
   return (
@@ -76,13 +121,7 @@ export function InviteButton({
           {en ? 'Invite' : 'Meghívás'}
         </>
       )}
-      <span aria-live="polite" className="sr-only">
-        {copied
-          ? en
-            ? 'Link copied to clipboard'
-            : 'Link kimásolva a vágólapra'
-          : ''}
-      </span>
+      {announcement}
     </Button>
   )
 }

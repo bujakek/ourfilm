@@ -26,7 +26,7 @@ export function Cta({
   children?: ReactNode
 }) {
   return (
-    <aside className="glass mt-10 rounded-3xl px-6 py-7">
+    <aside className="glass mt-10 rounded-2xl px-6 py-7">
       {children ? (
         <div className="text-pretty text-muted-foreground [&>p:first-child]:mt-0">
           {children}

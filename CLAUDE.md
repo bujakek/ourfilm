@@ -750,9 +750,18 @@ claims are live and load-bearing:
 - **Host can hide unwanted photos** (FAQ) — `hidden_at`
 
 - **Up to five participants are free; the paid event admits unlimited
-  participants** (`/hu/arak`) — enforced in `join_event`
+  participants** (`/hu/arak`, and now the hero's claim row) — enforced in
+  `join_event`
 - **Every participant gets the host's chosen 5/10/16/24/36-shot roll** — paying
   never removes the per-person format
+- **No preview and no retakes** (`hero.tsx`'s claim row, the guest event page's
+  format line, the join ticket) — this is the format rather than a feature, and
+  it is true because there is no preview surface and `reserve_shot` spends a
+  frame per shutter press. It moved onto the landing page in the "Ticket & Roll"
+  pass; it had always been what the product does and was never stated where
+  someone deciding whether to use it would read it.
+- **No app and no sign-up for guests** (`hero.tsx`, the join ticket) — the guest
+  flow is one name field and an httpOnly cookie; there is no account to make
 
 Do not reintroduce anything describing camera-roll upload or unlimited photos.
 

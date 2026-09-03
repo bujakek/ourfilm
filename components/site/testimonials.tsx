@@ -32,7 +32,7 @@ export function Testimonials({ reviews }: { reviews: Review[] }) {
         <div className="mt-14 grid gap-4 lg:grid-cols-3">
           {reviews.map((r, i) => (
             <Reveal key={r.name} delay={i * 100}>
-              <figure className="glass glass-hover flex h-full flex-col rounded-3xl p-8">
+              <figure className="glass glass-hover flex h-full flex-col rounded-2xl p-8">
                 <Quote className="size-8 text-accent/60" strokeWidth={1.4} />
                 <blockquote className="mt-5 flex-1 text-lg leading-relaxed text-pretty text-foreground/90">
                   {`„${r.quote}”`}

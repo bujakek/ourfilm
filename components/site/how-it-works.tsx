@@ -75,7 +75,7 @@ export function HowItWorks({ locale }: { locale: Locale }) {
                       <span className="text-gradient text-5xl font-semibold tracking-tight">
                         {step.number}
                       </span>
-                      <span className="glass flex size-12 items-center justify-center rounded-2xl">
+                      <span className="glass flex size-12 items-center justify-center rounded-lg">
                         <step.icon
                           className="size-6 text-accent"
                           strokeWidth={1.6}

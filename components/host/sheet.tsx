@@ -98,7 +98,7 @@ export function Sheet({
                 ? { type: 'spring', stiffness: 430, damping: 36, mass: 0.8 }
                 : { duration: EXIT_MS / 1000, ease: [0.4, 0, 1, 1] }
           }
-          className="glass-overlay pointer-events-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-3xl sm:rounded-3xl"
+          className="glass-overlay pointer-events-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-2xl sm:rounded-2xl"
         >
           <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
             <div className="flex items-start gap-4">
@@ -106,7 +106,7 @@ export function Sheet({
                 {icon ? <div className="mb-3">{icon}</div> : null}
                 <h2
                   id={titleId}
-                  className="font-display text-xl font-semibold tracking-tight text-balance"
+                  className="font-display text-xl tracking-tight text-balance"
                 >
                   {title}
                 </h2>
