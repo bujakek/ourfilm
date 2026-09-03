@@ -73,7 +73,7 @@ export function Navbar({ locale }: { locale: Locale }) {
             )}
           >
             <Aperture
-              className="size-4 text-accent-silver"
+              className="size-4 text-accent"
               strokeWidth={1.6}
               aria-hidden="true"
             />

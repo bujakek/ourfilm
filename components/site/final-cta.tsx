@@ -4,48 +4,31 @@ import Link from 'next/link'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { type Locale, localePath } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
-import { Emphasised } from './emphasised'
 import { Reveal } from './reveal'
 
 /**
- * The last thing on the page, and the hero's answer.
+ * The last thing on the page.
  *
- * Four floating photographs and a QR watermark inside a `glass-strong` box
- * gave way to the same composition the hero uses: one photograph, full bleed,
- * under a scrim, with the words on top. That rhyme is the point — the page
- * opens and closes on the same image of the same evening, and the headline is
- * the hero's sentence turned into an instruction.
+ * The photograph used to sit *behind* the words at 22% — a scrim over an
+ * image doing neither job well. It moves below them instead, as a full-bleed
+ * band of four frames at full strength: the words get a clean dark field, and
+ * the photographs stop being wallpaper and become the thing being offered.
+ * They are the four `final-*` images the old floating collage used, laid flat.
  *
- * The scrim runs vertically here rather than horizontally, because this block
- * is centred: it has to darken the top and bottom edges where text meets
- * photograph, not one side.
+ * The whole second line is italic here, where the hero italicises one word.
+ * The hero's sentence turns on `vendégeitek`; this one is an instruction, and
+ * the emphasis is the whole of what you would be looking at.
  */
 export function FinalCta({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].final
-  const hero = marketingCopy[locale].hero
 
   return (
-    <section
-      id="get-started"
-      className="relative overflow-hidden px-4 py-24 sm:px-6 lg:py-30"
-    >
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <Image
-          src="/images/landing/final-dance-circle.webp"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover opacity-22 grayscale-[.4]"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#050505_0%,rgba(5,5,5,.6)_50%,#050505_100%)]" />
-      </div>
-
-      <Reveal className="relative mx-auto max-w-6xl text-center">
-        <h2 className="mx-auto max-w-[24rem] font-display text-[38px] leading-[1.02] tracking-[-0.02em] text-balance sm:max-w-[30rem] sm:text-[56px]">
-          {copy.titleStart}{' '}
-          <Emphasised text={copy.titleEnd} word={hero.emphasis} />
+    <section id="get-started" className="relative">
+      <Reveal className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 lg:py-28">
+        <h2 className="mx-auto max-w-[26rem] font-display text-[38px] leading-[1.04] tracking-[-0.02em] text-balance sm:max-w-[34rem] sm:text-[56px]">
+          {copy.titleStart} <em className="italic">{copy.titleEnd}</em>
         </h2>
-        <p className="mx-auto mt-5.5 max-w-[30rem] text-[17px] leading-[1.6] text-pretty text-foreground/64">
+        <p className="mx-auto mt-5.5 max-w-[34rem] text-[17px] leading-[1.6] text-pretty text-foreground/64">
           {copy.lead}
         </p>
 
@@ -64,11 +47,77 @@ export function FinalCta({ locale }: { locale: Locale }) {
           </Link>
         </div>
 
-        {/* The same two claims the hero opens with, in the same voice. */}
+        {/* `final.helper` in the counting voice. Derived rather than written
+            out again, so the claim cannot drift from the sentence the pricing
+            page and the hero also make. */}
         <p className="mt-5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-foreground/40">
-          {hero.claims.slice(0, 2).join(' · ')}
+          {asReadout(copy.helper)}
         </p>
       </Reveal>
+
+      <FinalStrip locale={locale} />
     </section>
+  )
+}
+
+/** `Nincs app. Nincs vendégregisztráció.` → `NINCS APP · NINCS VENDÉGREGISZTRÁCIÓ` */
+function asReadout(sentence: string): string {
+  return sentence
+    .toUpperCase()
+    .replace(/\.\s*$/, '')
+    .split(/\.\s+/)
+    .join(' · ')
+}
+
+const STRIP = [
+  {
+    src: '/images/landing/final-rings.webp',
+    alt: { en: 'The newlyweds showing their rings', hu: 'Az ifjú pár gyűrűi' },
+  },
+  {
+    src: '/images/landing/final-wedding-dog.webp',
+    alt: {
+      en: 'A dog walking down the wedding aisle',
+      hu: 'Kutya sétál végig az esküvői sorok között',
+    },
+  },
+  {
+    src: '/images/landing/final-couple-table.webp',
+    alt: {
+      en: 'A candid portrait of the newlyweds at their table',
+      hu: 'Pillanatkép az ifjú párról az asztalnál',
+    },
+  },
+  {
+    src: '/images/landing/final-dance-circle.webp',
+    alt: {
+      en: 'Wedding guests cheering around the dance floor',
+      hu: 'Esküvői vendégek ünnepelnek a táncparketten',
+    },
+  },
+]
+
+/**
+ * Four frames, edge to edge, with no gap between them.
+ *
+ * A contact sheet rather than a gallery: the frames touch, because that is
+ * what a strip of film does and what the host's dashboard rows already do.
+ * Two across on a phone, where four would be 97px each.
+ */
+function FinalStrip({ locale }: { locale: Locale }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4">
+      {STRIP.map((photo) => (
+        <div key={photo.src} className="relative aspect-square">
+          <Image
+            src={photo.src}
+            alt={photo.alt[locale]}
+            fill
+            sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover"
+          />
+        </div>
+      ))}
+    </div>
   )
 }

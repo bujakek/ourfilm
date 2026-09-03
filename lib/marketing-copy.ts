@@ -73,6 +73,8 @@ export const marketingCopy = {
     },
     faq: {
       title: 'Frequently asked questions',
+      /** The header's count, as `07 QUESTIONS`. New in Phase 6. */
+      countLabel: 'QUESTIONS',
       items: [
         [
           'Do guests need to download an app?',
@@ -209,6 +211,7 @@ export const marketingCopy = {
     },
     faq: {
       title: 'Gyakori kérdések',
+      countLabel: 'KÉRDÉS',
       items: [
         [
           'Kell alkalmazást letölteni?',

@@ -1,10 +1,8 @@
 import { type Locale, localePath } from '@/lib/i18n'
-import { occasionCopy, occasions } from '@/lib/occasions'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { Aperture } from 'lucide-react'
 import Link from 'next/link'
 
-import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { marketingCopy } from '@/lib/marketing-copy'
 
 interface FooterColumn {
@@ -13,6 +11,12 @@ interface FooterColumn {
 }
 
 /**
+ * Three columns, not five. The occasion sub-links collapse into the
+ * `/alkalmak` index they all sit under; everything else is redistributed
+ * rather than dropped, because these are real pages and one of them —
+ * `Elállás a szerződéstől` — is consumer-law reachability rather than
+ * navigation.
+ *
  * Every href here must resolve to something that exists — a section that is
  * actually on the homepage, or a route with a page behind it. Links to pages
  * we have not written yet belong in the backlog, not in the footer.
@@ -33,79 +37,47 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
         { label: 'How it works', href: '/#how-it-works' },
         { label: 'QR code', href: '/#qr-code' },
         { label: 'Photo reveal', href: '/#photo-reveal' },
+        { label: 'Occasions', href: '/alkalmak' },
         { label: 'Pricing', href: '/arak' },
-      ],
-    },
-    {
-      heading: 'Occasions',
-      links: occasions.map((occasion) => ({
-        label: occasionCopy('en', occasion).label,
-        href: `/alkalmak/${occasion.slug}`,
-      })),
-    },
-    {
-      heading: 'Support',
-      links: [
-        { label: 'FAQ', href: '/#faq' },
-        { label: 'Contact', href: '/kapcsolat' },
-        {
-          label: 'Create your camera',
-          href: `${CREATE_EVENT_PATH}?lang=en`,
-          external: true,
-        },
-      ],
-    },
-    {
-      heading: 'Resources',
-      links: [
         { label: 'Blog', href: '/blog' },
-        { label: 'Alternatives', href: '/alternativak' },
       ],
     },
     {
       heading: 'Company',
       links: [
         { label: 'About', href: '/rolunk' },
+        { label: 'Contact', href: '/kapcsolat' },
         { label: 'Legal notice', href: '/impresszum' },
-        { label: 'Privacy', href: '/adatvedelem' },
+        { label: 'Alternatives', href: '/alternativak' },
+      ],
+    },
+    {
+      heading: 'Legal',
+      links: [
         { label: 'Terms', href: '/aszf' },
+        { label: 'Privacy', href: '/adatvedelem' },
         { label: 'Magyar', href: '/hu', external: true },
       ],
     },
   ],
   hu: [
     {
-      heading: 'Termék',
+      heading: 'A termék',
       links: [
         { label: 'Hogyan működik', href: '/#how-it-works' },
         { label: 'QR-kód', href: '/#qr-code' },
         { label: 'A képek előhívása', href: '/#photo-reveal' },
+        { label: 'Alkalmak', href: '/alkalmak' },
         { label: 'Árak', href: '/arak' },
-      ],
-    },
-    {
-      heading: 'Alkalmak',
-      links: occasions.map((occasion) => ({
-        label: occasion.label,
-        href: `/alkalmak/${occasion.slug}`,
-      })),
-    },
-    {
-      heading: 'Támogatás',
-      links: [
-        { label: 'Gyakori kérdések', href: '/#faq' },
-        { label: 'Kapcsolat', href: '/kapcsolat' },
-        {
-          label: 'Hozd létre ingyen',
-          href: `${CREATE_EVENT_PATH}?lang=hu`,
-          external: true,
-        },
-      ],
-    },
-    {
-      heading: 'Tudásbázis',
-      links: [
         { label: 'Blog', href: '/blog' },
+      ],
+    },
+    {
+      heading: 'A cég',
+      links: [
+        { label: 'Rólunk', href: '/rolunk' },
+        { label: 'Kapcsolat', href: '/kapcsolat' },
+        { label: 'Impresszum', href: '/impresszum' },
         { label: 'Alternatívák', href: '/alternativak' },
         { label: 'Összehasonlítás', href: '/osszehasonlitas' },
       ],
@@ -113,14 +85,11 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
     {
       heading: 'Jogi',
       links: [
-        { label: 'Rólunk', href: '/rolunk' },
-        { label: 'Impresszum', href: '/impresszum' },
-        { label: 'Adatkezelési tájékoztató', href: '/adatvedelem' },
-        { label: 'Általános Szerződési Feltételek', href: '/aszf' },
-        {
-          label: 'Elállás a szerződéstől',
-          href: '/kapcsolat#elallas',
-        },
+        { label: 'ÁSZF', href: '/aszf' },
+        { label: 'Adatvédelem', href: '/adatvedelem' },
+        // Consumer withdrawal. It is reachable from the footer on purpose and
+        // is the one link here that is not a navigation choice.
+        { label: 'Elállás a szerződéstől', href: '/kapcsolat#elallas' },
         { label: 'English', href: '/en', external: true },
       ],
     },
@@ -137,7 +106,7 @@ export function Footer({ locale }: { locale: Locale }) {
        behind by a section. */
     <footer className="relative border-t border-border px-4 pt-14 pb-12 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)] xl:grid-cols-[1.4fr_repeat(5,1fr)]">
+        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <Link
               href={localePath(locale, '/')}
@@ -145,7 +114,7 @@ export function Footer({ locale }: { locale: Locale }) {
               aria-label={marketingCopy[locale].nav.home}
             >
               <Aperture
-                className="size-[17px] text-accent-silver"
+                className="size-[17px] text-accent"
                 strokeWidth={1.6}
                 aria-hidden="true"
               />
@@ -166,7 +135,7 @@ export function Footer({ locale }: { locale: Locale }) {
 
           <nav
             aria-label={copy.aria}
-            className="col-span-full grid grid-cols-2 gap-10 sm:grid-cols-3 lg:col-span-3 lg:grid-cols-3 xl:col-span-5 xl:grid-cols-5"
+            className="col-span-full grid grid-cols-2 gap-10 sm:grid-cols-3 lg:col-span-3"
           >
             {columns.map((column) => (
               <div key={column.heading}>
