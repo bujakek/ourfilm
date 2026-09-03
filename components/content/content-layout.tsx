@@ -1,4 +1,4 @@
-import { BackgroundGlow } from '@/components/site/background-glow'
+import { PageGrain } from '@/components/site/page-grain'
 import { Footer } from '@/components/site/footer'
 import { Navbar } from '@/components/site/navbar'
 import type { Locale } from '@/lib/i18n'
@@ -23,7 +23,7 @@ export function ContentLayout({
 }) {
   return (
     <div className="relative min-h-screen">
-      <BackgroundGlow />
+      <PageGrain />
       <Navbar locale={locale} />
       <main className="relative z-10">{children}</main>
       <Footer locale={locale} />

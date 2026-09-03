@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect } from 'react'
 
-import { BackgroundGlow } from '@/components/site/background-glow'
+import { PageGrain } from '@/components/site/page-grain'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { defaultLocale, localePath } from '@/lib/i18n'
 
@@ -31,7 +31,7 @@ export function ErrorScreen({
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
-      <BackgroundGlow />
+      <PageGrain />
       <main className="relative z-10 w-full max-w-md text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
           Something went wrong

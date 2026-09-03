@@ -1,4 +1,4 @@
-import { BackgroundGlow } from '@/components/site/background-glow'
+import { PageGrain } from '@/components/site/page-grain'
 import { Faq } from '@/components/site/faq'
 import { FinalCta } from '@/components/site/final-cta'
 import { Footer } from '@/components/site/footer'
@@ -59,7 +59,7 @@ export default async function Page({ params }: Props) {
 
   return (
     <div className="relative min-h-screen">
-      <BackgroundGlow />
+      <PageGrain />
       <Navbar locale={locale} />
       <main className="relative z-10">
         {/* <Stats /> and <Testimonials /> are deliberately not rendered.

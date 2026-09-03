@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { BackgroundGlow } from '@/components/site/background-glow'
+import { PageGrain } from '@/components/site/page-grain'
 import { buttonVariants } from '@/components/ui/button'
 import { defaultLocale, type Locale, localePath } from '@/lib/i18n'
 
@@ -35,7 +35,7 @@ export function NotFoundScreen({
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
-      <BackgroundGlow />
+      <PageGrain />
       <main className="relative z-10 w-full max-w-md text-center">
         <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
           404
