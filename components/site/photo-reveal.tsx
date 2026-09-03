@@ -1,35 +1,33 @@
-'use client'
-
-import { motion, useInView, useReducedMotion } from 'motion/react'
+import { Lock } from 'lucide-react'
 import Image from 'next/image'
-import { useRef } from 'react'
 import { Reveal } from './reveal'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
-import { T, still } from '@/lib/motion'
 
 /**
- * The reveal, as the states it actually has.
+ * The reveal, as two states side by side.
  *
  * The section used to be a fake phone gallery in a glass frame — a mockup of a
- * screen, beside a real one further up the page. What it is now is the answers
- * to the question the headline asks: a gallery that is open, one that is still
- * developing, and the album at the end of it.
+ * screen, beside a real one further up the page. What it is now is the two
+ * answers to the question the headline asks, and the whole point is that both
+ * are on screen at once: a locked gallery next to an open one is an
+ * explanation, where either alone is only a photograph.
  *
- * Three photographs, and the third needed a caption that `marketingCopy.reveal`
- * did not have — `reveal.download` is new here, and is the one string in this
- * section that has not been through a native pass.
+ * **Locked first, and it stays locked.** An earlier pass had the blurred card
+ * resolve when it scrolled into view, on the same curve a real frame develops
+ * on. That was a pleasant animation and the wrong idea — once it resolves both
+ * cards say "open" and the comparison the section exists to make is gone. The
+ * blur is a state, not a transition, which is also why nothing here needs to
+ * be a client component any more.
  *
- * The developing card actually develops when it scrolls into view, on `T.develop`
- * — the same curve the product uses when a real frame arrives. It is the one
- * animation on the marketing page that is showing rather than decorating.
+ * The pills carry `reveal.developing` and `reveal.opened`, the captions
+ * `reveal.waitingBody` and the gallery's own line. Lilac is on the open one
+ * only: an open gallery is the film being live, and the locked one is
+ * precisely not that.
  */
 export function PhotoReveal({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].reveal
-  const demoRef = useRef<HTMLDivElement>(null)
-  const reduceMotion = useReducedMotion()
-  const inView = useInView(demoRef, { once: true, amount: 0.55 })
-  const developed = reduceMotion ? true : inView
+  const en = locale === 'en'
 
   return (
     <section
@@ -37,42 +35,40 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
       className="relative px-4 py-24 sm:px-6 lg:px-10 lg:py-26"
     >
       <div className="mx-auto max-w-6xl">
-        <Reveal className="max-w-[34rem]">
+        <Reveal>
           <p className="font-mono text-[10px] font-medium tracking-[0.24em] text-foreground/42">
             {copy.eyebrow}
           </p>
           <h2 className="mt-5 font-display text-[36px] leading-[1.02] tracking-[-0.015em] text-balance sm:text-[50px]">
             {copy.title}
           </h2>
-          <p className="mt-5.5 text-[16.5px] leading-[1.65] text-pretty text-foreground/60">
+          <p className="mt-5.5 max-w-[42rem] text-[16.5px] leading-[1.65] text-pretty text-foreground/60">
             {copy.lead}
           </p>
         </Reveal>
 
-        <div
-          ref={demoRef}
-          className="mt-14 grid gap-7 sm:grid-cols-2 lg:grid-cols-3"
-        >
+        <div className="mt-14 grid gap-7 sm:grid-cols-2">
           <Reveal>
             <figure>
               <div className="relative aspect-16/10 overflow-hidden rounded-sm">
+                {/* Blurred in the markup rather than animated: this card *is*
+                    the locked state, and a photograph you can almost read is
+                    not one. `scale-105` because a blurred layer samples past
+                    its own edge, so an unscaled image fades to transparent at
+                    the corners and the card reads as a bug — the same reason
+                    `reveal-preview.tsx` scales its blurred pair. */}
                 <Image
-                  src="/images/landing/reveal-bride-friends.webp"
-                  alt={
-                    locale === 'en'
-                      ? 'The bride celebrating with friends'
-                      : 'A menyasszony a barátaival ünnepel'
-                  }
+                  src="/images/landing/reveal-couple-toast.webp"
+                  alt=""
+                  aria-hidden="true"
                   fill
                   sizes="(max-width: 640px) 100vw, 540px"
-                  className="object-cover"
+                  className="scale-105 object-cover blur-[22px] brightness-[.55] grayscale"
                 />
-                <span className="absolute bottom-4 left-4 rounded-sm bg-background/55 px-2.5 py-1.5 font-mono text-[9px] font-medium tracking-[0.16em] text-accent">
-                  {copy.opened}
-                </span>
+                <StatusPill label={copy.developing} />
               </div>
-              <figcaption className="mt-4 text-[14px] leading-[1.6] text-foreground/55">
-                {copy.couple} · 42 {locale === 'en' ? 'photos' : 'kép'}
+              <figcaption className="mt-4 text-[14.5px] leading-[1.6] text-foreground/55">
+                {copy.waitingBody}
               </figcaption>
             </figure>
           </Reveal>
@@ -80,71 +76,62 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
           <Reveal delay={90}>
             <figure>
               <div className="relative aspect-16/10 overflow-hidden rounded-sm">
-                <motion.span
-                  className="absolute inset-0 block"
-                  initial={false}
-                  animate={
-                    developed
-                      ? { filter: 'grayscale(0) brightness(1)' }
-                      : { filter: 'grayscale(.7) brightness(.5)' }
-                  }
-                  transition={reduceMotion ? still : T.develop}
-                >
-                  <Image
-                    src="/images/landing/reveal-couple-toast.webp"
-                    alt={
-                      locale === 'en'
-                        ? 'The newlyweds sharing a drink'
-                        : 'Az ifjú pár együtt koccint'
-                    }
-                    fill
-                    sizes="(max-width: 640px) 100vw, 540px"
-                    className="object-cover"
-                  />
-                </motion.span>
-                <motion.span
-                  className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center"
-                  initial={false}
-                  animate={{ opacity: developed ? 0 : 1 }}
-                  transition={reduceMotion ? still : T.settle}
-                  aria-hidden={developed}
-                >
-                  <span className="font-mono text-[9px] font-medium tracking-[0.16em] text-accent">
-                    {copy.developing}
-                  </span>
-                  <span className="font-display text-[20px] leading-[1.2] text-balance">
-                    {copy.waiting}
-                  </span>
-                </motion.span>
-              </div>
-              <figcaption className="mt-4 text-[14px] leading-[1.6] text-foreground/55">
-                {copy.waitingBody}
-              </figcaption>
-            </figure>
-          </Reveal>
-
-          <Reveal delay={180}>
-            <figure>
-              <div className="relative aspect-16/10 overflow-hidden rounded-sm">
                 <Image
-                  src="/images/landing/reveal-celebration.webp"
+                  src="/images/landing/reveal-bride-friends.webp"
                   alt={
-                    locale === 'en'
-                      ? 'The newlyweds celebrating with their guests'
-                      : 'Az ifjú pár a vendégekkel ünnepel'
+                    en
+                      ? 'The bride celebrating with friends'
+                      : 'A menyasszony a barátaival ünnepel'
                   }
                   fill
-                  sizes="(max-width: 640px) 100vw, 380px"
+                  sizes="(max-width: 640px) 100vw, 540px"
                   className="object-cover"
                 />
+                <StatusPill label={copy.opened} live />
               </div>
-              <figcaption className="mt-4 text-[14px] leading-[1.6] text-foreground/55">
-                {copy.download}
+              <figcaption className="mt-4 text-[14.5px] leading-[1.6] text-foreground/55">
+                {copy.couple} · 42 {en ? 'photos' : 'kép'}
               </figcaption>
             </figure>
           </Reveal>
         </div>
       </div>
     </section>
+  )
+}
+
+/**
+ * The state a gallery is in, drawn on the photograph it describes.
+ *
+ * A lilac dot or a lock rather than two arbitrary icons: the dot is the one
+ * the guest screen and the host console already use for a live capture window,
+ * and the lock is the only place in the product that has to say "not yet" as a
+ * symbol rather than a sentence.
+ */
+function StatusPill({
+  label,
+  live = false,
+}: {
+  label: string
+  live?: boolean
+}) {
+  return (
+    <span
+      className={`absolute bottom-5 left-5 inline-flex items-center gap-2.5 rounded-full border bg-background/55 px-3.5 py-2 font-mono text-[10px] font-medium tracking-[0.16em] ${
+        live
+          ? 'border-accent/40 text-accent'
+          : 'border-white/20 text-foreground/85'
+      }`}
+    >
+      {live ? (
+        <span
+          aria-hidden="true"
+          className="size-[5px] rounded-full bg-accent"
+        />
+      ) : (
+        <Lock className="size-3" strokeWidth={2} aria-hidden="true" />
+      )}
+      {label.toUpperCase()}
+    </span>
   )
 }
