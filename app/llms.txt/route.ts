@@ -44,7 +44,6 @@ The interface is Hungarian; the service operates in Hungary.
 
 - [OurFilm](${canonicalUrl(localePath(defaultLocale, '/'))}): what it is and how it works.
 - [Árak / Pricing](${canonicalUrl(localePath(defaultLocale, '/arak'))}): one-time payment per event, no subscription.
-- [Alkalmak / Occasions](${canonicalUrl(localePath(defaultLocale, '/alkalmak'))}): weddings, birthdays, trips and parties.
 - [Blog](${canonicalUrl(localePath(defaultLocale, '/blog'))}): practical guides.
 
 ## Solutions

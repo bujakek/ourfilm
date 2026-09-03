@@ -1,4 +1,5 @@
 import { type Locale, localePath } from '@/lib/i18n'
+import { OCCASIONS_ARE_DRAFT } from '@/lib/occasions'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { Aperture } from 'lucide-react'
 import Link from 'next/link'
@@ -11,8 +12,9 @@ interface FooterColumn {
 }
 
 /**
- * Three columns, not five. The occasion sub-links collapse into the
- * `/alkalmak` index they all sit under; everything else is redistributed
+ * Three columns, not five. The occasion sub-links collapsed into the
+ * `/alkalmak` index they all sit under — which is itself hidden while
+ * `OCCASIONS_ARE_DRAFT`; everything else is redistributed
  * rather than dropped, because these are real pages and one of them —
  * `Elállás a szerződéstől` — is consumer-law reachability rather than
  * navigation.
@@ -37,7 +39,9 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
         { label: 'How it works', href: '/#how-it-works' },
         { label: 'QR code', href: '/#qr-code' },
         { label: 'Photo reveal', href: '/#photo-reveal' },
-        { label: 'Occasions', href: '/alkalmak' },
+        ...(OCCASIONS_ARE_DRAFT
+          ? []
+          : [{ label: 'Occasions', href: '/alkalmak' }]),
         { label: 'Pricing', href: '/arak' },
         { label: 'Blog', href: '/blog' },
       ],
@@ -67,7 +71,9 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
         { label: 'Hogyan működik', href: '/#how-it-works' },
         { label: 'QR-kód', href: '/#qr-code' },
         { label: 'A képek előhívása', href: '/#photo-reveal' },
-        { label: 'Alkalmak', href: '/alkalmak' },
+        ...(OCCASIONS_ARE_DRAFT
+          ? []
+          : [{ label: 'Alkalmak', href: '/alkalmak' }]),
         { label: 'Árak', href: '/arak' },
         { label: 'Blog', href: '/blog' },
       ],

@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Aperture, Menu, X } from 'lucide-react'
 import Link from 'next/link'
 
+import { OCCASIONS_ARE_DRAFT } from '@/lib/occasions'
 import { CREATE_EVENT_PATH, LOGIN_PATH } from '@/lib/routes'
 import { marketingCopy } from '@/lib/marketing-copy'
 import { useEffect, useState } from 'react'
@@ -18,14 +19,21 @@ import { useEffect, useState } from 'react'
  *
  * The ids themselves stay English — an anchor ends up in the address bar.
  */
-const navHrefs = ['/#how-it-works', '/alkalmak', '/arak', '/rolunk']
+const NAV_ITEMS = [
+  { href: '/#how-it-works' },
+  { href: '/alkalmak', draft: OCCASIONS_ARE_DRAFT },
+  { href: '/arak' },
+  { href: '/rolunk' },
+]
 
 export function Navbar({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].nav
-  const navLinks = navHrefs.map((href, index) => ({
-    href,
+  // Labelled before it is filtered: `copy.links` is index-mapped to the list
+  // above, so dropping an entry first would shift every label after it by one.
+  const navLinks = NAV_ITEMS.map((item, index) => ({
+    ...item,
     label: copy.links[index],
-  }))
+  })).filter((item) => !item.draft)
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
 
