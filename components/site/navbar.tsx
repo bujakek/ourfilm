@@ -113,10 +113,10 @@ export function Navbar({ locale }: { locale: Locale }) {
 
         <Link
           href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-          className={cn(
-            buttonVariants({ size: 'sm' }),
-            'hidden md:inline-flex',
-          )}
+          // Paper, not `bg-primary`: this is the same action as the hero's
+          // primary button and the dashboard's `Új kamera`, and it is the one
+          // material the pass gives to the thing that makes something.
+          className="paper btn-shine hidden min-h-10 items-center rounded-full px-5 text-[12.5px] font-semibold md:inline-flex"
         >
           {copy.create}
         </Link>

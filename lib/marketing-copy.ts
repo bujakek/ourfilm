@@ -69,6 +69,9 @@ export const marketingCopy = {
       developing: 'Developing',
       waiting: 'Your photos are still developing',
       waitingBody: 'The gallery opens when the event ends.',
+      /** The third reveal card. New in Phase 6 — the design has three
+       *  photographs and `marketingCopy` only ever had captions for two. */
+      download: 'Download the whole album, then print your favourites.',
       couple: 'Anna & Peter',
     },
     faq: {
@@ -205,6 +208,8 @@ export const marketingCopy = {
       developing: 'Előhívás alatt',
       waiting: 'A képek még előhívás alatt vannak',
       waitingBody: 'A galéria az esemény végén nyílik meg.',
+      download:
+        'Az egész albumot letöltheted, és kinyomtathatod a kedvenceidet.',
       couple: 'Anna & Péter',
     },
     faq: {

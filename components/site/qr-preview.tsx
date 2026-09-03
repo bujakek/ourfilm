@@ -2,13 +2,11 @@
 
 import { EXAMPLE_SLUG_SUFFIX, slugify } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
-import { motion, useReducedMotion } from 'motion/react'
-import { QRCodeSVG } from 'qrcode.react'
+import Image from 'next/image'
 import { useMemo, useState } from 'react'
 import { Reveal } from './reveal'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
-import { T, still } from '@/lib/motion'
 
 /**
  * The one light band on the page.
@@ -22,18 +20,20 @@ import { T, still } from '@/lib/motion'
  *
  * **The live name field stays, and it is why this section is still here.** The
  * hero's ticket is static; this is the only place a visitor types their own
- * event name and watches the code redraw, which is the difference between
- * being told the QR is theirs and seeing it. The prototype puts a photograph
- * in the right column instead — the code is what the section is named for, so
- * the code is what stands there.
+ * event name and watches their own address appear under it, which is the
+ * difference between being told the code is theirs and seeing it.
+ *
+ * The code itself is *not* redrawn here. There is already one on the hero
+ * ticket, one on the host's screen in step 02, and one in the persistent card
+ * — a fourth in the same scroll would stop reading as "your code" and start
+ * reading as wallpaper. The right column is a photograph of the thing this
+ * replaces.
  */
 export function QrPreview({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].qr
   const [name, setName] = useState(copy.placeholder)
-  const reduceMotion = useReducedMotion()
   const slug = useMemo(() => `${slugify(name)}-${EXAMPLE_SLUG_SUFFIX}`, [name])
   const url = eventUrl(slug)
-  const displayName = name.trim() || copy.fallback
 
   return (
     <section
@@ -83,37 +83,20 @@ export function QrPreview({ locale }: { locale: Locale }) {
           </Reveal>
 
           <Reveal delay={120} className="flex w-full min-w-0 justify-center">
-            <motion.div
-              key={url}
-              initial={reduceMotion ? false : { scale: 0.96 }}
-              animate={{ scale: 1 }}
-              // The code re-keys as the visitor types their event name, so this
-              // is a finger moving something: `snap`, not `settle`.
-              transition={reduceMotion ? still : T.snap}
-              className="w-full max-w-[300px] min-w-0 rounded-sm bg-white p-5 text-center shadow-[0_24px_60px_-28px_rgba(0,0,0,0.45)]"
-            >
-              <p className="max-w-full font-display text-[22px] leading-[1.1] [overflow-wrap:anywhere] text-[color:var(--paper-foreground)]">
-                {displayName}
-              </p>
-              <p className="mt-1.5 font-mono text-[8.5px] font-medium tracking-[0.2em] text-[rgba(20,19,18,.45)]">
-                {copy.cardLabel}
-              </p>
-
-              <div className="mt-5 flex min-w-0 justify-center">
-                <QRCodeSVG
-                  value={url}
-                  size={196}
-                  level="M"
-                  bgColor="#ffffff"
-                  fgColor="#050505"
-                  className="h-auto w-full max-w-[196px]"
-                />
-              </div>
-
-              <p className="mt-5 border-t border-[rgba(20,19,18,.12)] pt-3.5 font-mono text-[9px] leading-snug font-medium break-all text-[rgba(20,19,18,.5)]">
-                {url.replace('https://', '')}
-              </p>
-            </motion.div>
+            <span className="block aspect-4/5 w-full max-w-[380px] overflow-hidden rounded-sm">
+              <Image
+                src="/images/landing/how-cameras.webp"
+                alt={
+                  locale === 'en'
+                    ? 'Disposable cameras waiting on a table'
+                    : 'Eldobható fényképezőgépek az asztalon'
+                }
+                width={760}
+                height={950}
+                sizes="(max-width: 1024px) 100vw, 380px"
+                className="h-full w-full object-cover"
+              />
+            </span>
           </Reveal>
         </div>
       </div>

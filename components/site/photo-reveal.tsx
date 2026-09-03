@@ -9,18 +9,16 @@ import { marketingCopy } from '@/lib/marketing-copy'
 import { T, still } from '@/lib/motion'
 
 /**
- * The reveal, as the two states it actually has.
+ * The reveal, as the states it actually has.
  *
  * The section used to be a fake phone gallery in a glass frame — a mockup of a
- * screen, beside a real one further up the page. What it is now is the two
- * answers to the question the headline asks: a gallery that is open, and one
- * that is still developing.
+ * screen, beside a real one further up the page. What it is now is the answers
+ * to the question the headline asks: a gallery that is open, one that is still
+ * developing, and the album at the end of it.
  *
- * **Two photographs, not the prototype's three.** The third has nothing to say:
- * there is no string for it in `marketingCopy.reveal`, and the sentence the
- * prototype puts under it — about downloading the album — already exists in the
- * FAQ two sections down. A third card carrying invented copy would be worse
- * than a shorter row.
+ * Three photographs, and the third needed a caption that `marketingCopy.reveal`
+ * did not have — `reveal.download` is new here, and is the one string in this
+ * section that has not been through a native pass.
  *
  * The developing card actually develops when it scrolls into view, on `T.develop`
  * — the same curve the product uses when a real frame arrives. It is the one
@@ -51,7 +49,10 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
           </p>
         </Reveal>
 
-        <div ref={demoRef} className="mt-14 grid gap-7 sm:grid-cols-2">
+        <div
+          ref={demoRef}
+          className="mt-14 grid gap-7 sm:grid-cols-2 lg:grid-cols-3"
+        >
           <Reveal>
             <figure>
               <div className="relative aspect-16/10 overflow-hidden rounded-sm">
@@ -118,6 +119,27 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
               </div>
               <figcaption className="mt-4 text-[14px] leading-[1.6] text-foreground/55">
                 {copy.waitingBody}
+              </figcaption>
+            </figure>
+          </Reveal>
+
+          <Reveal delay={180}>
+            <figure>
+              <div className="relative aspect-16/10 overflow-hidden rounded-sm">
+                <Image
+                  src="/images/landing/reveal-celebration.webp"
+                  alt={
+                    locale === 'en'
+                      ? 'The newlyweds celebrating with their guests'
+                      : 'Az ifjú pár a vendégekkel ünnepel'
+                  }
+                  fill
+                  sizes="(max-width: 640px) 100vw, 380px"
+                  className="object-cover"
+                />
+              </div>
+              <figcaption className="mt-4 text-[14px] leading-[1.6] text-foreground/55">
+                {copy.download}
               </figcaption>
             </figure>
           </Reveal>
