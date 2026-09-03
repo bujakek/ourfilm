@@ -84,12 +84,16 @@ export function QrPreview({ locale }: { locale: Locale }) {
 
           <Reveal delay={120} className="flex w-full min-w-0 justify-center">
             <span className="block aspect-4/5 w-full max-w-[380px] overflow-hidden rounded-sm">
+              {/* The card itself, on a laid table — which is the sentence
+                  beside it, photographed. Per locale, because the card in the
+                  picture is printed in a language and a Hungarian reader
+                  should not be shown an English one. */}
               <Image
-                src="/images/landing/how-cameras.webp"
+                src={`/images/landing/qr-table-card-${locale}.webp`}
                 alt={
                   locale === 'en'
-                    ? 'Disposable cameras waiting on a table'
-                    : 'Eldobható fényképezőgépek az asztalon'
+                    ? 'An OurFilm QR card standing on a wedding table'
+                    : 'OurFilm QR-kártya egy megterített esküvői asztalon'
                 }
                 width={760}
                 height={950}
