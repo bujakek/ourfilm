@@ -29,7 +29,16 @@ import { PhotoGrid } from './photo-grid'
 type GalleryState =
   { open: true } | { open: false; heading: string; detail: string | null }
 
-type Flash = { kind: 'saved' | 'error'; message: string } | null
+/**
+ * What the screen says when something goes wrong.
+ *
+ * There is no success case any more. A landed shot already announces itself
+ * three times over — the frame develops into the strip, the progress fills,
+ * and the counter rolls down — and a line of text under all that was the
+ * fourth telling of the same news. Failures still need words, because nothing
+ * else on the screen changes when an upload dies.
+ */
+type Flash = string | null
 
 /**
  * The shot in flight, from the shutter to the server's 200.
@@ -207,10 +216,7 @@ export function GuestEventView({
         if (!reserved.ok) {
           setCapture(null)
           if (reserved.refusal === 'no_shots') setRemaining(0)
-          setFlash({
-            kind: 'error',
-            message: refusalMessage(reserved.refusal, locale),
-          })
+          setFlash(refusalMessage(reserved.refusal, locale))
           return
         }
 
@@ -240,21 +246,16 @@ export function GuestEventView({
         // hidden, and this tab has just spent a minute hidden behind a camera.
         setRemaining(committed.shotsRemaining)
         own((c) => ({ ...c, progress: 1, confirmed: true }))
-        setFlash({
-          kind: 'saved',
-          message: en ? 'Photo saved.' : 'Elmentettük a képet.',
-        })
         router.refresh()
       } catch (error) {
         console.error('Native camera upload failed', error)
         setCapture(null)
         if (photoId) await releaseShotAction(photoId)
-        setFlash({
-          kind: 'error',
-          message: en
+        setFlash(
+          en
             ? 'The photo did not upload. Please try again.'
             : 'A kép nem töltődött fel. Próbáld újra.',
-        })
+        )
       } finally {
         setBusy(false)
       }
@@ -424,19 +425,16 @@ export function GuestEventView({
       <AnimatePresence initial={false} mode="wait">
         {flash ? (
           <motion.p
-            key={`${flash.kind}-${flash.message}`}
+            key={flash}
+            role="alert"
             aria-live="polite"
             initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
             transition={reduceMotion ? still : T.settle}
-            className={`mt-3 text-center text-sm ${
-              flash.kind === 'error'
-                ? 'text-destructive'
-                : 'text-muted-foreground'
-            }`}
+            className="mt-3 text-center text-sm text-destructive"
           >
-            {flash.message}
+            {flash}
           </motion.p>
         ) : remaining <= 0 ? (
           <motion.p
