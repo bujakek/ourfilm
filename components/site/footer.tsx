@@ -110,13 +110,13 @@ export function Footer({ locale }: { locale: Locale }) {
        A footer is where a document ends; a card there is a card with nothing
        after it, which is why the old one always looked like it had been left
        behind by a section. */
-    <footer className="relative border-t border-border px-4 pt-14 pb-12 sm:px-6 lg:px-10">
+    <footer className="relative border-t border-border px-5 pt-14 pb-12 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <Link
               href={localePath(locale, '/')}
-              className="flex items-center gap-2.5"
+              className="inline-flex min-h-11 items-center gap-2.5"
               aria-label={marketingCopy[locale].nav.home}
             >
               <Aperture
@@ -133,7 +133,7 @@ export function Footer({ locale }: { locale: Locale }) {
             </p>
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="mt-4 inline-block text-[14px] text-foreground/70 underline underline-offset-4 transition-colors hover:text-foreground"
+              className="mt-2 inline-flex min-h-11 items-center text-[14px] text-foreground/70 underline underline-offset-4 transition-colors hover:text-foreground"
             >
               {CONTACT_EMAIL}
             </a>
@@ -148,7 +148,7 @@ export function Footer({ locale }: { locale: Locale }) {
                 <h2 className="font-mono text-[9px] font-medium tracking-[0.18em] text-foreground/38">
                   {column.heading.toUpperCase()}
                 </h2>
-                <ul className="mt-3.5 flex flex-col gap-2.5">
+                <ul className="mt-2 flex flex-col gap-0.5 md:mt-3.5 md:gap-2.5">
                   {column.links.map((link) => (
                     <li key={link.href}>
                       <Link
@@ -157,7 +157,7 @@ export function Footer({ locale }: { locale: Locale }) {
                             ? link.href
                             : localePath(locale, link.href)
                         }
-                        className="text-[14px] text-foreground/62 transition-colors hover:text-foreground"
+                        className="inline-flex min-h-11 min-w-11 items-center text-[14px] text-foreground/62 transition-colors hover:text-foreground md:min-h-0 md:min-w-0"
                       >
                         {link.label}
                       </Link>

@@ -26,7 +26,7 @@ export function Hero({ locale }: { locale: Locale }) {
   return (
     <section
       id="top"
-      className="relative flex min-h-[92vh] items-center overflow-hidden px-4 pt-32 pb-16 sm:px-6 lg:pt-36"
+      className="relative flex min-h-[92vh] items-center overflow-hidden px-5 pt-32 pb-16 sm:px-6 lg:pt-36"
     >
       {/* One photograph, full bleed, behind a horizontal scrim. The image is
           the same `next/image` `fill` usage the old collage used; what changed
@@ -53,7 +53,7 @@ export function Hero({ locale }: { locale: Locale }) {
             {copy.eyebrow}
           </p>
 
-          <h1 className="mt-6 font-display text-[42px] leading-[0.98] tracking-[-0.02em] text-balance sm:text-[60px] xl:text-[76px]">
+          <h1 className="mt-6 font-display text-[clamp(40px,10.5vw,76px)] leading-[0.98] tracking-[-0.02em] text-balance">
             {copy.titleStart}{' '}
             <Emphasised text={copy.titleEnd} word={copy.emphasis} />
           </h1>
@@ -62,7 +62,7 @@ export function Hero({ locale }: { locale: Locale }) {
             {copy.lead}
           </p>
 
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="mt-9 flex flex-col flex-wrap gap-3 sm:flex-row sm:items-center">
             <Link
               href={`${CREATE_EVENT_PATH}?lang=${locale}`}
               className="paper btn-shine inline-flex items-center justify-center rounded-xl px-7.5 py-4.5 text-[15px] font-semibold transition-transform hover:scale-[1.03]"

@@ -71,7 +71,7 @@ export function Navbar({ locale }: { locale: Locale }) {
       >
         <Link
           href={localePath(locale, '/')}
-          className="flex shrink-0 items-center gap-2"
+          className="flex min-h-11 shrink-0 items-center gap-2"
           aria-label={copy.home}
         >
           <span

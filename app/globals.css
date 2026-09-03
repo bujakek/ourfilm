@@ -147,6 +147,16 @@
 }
 
 @layer utilities {
+  /* A scroll container with no visible scrollbar. Used by the step carousel,
+     where the bar would sit across the bottom card edge on every trackpad Mac
+     and say nothing a peeking card does not already say. */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Loading placeholder. Deliberately NOT `.glass`: `animate-pulse` on a
      backdrop-filtered element re-blurs its backdrop on every frame of the
      pulse, and a skeleton is on screen at exactly the moment the phone is

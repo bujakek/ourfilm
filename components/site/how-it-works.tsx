@@ -25,7 +25,7 @@ export function HowItWorks({ locale }: { locale: Locale }) {
   return (
     <section
       id="how-it-works"
-      className="relative border-t border-border px-4 py-24 sm:px-6 lg:px-10 lg:py-26"
+      className="relative border-t border-border px-5 py-24 sm:px-6 lg:px-10 lg:py-26"
     >
       <div className="mx-auto max-w-6xl">
         <Reveal>
@@ -34,7 +34,7 @@ export function HowItWorks({ locale }: { locale: Locale }) {
               <p className="font-mono text-[10px] font-medium tracking-[0.24em] text-foreground/42">
                 {en ? 'HOW IT WORKS' : 'HOGY MŰKÖDIK'}
               </p>
-              <h2 className="mt-5 max-w-[26rem] font-display text-[36px] leading-[1.02] tracking-[-0.015em] text-balance sm:text-[52px]">
+              <h2 className="mt-5 max-w-[26rem] font-display text-[clamp(32px,7.5vw,52px)] leading-[1.02] tracking-[-0.015em] text-balance">
                 {copy.title}
               </h2>
             </div>
@@ -44,33 +44,42 @@ export function HowItWorks({ locale }: { locale: Locale }) {
           </div>
         </Reveal>
 
-        {/* `grid-cols-3` is already `repeat(3,minmax(0,1fr))` in Tailwind v4,
-            so the columns were never the thing that overflowed — a fixed 254px
-            phone in a 56px-gutter row simply needs more width than the
-            breakpoint hands it just after `lg`. The gutter now shrinks with the
-            viewport instead of holding at 56px, the row is capped at the width
-            three phones and their gutters actually want, and the phones are
-            centred in their columns rather than left in them. */}
-        <div className="mx-auto mt-14 grid max-w-[1120px] justify-items-center gap-[clamp(20px,3vw,56px)] lg:mt-16 lg:grid-cols-3">
+        {/* One layout for both cases, which is the point of doing it with
+            scroll snapping rather than a breakpoint. Three cards across a
+            desktop row are the same three cards a phone pages through one at a
+            time, and `clamp(278px,31.5%,368px)` is what makes that true: on a
+            phone the percentage collapses to the 278px floor, so a card and a
+            slice of the next one sit on screen and the row reads as
+            swipeable. Nothing here is a mobile variant of anything.
+
+            Full-bleed on phones (`-mx-4`, restored by the cards' own padding)
+            so the peeking card runs to the edge of the screen instead of
+            stopping at a gutter, which is what makes it read as more content
+            rather than a clipped one. */}
+        <div className="-mx-5 mt-14 flex snap-x snap-mandatory scrollbar-none gap-3.5 overflow-x-auto px-5 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:mt-16 lg:gap-5 lg:px-0">
           {copy.steps.map(([title, text], i) => {
             const Screen = screens[i]
             return (
-              <Reveal key={title} delay={i * 90}>
-                <div>
-                  <div className="flex items-baseline gap-3 border-b border-white/14 pb-3.5">
+              <Reveal
+                key={title}
+                delay={i * 90}
+                className="flex-[0_0_clamp(278px,31.5%,368px)] snap-center"
+              >
+                <div className="h-full rounded-[22px] border border-white/7 bg-[#0c0c0f] p-3 sm:p-4.5">
+                  <div className="flex items-baseline gap-3 border-b border-white/10 px-1 pb-3">
                     <span className="font-mono text-[10px] font-medium tracking-[0.2em] text-accent">
                       {en ? 'STEP' : 'LÉPÉS'} {String(i + 1).padStart(2, '0')}
                     </span>
                   </div>
 
-                  <div className="mt-8 flex justify-center">
+                  <div className="mt-6 flex justify-center">
                     <Screen locale={locale} />
                   </div>
 
-                  <h3 className="mt-8.5 font-display text-[27px] leading-[1.1]">
+                  <h3 className="mt-7 px-1 font-display text-[26px] leading-[1.1]">
                     {title}
                   </h3>
-                  <p className="mt-3 text-[15px] leading-[1.6] text-pretty text-foreground/60">
+                  <p className="mt-2.5 px-1 pb-1 text-[14px] leading-[1.55] text-pretty text-foreground/60">
                     {text}
                   </p>
                 </div>

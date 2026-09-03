@@ -32,14 +32,14 @@ export function PhotoReveal({ locale }: { locale: Locale }) {
   return (
     <section
       id="photo-reveal"
-      className="relative px-4 py-24 sm:px-6 lg:px-10 lg:py-26"
+      className="relative px-5 py-24 sm:px-6 lg:px-10 lg:py-26"
     >
       <div className="mx-auto max-w-6xl">
         <Reveal>
           <p className="font-mono text-[10px] font-medium tracking-[0.24em] text-foreground/42">
             {copy.eyebrow}
           </p>
-          <h2 className="mt-5 font-display text-[36px] leading-[1.02] tracking-[-0.015em] text-balance sm:text-[50px]">
+          <h2 className="mt-5 font-display text-[clamp(32px,7.5vw,50px)] leading-[1.02] tracking-[-0.015em] text-balance">
             {copy.title}
           </h2>
           <p className="mt-5.5 max-w-[42rem] text-[16.5px] leading-[1.65] text-pretty text-foreground/60">

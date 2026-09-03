@@ -24,15 +24,15 @@ export function FinalCta({ locale }: { locale: Locale }) {
 
   return (
     <section id="get-started" className="relative">
-      <Reveal className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 lg:py-28">
-        <h2 className="mx-auto max-w-[26rem] font-display text-[38px] leading-[1.04] tracking-[-0.02em] text-balance sm:max-w-[34rem] sm:text-[56px]">
+      <Reveal className="mx-auto max-w-6xl px-5 py-24 text-center sm:px-6 lg:py-28">
+        <h2 className="mx-auto max-w-[26rem] font-display text-[clamp(34px,9vw,56px)] leading-[1.04] tracking-[-0.02em] text-balance sm:max-w-[34rem]">
           {copy.titleStart} <em className="italic">{copy.titleEnd}</em>
         </h2>
         <p className="mx-auto mt-5.5 max-w-[34rem] text-[17px] leading-[1.6] text-pretty text-foreground/64">
           {copy.lead}
         </p>
 
-        <div className="mt-8.5 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
+        <div className="mt-8.5 flex flex-col flex-wrap items-center justify-center gap-3.5 sm:flex-row">
           <Link
             href={`${CREATE_EVENT_PATH}?lang=${locale}`}
             className="paper btn-shine inline-flex items-center justify-center rounded-xl px-7.5 py-4.5 text-[15px] font-semibold transition-transform hover:scale-[1.03]"

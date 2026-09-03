@@ -26,7 +26,7 @@ export function Faq({ locale }: { locale: Locale }) {
   return (
     <section
       id="faq"
-      className="relative border-t border-border px-4 py-20 sm:px-6 lg:px-10 lg:py-22"
+      className="relative border-t border-border px-5 py-20 sm:px-6 lg:px-10 lg:py-22"
     >
       <div className="mx-auto max-w-6xl">
         <Reveal>

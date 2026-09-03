@@ -38,7 +38,7 @@ export function QrPreview({ locale }: { locale: Locale }) {
   return (
     <section
       id="qr-code"
-      className="paper relative overflow-x-clip rounded-none px-4 py-20 sm:px-6 lg:px-10 lg:py-22"
+      className="paper relative overflow-x-clip rounded-none px-5 py-20 sm:px-6 lg:px-10 lg:py-22"
     >
       <div className="mx-auto max-w-6xl">
         <div className="grid min-w-0 items-center gap-14 lg:grid-cols-[1fr_0.82fr] lg:gap-20">
@@ -46,7 +46,7 @@ export function QrPreview({ locale }: { locale: Locale }) {
             <p className="paper-muted font-mono text-[10px] font-medium tracking-[0.24em]">
               {copy.eyebrow}
             </p>
-            <h2 className="mt-5 max-w-[22rem] font-display text-[36px] leading-[1.02] tracking-[-0.015em] text-balance sm:text-[50px]">
+            <h2 className="mt-5 max-w-[22rem] font-display text-[clamp(32px,7.5vw,50px)] leading-[1.02] tracking-[-0.015em] text-balance">
               {copy.title}
             </h2>
             <p className="paper-muted mt-5.5 max-w-[28rem] text-[16.5px] leading-[1.65] text-pretty">

@@ -78,7 +78,14 @@ import { eventUrl } from '@/lib/site'
  * trailing `flex-1` spacer for the same reason: the indicator has to sit on
  * empty screen, never on top of a photograph.
  */
-export function PhoneMock({ children }: { children: ReactNode }) {
+export function PhoneMock({
+  children,
+  fade = false,
+}: {
+  children: ReactNode
+  /** True when this screen's content runs past the bottom of the screen. */
+  fade?: boolean
+}) {
   return (
     <div
       aria-hidden="true"
@@ -89,16 +96,43 @@ export function PhoneMock({ children }: { children: ReactNode }) {
       }}
     >
       <div className="rounded-[45px] bg-[#07070a] p-[7px]">
-        <div className="relative flex h-[648px] flex-col overflow-hidden rounded-[38px] bg-background px-3.5 pt-[50px] pb-6.5">
+        {/* Block flow, emphatically not a flex column. As a fixed-height flex
+            column every child becomes shrinkable, and the first thing to go is
+            the film strip: its cells have no intrinsic height to defend, so it
+            collapses to a smear. In block flow the content keeps its own
+            height and the screen simply clips what does not fit. */}
+        <div className="relative h-[510px] overflow-hidden rounded-[38px] bg-background px-3.5 pt-[50px]">
           {children}
+          {fade ? <BottomFade /> : null}
           <StatusBar />
           <DynamicIsland />
-          {/* Drawn last so it sits over whatever the screen ends with, the way
-              iOS draws it — though every screen leaves it empty room anyway. */}
-          <span className="absolute bottom-2 left-1/2 z-20 h-[4px] w-[98px] -translate-x-1/2 rounded-full bg-foreground/55" />
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * The bottom of a screenshot of a screen that scrolls.
+ *
+ * These are phones mid-scroll, not screens that happen to end. Cropping at a
+ * hard edge reads as a layout that ran out of room; a fade reads as the rest
+ * of the page continuing below, which is what is actually true of every one
+ * of these screens on a real device.
+ *
+ * Painted only where the content really does overflow. `ScreenReveal` fills
+ * its screen exactly and gets none — a fade there would dim its own Continue
+ * button, which is the one thing on that screen a visitor has to read.
+ */
+function BottomFade() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[52px]"
+      style={{
+        backgroundImage: 'linear-gradient(180deg,transparent,#050505 72%)',
+      }}
+    />
   )
 }
 
@@ -194,11 +228,10 @@ export function ScreenReveal({ locale }: { locale: Locale }) {
       {/* `reveal-preview.tsx`: two portrait cards, each blurred behind its own
           guest's name, and one badge lying across the gap between them. The
           badge is what makes the pair a *state* rather than two dark photos. */}
-      {/* `flex-1` with a ceiling, exactly as `reveal-preview.tsx` has it: the
-          pair grows into whatever the question leaves it. Fixed-aspect cards
-          left a third of the screen empty, which is not a layout this step
-          has at any phone size. */}
-      <div className="relative mt-3.5 grid max-h-[168px] min-h-0 flex-1 grid-cols-2 gap-1.5">
+      {/* A measured height rather than `flex-1`: in block flow there is no
+          free space to claim, and this pair is what tunes the screen to fill
+          exactly 510px, so the step needs no bottom fade. */}
+      <div className="relative mt-3.5 grid h-[124px] grid-cols-2 gap-1.5">
         {[
           { src: '/images/guests-laughing.webp', name: 'Nóra' },
           { src: '/images/evening-party.webp', name: 'Bence' },
@@ -310,7 +343,7 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
     'inline-flex shrink-0 items-center gap-1 rounded-full border border-white/14 px-1.5 py-0.5 text-[7px] font-medium whitespace-nowrap text-foreground/80'
 
   return (
-    <PhoneMock>
+    <PhoneMock fade>
       {/* The console's own top bar — a way back and the two places a host goes
           from here. The mock used to open with a bare "OURFILM", which is the
           guest's header, on the host's screen. */}
@@ -332,23 +365,23 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
       </div>
 
       <span
-        className={`mt-3.5 inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/35 px-2.5 py-1 ${MONO_LABEL} text-[7px] tracking-[0.16em] text-accent`}
+        className={`mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/35 px-2.5 py-1 ${MONO_LABEL} text-[7px] tracking-[0.16em] text-accent`}
       >
         <span className="size-[4px] rounded-full bg-accent" />
         {en ? 'CAMERA OPEN · 6H 20M' : 'A KAMERA NYITVA · 6Ó 20P'}
       </span>
 
-      <p className="mt-2.5 font-display text-[26px] leading-none tracking-[-0.012em]">
+      <p className="mt-2 font-display text-[24px] leading-none tracking-[-0.012em]">
         {NAME}
       </p>
 
       {/* Ruled top *and* bottom, and divided by uprights — the console's figure
           row is a table rule, not three floating columns. */}
-      <div className="mt-4 grid grid-cols-3 border-y border-border">
+      <div className="mt-3 grid grid-cols-3 border-y border-border">
         {figures.map(([value, label], i) => (
           <span
             key={label}
-            className={`py-2.5 ${i > 0 ? 'border-l border-border px-3' : 'pr-3'}`}
+            className={`py-1.5 ${i > 0 ? 'border-l border-border px-3' : 'pr-3'}`}
           >
             <span className="block font-mono text-[19px] leading-none font-medium tracking-[-0.05em]">
               {value}
@@ -362,17 +395,17 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
         ))}
       </div>
 
-      <div className="paper mt-3.5 rounded-xs p-3 text-center">
-        <p className="font-display text-[16px] leading-[1.1]">{NAME}</p>
+      <div className="paper mt-2.5 rounded-xs p-2.5 text-center">
+        <p className="font-display text-[15px] leading-[1.1]">{NAME}</p>
         <p
           className={`paper-muted mt-1 ${MONO_LABEL} text-[6.5px] tracking-[0.2em]`}
         >
           {en ? 'DISPOSABLE CAMERA · 24 SHOTS' : 'ELDOBHATÓ KAMERA · 24 KÉP'}
         </p>
-        <span className="mx-auto mt-2.5 block w-fit bg-white p-1.5 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]">
+        <span className="mx-auto mt-2 block w-fit bg-white p-1 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]">
           <QRCodeSVG
             value={url}
-            size={70}
+            size={72}
             level="M"
             bgColor="#ffffff"
             fgColor="#050505"
@@ -382,15 +415,15 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
         {/* Wrapping, not truncating — the same decision the real ticket makes,
             because this address is what a guest types when a code will not
             scan. */}
-        <p className="paper-muted mt-2 font-mono text-[7.5px] leading-[1.35] font-medium break-all">
+        <p className="paper-muted mt-1.5 font-mono text-[7.5px] leading-[1.35] font-medium break-all">
           {url.replace('https://', '')}
         </p>
-        <div className="paper-rule mt-2.5 flex gap-1.5 border-t pt-2.5">
-          <span className="inline-flex flex-1 items-center justify-center gap-1 rounded-[9px] bg-[color:var(--paper-foreground)] py-2 text-[9.5px] font-semibold text-[color:var(--paper)]">
+        <div className="paper-rule mt-2 flex gap-1.5 border-t pt-2">
+          <span className="inline-flex flex-1 items-center justify-center gap-1 rounded-[9px] bg-[color:var(--paper-foreground)] py-1.5 text-[9.5px] font-semibold text-[color:var(--paper)]">
             <Download className="size-2.5" />
             {en ? 'Download' : 'Letöltés'}
           </span>
-          <span className="inline-flex flex-1 items-center justify-center gap-1 rounded-[9px] border border-[rgba(20,19,18,.2)] py-2 text-[9.5px] font-semibold">
+          <span className="inline-flex flex-1 items-center justify-center gap-1 rounded-[9px] border border-[rgba(20,19,18,.2)] py-1.5 text-[9.5px] font-semibold">
             <Share2 className="size-2.5" />
             {en ? 'Share' : 'Megosztás'}
           </span>
@@ -401,7 +434,7 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
           the guest who shot it and carrying the one control a host needs. The
           mock had four unlabelled squares, which is a gallery; this is the
           screen where a host hides a photo. */}
-      <div className="mt-3 border-t border-border pt-2.5">
+      <div className="mt-2 border-t border-border pt-1.5">
         <div className="flex items-baseline justify-between gap-2">
           <span className="font-display text-[14px] leading-none">
             {en ? 'Photos' : 'Elkészült képek'}
@@ -442,8 +475,6 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
           ))}
         </div>
       </div>
-
-      <span className="flex-1" />
     </PhoneMock>
   )
 }
@@ -461,7 +492,7 @@ export function ScreenCamera({ locale }: { locale: Locale }) {
   const roll = ['how-guest-photo', 'reveal-limbo', 'how-couple', 'final-rings']
 
   return (
-    <PhoneMock>
+    <PhoneMock fade>
       <div className="flex items-center justify-between">
         <span
           className={`${MONO_LABEL} text-[7.5px] tracking-[0.18em] text-foreground/40`}
