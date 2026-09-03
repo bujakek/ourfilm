@@ -36,6 +36,10 @@ const PERFS_PER_FRAME = 4
 /**
  * A frame that has been claimed but not yet confirmed.
  *
+ * There can be more than one: the shutter does not wait for an upload to
+ * finish, so a guest shooting a toast on venue wifi may have two or three
+ * cells developing at once.
+ *
  * `previewUrl` is an object URL for the file the OS camera just handed over —
  * the only copy of the photo that exists on this device, and the reason there
  * is no spinner anywhere on this screen. The cell fills with it immediately at
@@ -54,7 +58,7 @@ export function FilmStrip({
   frames,
   total,
   locale,
-  pending = null,
+  pending = [],
   entrance,
   className,
 }: {
@@ -63,7 +67,8 @@ export function FilmStrip({
   /** The host's roll length — how many cells the strip has in all. */
   total: number
   locale: Locale
-  pending?: PendingFrame | null
+  /** Frames claimed but not yet landed, oldest first. Usually none or one. */
+  pending?: PendingFrame[]
   /** How the perforation rows arrive. See the note at the call site. */
   entrance?: Transition
   className?: string
@@ -72,7 +77,7 @@ export function FilmStrip({
   // A claimed frame is a spent frame: `reserve_shot` took it inside the row
   // lock before a single byte was uploaded, so it counts here the moment the
   // shutter is handed off, not when the server confirms.
-  const exposed = frames.length + (pending ? 1 : 0)
+  const exposed = frames.length + pending.length
 
   useEffect(() => {
     const el = scroller.current
@@ -130,8 +135,11 @@ export function FilmStrip({
                   />
                 ) : null}
               </span>
-            ) : pending && i === frames.length ? (
-              <DevelopingCell key={`frame-${i}`} pending={pending} />
+            ) : pending[i - frames.length] ? (
+              <DevelopingCell
+                key={`frame-${i}`}
+                pending={pending[i - frames.length]}
+              />
             ) : (
               <span
                 key={`frame-${i}`}
