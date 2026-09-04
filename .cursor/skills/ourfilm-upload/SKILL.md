@@ -195,6 +195,10 @@ Three rules worth not rediscovering:
   the entire queue — including photos taken later on a working connection —
   until the page was reloaded. `REQUEST_TIMEOUTS_MS` in `lib/upload-queue.ts` is
   what stops that, and removing it brings the bug straight back.
+- **A failed-but-owed shot is deferred (`onDeferred`), not dropped.** The
+  cell stays and nothing says "try again" — the queue retries it. Dropping is
+  reserved for `refused` and `exhausted`. Removing the cell early also removes
+  it from `outstanding`, which un-gates the shutter on the last frame.
 - **Do not count an attempt that never left the device.** The attempt budget
   retires a photo the server keeps rejecting; a guest walking out of wifi range
   must not spend one. `isConnectionFailure` is the narrow test — a 500 counts,

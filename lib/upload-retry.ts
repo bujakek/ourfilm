@@ -118,6 +118,16 @@ export function isConnectionFailure(error: unknown): boolean {
 
   if (typeof error !== 'object' || error === null) return false
 
+  // The supabase wrapper again. This function is what the queue's attempt
+  // refund reads, and it shipped without this branch — so a PUT that died with
+  // the connection was refunded never, while the same error one call up was
+  // retried correctly. The same trap, the second time, in the same file.
+  if ('originalError' in error) {
+    return isConnectionFailure(
+      (error as { originalError: unknown }).originalError,
+    )
+  }
+
   const { name, message } = error as { name?: unknown; message?: unknown }
   if (name !== 'TypeError' || typeof message !== 'string') return false
 
@@ -131,6 +141,7 @@ const NETWORK_MESSAGES = [
   'load failed', // Safari
   'networkerror', // Firefox
   'network request failed',
+  'fetch failed', // undici, and therefore what a Server Action call reports
   'connection', // "connection closed", "connection refused"
   'terminated', // undici, which is what a Node-side fetch reports
 ]

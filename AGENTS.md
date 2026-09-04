@@ -282,6 +282,14 @@ upload, it was a lost moment.
   next visibility change restores them all, refuses them all, and burns a
   reserve round trip per shot per reactivation. That is the difference between a
   safety net and a battery drain.
+- **A shot that failed but is still owed is _deferred_, never dropped.** It
+  stays on the strip at zero progress, stays counted in `outstanding` — so a
+  guest on their last frame cannot shoot over a photo that is merely waiting —
+  and is held in memory as well as the store, so a browser with no store
+  (private mode) still has it. It shipped the other way at first: a first
+  failure removed the cell and flashed "try again" for a photo the queue was
+  about to retry itself, and that lie was the most visible symptom of the
+  reconnect bug. Only `exhausted` and `refused` remove a cell.
 - **A recovered shot is silent.** It reappears as an ordinary developing cell,
   and `not_started` / `ended` / `no_shots` say nothing when they refuse one:
   "Shooting has ended." is true and unhelpful when the app is quietly cleaning up

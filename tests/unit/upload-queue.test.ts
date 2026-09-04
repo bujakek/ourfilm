@@ -21,7 +21,7 @@
  */
 import 'fake-indexeddb/auto'
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { PreparedPhoto } from '@/lib/image'
 import {
@@ -135,6 +135,7 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
   const handlers: UploadQueueHandlers = {
     onProgress: vi.fn(),
     onConfirmed: vi.fn(),
+    onDeferred: vi.fn(),
     onDropped: vi.fn(),
     onRefusal: vi.fn(),
     onAbandoned: vi.fn(),
@@ -196,6 +197,13 @@ function called(fn: unknown) {
 async function stored() {
   return (await uploadStore.listByEvent(EVENT)).map((row) => row.id)
 }
+
+afterEach(() => {
+  // `navigator` and `indexedDB` are stubbed by individual tests below. A stub
+  // that outlives its test turns every later one into an offline, store-less
+  // browser — which is exactly how a batch of unrelated failures showed up.
+  vi.unstubAllGlobals()
+})
 
 beforeEach(async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -450,15 +458,21 @@ describe('giving up', () => {
     await queue.resume()
     await queue.drain()
 
-    expect(h.handlers.onDropped).toHaveBeenCalledWith('unlucky', 'failed', true)
+    expect(h.handlers.onDeferred).toHaveBeenCalledWith('unlucky')
+    expect(h.handlers.onDropped).not.toHaveBeenCalled()
     const [row] = await uploadStore.listByEvent(EVENT)
     expect(row.attempts).toBe(1)
   })
 
-  it('speaks when the guest is standing there, and not when they are not', async () => {
+  it('keeps a failed shot on the strip while it is still owed', async () => {
+    // This shipped wrong. A shot that failed once was reported as *dropped*,
+    // so the cell vanished and the guest read "try again" — for a photo the
+    // queue was about to retry by itself. Worse, `outstanding` stopped counting
+    // it, and the gate that stops a guest shooting over their last frame let
+    // them through.
     const h = harness({
       upload: vi.fn(async () => {
-        throw new Error('network is gone')
+        throw new Error('one bad moment')
       }),
     })
     const queue = queueFor(h)
@@ -466,8 +480,45 @@ describe('giving up', () => {
     queue.enqueue('shot-1', file(), NOW)
     await queue.drain()
 
-    // `silent` false: this failure followed a shutter press the guest made.
-    expect(h.handlers.onDropped).toHaveBeenCalledWith('shot-1', 'failed', false)
+    expect(h.handlers.onDeferred).toHaveBeenCalledWith('shot-1')
+    expect(h.handlers.onDropped).not.toHaveBeenCalled()
+  })
+
+  it('speaks only when a shot is finally gone, and the guest is there', async () => {
+    await orphan({ id: 'quiet', attempts: MAX_ATTEMPTS - 1 })
+    const failing = vi.fn(async () => {
+      throw new Error('server says no')
+    })
+    const h = harness({ upload: failing })
+    const queue = queueFor(h)
+
+    // Background: exhausted while nobody was watching → silent.
+    await queue.resume()
+    await queue.drain()
+    expect(h.handlers.onDropped).toHaveBeenCalledWith(
+      'quiet',
+      'exhausted',
+      true,
+    )
+
+    // Interactive: the guest pressed the shutter for this one → told. The
+    // first attempt comes from the shutter; the rest come back through the
+    // sweep, the way they would in the browser. A drain ends by either
+    // dropping the shot or re-arming, so that pair is what to wait for.
+    queue.enqueue('loud', file(), NOW)
+    await queue.drain()
+    for (let i = 1; i < MAX_ATTEMPTS; i++) {
+      await until(() => armed(h) !== undefined)
+      armed(h)!.run()
+      await until(
+        () => called(h.handlers.onDropped) === 2 || armed(h) !== undefined,
+      )
+    }
+    expect(h.handlers.onDropped).toHaveBeenCalledWith(
+      'loud',
+      'exhausted',
+      false,
+    )
   })
 
   it('throws away bytes too old to still be a wedding photo', async () => {
@@ -614,6 +665,29 @@ describe('coming back on its own', () => {
     )
   })
 
+  it('refunds a PUT that died with the connection, wrapped or not', async () => {
+    // The supabase wrapper, one more time. `isConnectionFailure` is what the
+    // refund reads, and it shipped without the unwrap — so a render that died
+    // with the wifi burned an attempt while the identical error one call up was
+    // being retried correctly.
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      upload: vi.fn(async () => {
+        throw Object.assign(new Error('Failed to fetch'), {
+          name: 'StorageUnknownError',
+          originalError: new TypeError('Failed to fetch'),
+        })
+      }),
+    })
+    const queue = queueFor(h)
+
+    await queue.resume()
+    await queue.drain()
+
+    const [row] = await uploadStore.listByEvent(EVENT)
+    expect(row.attempts).toBe(0)
+  })
+
   it('still retires a photo the server keeps refusing to take', async () => {
     // The counterpart: a failure that *did* reach the server counts, so the
     // refund above cannot become a way to retry forever.
@@ -651,12 +725,42 @@ describe('coming back on its own', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await queue.drain()
 
     expect(h.deps.reserve).not.toHaveBeenCalled()
-    expect(h.handlers.onRestored).not.toHaveBeenCalled()
+    // But the photo is back on the strip already. A guest who reloads with no
+    // signal should see what they are owed, not an empty roll that fills in
+    // later.
+    expect(h.handlers.onRestored).toHaveBeenCalledOnce()
     expect(armed(h)).toBeDefined()
     expect(await stored()).toEqual(['shot-1'])
+  })
+
+  it('does not lose a deferred shot in a browser with no store at all', async () => {
+    // Safari private mode. The old failure path dropped the shot from memory
+    // and expected the store to hand it back — and there was no store.
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    await __resetForTests()
+    vi.stubGlobal('indexedDB', undefined)
+
+    let reachable = false
+    const h = harness({
+      reserve: vi.fn(async (key: string) => {
+        if (!reachable) throw offline()
+        return reserved(`photo-${key}`)
+      }),
+    })
+    const queue = queueFor(h)
+
+    queue.enqueue('shot-1', file(), NOW)
+    await queue.drain()
+    expect(h.handlers.onDeferred).toHaveBeenCalledWith('shot-1')
+    expect(await stored()).toEqual([])
+
+    reachable = true
+    armed(h)?.run()
+    await until(() => called(h.handlers.onConfirmed) === 1)
+
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 23)
   })
 })
 
@@ -686,7 +790,7 @@ describe('a request that never answers', () => {
 
     // The drain finished at all, which is the property. Before the timeout it
     // never returned.
-    expect(h.handlers.onDropped).toHaveBeenCalledWith('shot-1', 'failed', false)
+    expect(h.handlers.onDeferred).toHaveBeenCalledWith('shot-1')
     expect(await stored()).toEqual(['shot-1'])
   })
 

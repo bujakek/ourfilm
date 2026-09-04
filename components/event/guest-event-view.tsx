@@ -320,6 +320,18 @@ export function GuestEventView({
           )
           router.refresh()
         },
+        onDeferred(id) {
+          // Not dropped: the queue still has it and will try again on its own.
+          // The cell stays — and stays counted in `outstanding`, so a guest on
+          // their last frame cannot shoot over a photo that is merely waiting.
+          // Its progress goes back to nothing, which is the honest picture:
+          // whatever bytes had landed will be sent again from the start. No
+          // flash either. "Try again" would ask them to spend a frame on a
+          // photo they have not lost.
+          setCaptures((current) =>
+            current.map((c) => (c.id === id ? { ...c, progress: 0 } : c)),
+          )
+        },
         onDropped(id, reason, silent) {
           setCaptures((current) => current.filter((c) => c.id !== id))
           // A refusal has its own sentence, said once by `onRefusal` for the

@@ -125,13 +125,18 @@ export type UploadQueueDeps = {
 export type UploadQueueHandlers = {
   onProgress(id: string, fraction: number): void
   onConfirmed(id: string, shotsRemaining: number): void
-  /** `silent` is true when nothing on screen prompted this — a background
-   *  resume tidying up after itself has no business raising an error. */
-  onDropped(
-    id: string,
-    reason: 'failed' | 'refused' | 'exhausted',
-    silent: boolean,
-  ): void
+  /**
+   * The shot failed this time and is still owed: the queue keeps it and will
+   * try again on its own. **Not** a drop. The cell stays on the strip, the
+   * in-flight count still includes it, and nothing tells the guest to shoot
+   * again — because the photo is not lost, and saying so would be a lie that
+   * also invites them to spend a frame they may not have.
+   */
+  onDeferred(id: string): void
+  /** The shot is gone for good. `silent` is true when nothing on screen
+   *  prompted this — a background resume tidying up after itself has no
+   *  business raising an error. */
+  onDropped(id: string, reason: 'refused' | 'exhausted', silent: boolean): void
   onRefusal(refusal: ShotRefusal, options: { restored: boolean }): void
   onAbandoned(ids: string[]): void
   onRestored(entry: { id: string; file: File; capturedAt: number }): void
@@ -172,6 +177,15 @@ export function createUploadQueue({
       return () => clearTimeout(timer)
     })
   const pending: QueueItem[] = []
+  /**
+   * Shots that failed and are still owed, held in memory until the next sweep.
+   *
+   * The store holds them too, in every browser that has one. This is for the
+   * browser that does not — Safari private mode, a full disk — where a deferred
+   * shot that lived only in the store would have nowhere to come back from,
+   * and where the old code quietly lost it.
+   */
+  const parked: QueueItem[] = []
 
   // Refs rather than state, and two of them rather than one. `draining` guards
   // the loop; `resuming` guards the scan. They must be separate because
@@ -277,16 +291,20 @@ export function createUploadQueue({
 
     try {
       const rows = await deps.store.listByEvent(eventId)
-
-      // The bytes are safe and the network is not. Trying now would spend a
-      // round trip that cannot leave the device — which is exactly what a
-      // premature `online` edge used to do — so re-arm and stay quiet.
-      if (rows.length > 0 && !online()) {
-        scheduleSweep()
-        return
-      }
-
       const at = clock()
+
+      // What memory is still holding, first. These are already claimed and
+      // already on the strip, so they are neither restored nor announced —
+      // only aged, because a parked shot has no record to age it otherwise.
+      for (const item of parked.splice(0, parked.length)) {
+        if (at - item.capturedAt > MAX_AGE_MS) {
+          claimed.delete(item.id)
+          await deps.store.remove(item.id)
+          handlers.onDropped(item.id, 'exhausted', true)
+          continue
+        }
+        pending.push(item)
+      }
 
       for (const row of rows) {
         // Already ours. Covers the shutter-then-backgrounded case, where the
@@ -309,6 +327,15 @@ export function createUploadQueue({
           restored: true,
         })
         handlers.onRestored({ id: row.id, file, capturedAt: row.capturedAt })
+      }
+
+      // Everything owed is now on the strip and in the queue, whatever the
+      // network is doing. Only the *sending* waits: a request that cannot leave
+      // the device is a round trip wasted — which is exactly what a premature
+      // `online` edge used to spend — so re-arm and stay quiet instead.
+      if (pending.length > 0 && !online()) {
+        scheduleSweep()
+        return
       }
     } finally {
       resuming = false
@@ -353,7 +380,15 @@ export function createUploadQueue({
       try {
         for (let next = pending.shift(); next; next = pending.shift()) {
           ran += 1
-          owed = (await runCapture(next)) || owed
+          try {
+            owed = (await runCapture(next)) || owed
+          } catch (error) {
+            // `runCapture` catches its own failures; this is a handler throwing
+            // into it. That must not take the loop, the sweep decision below,
+            // or the shots still waiting down with it.
+            console.error('Upload handler failed', error)
+            owed = true
+          }
         }
       } finally {
         draining = null
@@ -454,7 +489,6 @@ export function createUploadQueue({
       return false
     } catch (error) {
       console.error('Native camera upload failed', error)
-      claimed.delete(item.id)
 
       // Nothing left the device — no wifi, or it dropped mid-request. Give the
       // attempt back: the budget is there to retire a photo the server keeps
@@ -469,22 +503,26 @@ export function createUploadQueue({
       const remainingRow = await currentRow(item.id)
       const exhausted =
         !unsent && (!remainingRow || remainingRow.attempts >= MAX_ATTEMPTS)
-      if (exhausted) await deps.store.remove(item.id)
 
-      handlers.onDropped(
-        item.id,
-        exhausted ? 'exhausted' : 'failed',
+      if (exhausted) {
+        claimed.delete(item.id)
+        await deps.store.remove(item.id)
         // A background resume that quietly gives up says nothing. A guest
         // standing there having just pressed the shutter is told.
-        item.restored,
-      )
+        handlers.onDropped(item.id, 'exhausted', item.restored)
+      } else {
+        // Still ours. It stays claimed so a sweep cannot restore a second copy
+        // of it, stays parked so a browser with no store still has it, and
+        // stays on the strip so the guest is not told to shoot it again.
+        parked.push(item)
+        handlers.onDeferred(item.id)
+      }
 
       // Best effort and deliberately not awaited: the reservation expires on
       // its own after ten minutes, and the next shot should not wait on the
       // cleanup of the last one.
       if (photoId) void deps.release(photoId)
 
-      // Still owed unless we have given up on it for good.
       return !exhausted
     }
   }
