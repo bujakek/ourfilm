@@ -24,6 +24,11 @@ export default defineConfig({
       'server-only': fileURLToPath(
         new URL('./tests/stubs/server-only.ts', import.meta.url),
       ),
+      // See tests/stubs/client-only.ts. The browser-side upload store carries
+      // the marker for the build's benefit and still has to be testable.
+      'client-only': fileURLToPath(
+        new URL('./tests/stubs/client-only.ts', import.meta.url),
+      ),
     },
   },
   test: {

@@ -245,6 +245,66 @@ impersonates that participant, and album privacy rests on the unguessable slug.
 What it is, is the thing that stops a guest spending someone else's film, or more
 than their own.
 
+## The upload queue survives the tab (settled)
+
+A guest's captured photos are written to **IndexedDB the moment the shutter
+fires**, before decoding and before the first server call, and the row is
+deleted only once `commit_shot` has confirmed. `lib/upload-store.ts` holds the
+bytes, `lib/upload-queue.ts` holds the rules, and
+`components/event/guest-event-view.tsx` keeps only what is genuinely React —
+the developing cells, the object URLs, the counter and the words.
+
+This replaced an in-memory ref, and the ref was losing photos: tapping the
+shutter hands the screen to the OS camera, and iOS reclaims a backgrounded tab
+whenever it likes. There is no retake in this product, so that was not a lost
+upload, it was a lost moment.
+
+- **Resume replays; it does not resume.** A stored shot keeps its bytes and its
+  capture id and **nothing else** — no photo id, no signed URLs. Coming back
+  means calling `reserve_shot` again with the same id, because that id is the
+  idempotency key: the RPC looks it up and hands back the frame it already
+  granted rather than spending a second one. Persisting the signed URLs would
+  have been the obvious shape and is the wrong one — the tokens expire in two
+  hours, the pending reservation behind them in ten minutes, and a replay gets
+  fresh ones for free. The whole path is replay-safe: reserve returns the same
+  row whether it is pending or already committed, the PUTs upsert, and
+  `commit_shot` re-commits without complaint.
+- **A network failure does not look like a network error.**
+  `uploadToSignedUrl` _returns_ its error, and a dead connection arrives as a
+  `StorageUnknownError` whose real `TypeError` is one level down in
+  `originalError`. The obvious `error.name === 'TypeError'` check is false for
+  every genuine failure, and getting it wrong throws nothing and logs nothing —
+  retries just never fire. `lib/upload-retry.ts` unwraps first, and
+  `tests/unit/upload-retry.test.ts` pins it.
+- **Retries are per render, not per shot**, so a dead master does not re-send
+  the thumbnail that already landed, and `onProgress` stays monotonic.
+- **Attempts are counted on the record, written before the attempt runs.**
+  Counting afterwards never counts the failure that matters — a decode that runs
+  the tab out of memory takes the page with it — so the entry would retry
+  forever and crash the tab on every load. Four attempts, or 24 hours, and the
+  bytes are dropped.
+- **A refusal deletes every abandoned row, not just its own.** Left behind, the
+  next visibility change restores them all, refuses them all, and burns a
+  reserve round trip per shot per reactivation. That is the difference between a
+  safety net and a battery drain.
+- **A recovered shot is silent.** It reappears as an ordinary developing cell,
+  and `not_started` / `ended` / `no_shots` say nothing when they refuse one:
+  "Shooting has ended." is true and unhelpful when the app is quietly cleaning up
+  yesterday's failed byte. The three actionable refusals still speak.
+- **Persistence is best-effort and never a gate.** Every export of
+  `lib/upload-store.ts` swallows, `put` is never awaited on the capture path,
+  and a failed open is remembered as "no". A guest in private mode gets exactly
+  the behaviour this product had before the store existed.
+- **Draining stays one shot at a time**, for the reason it always was: two 2MB
+  PUTs racing on venue wifi finish later than the same two in a row.
+
+Known edge, flagged rather than fixed: `reserve_shot`'s idempotency branch
+returns before the `no_shots` check, so an orphan resumed more than ten minutes
+after capture commits even if the guest has since shot to the limit —
+`shots_per_participant + 1`, once per orphan. Pre-existing, since a manual retry
+after ten minutes did the same; persistence makes it routine rather than rare.
+The fix is server-side.
+
 ## The create flow is four full-screen questions (settled)
 
 `/host/events/new` asks four things, one per screen, in a shared shell
@@ -708,7 +768,9 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 - **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
   actually writing and maintaining an English site is a separate decision.
 - Realtime gallery updates (Supabase Realtime) — guests refresh
-- Resumable/background uploads — manual retry only
+- **Background upload while the tab is closed.** Not achievable without a
+  native shell, and not by a service worker either: iOS Safari has no
+  Background Sync. Resuming _in the page_ is built — see The upload queue.
 - Long-running requests, background workers, cron. The reveal is computed at
   request time precisely so none of these is needed.
 

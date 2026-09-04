@@ -151,20 +151,52 @@ Guests are anonymous, so RLS allows insert only — see `ourfilm-supabase` for t
 
 ## Progress and retry
 
-`supabase-js` `.upload()` gives no byte-level progress. For the MVP, show **per-file status** instead, which is what the Hungarian copy promises:
+**The queue is persistent, and this section used to say the opposite.** It read
+"manual retry only — automatic background/resumable upload is explicitly out of
+scope". That is no longer true and has not been since the upload-resilience
+change; the surrounding architecture is described under **The upload queue
+survives the tab** in `CLAUDE.md`.
 
-`várakozik → előkészítés → feltöltés → kész | hiba`
+What ships now:
 
-Keep one state object per selected file (`id`, `previewUrl`, `status`, `error`) and render a list. If true byte-level percentage is ever needed, create a signed upload URL and `PUT` it with `XMLHttpRequest` to get `upload.onprogress` — only do that if a real device test shows the staged states aren't reassuring enough.
+- **`lib/upload-store.ts`** writes the raw camera file to IndexedDB (via `idb`)
+  the instant the shutter fires — before decoding, before `reserve_shot`. The
+  row is deleted only once `commit_shot` confirms. Presence in the store _is_
+  the status; there is deliberately no status column.
+- **`lib/upload-queue.ts`** drains it one shot at a time, replays orphans left
+  by a killed tab on mount and on `visibilitychange` / `pageshow` / `online`,
+  and gives up after four attempts or 24 hours. Every dependency is injected,
+  which is why it is the one part of this pipeline with real unit tests.
+- **`lib/upload-retry.ts`** retries each render's PUT with jittered backoff
+  (`p-retry`), transient failures only.
 
-On failure, set `status: 'hiba'` and show a retry button that re-runs the single file. **Manual retry only** — automatic background/resumable upload is explicitly out of scope, and the landing copy was rewritten to match.
+Three rules worth not rediscovering:
+
+- **Resume replays with the same idempotency key.** Never persist a photo id or
+  a signed upload URL — the tokens outlive nothing useful, and `reserve_shot`
+  already hands the same frame back for a repeated key.
+- **Classify errors by unwrapping.** `uploadToSignedUrl` returns its failure
+  rather than throwing it, and a dead connection arrives wrapped in a
+  `StorageUnknownError` whose real `TypeError` sits in `originalError`. A
+  `name === 'TypeError'` check is false for every real network failure and
+  fails completely silently.
+- **Persistence is never a gate.** Every store call swallows, `put` is not
+  awaited on the capture path, and Safari private mode simply gets the old
+  in-memory behaviour.
+
+Progress itself is still coarse and still byte-weighted: `uploadToSignedUrl`
+goes through `fetch`, which reports no upload progress, so the fraction moves as
+each of the three renders lands. Per-render retry is part of why — the thumbnail
+that already landed is not re-sent when the master fails, so the fraction never
+walks backwards.
 
 Other essentials:
 
 - Revoke every `URL.createObjectURL` preview in a cleanup effect.
-- Keep the optional `uploader_name` in `localStorage` so a guest types their nickname once per device.
-- Disable the picker while the queue is running, and never navigate away mid-upload without a confirmation.
-- Success state must be unmistakable and celebratory — this is the moment the pilot is measuring.
+- The shutter never blocks on an upload. A roll of film does not stop you
+  pressing it because the last frame is still winding on.
+- Success state is the frame developing in the strip and the counter rolling
+  down — not a line of text. There is no success message on the guest screen.
 
 ## Test on a real phone before shipping
 

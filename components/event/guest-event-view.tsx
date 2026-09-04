@@ -15,7 +15,9 @@ import {
 } from '@/app/(product)/e/[slug]/actions'
 import { captureStatus, formatLine, ownRollNote } from '@/lib/event-copy'
 import { prepareForUpload } from '@/lib/image'
+import { createUploadQueue, type UploadQueue } from '@/lib/upload-queue'
 import { uploadShotRenders } from '@/lib/upload-shot'
+import { uploadStore } from '@/lib/upload-store'
 import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import { useEntrance } from '@/lib/use-entrance'
@@ -56,9 +58,6 @@ type Capture = {
   progress: number
   confirmed: boolean
 }
-
-/** A photo the guest has taken and the uploader has not reached yet. */
-type Queued = { id: string; file: File }
 
 /**
  * The guest's whole screen, counter first.
@@ -126,10 +125,6 @@ export function GuestEventView({
   const [now, setNow] = useState(initialNow)
   const [handedOff, setHandedOff] = useState(false)
   const [captures, setCaptures] = useState<Capture[]>([])
-  // The queue itself is a ref, not state: it is the uploader's private work
-  // list and nothing renders from it. `captures` is what the screen draws.
-  const queue = useRef<Queued[]>([])
-  const draining = useRef(false)
 
   // Once per session, not once per mount. This page is left and re-entered on
   // every single shot — see `lib/use-entrance.ts`.
@@ -223,111 +218,161 @@ export function GuestEventView({
   )
 
   /**
-   * Uploads one queued shot, start to finish.
+   * How many frames are already on the strip.
    *
-   * Deliberately knows nothing about `remaining` or `frames.length` — it is
-   * handed a file and a frame that has already been claimed on screen, and
-   * every decision it makes comes back from the server.
+   * A ref because the uploader reads it from callbacks that run long after the
+   * render that produced the number — and writes it from an effect, never
+   * during render, which is the distinction `react-hooks/refs` enforces.
    */
-  const runCapture = useCallback(
-    async (item: Queued) => {
-      const own = (next: (capture: Capture) => Capture) =>
-        setCaptures((current) =>
-          current.map((c) => (c.id === item.id ? next(c) : c)),
-        )
-      const drop = () =>
-        setCaptures((current) => current.filter((c) => c.id !== item.id))
-
-      // A refusal is about this guest or this event, never about this file, so
-      // whatever is behind it in the queue would hit the same wall. Abandon
-      // the rest rather than showing the same sentence once per photo.
-      const abandonQueue = () => {
-        const doomed = new Set(queue.current.map((q) => q.id))
-        queue.current = []
-        setCaptures((current) =>
-          current.filter((c) => c.id !== item.id && !doomed.has(c.id)),
-        )
-      }
-
-      let photoId: string | null = null
-
-      try {
-        const reserved = await reserveShotAction(eventId, item.id)
-
-        if (!reserved.ok) {
-          abandonQueue()
-          if (reserved.refusal === 'no_shots') setRemaining(0)
-          setFlash(refusalMessage(reserved.refusal, locale))
-          return
-        }
-
-        photoId = reserved.photoId
-        const prepared = await prepareForUpload(item.file)
-        await uploadShotRenders({
-          prepared,
-          uploads: reserved.uploads,
-          onProgress: (progress) => own((c) => ({ ...c, progress })),
-        })
-
-        const committed = await commitShotAction({
-          slug,
-          photoId,
-          width: prepared.width,
-          height: prepared.height,
-          byteSize: prepared.full.size,
-          takenAt: prepared.takenAt?.toISOString() ?? null,
-        })
-
-        if (!committed.committed) throw new Error('commit refused')
-
-        // State lands first and the animation is a consequence: the counter is
-        // set to what the server returned and the odometer rolls from an
-        // already-correct value. Commits are strictly ordered because the
-        // queue is drained one at a time, so a later commit can never overwrite
-        // this count with a staler one. Nothing here is gated on an animation
-        // finishing — `onAnimationComplete` never fires while the tab is
-        // hidden, and this tab has just spent a minute hidden behind a camera.
-        setRemaining(committed.shotsRemaining)
-        own((c) => ({ ...c, progress: 1, confirmed: true }))
-        router.refresh()
-      } catch (error) {
-        console.error('Native camera upload failed', error)
-        drop()
-        if (photoId) await releaseShotAction(photoId)
-        setFlash(
-          en
-            ? 'The photo did not upload. Please try again.'
-            : 'A kép nem töltődött fel. Próbáld újra.',
-        )
-      }
-    },
-    [en, eventId, locale, router, slug],
-  )
+  const framesRef = useRef(frames.length)
+  useEffect(() => {
+    framesRef.current = frames.length
+  }, [frames.length])
 
   /**
-   * Drains the queue, one shot at a time.
+   * Claim a frame on screen for a shot the uploader is about to start.
    *
-   * **One at a time on purpose.** The database is ready for the other
-   * answer — `reserve_shot` takes `for update` on the *participant* row
-   * precisely so one guest's concurrent captures serialise — but the network
-   * is not. These uploads happen on venue wifi shared by a hundred phones, and
-   * two 2MB PUTs racing each other there finish later than the same two in a
-   * row and fail more often. Nothing is gained by overlapping them either: the
-   * guest is inside the OS camera while the queue drains, not watching it.
-   *
-   * The re-entrancy guard is a ref rather than state because it must be true
-   * before the next line runs, not after the next render.
+   * Shared by the shutter and by resume, because a recovered shot is not a
+   * different kind of thing: it is a photo this device took and still owes. It
+   * develops in the strip exactly like a fresh one, which is the whole of the
+   * recovery UI — there is no separate banner and nothing new to translate.
    */
-  const drainQueue = useCallback(async () => {
-    if (draining.current) return
-    draining.current = true
-    try {
-      for (let next = queue.current.shift(); next; next = queue.current.shift())
-        await runCapture(next)
-    } finally {
-      draining.current = false
+  const claimCell = useCallback((id: string, file: File) => {
+    setCaptures((current) => {
+      if (current.some((c) => c.id === id)) return current
+      const landed = framesRef.current
+      return [
+        ...current,
+        {
+          id,
+          // The cell fills with the file the camera just handed over, before a
+          // single byte has been sent. That development is the progress
+          // indicator, which is why there is no spinner anywhere on this screen.
+          previewUrl: URL.createObjectURL(file),
+          // Frames are claimed in the order they were shot, so the next one
+          // sits immediately after everything already on the strip —
+          // the landed frames plus whatever is still developing on top.
+          index: landed + current.filter((c) => landed <= c.index).length,
+          progress: 0,
+          confirmed: false,
+        },
+      ]
+    })
+  }, [])
+
+  /**
+   * The uploader itself, built once on mount and never rebuilt.
+   *
+   * Its rules — one shot at a time, retry the transport, give up eventually,
+   * never resurrect a refused shot — live in `lib/upload-queue.ts` so they can
+   * be tested. What stays here is only what is genuinely React: the developing
+   * cells, the object URLs, the counter and the words.
+   *
+   * Built in an effect rather than during render because it is handed
+   * `framesRef`, and a ref read during render is a ref that can disagree with
+   * what was painted. Everything it closes over besides that ref is stable for
+   * the life of the component: the locale is the event's, and the router is
+   * Next's own singleton.
+   */
+  const queueRef = useRef<UploadQueue | null>(null)
+
+  /**
+   * Pick up whatever a killed tab left behind.
+   *
+   * Deliberately not the `handedOff` listener above: that one is scoped to the
+   * camera hand-off and unmounts the moment it is over, and this has to be
+   * listening precisely when the guest has been away long enough for the tab to
+   * have died. `pageshow` is in the list because an iOS bfcache restore does
+   * not reliably fire `visibilitychange`, and coming back from another app is
+   * the exact scenario this whole feature exists for. The queue's own guard
+   * makes the duplicate calls free.
+   */
+  useEffect(() => {
+    const queue = (queueRef.current ??= createUploadQueue({
+      eventId,
+      deps: {
+        reserve: (idempotencyKey) => reserveShotAction(eventId, idempotencyKey),
+        prepare: prepareForUpload,
+        upload: uploadShotRenders,
+        commit: (args) => commitShotAction({ slug, ...args }),
+        release: releaseShotAction,
+        store: uploadStore,
+      },
+      handlers: {
+        onProgress(id, progress) {
+          setCaptures((current) =>
+            current.map((c) => (c.id === id ? { ...c, progress } : c)),
+          )
+        },
+        onConfirmed(id, shotsRemaining) {
+          // State lands first and the animation is a consequence: the counter
+          // is set to what the server returned and the odometer rolls from an
+          // already-correct value. Commits are strictly ordered because the
+          // queue is drained one at a time, so a later commit can never
+          // overwrite this count with a staler one. Nothing here is gated on an
+          // animation finishing — `onAnimationComplete` never fires while the
+          // tab is hidden, and this tab has just spent a minute behind a camera.
+          setRemaining(shotsRemaining)
+          setCaptures((current) =>
+            current.map((c) =>
+              c.id === id ? { ...c, progress: 1, confirmed: true } : c,
+            ),
+          )
+          router.refresh()
+        },
+        onDropped(id, reason, silent) {
+          setCaptures((current) => current.filter((c) => c.id !== id))
+          // A refusal has its own sentence, said once by `onRefusal` for the
+          // whole queue rather than once per photo.
+          if (reason === 'refused' || silent) return
+          setFlash(
+            en
+              ? 'The photo did not upload. Please try again.'
+              : 'A kép nem töltődött fel. Próbáld újra.',
+          )
+        },
+        onAbandoned(ids) {
+          const doomed = new Set(ids)
+          setCaptures((current) => current.filter((c) => !doomed.has(c.id)))
+        },
+        onRefusal(refusal, { restored }) {
+          if (refusal === 'no_shots') setRemaining(0)
+          // A shot recovered from a tab the guest does not remember losing gets
+          // no error about the roll or the window. "Shooting has ended." is
+          // true, and telling someone that when they open the page the next
+          // morning names nothing they did and nothing they can fix. The three
+          // refusals that *are* actionable still speak.
+          if (
+            restored &&
+            (refusal === 'ended' ||
+              refusal === 'not_started' ||
+              refusal === 'no_shots')
+          ) {
+            return
+          }
+          setFlash(refusalMessage(refusal, locale))
+        },
+        onRestored({ id, file }) {
+          claimCell(id, file)
+        },
+      },
+    }))
+
+    const reactivate = () => {
+      if (document.visibilityState === 'hidden') return
+      void queue.resume()
     }
-  }, [runCapture])
+
+    reactivate()
+    document.addEventListener('visibilitychange', reactivate)
+    window.addEventListener('pageshow', reactivate)
+    window.addEventListener('online', reactivate)
+    return () => {
+      document.removeEventListener('visibilitychange', reactivate)
+      window.removeEventListener('pageshow', reactivate)
+      window.removeEventListener('online', reactivate)
+    }
+  }, [claimCell, en, eventId, locale, router, slug])
 
   /**
    * What the shutter does: claim a frame on screen, and get out of the way.
@@ -339,30 +384,15 @@ export function GuestEventView({
    */
   const takePhoto = useCallback(
     (file: File) => {
+      // Minted here and nowhere else. It is the shot's identity on screen, its
+      // key in the store, and the idempotency key that lets a replay after a
+      // reload re-claim the same frame instead of spending another.
       const id = crypto.randomUUID()
-      queue.current.push({ id, file })
       setFlash(null)
-      // The cell fills with the file the camera just handed over, before a
-      // single byte has been sent. That development is the progress
-      // indicator, which is why there is no spinner anywhere on this screen.
-      setCaptures((current) => [
-        ...current,
-        {
-          id,
-          previewUrl: URL.createObjectURL(file),
-          // Frames are claimed in the order they were shot, so the next one
-          // sits immediately after everything already on the strip —
-          // the landed frames plus whatever is still developing on top.
-          index:
-            frames.length +
-            current.filter((c) => frames.length <= c.index).length,
-          progress: 0,
-          confirmed: false,
-        },
-      ])
-      void drainQueue()
+      claimCell(id, file)
+      queueRef.current?.enqueue(id, file, Date.now())
     },
-    [drainQueue, frames.length],
+    [claimCell],
   )
 
   return (
