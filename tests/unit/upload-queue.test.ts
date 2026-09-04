@@ -28,6 +28,7 @@ import {
   createUploadQueue,
   MAX_AGE_MS,
   MAX_ATTEMPTS,
+  SWEEP_DELAYS_MS,
   type UploadQueueDeps,
   type UploadQueueHandlers,
 } from '@/lib/upload-queue'
@@ -80,14 +81,29 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+type Sweep = {
+  run: () => void
+  delayMs: number
+  cancelled: boolean
+  fired: boolean
+}
+
 type Harness = {
   deps: UploadQueueDeps
   handlers: UploadQueueHandlers
   now: { value: number }
+  /** Every sweep the queue has armed, in the order it armed them. */
+  sweeps: Sweep[]
+}
+
+/** The one sweep currently waiting to fire, if any. */
+function armed(h: Harness) {
+  return h.sweeps.find((s) => !s.cancelled && !s.fired)
 }
 
 function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
   const now = { value: NOW }
+  const sweeps: Sweep[] = []
   const deps: UploadQueueDeps = {
     reserve: vi.fn(async () => reserved(crypto.randomUUID())),
     prepare: vi.fn(async () => prepared),
@@ -96,6 +112,23 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
     release: vi.fn(async () => undefined),
     store: uploadStore,
     now: () => now.value,
+    // The queue's own retry clock, driven by hand. Nothing here waits on a
+    // real timer; the test decides when later is.
+    schedule: (run, delayMs) => {
+      const sweep: Sweep = {
+        delayMs,
+        cancelled: false,
+        fired: false,
+        run: () => {
+          sweep.fired = true
+          run()
+        },
+      }
+      sweeps.push(sweep)
+      return () => {
+        sweep.cancelled = true
+      }
+    },
     ...overrides,
   }
   const handlers: UploadQueueHandlers = {
@@ -106,7 +139,7 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
     onAbandoned: vi.fn(),
     onRestored: vi.fn(),
   }
-  return { deps, handlers, now }
+  return { deps, handlers, now, sweeps }
 }
 
 function queueFor(h: Harness) {
@@ -461,5 +494,167 @@ describe('giving up', () => {
 
     expect(h.handlers.onRestored).not.toHaveBeenCalled()
     expect(await uploadStore.listByEvent(EVENT)).toEqual([])
+  })
+})
+
+describe('coming back on its own', () => {
+  /**
+   * The bug this section exists for.
+   *
+   * Reported from a laptop: wifi off, take photos, wifi back on — and nothing
+   * uploaded until the page was reloaded. Every trigger the queue had was an
+   * *edge* someone else controlled, and `online` fires when the interface comes
+   * up rather than when the connection works. So re-joining wifi produced one
+   * doomed attempt and then silence. There was no retry timing to wait for.
+   */
+  const offline = () =>
+    Object.assign(new TypeError('Failed to fetch'), { name: 'TypeError' })
+
+  it('arms a retry after a failure instead of waiting to be asked', async () => {
+    const h = harness({
+      reserve: vi.fn(async () => {
+        throw offline()
+      }),
+    })
+    const queue = queueFor(h)
+
+    queue.enqueue('shot-1', file(), NOW)
+    await queue.drain()
+
+    const sweep = armed(h)
+    expect(sweep).toBeDefined()
+    expect(sweep?.delayMs).toBe(SWEEP_DELAYS_MS[0])
+    // The photo is still owed, so it is still on disk.
+    expect(await stored()).toEqual(['shot-1'])
+  })
+
+  it('finishes the upload when the retry comes round', async () => {
+    let reachable = false
+    const h = harness({
+      reserve: vi.fn(async (key: string) => {
+        if (!reachable) throw offline()
+        return reserved(`photo-${key}`)
+      }),
+    })
+    const queue = queueFor(h)
+
+    queue.enqueue('shot-1', file(), NOW)
+    await queue.drain()
+    expect(h.deps.commit).not.toHaveBeenCalled()
+
+    // The network comes back, and nothing tells the queue. It asks anyway.
+    reachable = true
+    armed(h)?.run()
+    await until(() => called(h.deps.commit) === 1)
+
+    expect(await stored()).toEqual([])
+    expect(h.handlers.onConfirmed).toHaveBeenCalledOnce()
+  })
+
+  it('backs off rather than hammering a network that is still down', async () => {
+    const h = harness({
+      reserve: vi.fn(async () => {
+        throw offline()
+      }),
+    })
+    const queue = queueFor(h)
+
+    queue.enqueue('shot-1', file(), NOW)
+    await queue.drain()
+
+    const delays: number[] = []
+    for (let i = 0; i < 3; i++) {
+      const sweep = armed(h)
+      expect(sweep).toBeDefined()
+      delays.push(sweep!.delayMs)
+      sweep!.run()
+      await until(() => armed(h) !== undefined)
+    }
+
+    expect(delays).toEqual(SWEEP_DELAYS_MS.slice(0, 3))
+  })
+
+  it('stops asking once there is nothing left to send', async () => {
+    const h = harness()
+    const queue = queueFor(h)
+
+    queue.enqueue('shot-1', file(), NOW)
+    await queue.drain()
+
+    // A successful drain must not leave a timer running for the life of the
+    // page — the guest is at a party, and this is their battery.
+    expect(armed(h)).toBeUndefined()
+  })
+
+  it('does not spend an attempt on a request that never left the device', async () => {
+    // Four bad reconnects used to delete a photo that had never been sent
+    // once. The attempt budget is for retiring a photo the server keeps
+    // rejecting, not for punishing someone who walked out of range.
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () => {
+        throw offline()
+      }),
+    })
+    const queue = queueFor(h)
+
+    for (let i = 0; i < MAX_ATTEMPTS + 2; i++) {
+      await queue.resume()
+      await queue.drain()
+    }
+
+    const [row] = await uploadStore.listByEvent(EVENT)
+    expect(row).toBeDefined()
+    expect(row.attempts).toBe(0)
+    expect(h.handlers.onDropped).not.toHaveBeenCalledWith(
+      'shot-1',
+      'exhausted',
+      expect.anything(),
+    )
+  })
+
+  it('still retires a photo the server keeps refusing to take', async () => {
+    // The counterpart: a failure that *did* reach the server counts, so the
+    // refund above cannot become a way to retry forever.
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      upload: vi.fn(async () => {
+        throw Object.assign(new Error('HTTP 500'), {
+          name: 'StorageApiError',
+          status: 500,
+        })
+      }),
+    })
+    const queue = queueFor(h)
+
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      await queue.resume()
+      await queue.drain()
+    }
+
+    expect(await stored()).toEqual([])
+    expect(h.handlers.onDropped).toHaveBeenCalledWith(
+      'shot-1',
+      'exhausted',
+      true,
+    )
+  })
+
+  it('does not try at all while the device says it is offline', async () => {
+    // A premature `online` edge — the interface is up, DHCP and DNS are not —
+    // must cost nothing rather than burning the one attempt it used to.
+    await orphan({ id: 'shot-1' })
+    vi.stubGlobal('navigator', { onLine: false })
+
+    const h = harness()
+    const queue = queueFor(h)
+
+    await queue.resume()
+    await queue.drain()
+
+    expect(h.deps.reserve).not.toHaveBeenCalled()
+    expect(h.handlers.onRestored).not.toHaveBeenCalled()
+    expect(armed(h)).toBeDefined()
+    expect(await stored()).toEqual(['shot-1'])
   })
 })

@@ -292,6 +292,21 @@ upload, it was a lost moment.
   the behaviour this product had before the store existed.
 - **Draining stays one shot at a time**, for the reason it always was: two 2MB
   PUTs racing on venue wifi finish later than the same two in a row.
+- **The queue re-arms itself, and this was missing at first.** Every trigger
+  was an _edge_ — mount, `visibilitychange`, `pageshow`, `online` — and
+  `online` fires when the interface comes up rather than when the connection
+  works. Re-joining wifi therefore produced exactly one doomed attempt and then
+  silence until the guest reloaded, which is how the gap was found. A drain
+  that leaves work owed now schedules its own sweep (`SWEEP_DELAYS_MS`,
+  5s→2min, backing off), and a drain that ran and owes nothing cancels it. A
+  drain that ran _nothing_ decides nothing either way — an empty queue is not
+  evidence of an empty store.
+- **An attempt that never left the device is refunded.** The bump is
+  write-ahead so a crash mid-attempt still counts, but a connection failure —
+  `isConnectionFailure`, narrower than the transient check, since a 500 did
+  reach the server — hands the attempt back, and `resume()` does not even try
+  while `navigator.onLine` is false. Without that, four bad reconnects would
+  delete a photo that had never once been sent.
 
 Known edge, flagged rather than fixed: `reserve_shot`'s idempotency branch
 returns before the `no_shots` check, so an orphan resumed more than ten minutes

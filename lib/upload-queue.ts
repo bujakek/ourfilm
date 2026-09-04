@@ -2,6 +2,7 @@ import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
 import type { ShotRefusal } from '@/lib/capture'
 import type { PreparedPhoto } from '@/lib/image'
 import type { SignedUpload } from '@/lib/upload-shot'
+import { isConnectionFailure } from '@/lib/upload-retry'
 import {
   storedFile,
   type StoredShot,
@@ -51,6 +52,22 @@ export const MAX_ATTEMPTS = 4
  *  become a wedding photo, and they are holding megabytes of someone's disk. */
 export const MAX_AGE_MS = 24 * 60 * 60 * 1000
 
+/**
+ * How long to wait before sweeping again, after a drain that left work owed.
+ *
+ * The queue used to have nothing like this, and the gap was real: every trigger
+ * was an *edge* — mount, `visibilitychange`, `pageshow`, `online` — so a missed
+ * or premature edge put the queue to sleep until the next one. `online` in
+ * particular fires when the interface comes up, not when the connection works,
+ * so re-joining wifi routinely produced exactly one doomed attempt and then
+ * silence until the guest reloaded the page.
+ *
+ * Backs off rather than polling, and stops entirely the moment a drain owes
+ * nothing. The last value repeats for as long as work remains, which `MAX_AGE_MS`
+ * ultimately bounds.
+ */
+export const SWEEP_DELAYS_MS = [5_000, 15_000, 45_000, 120_000]
+
 export type UploadQueueDeps = {
   reserve: (idempotencyKey: string) => Promise<ReserveState>
   prepare: (file: File) => Promise<PreparedPhoto>
@@ -70,6 +87,12 @@ export type UploadQueueDeps = {
   store: UploadStore
   /** Injected so the age policy is testable, like everything in `lib/camera.ts`. */
   now?: () => number
+  /**
+   * How the queue comes back to itself. A timer is I/O like everything else
+   * here, so it is injected rather than reached for — a test drives the clock
+   * instead of waiting on one. Returns a cancel.
+   */
+  schedule?: (run: () => void, delayMs: number) => () => void
 }
 
 export type UploadQueueHandlers = {
@@ -99,6 +122,9 @@ export type UploadQueue = {
   enqueue(id: string, file: File, capturedAt: number): void
   resume(): Promise<void>
   drain(): Promise<void>
+  /** Cancel any pending sweep. For tests and teardown; the page itself simply
+   *  keeps the queue for as long as it keeps the tab. */
+  stop(): void
 }
 
 export function createUploadQueue({
@@ -111,6 +137,12 @@ export function createUploadQueue({
   handlers: UploadQueueHandlers
 }): UploadQueue {
   const clock = deps.now ?? (() => Date.now())
+  const schedule =
+    deps.schedule ??
+    ((run, delayMs) => {
+      const timer = setTimeout(run, delayMs)
+      return () => clearTimeout(timer)
+    })
   const pending: QueueItem[] = []
 
   // Refs rather than state, and two of them rather than one. `draining` guards
@@ -119,6 +151,9 @@ export function createUploadQueue({
   // read the store before either had finished putting anything into the queue.
   let draining: Promise<void> | null = null
   let resuming = false
+  /** The pending sweep's cancel, or null when none is armed. */
+  let sweep: (() => void) | null = null
+  let backoff = 0
 
   /** Everything the queue is currently responsible for, so a resume cannot
    *  restore a shot that is already in flight or already waiting. */
@@ -148,6 +183,34 @@ export function createUploadQueue({
     void drain()
   }
 
+  /** Whether a request stands any chance of leaving the device. */
+  function online(): boolean {
+    return typeof navigator === 'undefined' || navigator.onLine !== false
+  }
+
+  /**
+   * Come back and try again later.
+   *
+   * This is the queue's only self-starting trigger, and the reason it exists is
+   * that all the others are edges someone else controls.
+   */
+  function scheduleSweep(): void {
+    if (sweep !== null) return
+    const delay = SWEEP_DELAYS_MS[Math.min(backoff, SWEEP_DELAYS_MS.length - 1)]
+    backoff += 1
+    sweep = schedule(() => {
+      sweep = null
+      void resume()
+    }, delay)
+  }
+
+  /** Nothing is owed, so stop asking and forget how long we had been waiting. */
+  function cancelSweep(): void {
+    sweep?.()
+    sweep = null
+    backoff = 0
+  }
+
   /**
    * Pick up whatever a killed tab left behind.
    *
@@ -160,6 +223,15 @@ export function createUploadQueue({
 
     try {
       const rows = await deps.store.listByEvent(eventId)
+
+      // The bytes are safe and the network is not. Trying now would spend a
+      // round trip that cannot leave the device — which is exactly what a
+      // premature `online` edge used to do — so re-arm and stay quiet.
+      if (rows.length > 0 && !online()) {
+        scheduleSweep()
+        return
+      }
+
       const at = clock()
 
       for (const row of rows) {
@@ -222,13 +294,23 @@ export function createUploadQueue({
     // that wants to know when the queue is empty can await it instead of
     // guessing. The re-entrancy guarantee is unchanged: one loop, ever.
     draining ??= (async () => {
+      let owed = false
+      let ran = 0
       try {
         for (let next = pending.shift(); next; next = pending.shift()) {
-          await runCapture(next)
+          ran += 1
+          owed = (await runCapture(next)) || owed
         }
       } finally {
         draining = null
       }
+      // The queue asks for itself back rather than waiting to be asked.
+      //
+      // A drain that ran nothing decides nothing: an empty queue is not
+      // evidence that the store is empty too, and treating it as such would
+      // let an idle pass disarm the sweep a failed one had just armed.
+      if (owed) scheduleSweep()
+      else if (ran > 0) cancelSweep()
     })()
     return draining
   }
@@ -252,7 +334,8 @@ export function createUploadQueue({
     return doomed.map((item) => item.id)
   }
 
-  async function runCapture(item: QueueItem): Promise<void> {
+  /** Returns whether this shot is still owed — i.e. worth another sweep. */
+  async function runCapture(item: QueueItem): Promise<boolean> {
     let photoId: string | null = null
 
     // Written before the attempt, not after: a decode that runs the tab out of
@@ -270,7 +353,9 @@ export function createUploadQueue({
         handlers.onDropped(item.id, 'refused', item.restored)
         if (abandoned.length > 0) handlers.onAbandoned(abandoned)
         handlers.onRefusal(reserved.refusal, { restored: item.restored })
-        return
+        // A refusal is an answer, not a failure. Nothing is owed and nothing
+        // about waiting would change it.
+        return false
       }
 
       photoId = reserved.photoId
@@ -298,14 +383,24 @@ export function createUploadQueue({
       await deps.store.remove(item.id)
       claimed.delete(item.id)
       handlers.onConfirmed(item.id, committed.shotsRemaining)
+      return false
     } catch (error) {
       console.error('Native camera upload failed', error)
       claimed.delete(item.id)
 
+      // Nothing left the device — no wifi, or it dropped mid-request. Give the
+      // attempt back: the budget is there to retire a photo the server keeps
+      // rejecting, not to punish a guest for walking out of range. Without
+      // this, four bad reconnects would delete a photo that was never sent
+      // once.
+      const unsent = isConnectionFailure(error) || !online()
+      if (unsent) await deps.store.refundAttempt(item.id)
+
       // Whether this was the last go is decided by what is on the record, not
       // by anything in memory — the reload is the thing being survived.
       const remainingRow = await currentRow(item.id)
-      const exhausted = !remainingRow || remainingRow.attempts >= MAX_ATTEMPTS
+      const exhausted =
+        !unsent && (!remainingRow || remainingRow.attempts >= MAX_ATTEMPTS)
       if (exhausted) await deps.store.remove(item.id)
 
       handlers.onDropped(
@@ -320,6 +415,9 @@ export function createUploadQueue({
       // its own after ten minutes, and the next shot should not wait on the
       // cleanup of the last one.
       if (photoId) void deps.release(photoId)
+
+      // Still owed unless we have given up on it for good.
+      return !exhausted
     }
   }
 
@@ -328,5 +426,5 @@ export function createUploadQueue({
     return rows.find((row) => row.id === id)
   }
 
-  return { enqueue, resume, drain }
+  return { enqueue, resume, drain, stop: cancelSweep }
 }

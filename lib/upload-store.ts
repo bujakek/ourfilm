@@ -78,6 +78,7 @@ export type UploadStore = {
   listByEvent(eventId: string): Promise<StoredShot[]>
   remove(id: string): Promise<void>
   bumpAttempt(id: string, now: number): Promise<void>
+  refundAttempt(id: string): Promise<void>
 }
 
 let handle: Promise<IDBPDatabase | null> | null = null
@@ -214,26 +215,49 @@ export const uploadStore: UploadStore = {
   },
 
   async bumpAttempt(id, now) {
-    const db = await database()
-    if (!db) return
-
-    try {
-      const tx = db.transaction(STORE, 'readwrite')
-      const row = (await tx.store.get(id)) as StoredShot | undefined
-      // Gone already means committed already. Not an error, and not something
-      // to recreate — a re-added row would be uploaded a second time.
-      if (row) {
-        await tx.store.put({
-          ...row,
-          attempts: row.attempts + 1,
-          lastAttemptAt: now,
-        })
-      }
-      await tx.done
-    } catch (error) {
-      warnOnce(error)
-    }
+    await edit(id, (row) => ({
+      ...row,
+      attempts: row.attempts + 1,
+      lastAttemptAt: now,
+    }))
   },
+
+  /**
+   * Give an attempt back.
+   *
+   * The bump is written before the attempt runs, so a crash mid-attempt still
+   * counts — that is what stops a photo which reliably kills the tab from
+   * retrying forever. The cost of write-ahead is that a failure which never
+   * reached the server counts too, and a guest who walks out of wifi range
+   * would spend a photo's whole budget on requests that never left the device.
+   * This is the correction, and it is only ever applied to that case.
+   */
+  async refundAttempt(id) {
+    await edit(id, (row) => ({
+      ...row,
+      attempts: Math.max(0, row.attempts - 1),
+    }))
+  },
+}
+
+/** Read-modify-write one row in a single transaction, or do nothing. */
+async function edit(
+  id: string,
+  next: (row: StoredShot) => StoredShot,
+): Promise<void> {
+  const db = await database()
+  if (!db) return
+
+  try {
+    const tx = db.transaction(STORE, 'readwrite')
+    const row = (await tx.store.get(id)) as StoredShot | undefined
+    // Gone already means committed already. Not an error, and not something to
+    // recreate — a re-added row would be uploaded a second time.
+    if (row) await tx.store.put(next(row))
+    await tx.done
+  } catch (error) {
+    warnOnce(error)
+  }
 }
 
 /** Rebuild the `File` the camera handed over. See `StoredShot.name`. */

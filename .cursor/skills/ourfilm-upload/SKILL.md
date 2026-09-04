@@ -170,6 +170,13 @@ What ships now:
 - **`lib/upload-retry.ts`** retries each render's PUT with jittered backoff
   (`p-retry`), transient failures only.
 
+The queue also **re-arms itself** — a drain that leaves work owed schedules the
+next sweep, backing off 5s → 2min. Do not remove that in favour of the event
+listeners alone: they are all edges, and `online` fires when the interface comes
+up rather than when the connection works, so re-joining wifi produces one doomed
+attempt and then silence. That was a shipped bug, found on a laptop with the
+wifi toggled off and on.
+
 Three rules worth not rediscovering:
 
 - **Resume replays with the same idempotency key.** Never persist a photo id or
@@ -183,6 +190,10 @@ Three rules worth not rediscovering:
 - **Persistence is never a gate.** Every store call swallows, `put` is not
   awaited on the capture path, and Safari private mode simply gets the old
   in-memory behaviour.
+- **Do not count an attempt that never left the device.** The attempt budget
+  retires a photo the server keeps rejecting; a guest walking out of wifi range
+  must not spend one. `isConnectionFailure` is the narrow test — a 500 counts,
+  a dead socket does not.
 
 Progress itself is still coarse and still byte-weighted: `uploadToSignedUrl`
 goes through `fetch`, which reports no upload progress, so the fraction moves as

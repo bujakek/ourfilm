@@ -90,14 +90,19 @@ export function isTransientUploadError(error: unknown): boolean {
 
   // The wrapper. This is the branch the whole module is written for.
   if ('originalError' in candidate) {
-    return isNetworkFailure(candidate.originalError)
+    return isConnectionFailure(candidate.originalError)
   }
 
-  return isNetworkFailure(error)
+  return isConnectionFailure(error)
 }
 
 /**
- * A connection that never completed.
+ * A connection that never completed — nothing left the device.
+ *
+ * Narrower than `isTransientUploadError`, and the difference matters to the
+ * queue's attempt budget: a 500 means the server saw the request and failed it,
+ * which is worth counting, while this means the request never arrived anywhere
+ * and counting it would let a walk out of wifi range spend a photo's last try.
  *
  * `fetch` reports every one of these as a bare `TypeError` whose message is the
  * only thing distinguishing it from a programming mistake, and each engine
@@ -106,7 +111,7 @@ export function isTransientUploadError(error: unknown): boolean {
  * message is unpleasant and unavoidable; matching `TypeError` alone would
  * retry genuine bugs, and a bug retried three times is still a bug.
  */
-function isNetworkFailure(error: unknown): boolean {
+export function isConnectionFailure(error: unknown): boolean {
   if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
     return error.name === 'TimeoutError' || error.name === 'NetworkError'
   }
