@@ -18,6 +18,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-blue: var(--accent-blue);
   --color-accent-silver: var(--accent-silver);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-dot: var(--brand-dot);
+  --color-brand-flash: var(--brand-flash);
   --color-destructive: var(--destructive);
   --color-ring: var(--ring);
   --color-paper: var(--paper);
@@ -101,6 +104,11 @@
   --accent-foreground: #0f0d1a;
   --accent-blue: #9db4ff;
   --accent-silver: #d8dae5;
+  /* The three fixed inks from the selected Flash Dot. They are identity
+     colours, not interface states; only brand marks may spend them. */
+  --brand-cream: #f6ede2;
+  --brand-dot: #efe4d8;
+  --brand-flash: #edba62;
   /* The only warm colour in an otherwise lilac-on-near-black palette, and it is
      used for exactly one thing: telling a host that what they typed will not be
      accepted. `text-destructive` was already spelled out in the admin, the

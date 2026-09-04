@@ -2,8 +2,9 @@
 
 import { type Locale, localePath } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
+import { MenuMark } from '@/components/brand/menu-mark'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Aperture, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
 
 import { OCCASIONS_ARE_DRAFT } from '@/lib/occasions'
@@ -74,18 +75,12 @@ export function Navbar({ locale }: { locale: Locale }) {
           className="flex min-h-11 shrink-0 items-center gap-2"
           aria-label={copy.home}
         >
-          <span
+          <MenuMark
             className={cn(
-              'flex items-center justify-center rounded-full bg-white/5 transition-all duration-200',
+              'transition-all duration-200',
               scrolled ? 'size-7' : 'size-8',
             )}
-          >
-            <Aperture
-              className="size-4 text-accent"
-              strokeWidth={1.6}
-              aria-hidden="true"
-            />
-          </span>
+          />
           <span className="text-base font-semibold tracking-tight">
             OurFilm
           </span>
