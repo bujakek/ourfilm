@@ -69,7 +69,7 @@ export const OCCASIONS_ARE_DRAFT = true
 
 /** The same free-trial line closes every occasion page. */
 const OCCASION_CTA_HELPER =
-  '5 résztvevőig ingyenes, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft.'
+  '5 vendégig ingyenes, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft.'
 
 export const occasions: Occasion[] = [
   {
@@ -93,7 +93,7 @@ export const occasions: Occasion[] = [
     ],
     cta: {
       heading: 'Lássátok viszont a napot a vendégeitek szemével.',
-      body: 'Hozzátok létre a közös filmet, és döntsétek el, hány képkockát kapjanak a vendégek, valamint mikor hívódjanak elő a képek.',
+      body: 'Hozzátok létre a közös kamerát, és döntsétek el, hány képet készíthessen egy vendég, valamint mikor nyíljon meg a galéria.',
       button: 'Próbáljátok ki ingyen',
       helper: OCCASION_CTA_HELPER,
     },
@@ -123,7 +123,7 @@ export const occasions: Occasion[] = [
       },
     ],
     cta: {
-      heading: 'Legyen egy közös film az egész születésnapból.',
+      heading: 'Legyen egy közös album az egész születésnapból.',
       body: 'Hozd létre az eseményt, állítsd be a képkockák számát és válaszd ki, mikor jelenjenek meg a fotók.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,
@@ -140,13 +140,13 @@ export const occasions: Occasion[] = [
     icon: Plane,
     image: '/images/travel.webp',
     alt: 'Közös utazás',
-    title: 'Egy út. Sok nézőpont. Egy közös film.',
+    title: 'Egy út. Sok nézőpont. Egy közös album.',
     text: 'Minden útitárs saját digitális tekercset kap. A képek az út végén egyszerre hívódhatnak elő.',
     linkLabel: 'Közös kamera utazáshoz',
     sections: [
       {
         heading: 'Mindenki mást vesz észre',
-        body: 'Ugyanazt az utat mindenki másképp látja. A saját digitális tekercsekből a végén egy közös film áll össze.',
+        body: 'Ugyanazt az utat mindenki másképp látja. A saját digitális tekercsek képeiből a végén egy közös album áll össze.',
       },
       {
         heading: 'Oszd meg még indulás előtt',
@@ -155,14 +155,14 @@ export const occasions: Occasion[] = [
     ],
     cta: {
       heading: 'Nézzétek vissza együtt az utat.',
-      body: 'Hozd létre a közös filmet, oszd meg az útitársaiddal, és állítsd be, mikor hívódjanak elő a képek.',
+      body: 'Hozd létre a közös kamerát, oszd meg az útitársaiddal, és állítsd be, mikor nyíljon meg a galéria.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,
     },
     meta: {
       title: 'Közös digitális kamera utazáshoz – OurFilm',
       description:
-        'Minden útitárs saját digitális tekercset kap, a képekből pedig egy közös film áll össze. Alkalmazás és regisztráció nélkül.',
+        'Minden útitárs saját digitális tekercset kap, a képek pedig egy közös albumba kerülnek. Alkalmazás és regisztráció nélkül.',
     },
   },
   {
@@ -186,7 +186,7 @@ export const occasions: Occasion[] = [
     ],
     cta: {
       heading: 'Lássátok viszont a bulit minden szemszögből.',
-      body: 'Hozd létre a közös filmet, állítsd be a képkockák számát, és döntsd el, mikor jelenjenek meg a fotók.',
+      body: 'Hozd létre a közös kamerát, állítsd be a képek számát, és döntsd el, mikor nyíljon meg a galéria.',
       button: 'Próbáld ki ingyen',
       helper: OCCASION_CTA_HELPER,
     },

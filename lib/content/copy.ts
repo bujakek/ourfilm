@@ -48,8 +48,8 @@ export const hubCopy: Record<Locale, Record<Hub, HubCopy>> = {
     alternativak: {
       label: 'Alternatívák',
       eyebrow: 'ALTERNATÍVÁK',
-      title: 'OurFilm alternatívaként',
-      lead: 'Mit ad az OurFilm a külföldi vendégkamera- és fotómegosztó szolgáltatásokhoz képest, és mikor jobb választás a másik.',
+      title: 'Az OurFilm alternatívái',
+      lead: 'Miben más az OurFilm, mint a külföldi vendégkamera- és fotómegosztó szolgáltatások, és mikor jártok jobban egy másik megoldással.',
     },
     osszehasonlitas: {
       label: 'Összehasonlítás',
@@ -69,7 +69,7 @@ export const solutionsLabel: Record<Locale, { title: string; lead: string }> = {
   },
   hu: {
     title: 'Megoldások',
-    lead: 'A leggyakoribb kérdések, amivel a párok elindulnak.',
+    lead: 'Válaszok azokra a kérdésekre, amelyekkel a párok a leggyakrabban elindulnak.',
   },
 }
 

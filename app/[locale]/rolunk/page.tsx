@@ -40,12 +40,12 @@ const copy = {
     description:
       'Az OurFilm egy saját esküvő után született, amikor a vendégek fotóinak nagy része sosem jutott el hozzánk.',
     eyebrow: 'RÓLUNK',
-    heading: 'Azért készítettük el, mert velünk is megtörtént.',
-    lead: 'Egy esemény emlékei ritkán férnek el egyetlen fényképezőgépben. A vendégek telefonjain is rengeteg kép készül, és sok közülük sosem jut el a házigazdához.',
+    heading: 'Azért készítettük el, mert nekünk is hiányzott.',
+    lead: 'Egy fotós sem lehet ott minden pillanatnál. Közben a vendégek is rengeteget fotóznak — csak ezek a képek sokszor sosem jutnak el a párhoz.',
     paragraphs: [
-      'Az OurFilm ötlete a saját esküvőnk után született. A vendégeink rengeteget fotóztak, de a képek különböző telefonokon és beszélgetésekben maradtak. Sok közülük végül sosem jutott el hozzánk.',
-      'Csak később láttuk, mennyi minden történt aznap, amiről nekünk egyetlen fotónk sem volt. Nem azért, mert nem készültek képek, hanem mert nem volt egy hely, ahová mindenki feltölthette volna őket.',
-      'Ezért készítettük el az OurFilmet: egy QR-kód, és minden vendégfotó egy közös albumba kerül.',
+      'Az OurFilm ötlete a saját esküvőnk után született. A vendégeink rengeteget fotóztak, de a képek különböző telefonokon és üzenetváltásokban maradtak. Sok közülük végül sosem jutott el hozzánk.',
+      'Csak később döbbentünk rá, mennyi minden történt aznap a látóterünkön kívül. A képek elkészültek, csak nem volt egyetlen közös hely, ahol megtalálhattuk volna őket.',
+      'Ezért készítettük el az OurFilmet: egy QR-kóddal minden vendég ugyanazt a közös kamerát nyitja meg, a képek pedig egy privát galériába kerülnek.',
     ],
     facts: [
       ['Budapesten készül', 'Az OurFilm magyar fejlesztés.'],
@@ -55,12 +55,12 @@ const copy = {
       ],
       [
         'Egyszerű a vendégeknek',
-        'Nincs app és nincs regisztráció. Beolvassák a QR-kódot, és feltöltik a képeiket.',
+        'Nincs app és nincs regisztráció. Beolvassák a QR-kódot, és már fotózhatnak is.',
       ],
     ],
     question: 'Kérdésed van?',
     questionBody:
-      'Írd meg, milyen eseményre készülsz, és segítünk létrehozni az albumot.',
+      'Írd meg, milyen eseményre készülsz, és segítünk beállítani a kamerát.',
     contact: 'Írj nekünk',
   },
 } as const

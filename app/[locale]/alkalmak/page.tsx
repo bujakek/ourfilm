@@ -22,8 +22,8 @@ const pageCopy = {
     description:
       'Esküvő, születésnap, utazás vagy buli: adj mindenkinek saját digitális tekercset QR-kóddal, alkalmazás és regisztráció nélkül.',
     eyebrow: 'ALKALMAK',
-    heading: 'Minden alkalomra, ahol fotó készül',
-    lead: 'Ugyanaz a közös kamera, csak az alkalom más. Minden résztvevő saját digitális tekercset kap, a képek pedig együtt hívódnak elő.',
+    heading: 'Minden alkalomra, amit jó lenne újra látni',
+    lead: 'Az alkalom változik, a közös kamera marad. Minden vendég saját digitális tekercset kap, a képeket pedig együtt nézhetitek meg.',
     more: 'Tovább',
   },
 } as const
