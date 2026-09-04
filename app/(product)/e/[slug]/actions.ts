@@ -17,6 +17,7 @@ import {
   writeParticipantCookie,
 } from '@/lib/participants'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveLocale } from '@/lib/i18n'
 
 /**
  * Everything a guest can do, and the only way they can do it.
@@ -53,7 +54,7 @@ export async function joinEventAction(
 ): Promise<JoinState> {
   const slug = String(formData.get('slug') ?? '').trim()
   const name = String(formData.get('name') ?? '').trim()
-  const lang = formData.get('lang') === 'hu' ? 'hu' : 'en'
+  const lang = resolveLocale(formData.get('lang'))
 
   if (!slug)
     return { error: lang === 'en' ? 'Event not found.' : 'Hiányzó esemény.' }

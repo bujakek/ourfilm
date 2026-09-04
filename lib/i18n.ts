@@ -14,8 +14,14 @@ export const locales = ['en', 'hu'] as const
 
 export type Locale = (typeof locales)[number]
 
-/** Where `/` sends visitors, and what `x-default` points at. */
-export const defaultLocale: Locale = 'en'
+/** Where `/` sends visitors, and what `x-default` points at.
+ *
+ *  Hungarian for now: the pilot is run in Hungary, the legal pages and the
+ *  support address are Hungarian, and a bare `ourfilm.app` is overwhelmingly
+ *  reached by people who were handed the domain here. English exists in full
+ *  and is one edit away — this constant, and the `/` redirect in
+ *  `next.config.mjs`, are the only two places that decide it. */
+export const defaultLocale: Locale = 'hu'
 
 /** Every locale the content model knows about, enabled or not.
  *
@@ -28,6 +34,20 @@ export type KnownLocale = (typeof knownLocales)[number]
 
 export function isLocale(value: string): value is Locale {
   return (locales as readonly string[]).includes(value)
+}
+
+/**
+ * The language of a surface that has no locale segment to read.
+ *
+ * `/host`, `/auth` and `/e/` sit outside the locale tree, so they carry the
+ * language in `?lang` — and every link that leads there sets it. This is the
+ * answer when nothing does: a bookmark, a hand-typed URL, an email client that
+ * stripped the query. Each of these spots used to spell out its own
+ * `=== 'hu' ? 'hu' : 'en'`, which is how the product half stayed English after
+ * the public half stopped being.
+ */
+export function resolveLocale(value: unknown): Locale {
+  return typeof value === 'string' && isLocale(value) ? value : defaultLocale
 }
 
 export function isKnownLocale(value: string): value is KnownLocale {

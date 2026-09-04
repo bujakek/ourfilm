@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { DEFAULT_SHOTS, REVEAL_CHOICES, SHOT_OPTIONS } from '@/lib/camera'
-import { locales } from '@/lib/i18n'
+import { defaultLocale, locales } from '@/lib/i18n'
 
 /**
  * The unfinished event in this browser.
@@ -84,7 +84,7 @@ export function emptyDraft(
   now: Date,
   timeZone: string,
   creationKey: string,
-  locale: (typeof locales)[number] = 'en',
+  locale: (typeof locales)[number] = defaultLocale,
 ): EventDraft {
   const stamp = now.toISOString()
   return {

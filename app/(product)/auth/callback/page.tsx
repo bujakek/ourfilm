@@ -1,5 +1,5 @@
 import { PageGrain } from '@/components/site/page-grain'
-import { localeTag } from '@/lib/i18n'
+import { localeTag, resolveLocale } from '@/lib/i18n'
 import { LoadingStatus } from '@/components/loading-status'
 import type { Metadata } from 'next'
 
@@ -14,7 +14,10 @@ export async function generateMetadata({
 }: Props): Promise<Metadata> {
   const { lang } = await searchParams
   return {
-    title: lang === 'hu' ? 'Belépés — OurFilm' : 'Signing in — OurFilm',
+    title:
+      resolveLocale(lang) === 'hu'
+        ? 'Belépés — OurFilm'
+        : 'Signing in — OurFilm',
     robots: { index: false, follow: false },
   }
 }
@@ -44,7 +47,7 @@ export async function generateMetadata({
  */
 export default async function AuthCallbackPage({ searchParams }: Props) {
   const { lang } = await searchParams
-  const locale = lang === 'hu' ? 'hu' : 'en'
+  const locale = resolveLocale(lang)
   const en = locale === 'en'
 
   return (

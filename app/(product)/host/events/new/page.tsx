@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Metadata } from 'next'
 
+import { resolveLocale } from '@/lib/i18n'
 import { eventNameSuggestions } from '@/lib/onboarding'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { NewEventForm } from './new-event-form'
@@ -17,7 +18,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await searchParams
   return {
-    title: lang === 'hu' ? 'Új esemény — OurFilm' : 'New event — OurFilm',
+    title:
+      resolveLocale(lang) === 'hu'
+        ? 'Új esemény — OurFilm'
+        : 'New event — OurFilm',
     robots: { index: false, follow: false },
   }
 }

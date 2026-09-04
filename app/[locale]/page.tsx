@@ -8,7 +8,7 @@ import { Navbar } from '@/components/site/navbar'
 import { PhotoReveal } from '@/components/site/photo-reveal'
 import { QrPreview } from '@/components/site/qr-preview'
 import { TryCameraCard } from '@/components/site/try-camera-card'
-import { isLocale } from '@/lib/i18n'
+import { defaultLocale, isLocale } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/site'
@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         en: `${SITE_URL}/en`,
         hu: `${SITE_URL}/hu`,
-        'x-default': `${SITE_URL}/en`,
+        'x-default': `${SITE_URL}/${defaultLocale}`,
       },
     },
     openGraph: {

@@ -5,7 +5,7 @@ import {
   parseEarlyCoupleApplication,
   type EarlyCoupleApplication,
 } from '@/lib/early-couple'
-import { isLocale, type Locale } from '@/lib/i18n'
+import { type Locale, resolveLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { consumeRateLimit, requestFingerprint } from '@/lib/rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -20,7 +20,7 @@ const DUPLICATE_KEY = '23505'
 
 function safeLocale(formData: FormData): Locale {
   const locale = String(formData.get('locale') ?? '')
-  return isLocale(locale) ? locale : 'en'
+  return resolveLocale(locale)
 }
 
 function genericError(locale: Locale) {

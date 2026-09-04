@@ -10,8 +10,9 @@ import { canonicalUrl } from '@/lib/seo'
  * for answer engines, **not** a replacement for the sitemap, structured data
  * or crawlable HTML — all of which do the actual work.
  *
- * Hungarian is the only locale, so the links are Hungarian; the description is
- * in English because that is what reads this file.
+ * The links are the default locale's — Hungarian, see `defaultLocale` — so
+ * flipping the site default moves this file with it. The description is in
+ * English because that is what reads it.
  */
 export const dynamic = 'force-static'
 
@@ -38,7 +39,8 @@ private, and the finished album downloads as one archive.
 It is not a camera-roll upload album: guests shoot into the shared camera at the
 event rather than uploading afterwards.
 
-The interface is Hungarian; the service operates in Hungary.
+The interface is available in Hungarian and English; the service operates in
+Hungary.
 
 ## Product
 

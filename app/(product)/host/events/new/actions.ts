@@ -9,7 +9,7 @@ import {
 } from '@/lib/camera'
 import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import { isEventPlan } from '@/lib/onboarding'
-import { isLocale, type Locale } from '@/lib/i18n'
+import { type Locale, resolveLocale } from '@/lib/i18n'
 import { generateEventSlug } from '@/lib/slug'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
@@ -71,7 +71,7 @@ export async function createEventFromDraft(
   input: EventDraftInput,
 ): Promise<CreateEventResult> {
   const name = String(input.name ?? '').trim()
-  const locale: Locale = isLocale(input.locale) ? input.locale : 'en'
+  const locale: Locale = resolveLocale(input.locale)
   const copy =
     locale === 'en'
       ? {

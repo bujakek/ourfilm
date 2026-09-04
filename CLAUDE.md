@@ -139,7 +139,12 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
 - **Bilingual marketing site** — `app/[locale]/page.tsx` composes the disposable
   camera story from `components/site/*`: hero, benefits, how-it-works,
   qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
-  camera story for `/en` and `/hu`, with `/` redirecting to English.
+  camera story for `/en` and `/hu`, with `/` redirecting to Hungarian.
+  `defaultLocale` in `lib/i18n.ts` and the `/` redirect in
+  `next.config.mjs` are the only two places that decide that, and they
+  must agree. Everything else — `x-default`, `/llms.txt`, the shared 404
+  and error screens, and every `?lang`-less product page via
+  `resolveLocale()` — follows the constant.
 - **The homepage and `/hu/arak` describe the disposable-camera product.** The
   old upload demo, technical quality comparison, occasions carousel and
   instant-arrival pitch are no longer in the homepage flow. The unused
@@ -363,17 +368,17 @@ because a client-side counter is a display and the database is the count.
 
 ## Routing (settled — QR codes get printed, so this is expensive to change)
 
-| Route                                                                                      | Purpose                                                                                    |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| `/`                                                                                        | 308 to `/hu`. Nothing renders here.                                                        |
-| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                         |
-| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                     |
-| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                             |
-| `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft   |
-| `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos |
-| `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                            |
-| `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                            |
-| `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                        |
+| Route                                                                                      | Purpose                                                                                                                                  |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                                                                        | 307 to `/hu`. Nothing renders here. Temporary on purpose — the default language is a current decision, and a cached 308 would outlive it |
+| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                                                                       |
+| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                                                                   |
+| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                                                                           |
+| `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft                                                 |
+| `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos                                               |
+| `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                          |
+| `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                                                                          |
+| `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                                                                      |
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed

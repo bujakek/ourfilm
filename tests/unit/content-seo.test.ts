@@ -123,7 +123,13 @@ describe('structured data', () => {
   })
 
   it('builds a breadcrumb trail that ends on the page itself', () => {
-    const doc = docs.find((candidate) => candidate.kind === 'blog')!
+    // In `defaultLocale`, deliberately: the trail below is built at that
+    // locale, so a doc from any other one would compare two different
+    // languages' URLs and pass or fail on which file sorts first.
+    const doc = docs.find(
+      (candidate) =>
+        candidate.kind === 'blog' && candidate.locale === defaultLocale,
+    )!
     const trail = breadcrumbJsonLd(defaultLocale, [
       { name: 'Főoldal', path: '/' },
       { name: hubCopy[defaultLocale].blog.label, path: '/blog' },

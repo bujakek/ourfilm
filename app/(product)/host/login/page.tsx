@@ -1,5 +1,5 @@
 import { PageGrain } from '@/components/site/page-grain'
-import { localeTag } from '@/lib/i18n'
+import { localeTag, resolveLocale } from '@/lib/i18n'
 import type { Metadata } from 'next'
 import { LoginForm } from './login-form'
 
@@ -14,7 +14,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; lang?: string }>
 }) {
   const { error, lang } = await searchParams
-  const locale = lang === 'hu' ? 'hu' : 'en'
+  const locale = resolveLocale(lang)
   const en = locale === 'en'
 
   return (
