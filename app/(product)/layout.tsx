@@ -2,7 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { ReactNode } from 'react'
 
 import { bodyClassName, siteMetadata, siteViewport } from '@/lib/document'
-import { localeTag } from '@/lib/i18n'
+import { defaultLocale, localeTag } from '@/lib/i18n'
 import '../globals.css'
 
 /**
@@ -48,7 +48,7 @@ export default function ProductRootLayout({
   children: ReactNode
 }) {
   return (
-    <html lang={localeTag.en} className="bg-background">
+    <html lang={localeTag[defaultLocale]} className="bg-background">
       <body className={bodyClassName}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

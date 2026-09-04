@@ -15,7 +15,7 @@ import { getMyFrames } from '@/lib/frames'
 import { signPhotoUrl } from '@/lib/photo-urls'
 import { getGalleryPhotosBySlug, toGalleryTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
-import { isLocale, type Locale } from '@/lib/i18n'
+import { isLocale, type Locale, resolveLocale } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,12 +45,13 @@ export default async function EventPage({ params, searchParams }: Props) {
   const query = await searchParams
   const event = await getGuestEventState(slug)
   if (!event) notFound()
+  // `?lang` wins so a guest can read the page in their own language; the
+  // event's stored locale is the default, and `resolveLocale` catches a row
+  // written before the column was constrained.
   const locale: Locale =
-    query.lang === 'hu' || query.lang === 'en'
+    typeof query.lang === 'string' && isLocale(query.lang)
       ? query.lang
-      : isLocale(event.locale)
-        ? event.locale
-        : 'en'
+      : resolveLocale(event.locale)
 
   const now = new Date()
   const timing = {

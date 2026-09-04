@@ -21,7 +21,7 @@ import {
 } from '@/lib/event-draft'
 import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
 import type { EventPlan } from '@/lib/onboarding'
-import type { Locale } from '@/lib/i18n'
+import { type Locale, resolveLocale } from '@/lib/i18n'
 import { createEventFromDraft } from './actions'
 import { endScreen } from './step-end'
 import { guestsScreen } from './step-guests'
@@ -63,7 +63,7 @@ export function NewEventForm(props: Props) {
   const stored = useStoredDraft()
   const params = useSearchParams()
   const timeZone = useBrowserTimeZone()
-  const locale: Locale = params.get('lang') === 'hu' ? 'hu' : 'en'
+  const locale: Locale = resolveLocale(params.get('lang'))
 
   // Set by the resume route when a draft's end date has gone by: reopen the
   // flow on the date screen with everything else intact, rather than asking

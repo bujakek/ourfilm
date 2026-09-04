@@ -1,6 +1,6 @@
 import { EarlyCoupleApplicationForm } from './application-form'
 import { PageShell } from '@/components/site/page-shell'
-import { type Locale, isLocale } from '@/lib/i18n'
+import { defaultLocale, type Locale, isLocale } from '@/lib/i18n'
 import { canonicalUrl } from '@/lib/seo'
 import {
   CalendarHeart,
@@ -146,7 +146,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         'en-GB': canonicalUrl(`/en${programPath}`),
         'hu-HU': canonicalUrl(`/hu${programPath}`),
-        'x-default': canonicalUrl(`/en${programPath}`),
+        'x-default': canonicalUrl(`/${defaultLocale}${programPath}`),
       },
     },
     openGraph: {

@@ -69,7 +69,15 @@ const nextConfig = {
     ]
 
     return [
-      { source: '/', destination: '/en', permanent: true },
+      // The bare domain lands on Hungarian while the pilot is Hungarian —
+      // see `defaultLocale` in `lib/i18n.ts`, which must agree with this.
+      //
+      // 307, not 308, unlike every redirect below it: this one is a current
+      // decision rather than a URL that moved for good. A browser caches a 308
+      // indefinitely, so flipping the default back would leave returning
+      // visitors pinned to the old language with nothing the server can say
+      // about it.
+      { source: '/', destination: '/hu', permanent: false },
       { source: '/en/arak', destination: '/en/pricing', permanent: true },
       { source: '/en/alkalmak', destination: '/en/occasions', permanent: true },
       {
