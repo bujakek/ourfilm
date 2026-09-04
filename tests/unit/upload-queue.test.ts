@@ -28,6 +28,7 @@ import {
   createUploadQueue,
   MAX_AGE_MS,
   MAX_ATTEMPTS,
+  REQUEST_TIMEOUTS_MS,
   SWEEP_DELAYS_MS,
   type UploadQueueDeps,
   type UploadQueueHandlers,
@@ -656,5 +657,99 @@ describe('coming back on its own', () => {
     expect(h.handlers.onRestored).not.toHaveBeenCalled()
     expect(armed(h)).toBeDefined()
     expect(await stored()).toEqual(['shot-1'])
+  })
+})
+
+describe('a request that never answers', () => {
+  /**
+   * The second bug, and the one that made the first fix useless.
+   *
+   * Turning wifi off does not reliably reject an in-flight `fetch` — on a
+   * laptop it commonly leaves it pending indefinitely. `runCapture` awaited it
+   * forever, so the drain loop never advanced, so the sweep that is armed
+   * *after* that loop could never be armed at all. And because `drain()` hands
+   * back the running loop, every photo taken afterwards — on a connection that
+   * was working again — queued behind the hung one and sat in the store
+   * untouched. Only a reload cleared it, which is how it was reported.
+   */
+  const hangs = () => new Promise<never>(() => {})
+
+  /** Timeouts short enough to test, long enough to be real waits. */
+  const quick = { reserve: 10, upload: 10, commit: 10 }
+
+  it('gives up on a hung request instead of waiting for ever', async () => {
+    const h = harness({ reserve: vi.fn(hangs), timeouts: quick })
+    const queue = queueFor(h)
+
+    queue.enqueue('shot-1', file(), NOW)
+    await queue.drain()
+
+    // The drain finished at all, which is the property. Before the timeout it
+    // never returned.
+    expect(h.handlers.onDropped).toHaveBeenCalledWith('shot-1', 'failed', false)
+    expect(await stored()).toEqual(['shot-1'])
+  })
+
+  it('arms the retry that a hang used to make unreachable', async () => {
+    const h = harness({ reserve: vi.fn(hangs), timeouts: quick })
+    const queue = queueFor(h)
+
+    queue.enqueue('shot-1', file(), NOW)
+    await queue.drain()
+
+    expect(armed(h)).toBeDefined()
+  })
+
+  it('does not spend an attempt on a request that never answered', async () => {
+    // A timeout means nothing left the device, so it is refunded like any
+    // other connection failure.
+    await orphan({ id: 'shot-1' })
+    const h = harness({ reserve: vi.fn(hangs), timeouts: quick })
+    const queue = queueFor(h)
+
+    await queue.resume()
+    await queue.drain()
+
+    const [row] = await uploadStore.listByEvent(EVENT)
+    expect(row.attempts).toBe(0)
+  })
+
+  it('still uploads the next photo, on a connection that works', async () => {
+    // The reported symptom, exactly: photos taken *after* the network came
+    // back were written to IndexedDB and never sent, because they were queued
+    // behind a request that would never answer.
+    // Keyed on the shot rather than on a flag: the drain's first `await` is the
+    // attempt bump, so a flag flipped straight after `enqueue` would already be
+    // set by the time `reserve` was called, and nothing would hang at all.
+    const h = harness({
+      reserve: vi.fn(async (key: string) =>
+        key === 'stuck' ? hangs() : reserved(`photo-${key}`),
+      ),
+      timeouts: quick,
+    })
+    const queue = queueFor(h)
+
+    queue.enqueue('stuck', file(), NOW)
+    queue.enqueue('fresh', file(), NOW + 1)
+    await queue.drain()
+
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('fresh', 23)
+    expect(await stored()).toEqual(['stuck'])
+  })
+})
+
+describe('the shipped timeouts', () => {
+  it('are finite, and generous enough for a real upload', () => {
+    // A ceiling is the whole point; an accidental Infinity here restores the
+    // wedged-queue bug in full.
+    for (const ms of Object.values(REQUEST_TIMEOUTS_MS)) {
+      expect(Number.isFinite(ms)).toBe(true)
+      expect(ms).toBeGreaterThanOrEqual(20_000)
+    }
+    // Three renders of a few MB on venue wifi need more room than a round trip
+    // carrying a little JSON.
+    expect(REQUEST_TIMEOUTS_MS.upload).toBeGreaterThan(
+      REQUEST_TIMEOUTS_MS.reserve,
+    )
   })
 })

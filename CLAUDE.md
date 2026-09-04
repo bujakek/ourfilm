@@ -306,6 +306,17 @@ upload, it was a lost moment.
   5s→2min, backing off), and a drain that ran and owes nothing cancels it. A
   drain that ran _nothing_ decides nothing either way — an empty queue is not
   evidence of an empty store.
+- **Every network step has a timeout, and this is load-bearing.** A dropped
+  connection does not reliably reject a `fetch` — turning wifi off on a laptop
+  commonly leaves it pending indefinitely. Without a ceiling, one hung request
+  wedges the whole uploader: `runCapture` never returns, the drain loop never
+  advances, and since the sweep is armed _after_ that loop it can never be armed
+  at all. Worse, `drain()` hands back the running loop, so every photo taken
+  afterwards — on a connection that is working again — queues behind the hung
+  one and sits in the store untouched until a reload. That was the shipped bug,
+  and the retry clock above could not fire because of it. `REQUEST_TIMEOUTS_MS`
+  is the ceiling; a timeout reads as a connection failure, so it is refunded and
+  retried like any other.
 - **An attempt that never left the device is refunded.** The bump is
   write-ahead so a crash mid-attempt still counts, but a connection failure —
   `isConnectionFailure`, narrower than the transient check, since a 500 did

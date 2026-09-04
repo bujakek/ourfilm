@@ -190,6 +190,11 @@ Three rules worth not rediscovering:
 - **Persistence is never a gate.** Every store call swallows, `put` is not
   awaited on the capture path, and Safari private mode simply gets the old
   in-memory behaviour.
+- **Never await a network call here without a timeout.** A dropped connection
+  does not reliably reject a `fetch`; it hangs. One hung request used to wedge
+  the entire queue — including photos taken later on a working connection —
+  until the page was reloaded. `REQUEST_TIMEOUTS_MS` in `lib/upload-queue.ts` is
+  what stops that, and removing it brings the bug straight back.
 - **Do not count an attempt that never left the device.** The attempt budget
   retires a photo the server keeps rejecting; a guest walking out of wifi range
   must not spend one. `isConnectionFailure` is the narrow test — a 500 counts,

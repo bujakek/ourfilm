@@ -68,6 +68,31 @@ export const MAX_AGE_MS = 24 * 60 * 60 * 1000
  */
 export const SWEEP_DELAYS_MS = [5_000, 15_000, 45_000, 120_000]
 
+/**
+ * How long any one network step may hang before it is treated as failed.
+ *
+ * **A dropped connection does not reliably reject a `fetch`.** Turning wifi off
+ * mid-request commonly leaves it pending until an OS-level timeout minutes
+ * later, or indefinitely. Without a ceiling, one such request wedges the entire
+ * uploader: `runCapture` never returns, the drain loop never advances, and
+ * because the sweep is armed *after* that loop it can never be armed at all.
+ * Worse, every photo taken afterwards — on a perfectly good connection — queues
+ * behind the hung one and sits in the store untouched. Only a reload clears it,
+ * which is exactly how this was found.
+ *
+ * The request itself cannot be cancelled from here, so a late reply is simply
+ * ignored; the PUTs upsert and `reserve_shot` is idempotent, so nothing a
+ * straggler does can be harmful.
+ */
+export const REQUEST_TIMEOUTS_MS = {
+  /** A small JSON round trip. */
+  reserve: 20_000,
+  /** Three renders, up to a few MB, on the worst network the product sees. */
+  upload: 120_000,
+  /** A small JSON round trip. */
+  commit: 20_000,
+}
+
 export type UploadQueueDeps = {
   reserve: (idempotencyKey: string) => Promise<ReserveState>
   prepare: (file: File) => Promise<PreparedPhoto>
@@ -93,6 +118,8 @@ export type UploadQueueDeps = {
    * instead of waiting on one. Returns a cancel.
    */
   schedule?: (run: () => void, delayMs: number) => () => void
+  /** Overridable so a test does not have to wait out a real hang. */
+  timeouts?: typeof REQUEST_TIMEOUTS_MS
 }
 
 export type UploadQueueHandlers = {
@@ -137,6 +164,7 @@ export function createUploadQueue({
   handlers: UploadQueueHandlers
 }): UploadQueue {
   const clock = deps.now ?? (() => Date.now())
+  const limits = deps.timeouts ?? REQUEST_TIMEOUTS_MS
   const schedule =
     deps.schedule ??
     ((run, delayMs) => {
@@ -181,6 +209,32 @@ export function createUploadQueue({
     })
 
     void drain()
+  }
+
+  /**
+   * Stop waiting on a request that is never going to answer.
+   *
+   * Rejects with the same `TimeoutError` shape a browser produces, so
+   * `isConnectionFailure` already reads it as "nothing left the device" and the
+   * attempt is refunded rather than spent.
+   */
+  function withTimeout<T>(work: Promise<T>, ms: number, what: string) {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new DOMException(`${what} timed out`, 'TimeoutError')),
+        ms,
+      )
+      work.then(
+        (value) => {
+          clearTimeout(timer)
+          resolve(value)
+        },
+        (error: unknown) => {
+          clearTimeout(timer)
+          reject(error)
+        },
+      )
+    })
   }
 
   /** Whether a request stands any chance of leaving the device. */
@@ -344,7 +398,11 @@ export function createUploadQueue({
     await deps.store.bumpAttempt(item.id, clock())
 
     try {
-      const reserved = await deps.reserve(item.id)
+      const reserved = await withTimeout(
+        deps.reserve(item.id),
+        limits.reserve,
+        'Reserving a frame',
+      )
 
       if (!reserved.ok) {
         const abandoned = await abandonQueue()
@@ -359,20 +417,30 @@ export function createUploadQueue({
       }
 
       photoId = reserved.photoId
+      // Not timed out: this is local CPU work, and racing a decode would free
+      // no memory while leaving the bitmap alive behind it.
       const prepared = await deps.prepare(item.file)
-      await deps.upload({
-        prepared,
-        uploads: reserved.uploads,
-        onProgress: (fraction) => handlers.onProgress(item.id, fraction),
-      })
+      await withTimeout(
+        deps.upload({
+          prepared,
+          uploads: reserved.uploads,
+          onProgress: (fraction) => handlers.onProgress(item.id, fraction),
+        }),
+        limits.upload,
+        'Uploading a photo',
+      )
 
-      const committed = await deps.commit({
-        photoId,
-        width: prepared.width,
-        height: prepared.height,
-        byteSize: prepared.full.size,
-        takenAt: prepared.takenAt?.toISOString() ?? null,
-      })
+      const committed = await withTimeout(
+        deps.commit({
+          photoId,
+          width: prepared.width,
+          height: prepared.height,
+          byteSize: prepared.full.size,
+          takenAt: prepared.takenAt?.toISOString() ?? null,
+        }),
+        limits.commit,
+        'Confirming a photo',
+      )
 
       if (!committed.committed) throw new Error('commit refused')
 
