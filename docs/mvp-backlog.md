@@ -750,22 +750,21 @@ plus `admin`.
       and `participant_shots_used` stops counting a pending row after the
       ten-minute TTL. So a shot recovered more than ten minutes after it was
       captured commits even if the guest has since shot to the limit —
-      `shots_per_participant + 1`, once per orphan.
-
-      Pre-existing rather than new: a manual retry after ten minutes always did
-          this. What changed is the frequency — persistence makes the replay routine
-          instead of rare. `MAX_AGE_MS` in `lib/upload-queue.ts` bounds the blast
-          radius to a day, but the real fix is server-side and belongs in the RPC:
-          the idempotency branch would have to refuse a row whose reservation has
-          expired *and* whose participant is now at the limit. Deliberately not done
-          in the client-side change that surfaced it.
-
+      `shots_per_participant + 1`, once per orphan. Pre-existing rather than
+      new: a manual retry after ten minutes always did this, and what changed is
+      the frequency, because persistence makes the replay routine instead of
+      rare. `MAX_AGE_MS` in `lib/upload-queue.ts` bounds the blast radius to a
+      day, but the real fix belongs in the RPC — the idempotency branch would
+      have to refuse a row whose reservation has expired _and_ whose participant
+      is now at the limit. Deliberately not done in the client-side change that
+      surfaced it.
 - [ ] **The React half of the upload queue has no automated coverage.** The
       listeners, the restored cell's `previewUrl` lifecycle and the frame-index
       arithmetic live in `guest-event-view.tsx`, and the vitest config is
       node-only with no `.tsx` in its include. Reaching them means jsdom plus a
       renderer, which is a larger change than the feature was. Until then the
-      manual phone matrix in the plan is the only thing that covers them.
+      manual phone matrix — kill the tab mid-upload, airplane mode, twenty
+      minutes backgrounded, private-mode tab — is the only thing covering them.
 
 ---
 

@@ -136,17 +136,31 @@ async function orphan(overrides: Partial<StoredShot> = {}) {
 }
 
 /**
- * Flush the queue's un-awaited work.
+ * Wait for something to become true.
  *
- * Several macrotask turns rather than one: a single capture awaits a handful of
- * IndexedDB round trips, and each of those resolves a turn later. Used only
- * where a dependency is deliberately held open and `drain()` therefore cannot
- * be awaited to completion.
+ * Used only where a dependency is deliberately held open, so `drain()` cannot
+ * be awaited to completion and the test still needs to observe the queue
+ * mid-flight. Polling a condition rather than counting turns: a capture awaits
+ * a handful of IndexedDB round trips, and how many event-loop turns those take
+ * depends on what else the machine is doing. A fixed count passes alone and
+ * fails inside `pnpm verify`, which is the worst kind of test.
  */
-async function settle() {
-  for (let i = 0; i < 20; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 0))
+async function until(condition: () => boolean | Promise<boolean>) {
+  for (let i = 0; i < 500; i++) {
+    if (await condition()) return
+    await new Promise((resolve) => setTimeout(resolve, 1))
   }
+  throw new Error('Timed out waiting for the queue to reach the expected state')
+}
+
+/** How many times an injected dependency has been called. */
+function called(fn: unknown) {
+  return (fn as ReturnType<typeof vi.fn>).mock.calls.length
+}
+
+/** How many rows the store still holds for the event under test. */
+async function stored() {
+  return (await uploadStore.listByEvent(EVENT)).map((row) => row.id)
 }
 
 beforeEach(async () => {
@@ -167,14 +181,14 @@ describe('a shot the guest has just taken', () => {
     const queue = queueFor(h)
 
     queue.enqueue('shot-1', file(), NOW)
-    await settle()
+    await until(async () => (await stored()).length === 1)
 
     const rows = await uploadStore.listByEvent(EVENT)
     expect(rows.map((row) => row.id)).toEqual(['shot-1'])
     expect(h.deps.commit).not.toHaveBeenCalled()
 
     held.resolve(reserved('photo-1'))
-    await settle()
+    await queue.drain()
   })
 
   it('is forgotten only once the server has confirmed it', async () => {
@@ -183,13 +197,13 @@ describe('a shot the guest has just taken', () => {
     const queue = queueFor(h)
 
     queue.enqueue('shot-1', file(), NOW)
-    await settle()
+    await until(() => called(h.deps.commit) === 1)
 
     // Bytes are up, but nothing is committed. The row has to still be there.
     expect(await uploadStore.listByEvent(EVENT)).toHaveLength(1)
 
     held.resolve({ committed: true, shotsRemaining: 22 })
-    await settle()
+    await queue.drain()
 
     expect(await uploadStore.listByEvent(EVENT)).toEqual([])
     expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 22)
@@ -202,7 +216,7 @@ describe('a shot the guest has just taken', () => {
     const queue = queueFor(h)
 
     queue.enqueue('shot-1', file(), NOW)
-    await settle()
+    await queue.drain()
 
     expect(await uploadStore.listByEvent(EVENT)).toHaveLength(1)
     expect(h.deps.release).toHaveBeenCalledOnce()
@@ -225,12 +239,12 @@ describe('a shot the guest has just taken', () => {
     queue.enqueue('shot-1', file(), NOW)
     queue.enqueue('shot-2', file(), NOW + 1)
     queue.enqueue('shot-3', file(), NOW + 2)
-    await settle()
+    await until(() => order.length === 1)
 
     expect(order).toEqual(['shot-1'])
 
     held.resolve({ committed: true, shotsRemaining: 22 })
-    await settle()
+    await queue.drain()
 
     expect(order).toEqual(['shot-1', 'shot-2', 'shot-3'])
   })
@@ -253,7 +267,7 @@ describe('a refusal', () => {
     queue.enqueue('shot-1', file(), NOW)
     queue.enqueue('shot-2', file(), NOW + 1)
     queue.enqueue('shot-3', file(), NOW + 2)
-    await settle()
+    await queue.drain()
 
     expect(h.deps.prepare).not.toHaveBeenCalled()
     expect(h.deps.upload).not.toHaveBeenCalled()
@@ -266,7 +280,7 @@ describe('a refusal', () => {
 
     // And it stays gone across a reactivation.
     await queue.resume()
-    await settle()
+    await queue.drain()
     expect(h.handlers.onRestored).not.toHaveBeenCalled()
   })
 
@@ -284,7 +298,7 @@ describe('a refusal', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await settle()
+    await queue.drain()
 
     expect(h.handlers.onRefusal).toHaveBeenCalledWith('ended', {
       restored: true,
@@ -303,7 +317,7 @@ describe('a tab that died mid-upload', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await settle()
+    await queue.drain()
 
     const restored = (h.handlers.onRestored as ReturnType<typeof vi.fn>).mock
       .calls
@@ -322,7 +336,7 @@ describe('a tab that died mid-upload', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await settle()
+    await queue.drain()
 
     expect(h.deps.reserve).toHaveBeenCalledWith('shot-1')
   })
@@ -333,16 +347,15 @@ describe('a tab that died mid-upload', () => {
     const queue = queueFor(h)
 
     queue.enqueue('shot-1', file(), NOW)
-    await settle()
+    await until(() => called(h.deps.reserve) === 1)
 
     await queue.resume()
-    await settle()
 
     expect(h.handlers.onRestored).not.toHaveBeenCalled()
     expect(h.deps.reserve).toHaveBeenCalledOnce()
 
     held.resolve(reserved('photo-1'))
-    await settle()
+    await queue.drain()
   })
 
   it('survives two reactivation events firing at once', async () => {
@@ -354,7 +367,7 @@ describe('a tab that died mid-upload', () => {
     const queue = queueFor(h)
 
     await Promise.all([queue.resume(), queue.resume()])
-    await settle()
+    await queue.drain()
 
     expect(h.handlers.onRestored).toHaveBeenCalledOnce()
     expect(h.deps.reserve).toHaveBeenCalledOnce()
@@ -373,7 +386,7 @@ describe('giving up', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await settle()
+    await queue.drain()
 
     expect(h.handlers.onDropped).toHaveBeenCalledWith(
       'doomed',
@@ -387,7 +400,7 @@ describe('giving up', () => {
     const restoredSoFar = (h.handlers.onRestored as ReturnType<typeof vi.fn>)
       .mock.calls.length
     await queue.resume()
-    await settle()
+    await queue.drain()
     expect(h.handlers.onRestored).toHaveBeenCalledTimes(restoredSoFar)
   })
 
@@ -401,7 +414,7 @@ describe('giving up', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await settle()
+    await queue.drain()
 
     expect(h.handlers.onDropped).toHaveBeenCalledWith('unlucky', 'failed', true)
     const [row] = await uploadStore.listByEvent(EVENT)
@@ -417,7 +430,7 @@ describe('giving up', () => {
     const queue = queueFor(h)
 
     queue.enqueue('shot-1', file(), NOW)
-    await settle()
+    await queue.drain()
 
     // `silent` false: this failure followed a shutter press the guest made.
     expect(h.handlers.onDropped).toHaveBeenCalledWith('shot-1', 'failed', false)
@@ -429,7 +442,7 @@ describe('giving up', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await settle()
+    await queue.drain()
 
     expect(h.handlers.onRestored).not.toHaveBeenCalled()
     expect(h.deps.reserve).not.toHaveBeenCalled()
@@ -444,7 +457,7 @@ describe('giving up', () => {
     const queue = queueFor(h)
 
     await queue.resume()
-    await settle()
+    await queue.drain()
 
     expect(h.handlers.onRestored).not.toHaveBeenCalled()
     expect(await uploadStore.listByEvent(EVENT)).toEqual([])
