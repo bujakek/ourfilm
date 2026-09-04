@@ -14,6 +14,11 @@ node_modules
 .next/
 .DS_Store
 
+# Database dumps taken before a `pnpm reset:data` — guest names, host emails
+# and the Early Couple intake all sit in there in plain text.
+backup*.sql
+*.dump.sql
+
 # TypeScript build artifacts
 *.tsbuildinfo
 next-env.d.ts
