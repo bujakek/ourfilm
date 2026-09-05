@@ -67,6 +67,7 @@ export default async function EventPage({ params, searchParams }: Props) {
     const coverUrl = await signPhotoUrl(event.cover_path)
     return (
       <JoinForm
+        eventId={event.id}
         slug={slug}
         locale={locale}
         eventName={event.event_name}

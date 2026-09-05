@@ -38,6 +38,8 @@ export type JoinState = {
   /** Set when the free participant cap turned this guest away, so the page can
    *  render the explanation rather than a form that will fail again. */
   capReached?: boolean
+  /** Why, as a code rather than a sentence — for telemetry, never for copy. */
+  reason?: 'no_slug' | 'no_name' | 'cap_reached' | 'not_found' | 'rejected'
 }
 
 /**
@@ -57,9 +59,15 @@ export async function joinEventAction(
   const lang = resolveLocale(formData.get('lang'))
 
   if (!slug)
-    return { error: lang === 'en' ? 'Event not found.' : 'Hiányzó esemény.' }
+    return {
+      error: lang === 'en' ? 'Event not found.' : 'Hiányzó esemény.',
+      reason: 'no_slug',
+    }
   if (!name)
-    return { error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.' }
+    return {
+      error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.',
+      reason: 'no_name',
+    }
 
   // A fresh token per join. A guest re-joining on the same device gets a new
   // cookie and, because the RPC upserts on the *old* hash only if it matches,
@@ -76,13 +84,18 @@ export async function joinEventAction(
             ? 'This free event supports up to 5 guests. Ask the host to unlock the full event.'
             : 'Ez az ingyenes esemény legfeljebb 5 résztvevővel használható. Kérd meg a szervezőt, hogy oldja fel a teljes eseményt.',
         capReached: true,
+        reason: 'cap_reached',
       }
     }
     if (result.reason === 'not_found')
       return {
         error: lang === 'en' ? 'Event not found.' : 'Nincs ilyen esemény.',
+        reason: 'not_found',
       }
-    return { error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.' }
+    return {
+      error: lang === 'en' ? 'Enter your name.' : 'Írd be a neved.',
+      reason: 'rejected',
+    }
   }
 
   await writeParticipantCookie(slug, session.token)

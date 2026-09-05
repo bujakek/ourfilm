@@ -2,6 +2,9 @@
 
 import { useEffect } from 'react'
 
+import { PostHogLoader } from '@/components/analytics/posthog-loader'
+import { trackClientError } from '@/lib/telemetry'
+
 /**
  * Catches errors thrown by the root layout itself, which `error.tsx` cannot.
  * It replaces the whole document, so it must render its own <html>/<body>.
@@ -19,6 +22,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error('Root layout error', error.digest ?? '', error)
+    trackClientError(error, 'root')
   }, [error])
 
   return (
@@ -61,6 +65,7 @@ export default function GlobalError({
             Try again
           </button>
         </main>
+        <PostHogLoader />
       </body>
     </html>
   )

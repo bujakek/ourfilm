@@ -87,6 +87,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=  # the anon / public key
 SUPABASE_SERVICE_ROLE_KEY=      # service_role; server-only, Stripe webhook
 ```
 
+Product analytics is one public key, and the app runs without it:
+
+```bash
+NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=        # phc_… from the EU project; unset = PostHog never loads
+NEXT_PUBLIC_OURFILM_ENV=development       # development | preview | production; label on every browser event
+```
+
 Abuse and storage emergency controls are server-only:
 
 ```bash
@@ -258,6 +265,107 @@ The cookie is still **not a privacy boundary** — someone who copies it
 impersonates that participant, and album privacy rests on the unguessable slug.
 What it is, is the thing that stops a guest spending someone else's film, or more
 than their own.
+
+## Analytics: PostHog, under conditions (settled)
+
+PostHog exists here for one reason first: when a guest's photo does not make
+it, somebody should find out. The queue in `lib/upload-queue.ts` knows every
+outcome, and until this it told a `console.error` in the guest's own browser.
+`lib/telemetry.ts` names every event; each carries the event id and, where
+there is one, the capture id (both random uuids), plus whether the browser
+thought it was online. Filter on `event_id` and the question "did anyone at
+this wedding lose a photo" has an answer. The guest path, in order:
+
+| Event                      | Answers                                                               |
+| -------------------------- | --------------------------------------------------------------------- |
+| `guest_page_viewed`        | How many scans reach the ticket, and what they find (camera, gallery) |
+| `guest_join_refused`       | Cap reached vs. a bug — a refusal on an open camera is the latter     |
+| `camera_opened`            | The denominator for the OS camera hand-off                            |
+| `shutter_pressed`          | A file came back; `away_ms` is how long the OS had the screen         |
+| `capture_preparation_slow` | Successful preparation over five seconds, with safe size metadata     |
+| `upload_issue`             | One deduplicated issue: stage, class, attempt and whether terminal    |
+| `upload_confirmed`         | Done, with `elapsed_ms` from the shutter                              |
+| `upload_restored`          | A shot replayed after a killed tab, with its age                      |
+| `upload_discarded`         | A stored row thrown away unseen: expired, exhausted, empty            |
+| `upload_store_unavailable` | IndexedDB gave up, and at which stage — photos will not survive       |
+| `client_error`             | A rendered error boundary, with redacted stack locations              |
+| `server_error`             | An unhandled or critical handled server failure by operation          |
+
+Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
+is no reliable client-side signal for a cancel, so none is invented. How often
+iOS actually reclaims the tab is `away_ms` together with `upload_restored`.
+
+It was adopted under conditions, and `tests/unit/telemetry.test.ts` pins each
+one so loosening it is a visible decision rather than a config drift:
+
+- **EU cloud only.** Ingest is `eu.i.posthog.com`, the UI host
+  `eu.posthog.com`. Supabase is in Zurich and the customers are Hungarian.
+- **Nothing written to the device.** `cookieless_mode: 'always'` and memory
+  persistence: no cookie, no localStorage, no `identify`. There is no consent
+  banner in the QR flow, and the privacy page's "no non-essential cookie or
+  similar tracking technology" sentence must stay true. Identifying hosts is
+  a separate decision that would need consent copy first.
+
+  **The PostHog project must have "Cookieless server hash mode" enabled**
+  (Project Settings → Web analytics). Without it every event the browser
+  sends is dropped at ingestion while the endpoint still answers `200 Ok`,
+  so the Network tab looks healthy and Live events stays on "Waiting for
+  events…" for ever. That is how the first project was set up, and it cost
+  an hour: the token validated, a plain `curl` event arrived, and nothing
+  from the page did. A new project needs that switch before anything else.
+
+- **No session replay, autocapture, automatic pageviews, exception capture,
+  console capture, performance capture, surveys, heatmaps or person
+  profiles.** Replay would record photos and guest names into a third-party
+  tool. Only the events in the table above are sent. Routine events use the
+  SDK batch; rare failures request an immediate send.
+- **Behind our own origin.** The client talks to `/ingest`, which
+  `next.config.mjs` rewrites to PostHog. That keeps `connect-src 'self'` in
+  the CSP, and an ad blocker cannot silently drop the upload reports.
+  `skipTrailingSlashRedirect` is on for the same reason — the client POSTs to
+  `/ingest/e/` and Next's redirect ran before rewrites — and `proxy.ts` issues
+  the 308 for every other trailing-slash URL, so the marketing site's URLs
+  behave exactly as before. `curl -I /hu/arak/` must still say 308.
+- **No slug, query string, event name, guest name, email, error message or
+  photo ever leaves for PostHog.** `sanitizeEvent` masks `/e/<slug>` and
+  `/host/events/<slug>` in every string property, removes complete queries and
+  fragments from URL properties, and replaces titles on event routes. The
+  loader does not initialize at all on `/auth/callback`, where a magic-link
+  credential lives in the query until exchange. Client error stacks retain
+  code locations but replace the message; server reporting accepts only an
+  error class, safe operation, route template and optional digest.
+- **Loaded late, and only where a key exists.** `components/analytics/
+posthog-loader.tsx` imports `posthog-js` on idle from the product layout.
+  Not `instrumentation-client.ts`, which runs before hydration on every
+  page; a QR landing on venue wifi does not wait behind analytics. Outcomes
+  reported before the client attaches are buffered in `lib/telemetry.ts`.
+  The marketing site does not load it at all.
+
+Feature flags are off (`advanced_disable_flags`) so no `/flags` request is
+made on every page load; flip it when the first flag exists.
+
+Browser events use `NEXT_PUBLIC_OURFILM_ENV` to separate local development,
+previews and production. Vercel must set it explicitly per environment; without
+it the browser falls back to `NODE_ENV`, which cannot distinguish preview from
+production. Server errors use `VERCEL_ENV` automatically and go directly to
+the EU ingest host through `posthog-node`; no request headers, bodies, concrete
+URLs, messages or stacks are passed to that client.
+
+The dashboard is part of the implementation. Before production:
+
+- keep the project in PostHog Cloud EU and execute the account DPA;
+- verify organization and project IP capture are disabled;
+- keep Cookieless server hash mode enabled, or browser events are discarded;
+- enforce the privacy notice's maximum 12-month event retention;
+- restrict project access and create alerts for `server_error`, terminal
+  `upload_issue`, and `upload_store_unavailable`;
+- set the project token and the correct `NEXT_PUBLIC_OURFILM_ENV` separately
+  for Vercel Development, Preview and Production.
+
+`posthog-node` follows Node's security-patched runtime floor: the installed
+version requires Node `^20.20.0` or `>=22.22.0`. Upgrade a local Node 22.18
+installation before the next dependency install even though the current build
+still runs on it; deployed functions must use a supported patched runtime too.
 
 ## The upload queue survives the tab (settled)
 

@@ -4,7 +4,7 @@ import { ArrowRight, Loader2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 
 import {
   joinEventAction,
@@ -14,6 +14,7 @@ import { revealSummary } from '@/lib/event-copy'
 import { formatEventDay } from '@/lib/format'
 import { type Locale, localeTag } from '@/lib/i18n'
 import { ticket } from '@/lib/motion'
+import { track } from '@/lib/telemetry'
 import { useEntrance } from '@/lib/use-entrance'
 
 const initial: JoinState = { error: null }
@@ -39,6 +40,7 @@ const NAME_MAX_LENGTH = 40
  * exists to measure.
  */
 export function JoinForm({
+  eventId,
   slug,
   eventName,
   hostName,
@@ -51,6 +53,7 @@ export function JoinForm({
   canCapture,
   locale,
 }: {
+  eventId: string
   slug: string
   eventName: string
   hostName: string | null
@@ -67,6 +70,29 @@ export function JoinForm({
   const en = locale === 'en'
   const [state, action, pending] = useActionState(joinEventAction, initial)
   const [name, setName] = useState('')
+
+  // The top of the guest funnel: a QR scan that reached the ticket. `camera`
+  // is what the ticket could promise at that moment. Once per mount, with the
+  // props as they were on arrival — the deps are deliberately just the slug.
+  useEffect(() => {
+    track('guest_page_viewed', {
+      event_id: eventId,
+      joined: false,
+      camera: canCapture ? 'open' : 'closed',
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- arrival snapshot
+  }, [slug])
+
+  // `useActionState` hands back a fresh object per action result, which is
+  // exactly once per refused submit — the one place that property is useful.
+  useEffect(() => {
+    if (state.error) {
+      track('guest_join_refused', {
+        event_id: eventId,
+        reason: state.reason ?? 'unknown',
+      })
+    }
+  }, [eventId, state])
   // The stub is torn off and handed over: it drops a little and straightens.
   // The same variant carries the QR sheet at the end of the create flow —
   // same object, same motion, both surfaces.

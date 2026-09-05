@@ -47,6 +47,35 @@ const nextConfig = {
   // markdown string parsed at runtime by a loader we would have to write.
   pageExtensions: ['ts', 'tsx', 'mdx'],
   /**
+   * PostHog behind our own origin.
+   *
+   * The browser talks to `/ingest`, which is rewritten to PostHog's EU ingest
+   * host here. Two reasons: `connect-src 'self'` in the CSP above stays as it
+   * is, and an ad blocker cannot silently drop the upload reports PostHog was
+   * introduced for (`lib/telemetry.ts`). EU only — Supabase is in Zurich and
+   * the customers are Hungarian; do not point this at the US host.
+   *
+   * The client requests paths with a trailing slash (`/ingest/e/`,
+   * `/ingest/flags/`), and Next's trailing-slash redirect runs *before*
+   * rewrites, so it would 308 every POST first. `skipTrailingSlashRedirect`
+   * turns that redirect off globally; `proxy.ts` puts it back for every path
+   * that is not `/ingest/`, so the marketing site's URLs behave exactly as
+   * they did.
+   */
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://eu-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://eu.i.posthog.com/:path*',
+      },
+    ]
+  },
+  /**
    * The old unprefixed URLs, kept alive.
    *
    * Every source is spelled out. A catch-all like `/:path*` would swallow

@@ -5,6 +5,7 @@ import { getOwnedEventBySlug } from '@/lib/events'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { createClient } from '@/lib/supabase/server'
+import { reportServerIssue } from '@/lib/telemetry-server'
 import { redirect } from 'next/navigation'
 
 export type CheckoutState = { error: string | null }
@@ -90,6 +91,12 @@ export async function startEventCheckout(
     })
   } catch (e) {
     console.error('Stripe checkout session failed', e)
+    await reportServerIssue(e, {
+      operation: 'checkout_start',
+      eventId: event.id,
+      route: '/host/events/[slug]/settings',
+      routeType: 'action',
+    })
     return {
       error: en
         ? 'Could not start payment. Try again.'

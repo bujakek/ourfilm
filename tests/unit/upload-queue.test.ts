@@ -132,6 +132,9 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
     onConfirmed: vi.fn(),
     onDropped: vi.fn(),
     onRefusal: vi.fn(),
+    onIssue: vi.fn(),
+    onPrepared: vi.fn(),
+    onDiscarded: vi.fn(),
     onRestored: vi.fn(),
   }
   return { deps, handlers, now, sweeps }
@@ -478,6 +481,98 @@ describe('the drain guard', () => {
   })
 })
 
+describe('what the queue reports', () => {
+  // Telemetry hooks. None of these changes what happens to a photo; each one
+  // is a fact the queue already knew and nobody was told.
+
+  it('reports a prepared capture with its size and timing', async () => {
+    const h = harness()
+    const q = queueFor(h)
+    const input = file()
+    q.enqueue('shot-1', input, NOW)
+    await q.drain()
+
+    expect(h.handlers.onPrepared).toHaveBeenCalledWith(
+      'shot-1',
+      input,
+      expect.objectContaining({
+        ok: true,
+        bytes: master.blob.size,
+        width: master.width,
+        height: master.height,
+      }),
+    )
+  })
+
+  it('reports a failed compression without losing the shot', async () => {
+    const h = harness({
+      compress: vi.fn(async () => {
+        throw new RangeError('out of memory')
+      }),
+    })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onPrepared).toHaveBeenCalledWith(
+      'shot-1',
+      expect.anything(),
+      expect.objectContaining({ ok: false, error: 'rangeerror' }),
+    )
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
+      'shot-1',
+      expect.any(Number),
+    )
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'prepare',
+      failure: 'rangeerror',
+      attempts: 0,
+      terminal: false,
+    })
+  })
+
+  it('names each failure the server answered with', async () => {
+    const h = harness({
+      upload: vi.fn(async () => {
+        throw Object.assign(new Error('HTTP 503'), { status: 503 })
+      }),
+    })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'upload',
+      failure: 'http_503',
+      attempts: 1,
+      terminal: false,
+    })
+    expect(h.handlers.onIssue).toHaveBeenCalledOnce()
+  })
+
+  it('counts the rows it throws away on resume', async () => {
+    await orphan({ id: 'old', capturedAt: NOW - MAX_AGE_MS - 1 })
+    await orphan({ id: 'spent', attempts: MAX_ATTEMPTS })
+    await orphan({ id: 'fine' })
+    const h = harness()
+    const q = queueFor(h)
+    await q.resume()
+
+    expect(h.handlers.onDiscarded).toHaveBeenCalledWith(
+      'old',
+      'expired',
+      MAX_AGE_MS + 1,
+    )
+    expect(h.handlers.onDiscarded).toHaveBeenCalledWith(
+      'spent',
+      'exhausted',
+      expect.any(Number),
+    )
+    expect(h.handlers.onDiscarded).toHaveBeenCalledTimes(2)
+    expect(h.handlers.onRestored).toHaveBeenCalledOnce()
+  })
+})
+
 describe('compressing a capture', () => {
   it('writes the raw file before it decodes anything', async () => {
     // The order this whole feature turns on. A guest who taps the shutter again
@@ -672,6 +767,12 @@ describe('an attempt the server never saw', () => {
 
     const [row] = await uploadStore.listByEvent(EVENT)
     expect(row.attempts).toBe(0)
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'upload',
+      failure: 'connection',
+      attempts: 0,
+      terminal: false,
+    })
   })
 
   it('still retires a photo the server keeps refusing', async () => {
@@ -753,6 +854,16 @@ describe('an attempt the server never saw', () => {
       await q.drain()
     }
     expect(await stored()).toEqual(['shot-1'])
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'reserve',
+      failure: 'refusal_uploads_disabled',
+      attempts: 0,
+      terminal: false,
+    })
+    expect(h.handlers.onIssue).not.toHaveBeenCalledWith(
+      'shot-1',
+      expect.objectContaining({ failure: 'connection' }),
+    )
 
     // The kill switch comes off and the guest reopens the page.
     const back = harness()

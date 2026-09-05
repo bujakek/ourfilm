@@ -14,8 +14,13 @@ import {
   reserveShotAction,
 } from '@/app/(product)/e/[slug]/actions'
 import { captureStatus, formatLine, ownRollNote } from '@/lib/event-copy'
-import { compressForStorage, prepareStoredShot } from '@/lib/image'
-import { createUploadQueue, type UploadQueue } from '@/lib/upload-queue'
+import { compressForStorage, isHeic, prepareStoredShot } from '@/lib/image'
+import { track } from '@/lib/telemetry'
+import {
+  createUploadQueue,
+  type UploadIssue,
+  type UploadQueue,
+} from '@/lib/upload-queue'
 import { uploadShotRenders } from '@/lib/upload-shot'
 import { uploadStore } from '@/lib/upload-store'
 import { type Locale, localeTag } from '@/lib/i18n'
@@ -30,6 +35,8 @@ import { PhotoGrid } from './photo-grid'
 
 type GalleryState =
   { open: true } | { open: false; heading: string; detail: string | null }
+
+const SLOW_PREPARATION_MS = 5_000
 
 /**
  * What the screen says when something goes wrong.
@@ -127,6 +134,11 @@ export function GuestEventView({
   const router = useRouter()
   const reduceMotion = useReducedMotion()
   const inputRef = useRef<HTMLInputElement>(null)
+  // Timing for telemetry, keyed by capture id. Refs, not state: none of it is
+  // drawn, and a re-render per timestamp would be a re-render per photo.
+  const startedAt = useRef(new Map<string, number>())
+  const reportedIssues = useRef(new Set<string>())
+  const cameraOpenedAt = useRef<number | null>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
   const [flash, setFlash] = useState<Flash>(null)
   const [now, setNow] = useState(initialNow)
@@ -141,6 +153,21 @@ export function GuestEventView({
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  // The joined half of the funnel's first step. `guest_page_viewed` with
+  // `joined: false` is the ticket (`join-form.tsx`); this one says what the
+  // guest found behind it. Once per mount, with the props as they arrived.
+  useEffect(() => {
+    track('guest_page_viewed', {
+      event_id: eventId,
+      joined: true,
+      camera: initialCanCapture ? 'open' : 'closed',
+      gallery: gallery.open ? 'open' : 'locked',
+      frames: frames.length,
+      shots_remaining: initialShotsRemaining,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- arrival snapshot
+  }, [eventId])
 
   useEffect(() => {
     if (!handedOff) return
@@ -266,6 +293,23 @@ export function GuestEventView({
    */
   const queueRef = useRef<UploadQueue | null>(null)
 
+  const reportIssue = useCallback(
+    (id: string, issue: UploadIssue) => {
+      // A connection or kill-switch refusal can recur every retry interval.
+      // One event per capture/stage/class/finality preserves the diagnosis
+      // without turning a 24-hour stored photo into thousands of events.
+      const key = `${id}:${issue.stage}:${issue.failure}:${issue.terminal}`
+      if (reportedIssues.current.has(key)) return
+      reportedIssues.current.add(key)
+      track(
+        'upload_issue',
+        { event_id: eventId, capture_id: id, ...issue },
+        { urgent: true },
+      )
+    },
+    [eventId],
+  )
+
   /**
    * Pick up whatever a killed tab left behind.
    *
@@ -301,6 +345,17 @@ export function GuestEventView({
           )
         },
         onConfirmed(id, shotsRemaining) {
+          const now = Date.now()
+          const started = startedAt.current.get(id)
+          track('upload_confirmed', {
+            event_id: eventId,
+            capture_id: id,
+            shots_remaining: shotsRemaining,
+            // From the shutter (or the original capture, for a restored shot)
+            // to the server saying yes. Forty seconds here is a guest who has
+            // already walked away from the screen.
+            elapsed_ms: started === undefined ? null : now - started,
+          })
           setRemaining(shotsRemaining)
           setCaptures((current) =>
             current.map((c) =>
@@ -322,7 +377,41 @@ export function GuestEventView({
           if (refusal === 'no_shots') setRemaining(0)
           setFlash(refusalMessage(refusal, locale))
         },
-        onRestored({ id, blob }) {
+        onIssue(id, issue) {
+          reportIssue(id, issue)
+        },
+        onPrepared(id, file, outcome) {
+          if (!outcome.ok || outcome.ms < SLOW_PREPARATION_MS) return
+          track('capture_preparation_slow', {
+            event_id: eventId,
+            capture_id: id,
+            ms: outcome.ms,
+            heic: isHeic(file),
+            input_bytes: file.size,
+            bytes: outcome.bytes,
+            width: outcome.width,
+            height: outcome.height,
+          })
+        },
+        onDiscarded(id, reason, ageMs) {
+          track(
+            'upload_discarded',
+            {
+              event_id: eventId,
+              capture_id: id,
+              reason,
+              age_ms: ageMs,
+            },
+            { urgent: true },
+          )
+        },
+        onRestored({ id, blob, capturedAt }) {
+          startedAt.current.set(id, capturedAt)
+          track('upload_restored', {
+            event_id: eventId,
+            capture_id: id,
+            age_ms: Date.now() - capturedAt,
+          })
           claimCell(id, blob)
         },
       },
@@ -344,7 +433,7 @@ export function GuestEventView({
       queue.stop()
       if (queueRef.current === queue) queueRef.current = null
     }
-  }, [claimCell, en, eventId, locale, router, slug])
+  }, [claimCell, en, eventId, locale, reportIssue, router, slug])
 
   /**
    * What the shutter does: claim a frame on screen, and get out of the way.
@@ -360,11 +449,26 @@ export function GuestEventView({
       // key in the store, and the idempotency key that lets a replay after a
       // reload re-claim the same frame instead of spending another.
       const id = crypto.randomUUID()
+      const now = Date.now()
+      startedAt.current.set(id, now)
+      const opened = cameraOpenedAt.current
+      cameraOpenedAt.current = null
+      track('shutter_pressed', {
+        event_id: eventId,
+        capture_id: id,
+        shots_remaining: remaining,
+        outstanding,
+        // How long the OS camera had the screen. Long enough, and iOS has
+        // probably reclaimed the tab — the number every retry rule guesses at.
+        away_ms: opened === null ? null : now - opened,
+        input_bytes: file.size,
+        heic: isHeic(file),
+      })
       setFlash(null)
       claimCell(id, file)
-      queueRef.current?.enqueue(id, file, Date.now())
+      queueRef.current?.enqueue(id, file, now)
     },
-    [claimCell],
+    [claimCell, eventId, remaining, outstanding],
   )
 
   return (
@@ -477,6 +581,12 @@ export function GuestEventView({
         <motion.button
           type="button"
           onClick={() => {
+            cameraOpenedAt.current = Date.now()
+            track('camera_opened', {
+              event_id: eventId,
+              shots_remaining: remaining,
+              outstanding,
+            })
             setHandedOff(true)
             inputRef.current?.click()
           }}
