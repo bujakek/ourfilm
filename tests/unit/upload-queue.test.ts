@@ -619,6 +619,66 @@ describe('compressing a capture', () => {
     await q.drain()
   })
 
+  it('commits the shutter time when the file carries no capture time', async () => {
+    // iOS strips EXIF from a live capture before the page ever sees it, so on
+    // most guests' phones there is no timestamp in the file. The moment the
+    // camera handed the file over is within seconds of the shutter, and it
+    // holds however long the upload was delayed. `taken_at` must never be
+    // null: it is what the host's ZIP export sorts and stamps the album by.
+    const h = harness({
+      prepare: vi.fn(async () => ({ ...prepared, takenAt: null })),
+    })
+    const q = queueFor(h)
+    const shutter = NOW - 90_000
+
+    q.enqueue('shot-1', file(), shutter)
+    await q.drain()
+
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        takenAt: new Date(shutter).toISOString(),
+      }),
+    )
+  })
+
+  it('prefers the capture time in the file over the shutter time', async () => {
+    // EXIF is more precise and carries the zone it was written in; the
+    // shutter press is the fallback, not the answer.
+    const h = harness()
+    const q = queueFor(h)
+
+    q.enqueue('shot-1', file(), NOW - 90_000)
+    await q.drain()
+
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ takenAt: prepared.takenAt!.toISOString() }),
+    )
+  })
+
+  it('falls back to the shutter time for a restored shot too', async () => {
+    // A row replayed after a killed tab has only what was stored: the master,
+    // and a `capturedAt` written the instant the shutter fired.
+    const shutter = NOW - 60 * 60 * 1000
+    const row = await orphan({ takenAt: null, capturedAt: shutter })
+    const h = harness({
+      prepare: vi.fn(async () => ({ ...prepared, takenAt: null })),
+    })
+    const q = queueFor(h)
+
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        photoId: expect.any(String),
+        takenAt: new Date(shutter).toISOString(),
+      }),
+    )
+    expect(await uploadStore.listByEvent(EVENT)).not.toContainEqual(
+      expect.objectContaining({ id: row.id }),
+    )
+  })
+
   it('compresses once, however many times the shot is retried', async () => {
     // The point of storing the master. Every retry used to decode the original
     // again — a 48MP HEIC through libheif, on a phone, per attempt.

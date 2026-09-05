@@ -510,7 +510,17 @@ export function createUploadQueue({
             width: prepared.width,
             height: prepared.height,
             byteSize: prepared.full.size,
-            takenAt: prepared.takenAt?.toISOString() ?? null,
+            // EXIF first, the shutter press second. iOS hands a live capture
+            // to the page with its EXIF stripped, so on most guests' phones
+            // there is no timestamp in the file at all — and `taken_at` is
+            // what the host's ZIP export sorts and stamps the album by. The
+            // moment the camera returned the file is within seconds of the
+            // shutter on a product with no gallery upload, and it is right
+            // however long compression, the queue or a dead tab delayed the
+            // upload. Never null from here on.
+            takenAt:
+              prepared.takenAt?.toISOString() ??
+              new Date(shot.capturedAt).toISOString(),
           }),
         limits.commit,
         'Confirming a photo',

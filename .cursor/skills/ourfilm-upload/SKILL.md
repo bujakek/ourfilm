@@ -1,12 +1,12 @@
 ---
 name: ourfilm-upload
-description: OurFilm's client-side native-camera upload pipeline — capture input behavior, HEIC conversion, 4096px JPEG rendering, signed uploads and capture metadata. Use when building or debugging guest photography, image processing or mobile browser uploads in OurFilm.
+description: OurFilm's client-side native-camera upload pipeline — capture input behavior, HEIC conversion, 3200px JPEG rendering, signed uploads and capture metadata. Use when building or debugging guest photography, image processing or mobile browser uploads in OurFilm.
 ---
 
 > **Read this first — the disposable camera pivot changed the entry point.**
 >
-> The **compression policy below is unchanged and still authoritative**: 4096px
-> at q0.92, HEIC converted in the browser with `heic-to`, three renders per
+> The **compression policy below is authoritative**: 3200px at q0.90 (lowered
+> from 4096px/q0.92 in September 2026), HEIC converted in the browser with `heic-to`, three renders per
 > photo, decoding kept strictly sequential.
 >
 > What changed is everything around it:
@@ -31,9 +31,11 @@ Guests upload from a phone browser on congested venue wifi, straight to Supabase
 
 ## The quality policy (settled, don't renegotiate)
 
-**4096px bounding box, JPEG quality 0.92.**
+**3200px bounding box, JPEG quality 0.90.**
 
-Below ~85% JPEG discards data exponentially: skin tones go blotchy and dark reception venues turn muddy and blocky. At 92% artifacting is effectively invisible, gradients stay smooth, and the image is still crisp on a Retina display or 4K TV. A 48MP iPhone photo goes from ~8MB to ~1.5–2.2MB — print-ready for the couple, and multiples faster on venue wifi.
+A 4:3 frame lands at 3200x2400, about 7.7MP: A4 at ~270ppi and a full-bleed 30x30cm photo-book page at 240ppi, which covers every print a wedding album realistically gets. Below ~85% JPEG discards data exponentially: skin tones go blotchy and dark reception venues turn muddy and blocky. At 90% artifacting is effectively invisible, gradients stay smooth, and the image is still crisp on a Retina display or 4K TV. A 48MP iPhone photo goes from ~8MB to ~1.5–2.5MB — print-ready for the couple, and multiples faster on venue wifi.
+
+It was 4096px at q0.92 until September 2026. That stored a 12MP phone's frame almost natively, three times the bytes of a 5MP competitor export, and the master was the upload that timed out on slow venue wifi. Older events keep their larger masters; nothing reads the dimensions back.
 
 Only `image/jpeg` reaches the bucket. The landing page's quality section depends on this: the claim is "chat apps crush your photos, we don't", **not** "we store untouched originals".
 
@@ -56,7 +58,7 @@ function isHeic(file: File) {
 async function toJpegBlob(file: File): Promise<Blob> {
   if (!isHeic(file)) return file
   const { heicTo } = await import('heic-to')
-  return heicTo({ blob: file, type: 'image/jpeg', quality: 0.92 })
+  return heicTo({ blob: file, type: 'image/jpeg', quality: 0.9 })
 }
 ```
 
@@ -65,8 +67,8 @@ Second line of defense: on iOS, a file input whose `accept` list excludes HEIC o
 ## Compression
 
 ```ts
-const MAX_EDGE = 4096
-const QUALITY = 0.92
+const MAX_EDGE = 3200
+const QUALITY = 0.9
 
 export async function prepareForUpload(file: File) {
   const source = await toJpegBlob(file)
@@ -99,7 +101,7 @@ Notes:
 - Never upscale — `Math.min(1, …)` keeps small photos untouched in size.
 - If the output ends up larger than the input and the input was already JPEG under the cap, upload the original instead.
 - `OffscreenCanvas` is well supported on modern iOS/Android; fall back to a detached `<canvas>` + `toBlob` if you need older Safari.
-- Capping the **long edge** at 4096 keeps total canvas area under iOS Safari's ~16.7M pixel ceiling (a 4:3 photo lands near 12.6M). Don't raise the cap without rechecking that.
+- Capping the **long edge** at 3200 keeps total canvas area far under iOS Safari's ~16.7M pixel ceiling (a 4:3 photo lands at 7.7M; the old 4096 cap sat near 12.6M). Don't raise the cap past 4096 without rechecking that, and don't lower it below ~2500 or the 1600px view render stops earning its place as a separate file.
 - The canvas re-encode drops all EXIF, including GPS coordinates. That's a privacy win — don't re-attach it.
 - It also drops the **HDR gain map**, which is why a re-encoded iPhone photo looks flat next to the original on an HDR screen. A gain map is a second image referenced by MPF offsets in `APP2`; canvas only ever sees tone-mapped SDR pixels, so no canvas setting recovers it. Preserving it means not re-encoding at all — see ticket 3.8.
 - Ask the 2D context for `colorSpace: 'display-p3'`. The default is sRGB, which clips everything a phone camera captures outside it. Confirm by profile size: Chrome writes 456 bytes for sRGB and ~520 for Display P3.

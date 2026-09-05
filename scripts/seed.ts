@@ -13,7 +13,7 @@
  * this script has to step around.
  *
  * Photos are produced from the landing-page artwork through the same pipeline
- * shape the browser will use in Phase 3: a 4096px-bounded JPEG at q92 plus a
+ * shape the browser uses: a 3200px-bounded JPEG at q90 plus a
  * ~400px thumb. Seeding tiny placeholders instead would make the gallery look
  * fine while hiding exactly the layout and payload problems worth catching.
  */
@@ -28,10 +28,10 @@ import type { Database } from '../lib/supabase/database.types.ts'
 import { generateEventSlug } from '../lib/slug.ts'
 
 const EVENT_NAME = 'Anna & Péter'
-const MAX_EDGE = 4096
+const MAX_EDGE = 3200
 const THUMB_EDGE = 400
 const VIEW_EDGE = 1600
-const QUALITY = 92
+const QUALITY = 90
 const THUMB_QUALITY = 80
 const VIEW_QUALITY = 85
 
@@ -190,7 +190,7 @@ async function main() {
       .toBuffer()
 
     // The lightbox render, same as the browser pipeline produces. Without it
-    // seeded albums would fall back to the 4096px master and quietly hide the
+    // seeded albums would fall back to the 3200px master and quietly hide the
     // very decode cost this exists to avoid.
     const view = await sharp(source)
       .rotate()
