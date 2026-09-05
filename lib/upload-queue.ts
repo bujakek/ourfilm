@@ -70,20 +70,11 @@ export type UploadQueueHandlers = {
   onDropped(id: string, reason: 'refused' | 'exhausted'): void
   onRefusal(refusal: ShotRefusal): void
   /**
-   * An attempt was handed back: the request never reached the server
-   * (`connection`) or the server answered about itself rather than the photo
-   * (`refusal`). Reported so a real event can say how often a phone at a
-   * party could not get through — the number every retry policy above is a
-   * guess about until it is measured. `attempts` is the count *after* the
-   * refund.
+   * One normalized diagnostic for every kind of upload problem. The screen
+   * can deduplicate transient repeats without having to reconstruct which
+   * queue callback meant which stage.
    */
-  onRefunded?(id: string, cause: RefundCause, attempts: number): void
-  /**
-   * The server answered and the answer was a failure: a timeout, a 5xx, a
-   * refused commit. Reported per attempt, with the count *after* the bump, so
-   * the shape of a bad night is visible before anything is exhausted.
-   */
-  onFailure?(id: string, failure: string, attempts: number): void
+  onIssue?(id: string, issue: UploadIssue): void
   /**
    * `settle` finished: the raw file is on disk and either the master replaced
    * it or compression failed and the raw row stays. The `File` is passed so the
@@ -123,8 +114,14 @@ type QueueItem = {
   settled: Promise<void> | null
 }
 
-export type RefundCause = 'connection' | 'refusal'
 export type DiscardReason = 'expired' | 'exhausted' | 'empty'
+export type UploadStage = 'prepare' | 'reserve' | 'upload' | 'commit'
+export type UploadIssue = {
+  stage: UploadStage
+  failure: string
+  attempts: number
+  terminal: boolean
+}
 export type PreparedOutcome =
   | { ok: true; ms: number; bytes: number; width: number; height: number }
   | { ok: false; ms: number; error: string }
@@ -171,18 +168,12 @@ export function createUploadQueue({
    * The cost of writing ahead is that a failure the server never saw counts
    * too. This is the correction, and it is applied only to that case.
    */
-  async function refund(item: QueueItem, cause?: RefundCause) {
+  async function refund(item: QueueItem) {
     item.shot.attempts = Math.max(0, item.shot.attempts - 1)
     // Safe against resurrection: every caller still owns the row. The paths
     // that delete it — commit, exhaustion, a terminal refusal — all return
     // without coming back through here.
     await deps.store.put(item.shot)
-    // A teardown refund has no cause: the page is going away and there is
-    // nobody left to tell.
-    if (cause) {
-      const attempts = item.shot.attempts
-      notify(() => handlers.onRefunded?.(item.shot.id, cause, attempts))
-    }
   }
 
   function enqueue(id: string, file: File, capturedAt: number) {
@@ -258,6 +249,14 @@ export function createUploadQueue({
         ms: clock() - started,
         error: failureClass(error),
       }
+      notify(() =>
+        handlers.onIssue?.(item.shot.id, {
+          stage: 'prepare',
+          failure: outcome.error,
+          attempts: item.shot.attempts,
+          terminal: false,
+        }),
+      )
       notify(() => handlers.onPrepared?.(item.shot.id, file, outcome))
     }
   }
@@ -441,6 +440,7 @@ export function createUploadQueue({
     await deps.store.put(shot)
 
     let photoId: string | null = null
+    let stage: UploadStage = 'reserve'
 
     try {
       const reserved = await withTimeout(
@@ -451,6 +451,13 @@ export function createUploadQueue({
 
       if (!reserved.ok) {
         if (reserved.refusal === 'ended' || reserved.refusal === 'no_shots') {
+          const issue: UploadIssue = {
+            stage: 'reserve',
+            failure: `refusal_${reserved.refusal}`,
+            attempts: shot.attempts,
+            terminal: true,
+          }
+          notify(() => handlers.onIssue?.(shot.id, issue))
           if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
           notify(() => handlers.onDropped(shot.id, 'refused'))
           await dropAll('refused')
@@ -462,7 +469,15 @@ export function createUploadQueue({
         // photo. Spending the budget here retires a perfectly good shot for the
         // duration of an ops kill switch — and poisons its stored row, so the
         // next page load discards it on sight.
-        await refund(item, 'refusal')
+        await refund(item)
+        notify(() =>
+          handlers.onIssue?.(shot.id, {
+            stage: 'reserve',
+            failure: `refusal_${reserved.refusal}`,
+            attempts: shot.attempts,
+            terminal: false,
+          }),
+        )
         notify(() => handlers.onProgress(shot.id, 0))
         notify(() => handlers.onRefusal(reserved.refusal))
         return 'retry'
@@ -471,7 +486,9 @@ export function createUploadQueue({
       photoId = reserved.photoId
       notify(() => handlers.onReserved(shot.id, reserved.photoId))
 
+      stage = 'prepare'
       const prepared = await deps.prepare(shot)
+      stage = 'upload'
       await withTimeout(
         (signal) =>
           deps.upload({
@@ -485,6 +502,7 @@ export function createUploadQueue({
         'Uploading a photo',
       )
 
+      stage = 'commit'
       const committed = await withTimeout(
         () =>
           deps.commit({
@@ -513,14 +531,18 @@ export function createUploadQueue({
       // Nothing left the device — no signal, or it dropped mid-request. Four
       // bad reconnects must not delete a photo that was never once sent.
       const unsent = isConnectionFailure(error)
-      if (unsent) await refund(item, 'connection')
-      else {
-        const failure = failureClass(error)
-        const attempts = shot.attempts
-        notify(() => handlers.onFailure?.(shot.id, failure, attempts))
-      }
+      if (unsent) await refund(item)
+      const terminal = !unsent && shot.attempts >= MAX_ATTEMPTS
+      notify(() =>
+        handlers.onIssue?.(shot.id, {
+          stage,
+          failure: unsent ? 'connection' : failureClass(error),
+          attempts: shot.attempts,
+          terminal,
+        }),
+      )
 
-      if (!unsent && shot.attempts >= MAX_ATTEMPTS) {
+      if (terminal) {
         if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
         notify(() => handlers.onDropped(shot.id, 'exhausted'))
         if (photoId) void deps.release(photoId)

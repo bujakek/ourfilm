@@ -11,6 +11,7 @@ import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import { isEventPlan } from '@/lib/onboarding'
 import { type Locale, resolveLocale } from '@/lib/i18n'
 import { generateEventSlug } from '@/lib/slug'
+import { reportServerIssue } from '@/lib/telemetry-server'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
@@ -275,6 +276,11 @@ export async function createEventFromDraft(
 
     if (error) {
       console.error('Could not create event', error)
+      await reportServerIssue(error, {
+        operation: 'event_create',
+        route: '/host/events/new',
+        routeType: 'action',
+      })
       return { ok: false, error: copy.retry }
     }
   }
@@ -323,6 +329,12 @@ export async function createEventFromDraft(
         // reason to lose it, so this is logged and the host lands on the card
         // that can retry.
         console.error('Could not start checkout for a new event', e)
+        await reportServerIssue(e, {
+          operation: 'checkout_start',
+          eventId,
+          route: '/host/events/new',
+          routeType: 'action',
+        })
       }
     }
   }

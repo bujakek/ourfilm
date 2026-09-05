@@ -1,72 +1,100 @@
 import 'client-only'
 
 /**
- * Product analytics, and the one thing it exists for: knowing when a guest's
- * photo did not make it.
+ * Small, privacy-bounded product health telemetry.
  *
- * The queue in `lib/upload-queue.ts` already knows every outcome — confirmed,
- * refunded, restored after a killed tab, dropped — and until now it told a
- * `console.error` in the guest's own browser, which nobody at a wedding opens.
- * This module carries those outcomes to PostHog so the question "did anyone at
- * this event lose a photo, and why" has an answer.
- *
- * The conditions this was adopted under, each of which `telemetryConfig` pins:
- *
- * - **EU cloud.** Supabase is in Zurich and the customers are Hungarian; the
- *   ingest host is `eu.i.posthog.com` and nothing else.
- * - **No cookies, no local storage, no identify.** There is no consent banner
- *   in the QR flow and adding one to a one-field join screen is a real cost.
- *   `cookieless_mode: 'always'` plus memory persistence means nothing is
- *   written to the device; the privacy page's "no non-essential cookie or
- *   similar tracking technology" sentence stays true.
- * - **No session replay, no autocapture, no surveys.** Replay would record
- *   photos and guest names into a third-party tool.
- * - **Behind our own origin.** `api_host` is `/ingest`, rewritten to PostHog in
- *   `next.config.mjs`, so `connect-src 'self'` holds and an ad blocker does
- *   not silently drop the upload reports this was introduced for.
- * - **Nothing about the photo or the person.** Events carry the event id and
- *   capture id (both random uuids), counts and reasons. Every URL property is
- *   masked by `sanitizeProperties` so the unguessable slug — the album's whole
- *   privacy model — never leaves the device.
- *
- * Loading is deferred (`components/analytics/posthog-loader.tsx`), so an
- * outcome can arrive before the client exists. `track` buffers until `attach`.
+ * PostHog answers whether the QR, camera and upload path worked. Raw console
+ * output, user input, photo bytes and complete URLs do not belong there.
  */
 
 export const POSTHOG_INGEST_PATH = '/ingest'
 export const POSTHOG_UI_HOST = 'https://eu.posthog.com'
 
-/**
- * Every event the guest page reports, in the order a guest meets them. The
- * question each one answers is in CLAUDE.md under Analytics; if an event
- * cannot be named there, it should not be here.
- */
-export type TelemetryEvent =
-  // Arriving
-  | 'guest_page_viewed'
-  | 'guest_join_refused'
-  // Shooting
-  | 'camera_opened'
-  | 'shutter_pressed'
-  | 'capture_prepared'
-  // Uploading
-  | 'upload_attempt_failed'
-  | 'upload_confirmed'
-  | 'upload_refunded'
-  | 'upload_restored'
-  | 'upload_discarded'
-  | 'upload_dropped'
-  | 'upload_refused'
-  | 'upload_store_unavailable'
-  // After
-  | 'frame_delivered'
+type CameraState = 'open' | 'closed'
+type UploadIssueStage = 'prepare' | 'reserve' | 'upload' | 'commit'
+type StoreStage =
+  'missing' | 'open' | 'open_timeout' | 'blocked' | 'put' | 'list' | 'remove'
 
+export type TelemetryEventProperties = {
+  guest_page_viewed: {
+    event_id: string
+    joined: boolean
+    camera: CameraState
+    gallery?: 'open' | 'locked'
+    frames?: number
+    shots_remaining?: number
+  }
+  guest_join_refused: { event_id: string; reason: string }
+  camera_opened: {
+    event_id: string
+    shots_remaining: number
+    outstanding: number
+  }
+  shutter_pressed: {
+    event_id: string
+    capture_id: string
+    shots_remaining: number
+    outstanding: number
+    away_ms: number | null
+    input_bytes: number
+    heic: boolean
+  }
+  capture_preparation_slow: {
+    event_id: string
+    capture_id: string
+    ms: number
+    heic: boolean
+    input_bytes: number
+    bytes: number
+    width: number
+    height: number
+  }
+  upload_confirmed: {
+    event_id: string
+    capture_id: string
+    shots_remaining: number
+    elapsed_ms: number | null
+  }
+  upload_issue: {
+    event_id: string
+    capture_id: string
+    stage: UploadIssueStage
+    failure: string
+    attempts: number
+    terminal: boolean
+  }
+  upload_restored: {
+    event_id: string
+    capture_id: string
+    age_ms: number
+  }
+  upload_discarded: {
+    event_id: string
+    capture_id: string
+    reason: 'expired' | 'exhausted' | 'empty'
+    age_ms: number
+  }
+  upload_store_unavailable: {
+    event_id: string | null
+    stage: StoreStage
+    error: string
+  }
+  client_error: {
+    boundary: 'page' | 'root'
+    error_name: string
+    digest: string | null
+    route: string | null
+    stack: string | null
+  }
+}
+
+export type TelemetryEvent = keyof TelemetryEventProperties
 export type TelemetryProperties = Record<
   string,
   string | number | boolean | null | undefined
 >
 
-/** The one method needed from PostHog, so this module never imports it. */
+/** The one PostHog method needed by this module. */
 export type TelemetryClient = {
   capture(
     event: string,
@@ -75,15 +103,17 @@ export type TelemetryClient = {
   ): unknown
 }
 
-/** Outcomes that arrive before the client has loaded. Bounded: a page that
- *  never gets a client must not grow a list for ever. */
+type BufferedEvent = {
+  event: TelemetryEvent
+  properties: TelemetryProperties
+  urgent: boolean
+}
+
+/** A page without a configured or loadable client must stay bounded. */
 const MAX_BUFFERED = 50
 
 let client: TelemetryClient | null = null
-let buffered: Array<{
-  event: TelemetryEvent
-  properties: TelemetryProperties
-}> = []
+let buffered: BufferedEvent[] = []
 
 export function telemetryKey(): string | null {
   // Referenced literally: Next inlines `NEXT_PUBLIC_*` only when the whole
@@ -91,48 +121,63 @@ export function telemetryKey(): string | null {
   return process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || null
 }
 
-/**
- * Record an upload outcome.
- *
- * `send_instantly` because these are rare and the moments they describe —
- * a tab about to be backgrounded, a queue giving up — are exactly when a
- * batched request would still be sitting in the client's queue.
- */
-export function track(event: TelemetryEvent, properties: TelemetryProperties) {
-  const enriched: TelemetryProperties = {
-    ...properties,
-    online: typeof navigator === 'undefined' ? null : navigator.onLine,
-    visible:
-      typeof document === 'undefined'
-        ? null
-        : document.visibilityState === 'visible',
+export function telemetryEnvironment(): string {
+  return (
+    process.env.NEXT_PUBLIC_OURFILM_ENV || process.env.NODE_ENV || 'unknown'
+  )
+}
+
+function send(next: TelemetryClient, entry: BufferedEvent) {
+  if (entry.urgent) {
+    next.capture(entry.event, entry.properties, { send_instantly: true })
+  } else {
+    next.capture(entry.event, entry.properties)
   }
+}
+
+/**
+ * Routine funnel events use PostHog's batching. Only rare failures that may be
+ * followed by a tab closing are sent immediately.
+ */
+export function track<Event extends TelemetryEvent>(
+  event: Event,
+  properties: TelemetryEventProperties[Event],
+  options: { urgent?: boolean } = {},
+) {
+  const entry: BufferedEvent = {
+    event,
+    properties: {
+      ...properties,
+      environment: telemetryEnvironment(),
+      online: typeof navigator === 'undefined' ? null : navigator.onLine,
+      visible:
+        typeof document === 'undefined'
+          ? null
+          : document.visibilityState === 'visible',
+    },
+    urgent: options.urgent === true,
+  }
+
   if (client) {
-    client.capture(event, enriched, { send_instantly: true })
+    send(client, entry)
     return
   }
   if (buffered.length >= MAX_BUFFERED) return
-  buffered.push({ event, properties: enriched })
+  buffered.push(entry)
 }
 
-/** Hand over the loaded client and flush what arrived before it. */
+/** Hand over the loaded client and flush events captured during idle loading. */
 export function attachTelemetry(next: TelemetryClient) {
   client = next
   const pending = buffered
   buffered = []
-  for (const { event, properties } of pending) {
-    next.capture(event, properties, { send_instantly: true })
-  }
+  for (const entry of pending) send(next, entry)
 }
 
 export function telemetryIsAttached() {
   return client !== null
 }
 
-/**
- * Both slug-bearing route shapes. `/host/events/new` is a fixed route, not a
- * slug, and stays readable.
- */
 const SLUG_SEGMENTS = [
   /(\/e\/)[^/?#\s]+/g,
   /(\/host\/events\/)(?!new(?=[/?#\s]|$))[^/?#\s]+/g,
@@ -145,26 +190,46 @@ export function maskSlugs(value: string): string {
   )
 }
 
+const URL_PROPERTIES = new Set([
+  '$current_url',
+  '$pathname',
+  '$referrer',
+  '$initial_current_url',
+  '$initial_pathname',
+  '$initial_referrer',
+  'current_url',
+  'pathname',
+  'referrer',
+  'url',
+])
+
+/** Complete query strings are unnecessary and can contain magic-link tokens. */
+export function stripQueryAndHash(value: string): string {
+  const query = value.indexOf('?')
+  const hash = value.indexOf('#')
+  const cuts = [query, hash].filter((index) => index >= 0)
+  return cuts.length === 0 ? value : value.slice(0, Math.min(...cuts))
+}
+
+function sanitizeString(key: string, value: string): string {
+  const masked = maskSlugs(value)
+  return URL_PROPERTIES.has(key) ? stripQueryAndHash(masked) : masked
+}
+
 /**
- * PostHog's `sanitize_properties` hook: every string property, on every
- * event. `$current_url`, `$pathname`, `$referrer` and the `$initial_*` set all
- * carry the page URL, and enumerating them is how one gets missed.
+ * Sanitize every event property, including PostHog's nested initial-property
+ * objects. URL-like properties lose their entire query and fragment.
  */
 export function sanitizeProperties<T extends Record<string, unknown>>(
   properties: T,
 ): T {
   const out: Record<string, unknown> = { ...properties }
   for (const [key, value] of Object.entries(out)) {
-    if (typeof value === 'string') out[key] = maskSlugs(value)
+    if (typeof value === 'string') out[key] = sanitizeString(key, value)
     else if (value && typeof value === 'object' && !Array.isArray(value)) {
       out[key] = sanitizeProperties(value as Record<string, unknown>)
     }
   }
-  // `$pageview` carries `document.title`, and on an event page that is the
-  // host's event name — "Anna és Péter esküvője" — which the URL masking
-  // above never touches. Seen in the first live export. On any slug route the
-  // title is replaced wholesale rather than edited, because the event name is
-  // free text and there is no pattern to mask it by.
   if (typeof out.title === 'string' && onSlugRoute(out)) {
     out.title = MASKED_TITLE
   }
@@ -183,34 +248,99 @@ function onSlugRoute(properties: Record<string, unknown>): boolean {
   })
 }
 
-/**
- * The `posthog.init` options. A plain object so the conditions above are
- * testable without a browser; `tests/unit/telemetry.test.ts` pins each one.
- */
+type BeforeSendEvent = {
+  event: string
+  properties?: Record<string, unknown>
+}
+
+/** `sanitize_properties` is deprecated in posthog-js; sanitize whole events. */
+export function sanitizeEvent<Event extends BeforeSendEvent>(
+  event: Event | null,
+): Event | null {
+  if (!event?.properties) return event
+  return {
+    ...event,
+    properties: sanitizeProperties(event.properties),
+  }
+}
+
+function safeErrorName(error: Error): string {
+  const value = error.name.slice(0, 80)
+  return /^(?:Error|[a-zA-Z][a-zA-Z0-9_.:-]*(?:Error|Exception))$/.test(value)
+    ? value
+    : 'UnknownError'
+}
+
+function safeDiagnosticToken(value: string, maxLength: number): string | null {
+  const safe = value.replace(/[^a-zA-Z0-9_.:-]/g, '_').slice(0, maxLength)
+  return safe || null
+}
+
+/** Preserve code locations but redact the error message and URL queries. */
+export function safeErrorStack(error: Error): string | null {
+  if (!error.stack) return null
+  const safeLines = error.stack
+    .split('\n')
+    .slice(1)
+    // Chrome/Firefox use `at …`; Safari uses `function@url`. Discard any
+    // continuation text so a multi-line error message cannot hitch a ride.
+    .filter((line) => /^\s*at\s/.test(line) || /@(?:https?:\/\/|\/)/.test(line))
+    .slice(0, 20)
+    .map((line) =>
+      line.replace(/https?:\/\/[^\s)]+/g, (url) =>
+        stripQueryAndHash(maskSlugs(url)),
+      ),
+    )
+  return [`${safeErrorName(error)}: [redacted]`, ...safeLines]
+    .join('\n')
+    .slice(0, 8_000)
+}
+
+export function trackClientError(
+  error: Error & { digest?: string },
+  boundary: 'page' | 'root',
+) {
+  track(
+    'client_error',
+    {
+      boundary,
+      error_name: safeErrorName(error),
+      digest: error.digest ? safeDiagnosticToken(error.digest, 160) : null,
+      route:
+        typeof window === 'undefined'
+          ? null
+          : maskSlugs(window.location.pathname),
+      stack: safeErrorStack(error),
+    },
+    { urgent: true },
+  )
+}
+
+/** The deliberately narrow PostHog browser configuration. */
 export function telemetryConfig() {
   return {
     api_host: POSTHOG_INGEST_PATH,
     ui_host: POSTHOG_UI_HOST,
     cookieless_mode: 'always' as const,
     persistence: 'memory' as const,
+    person_profiles: 'never' as const,
     disable_session_recording: true,
     disable_surveys: true,
     disable_web_experiments: true,
-    // Nothing fetched from `/ingest/static/*`: recorder, surveys and the
-    // exception autocapture bundle stay out of the guest page entirely.
     disable_external_dependency_loading: true,
     autocapture: false,
     capture_heatmaps: false,
     capture_dead_clicks: false,
     capture_exceptions: false,
-    // App Router navigations go through the History API; this is how PostHog
-    // sees them without a router hook of our own.
-    capture_pageview: 'history_change' as const,
+    capture_performance: false,
+    capture_pageview: false,
     capture_pageleave: false,
-    // No feature flags yet, so no `/flags` request on every page load. Flip
-    // this when the first flag exists.
+    disable_capture_url_hashes: true,
+    save_campaign_params: false,
+    save_referrer: false,
     advanced_disable_flags: true,
-    sanitize_properties: sanitizeProperties,
+    logs: { captureConsoleLogs: false },
+    before_send: sanitizeEvent,
   }
 }
 

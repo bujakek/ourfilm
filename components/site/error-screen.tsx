@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { PageGrain } from '@/components/site/page-grain'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { defaultLocale, localePath } from '@/lib/i18n'
+import { trackClientError } from '@/lib/telemetry'
 
 /**
  * The body of every `error.tsx` in the app.
@@ -27,6 +28,7 @@ export function ErrorScreen({
     // withholds from the browser in production. Without logging it, a
     // production error here is untraceable.
     console.error('Unhandled error', error.digest ?? '', error)
+    trackClientError(error, 'page')
   }, [error])
 
   return (

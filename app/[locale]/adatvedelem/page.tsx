@@ -9,8 +9,8 @@ import {
   REGISTRY,
   hasRealCompanyDetails,
   EMAIL_PROVIDER,
-  LAST_UPDATED,
   PAYMENT_PROCESSOR,
+  PRIVACY_LAST_UPDATED,
 } from '@/lib/company'
 import { isLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL } from '@/lib/site'
@@ -54,6 +54,7 @@ const sections: LegalSection[] = [
       'Fotó: a képfájl, a készítés időpontja, a fájl- és képméret, a formátum és a feldolgozáshoz szükséges technikai állapotok. A kamera képe az eszközön jelenik meg; csak az elkészített és feldolgozott JPEG kerül feltöltésre. A feldolgozás eltávolítja az EXIF-adatokat, így a GPS-helyadat nem kerül a feltöltött fájlba.',
       'Fizetés: az OurFilm a Stripe munkamenet- és tranzakcióazonosítóit, az eseményhez kapcsolást, az összeget, pénznemet, fizetési és visszatérítési állapotot kapja meg. A fizetési mód adatait, a számlázási adatokat és a csalásmegelőzéshez szükséges technikai adatokat a Stripe/Link közvetlenül kezeli; bankkártyaszámot az OurFilm nem kap meg.',
       'Early Couple Program jelentkezője: név, a pár neve, ha megadják, e-mail-cím, az esküvő dátuma és helyszíne, becsült vendégszámtartomány, a jelentkezés rövid indoka, a választott nyelv, a jelentkezés és a két beszélgetés állapota, valamint az esetleges kampány forrásadatai. A visszaélések korlátozásához a hálózati cím nyers értéke helyett egy elkülönítetten tárolt, nem visszafejthető HMAC-lenyomatot használunk.',
+      'Használati és hibadiagnosztikai adatok: előre meghatározott műveletek — például a vendégoldal megnyitása, a csatlakozás, a kamera megnyitása, az exponálás, a képfeldolgozás és a feltöltés — eredménye, hibakategóriája, időpontja és időtartama; a hálózati és láthatósági állapot; fájl- és képméret; formátumjelző; hibák technikai osztálya és kódbeli helye; valamint véletlen esemény- és felvételazonosítók. A PostHog ezekhez alapértelmezett technikai adatokat, például a böngésző és az operációs rendszer típusát és verzióját, az eszköztípust, a képernyő- és nézetméretet, valamint maszkolt, lekérdezés nélküli oldalútvonalat kapcsolhat. Nevet, e-mail-címet, eseménynevet, eseménylinket, hibaüzenetet, képfájlt vagy a fénykép tartalmát nem küldjük a PostHognak. A hálózati cím a továbbítás és a sütimentes mérés során technikailag kezelhető, de nem használjuk helymeghatározásra vagy tartós felhasználói azonosításra.',
     ],
   },
   {
@@ -63,7 +64,7 @@ const sections: LegalSection[] = [
       'A vendég által kért csatlakozást és fotózást a szolgáltatás biztosításához kezeljük. A munkamenet védelme, a képkockakeret érvényesítése, a hibák kivizsgálása és a visszaélések megelőzése az OurFilm és a felhasználók jogos érdeke (GDPR 6. cikk (1) f)).',
       'A képek és a rajtuk szereplő személyek adatkezelésének megfelelő jogalapjáról és az eseményi tájékoztatásról a házigazda gondoskodik, ha az adatvédelmi szabályok az adott eseményre alkalmazandók. Az OurFilm a képeket nem használja saját reklámhoz, arcfelismeréshez vagy profilalkotáshoz.',
       'Az Early Couple Program jelentkezési adatait a jelentkező kérésére történő kapcsolatfelvételhez, a részvétel elbírálásához és elfogadás esetén a program lebonyolításához kezeljük (GDPR 6. cikk (1) b)). A kéretlen automatizált beküldések korlátozása az OurFilm és a jelentkezők jogos érdeke (GDPR 6. cikk (1) f)). A jelentkezés nem jelent hírlevél-feliratkozást, és nyilvános ajánlást sem kérünk érte.',
-      'A sütimentes látogatottságmérés célja a szolgáltatás használatának összesített megértése; ennek jogalapja az OurFilm jogos érdeke. E mérés ellen a böngésző vagy hálózati szűrő beállításaival lehet tiltakozni.',
+      'A Vercel sütimentes látogatottságmérésével az oldalak általános használatát értjük meg. A PostHog technikai eseményeivel a működési hibákat, a sikertelen vagy elvesző feltöltéseket és a felhasználói folyamatok elakadásait tárjuk fel. Ennek jogalapja az OurFilm jogos érdeke (GDPR 6. cikk (1) f)): a szolgáltatás működőképessége és biztonsága, a hibák kivizsgálása, a képelvesztés megelőzése és a termék fejlesztése. Ezeket az adatokat nem használjuk hirdetéshez, személyre szabott marketinghez, profilalkotáshoz vagy automatizált döntéshozatalhoz. A jogos érdeken alapuló mérés ellen tiltakozhatsz, továbbá böngésző- vagy hálózati szűrővel is letilthatod.',
     ],
   },
   {
@@ -77,10 +78,10 @@ const sections: LegalSection[] = [
   {
     title: 'Szolgáltatók és adattovábbítás',
     body: [
-      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és privát fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog (sütimentes termékanalitika és a feltöltések megbízhatóságának mérése, EU-adatközpontban), ${EMAIL_PROVIDER} (belépési és jogi visszaigazoló e-mailek), valamint fizetésnél ${PAYMENT_PROCESSOR.name} és ${PAYMENT_PROCESSOR.merchantOfRecord}.`,
+      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és privát fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési és jogi visszaigazoló e-mailek), valamint fizetésnél ${PAYMENT_PROCESSOR.name} és ${PAYMENT_PROCESSOR.merchantOfRecord}.`,
       `A Link Merchant of Recordként kezeli a fizetést, az alkalmazandó közvetett adót, a vásárlói számlát vagy bizonylatot, a visszatérítést, a fizetési vitát, a csalásmegelőzést és a tranzakciós ügyfélszolgálatot. Ezekhez a célokhoz a vásárlótól közvetlenül is gyűjt adatot. A Link tranzakciós támogatása itt érhető el: ${PAYMENT_PROCESSOR.supportUrl}.`,
       'A Supabase projekt jelenlegi régiója Zürich, Svájc. Svájc az EGT-n kívüli ország, amelyre az Európai Bizottság megfelelőségi határozata vonatkozik.',
-      'A Vercel, a Stripe/Link és egyes további szolgáltatók az Egyesült Államokban vagy más EGT-n kívüli országban is kezelhetnek adatot. Ilyen továbbításnál az érintett szolgáltató EU–USA adatvédelmi kerettagságára, európai bizottsági megfelelőségi határozatra vagy általános szerződési feltételekre támaszkodik. A Stripe és a Link saját adatkezelésére a Checkout felületén elérhető adatvédelmi tájékoztatójuk vonatkozik.',
+      'A PostHog projektadatokat Frankfurtban, Németországban tárolja. A PostHog, Inc. és egyes alfeldolgozói az Egyesült Államokban vagy más EGT-n kívüli országban támogatási, biztonsági vagy hálózati feladatok miatt kezelhetnek adatot. A Vercel, a Stripe/Link és egyes további szolgáltatók szintén kezelhetnek adatot az EGT-n kívül. Ilyen továbbításnál az érintett szolgáltató EU–USA adatvédelmi kerettagságára, európai bizottsági megfelelőségi határozatra vagy általános szerződési feltételekre támaszkodunk. A Stripe és a Link saját adatkezelésére a Checkout felületén elérhető adatvédelmi tájékoztatójuk vonatkozik.',
     ],
   },
   {
@@ -90,6 +91,7 @@ const sections: LegalSection[] = [
       'Az esemény törlésekor az aktív tárhelyen lévő képek és a kapcsolódó eseményadatok véglegesen törlődnek. A szolgáltatói biztonsági mentésekből a másolatok a szolgáltató saját felülírási ciklusa szerint kerülnek ki, és rendes működés során nem használhatók visszaállításra.',
       'A házigazda fiókadatait a fiók megszüntetéséig, a szerződéses igényekhez szükséges adatokat az elévülési idő végéig, a saját számviteli bizonylatainkat pedig a jogszabályban előírt 8 évig őrizzük. A Stripe/Link a saját fizetési és bizonylati adatait a saját tájékoztatója és jogi kötelezettségei szerinti ideig őrzi.',
       'Az Early Couple Program jelentkezési adatait a jelentkezés és az esetleges részvétel lezárásáig, főszabályként legfeljebb a jelentkezéstől számított 12 hónapig őrizzük. A technikai visszaélés-megelőzési lenyomatok nem kapcsolódnak a jelentkezési sorhoz, az aktív forgalom során a 30 napnál régebbi értékeket töröljük.',
+      'A PostHogban tárolt használati és hibadiagnosztikai eseményeket jelenleg legfeljebb 12 hónapig őrizzük; ennél korábban is törölhetjük őket, ha a hibakereséshez és a szolgáltatás fejlesztéséhez már nem szükségesek.',
     ],
   },
   {
@@ -97,7 +99,7 @@ const sections: LegalSection[] = [
     body: [
       'A vendég csatlakozásakor eseményenként egy feltétlenül szükséges, httpOnly munkamenetsüti kerül a böngészőbe. Ez védi a vendég munkamenetét és érvényesíti a képkockakeretet; legfeljebb egy évig marad meg, vagy korábban törlődik a böngészőadatok törlésekor. Hirdetési sütit nem használunk.',
       'A házigazda bejelentkezéséhez a Supabase Auth feltétlenül szükséges munkamenetsütijei kellenek. Az esemény létrehozása előtt a beállítások egy legfeljebb 7 napig élő piszkozatként a böngésző localStorage tárhelyén maradnak, hogy a belépési kör után folytatható legyen a folyamat.',
-      'A Vercel Web Analytics sütik nélkül mér összesített oldalletöltéseket. A PostHog szintén süti és helyi tárhely nélkül, összesítve méri az oldalletöltéseket és azt, hogy a vendégek fotói sikeresen feltöltődtek-e; az eseménylinket és a képeket nem kapja meg. Amíg nincs nem szükséges süti vagy hasonló követő technológia, külön sütihozzájáruló ablakot nem jelenítünk meg.',
+      'A Vercel Web Analytics sütik nélkül mér összesített oldalletöltéseket. Az OurFilm PostHog-beállítása nem helyez el PostHog-sütit, és nem ír adatot a böngésző localStorage vagy sessionStorage tárhelyére. A PostHog ugyanakkor egyedi technikai eseményeket fogad, amelyekből összesített kimutatások és hibadiagnosztika készül; ezek álneves adatnak minősülhetnek. A képfájlokat, a fényképek tartalmát, a vendégek megjelenített nevét és az e-mail-címeket nem küldjük a PostHognak.',
     ],
   },
   {
@@ -139,12 +141,13 @@ const englishSections: LegalSection[] = [
     body: [
       'For hosts: email address, user and event identifiers, event name and settings, login and session data. For guests: display name, a random session identifier, shot usage and identifiers connecting the guest to the event and photos. Guests do not need an account or email address.',
       'For photos: the processed JPEG, capture time, file and image dimensions, format and processing state. Processing removes EXIF metadata, including GPS location. For payments: Stripe session and transaction identifiers, event association, amount, currency and status; OurFilm never receives card numbers.',
+      'For usage and error diagnostics: the result, error category, timestamp and duration of predefined actions such as opening the guest page, joining, opening the camera, pressing the shutter, processing and uploading a photo; network and page-visibility state; file and image size; format indicators; the technical class and code location of errors; and random event and capture identifiers. PostHog may attach default technical data such as browser and operating-system type and version, device type, screen and viewport size, and a masked page path without its query. We do not send names, email addresses, event names, event links, error messages, image files or photo content to PostHog. A network address may be processed technically during transmission and cookieless measurement, but we do not use it for location tracking or persistent user identification.',
     ],
   },
   {
     title: 'Purposes and legal bases',
     body: [
-      'Host accounts, events and orders are processed to perform the contract (GDPR Art. 6(1)(b)); records required by tax, accounting or law are processed under legal obligations (Art. 6(1)(c)). Security, session protection, quota enforcement, troubleshooting, abuse prevention and cookie-free aggregate analytics rely on legitimate interests (Art. 6(1)(f)).',
+      'Host accounts, events and orders are processed to perform the contract (GDPR Art. 6(1)(b)); records required by tax, accounting or law are processed under legal obligations (Art. 6(1)(c)). Security, session protection, quota enforcement, troubleshooting, abuse prevention, preventing lost uploads and improving the product, including Vercel’s cookie-free traffic measurement and PostHog’s technical events, rely on legitimate interests (Art. 6(1)(f)). We do not use this data for advertising, personalised marketing, profiling or automated decision-making. You may object to legitimate-interest analytics and can also block it with browser or network filtering.',
       'The host is responsible for an appropriate legal basis and event notice for photos and people shown in them where applicable. OurFilm does not use event photos for advertising, facial recognition or profiling.',
     ],
   },
@@ -152,7 +155,7 @@ const englishSections: LegalSection[] = [
     title: 'Access and sharing',
     body: [
       'Event links contain a long random identifier and photos are stored privately, but anyone can forward a link. The host can access, download and hide every photo. Guests see revealed photos only where the host permits it. Authorised personnel access content only where needed for operations, security or a report.',
-      `We use Supabase for database and private file storage, Vercel for hosting and cookie-free analytics, PostHog for cookie-free product analytics and upload-reliability measurement in an EU data centre, ${EMAIL_PROVIDER} for login and legal emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
+      `We use Supabase for database and private file storage, Vercel for hosting and cookie-free analytics, PostHog, Inc. for cookie-free product analytics and error diagnostics, ${EMAIL_PROVIDER} for login and legal emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. PostHog project data is stored in Frankfurt, Germany. PostHog, Inc. and some of its subprocessors may perform support, security or network processing outside the EEA. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
     ],
   },
   {
@@ -160,12 +163,13 @@ const englishSections: LegalSection[] = [
     body: [
       'During the pilot, event data, guest display names, sessions and photos remain until the host deletes the event; there is no automatic expiry. Active copies are deleted with the event, while backup copies expire under provider backup cycles and are not ordinarily restored.',
       'Host account data remains until account deletion; claims-related records remain for the applicable limitation period; OurFilm accounting records are retained for eight years where Hungarian law requires it. Stripe/Link retain their own data under their notices and legal obligations.',
+      'Usage and error-diagnostic events stored in PostHog are currently retained for no more than 12 months and may be deleted earlier when they are no longer needed for troubleshooting or product improvement.',
     ],
   },
   {
     title: 'Cookies and local storage',
     body: [
-      'Joining sets one strictly necessary, event-specific httpOnly session cookie for up to one year. Supabase Auth uses strictly necessary session cookies for hosts. Before account creation, an event draft stays in the browser’s localStorage for up to seven days. We do not use advertising cookies. Vercel Web Analytics measures aggregate page views without cookies, and PostHog measures page views and whether guest photos uploaded successfully, also without cookies or local storage; it never receives the event link or the photos.',
+      'Joining sets one strictly necessary, event-specific httpOnly session cookie for up to one year. Supabase Auth uses strictly necessary session cookies for hosts. Before account creation, an event draft stays in the browser’s localStorage for up to seven days. We do not use advertising cookies. Vercel Web Analytics measures aggregate page views without cookies. Our PostHog configuration does not set PostHog cookies or write to browser localStorage or sessionStorage. PostHog nevertheless receives individual technical events from which aggregate reports and error diagnostics are produced, and those events may be pseudonymous data. We do not send image files, photo content, guest display names or email addresses to PostHog.',
     ],
   },
   {
@@ -219,7 +223,7 @@ export default async function AdatvedelemPage({ params }: Props) {
 
           <p className="mt-12 text-sm text-muted-foreground">
             {locale === 'en' ? 'Last updated' : 'Utolsó frissítés'}:{' '}
-            {LAST_UPDATED}
+            {PRIVACY_LAST_UPDATED[locale]}
           </p>
         </div>
       </section>

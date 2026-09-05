@@ -5,7 +5,10 @@ import {
   attachTelemetry,
   MASKED_TITLE,
   maskSlugs,
+  safeErrorStack,
+  sanitizeEvent,
   sanitizeProperties,
+  stripQueryAndHash,
   telemetryConfig,
   track,
   type TelemetryClient,
@@ -21,8 +24,17 @@ beforeEach(() => {
 
 describe('buffering until the client loads', () => {
   it('replays, in order, what arrived before attach', () => {
-    track('upload_restored', { event_id: 'ev', capture_id: 'a' })
-    track('upload_confirmed', { event_id: 'ev', capture_id: 'a' })
+    track('upload_restored', {
+      event_id: 'ev',
+      capture_id: 'a',
+      age_ms: 1_000,
+    })
+    track('upload_confirmed', {
+      event_id: 'ev',
+      capture_id: 'a',
+      shots_remaining: 2,
+      elapsed_ms: 900,
+    })
 
     const c = client()
     attachTelemetry(c)
@@ -35,30 +47,51 @@ describe('buffering until the client loads', () => {
       1,
       'upload_restored',
       expect.objectContaining({ event_id: 'ev', capture_id: 'a' }),
-      { send_instantly: true },
     )
   })
 
-  it('sends straight through once attached', () => {
+  it('batches routine events and sends rare failures immediately', () => {
     const c = client()
     attachTelemetry(c)
-    track('upload_dropped', {
+    track('upload_discarded', {
       event_id: 'ev',
       capture_id: 'b',
       reason: 'exhausted',
+      age_ms: 2_000,
     })
+    track(
+      'upload_issue',
+      {
+        event_id: 'ev',
+        capture_id: 'b',
+        stage: 'upload',
+        failure: 'http_503',
+        attempts: 1,
+        terminal: false,
+      },
+      { urgent: true },
+    )
 
-    expect(c.capture).toHaveBeenCalledOnce()
-    expect(c.capture).toHaveBeenCalledWith(
-      'upload_dropped',
+    expect(c.capture).toHaveBeenNthCalledWith(
+      1,
+      'upload_discarded',
       expect.objectContaining({ reason: 'exhausted' }),
+    )
+    expect(c.capture).toHaveBeenNthCalledWith(
+      2,
+      'upload_issue',
+      expect.objectContaining({ failure: 'http_503' }),
       { send_instantly: true },
     )
   })
 
   it('does not grow without bound on a page that never gets a client', () => {
     for (let i = 0; i < 200; i++) {
-      track('upload_refunded', { event_id: 'ev', capture_id: String(i) })
+      track('upload_restored', {
+        event_id: 'ev',
+        capture_id: String(i),
+        age_ms: 1_000,
+      })
     }
     const c = client()
     attachTelemetry(c)
@@ -94,7 +127,7 @@ describe('masking the slug', () => {
       }),
     ).toEqual({
       title: MASKED_TITLE,
-      $current_url: 'http://ourfilm.app/e/[slug]?lang=hu',
+      $current_url: 'http://ourfilm.app/e/[slug]',
     })
     expect(
       sanitizeProperties({
@@ -128,6 +161,52 @@ describe('masking the slug', () => {
       online: true,
     })
   })
+
+  it('removes complete URL queries and fragments, including magic links', () => {
+    expect(stripQueryAndHash('/auth/callback?code=secret#still-secret')).toBe(
+      '/auth/callback',
+    )
+    expect(
+      sanitizeProperties({
+        $current_url:
+          'https://ourfilm.app/auth/callback?code=secret&next=/host#token',
+        url: 'https://ourfilm.app/e/private-slug?token_hash=secret',
+      }),
+    ).toEqual({
+      $current_url: 'https://ourfilm.app/auth/callback',
+      url: 'https://ourfilm.app/e/[slug]',
+    })
+  })
+
+  it('sanitizes the whole event before PostHog sends it', () => {
+    expect(
+      sanitizeEvent({
+        event: 'client_error',
+        properties: {
+          $pathname: '/host/events/private-slug?code=secret',
+        },
+      }),
+    ).toEqual({
+      event: 'client_error',
+      properties: { $pathname: '/host/events/[slug]' },
+    })
+  })
+
+  it('keeps error locations while redacting messages and URL secrets', () => {
+    const error = new TypeError('guest name and token should not leave')
+    error.stack = [
+      'TypeError: guest name and token should not leave',
+      'secret continuation email@example.com',
+      '    at submit (https://ourfilm.app/e/private-slug?code=secret:2:3)',
+    ].join('\n')
+
+    expect(safeErrorStack(error)).toBe(
+      [
+        'TypeError: [redacted]',
+        '    at submit (https://ourfilm.app/e/[slug])',
+      ].join('\n'),
+    )
+  })
 })
 
 describe('the conditions PostHog was adopted under', () => {
@@ -151,10 +230,23 @@ describe('the conditions PostHog was adopted under', () => {
     expect(config.capture_heatmaps).toBe(false)
     expect(config.capture_dead_clicks).toBe(false)
     expect(config.disable_surveys).toBe(true)
+    expect(config.disable_web_experiments).toBe(true)
     expect(config.disable_external_dependency_loading).toBe(true)
+    expect(config.capture_exceptions).toBe(false)
+    expect(config.capture_performance).toBe(false)
+    expect(config.capture_pageview).toBe(false)
+    expect(config.capture_pageleave).toBe(false)
+    expect(config.save_campaign_params).toBe(false)
+    expect(config.save_referrer).toBe(false)
+    expect(config.advanced_disable_flags).toBe(true)
+    expect(config.logs).toEqual({ captureConsoleLogs: false })
   })
 
   it('masks every URL it sends', () => {
-    expect(config.sanitize_properties).toBe(sanitizeProperties)
+    expect(config.before_send).toBe(sanitizeEvent)
+  })
+
+  it('never creates person profiles', () => {
+    expect(config.person_profiles).toBe('never')
   })
 })

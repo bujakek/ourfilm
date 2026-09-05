@@ -16,7 +16,11 @@ import {
 import { captureStatus, formatLine, ownRollNote } from '@/lib/event-copy'
 import { compressForStorage, isHeic, prepareStoredShot } from '@/lib/image'
 import { track } from '@/lib/telemetry'
-import { createUploadQueue, type UploadQueue } from '@/lib/upload-queue'
+import {
+  createUploadQueue,
+  type UploadIssue,
+  type UploadQueue,
+} from '@/lib/upload-queue'
 import { uploadShotRenders } from '@/lib/upload-shot'
 import { uploadStore } from '@/lib/upload-store'
 import { type Locale, localeTag } from '@/lib/i18n'
@@ -31,6 +35,8 @@ import { PhotoGrid } from './photo-grid'
 
 type GalleryState =
   { open: true } | { open: false; heading: string; detail: string | null }
+
+const SLOW_PREPARATION_MS = 5_000
 
 /**
  * What the screen says when something goes wrong.
@@ -131,8 +137,7 @@ export function GuestEventView({
   // Timing for telemetry, keyed by capture id. Refs, not state: none of it is
   // drawn, and a re-render per timestamp would be a re-render per photo.
   const startedAt = useRef(new Map<string, number>())
-  const confirmedAt = useRef(new Map<string, number>())
-  const delivered = useRef(new Set<string>())
+  const reportedIssues = useRef(new Set<string>())
   const cameraOpenedAt = useRef<number | null>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
   const [flash, setFlash] = useState<Flash>(null)
@@ -237,22 +242,6 @@ export function GuestEventView({
   // never re-sorted, so the survivors stay in order without sorting.
   const developing = captures.filter((c) => isDeveloping(c, frameIds))
 
-  // The moment a developing cell hands over to the real thumbnail. A confirm
-  // without this afterwards is a guest who never saw proof their photo landed.
-  useEffect(() => {
-    for (const c of captures) {
-      if (!c.confirmed || !c.photoId || !frameIds.has(c.photoId)) continue
-      if (delivered.current.has(c.id)) continue
-      delivered.current.add(c.id)
-      const at = confirmedAt.current.get(c.id)
-      track('frame_delivered', {
-        event_id: eventId,
-        capture_id: c.id,
-        since_confirm_ms: at === undefined ? null : Date.now() - at,
-      })
-    }
-  }, [captures, frameIds, eventId])
-
   const status = captureStatus(
     {
       now: new Date(now),
@@ -304,6 +293,23 @@ export function GuestEventView({
    */
   const queueRef = useRef<UploadQueue | null>(null)
 
+  const reportIssue = useCallback(
+    (id: string, issue: UploadIssue) => {
+      // A connection or kill-switch refusal can recur every retry interval.
+      // One event per capture/stage/class/finality preserves the diagnosis
+      // without turning a 24-hour stored photo into thousands of events.
+      const key = `${id}:${issue.stage}:${issue.failure}:${issue.terminal}`
+      if (reportedIssues.current.has(key)) return
+      reportedIssues.current.add(key)
+      track(
+        'upload_issue',
+        { event_id: eventId, capture_id: id, ...issue },
+        { urgent: true },
+      )
+    },
+    [eventId],
+  )
+
   /**
    * Pick up whatever a killed tab left behind.
    *
@@ -341,7 +347,6 @@ export function GuestEventView({
         onConfirmed(id, shotsRemaining) {
           const now = Date.now()
           const started = startedAt.current.get(id)
-          confirmedAt.current.set(id, now)
           track('upload_confirmed', {
             event_id: eventId,
             capture_id: id,
@@ -360,11 +365,6 @@ export function GuestEventView({
           router.refresh()
         },
         onDropped(id, reason) {
-          track('upload_dropped', {
-            event_id: eventId,
-            capture_id: id,
-            reason,
-          })
           setCaptures((current) => current.filter((c) => c.id !== id))
           if (reason === 'refused') return
           setFlash(
@@ -374,50 +374,36 @@ export function GuestEventView({
           )
         },
         onRefusal(refusal) {
-          track('upload_refused', { event_id: eventId, refusal })
           if (refusal === 'no_shots') setRemaining(0)
           setFlash(refusalMessage(refusal, locale))
         },
-        onRefunded(id, cause, attempts) {
-          track('upload_refunded', {
-            event_id: eventId,
-            capture_id: id,
-            cause,
-            attempts,
-          })
-        },
-        onFailure(id, failure, attempts) {
-          track('upload_attempt_failed', {
-            event_id: eventId,
-            capture_id: id,
-            failure,
-            attempts,
-          })
+        onIssue(id, issue) {
+          reportIssue(id, issue)
         },
         onPrepared(id, file, outcome) {
-          track('capture_prepared', {
+          if (!outcome.ok || outcome.ms < SLOW_PREPARATION_MS) return
+          track('capture_preparation_slow', {
             event_id: eventId,
             capture_id: id,
-            ok: outcome.ok,
             ms: outcome.ms,
             heic: isHeic(file),
             input_bytes: file.size,
-            ...(outcome.ok
-              ? {
-                  bytes: outcome.bytes,
-                  width: outcome.width,
-                  height: outcome.height,
-                }
-              : { error: outcome.error }),
+            bytes: outcome.bytes,
+            width: outcome.width,
+            height: outcome.height,
           })
         },
         onDiscarded(id, reason, ageMs) {
-          track('upload_discarded', {
-            event_id: eventId,
-            capture_id: id,
-            reason,
-            age_ms: ageMs,
-          })
+          track(
+            'upload_discarded',
+            {
+              event_id: eventId,
+              capture_id: id,
+              reason,
+              age_ms: ageMs,
+            },
+            { urgent: true },
+          )
         },
         onRestored({ id, blob, capturedAt }) {
           startedAt.current.set(id, capturedAt)
@@ -447,7 +433,7 @@ export function GuestEventView({
       queue.stop()
       if (queueRef.current === queue) queueRef.current = null
     }
-  }, [claimCell, en, eventId, locale, router, slug])
+  }, [claimCell, en, eventId, locale, reportIssue, router, slug])
 
   /**
    * What the shutter does: claim a frame on screen, and get out of the way.

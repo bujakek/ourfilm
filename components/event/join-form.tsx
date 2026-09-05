@@ -40,6 +40,7 @@ const NAME_MAX_LENGTH = 40
  * exists to measure.
  */
 export function JoinForm({
+  eventId,
   slug,
   eventName,
   hostName,
@@ -52,6 +53,7 @@ export function JoinForm({
   canCapture,
   locale,
 }: {
+  eventId: string
   slug: string
   eventName: string
   hostName: string | null
@@ -74,6 +76,7 @@ export function JoinForm({
   // props as they were on arrival — the deps are deliberately just the slug.
   useEffect(() => {
     track('guest_page_viewed', {
+      event_id: eventId,
       joined: false,
       camera: canCapture ? 'open' : 'closed',
     })
@@ -84,9 +87,12 @@ export function JoinForm({
   // exactly once per refused submit — the one place that property is useful.
   useEffect(() => {
     if (state.error) {
-      track('guest_join_refused', { reason: state.reason ?? 'unknown' })
+      track('guest_join_refused', {
+        event_id: eventId,
+        reason: state.reason ?? 'unknown',
+      })
     }
-  }, [state])
+  }, [eventId, state])
   // The stub is torn off and handed over: it drops a little and straightens.
   // The same variant carries the QR sheet at the end of the create flow —
   // same object, same motion, both surfaces.

@@ -132,8 +132,7 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
     onConfirmed: vi.fn(),
     onDropped: vi.fn(),
     onRefusal: vi.fn(),
-    onRefunded: vi.fn(),
-    onFailure: vi.fn(),
+    onIssue: vi.fn(),
     onPrepared: vi.fn(),
     onDiscarded: vi.fn(),
     onRestored: vi.fn(),
@@ -524,6 +523,12 @@ describe('what the queue reports', () => {
       'shot-1',
       expect.any(Number),
     )
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'prepare',
+      failure: 'rangeerror',
+      attempts: 0,
+      terminal: false,
+    })
   })
 
   it('names each failure the server answered with', async () => {
@@ -536,9 +541,13 @@ describe('what the queue reports', () => {
     q.enqueue('shot-1', file(), NOW)
     await q.drain()
 
-    expect(h.handlers.onFailure).toHaveBeenCalledWith('shot-1', 'http_503', 1)
-    // A connection failure is a refund, never a failure.
-    expect(h.handlers.onFailure).toHaveBeenCalledOnce()
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'upload',
+      failure: 'http_503',
+      attempts: 1,
+      terminal: false,
+    })
+    expect(h.handlers.onIssue).toHaveBeenCalledOnce()
   })
 
   it('counts the rows it throws away on resume', async () => {
@@ -758,13 +767,12 @@ describe('an attempt the server never saw', () => {
 
     const [row] = await uploadStore.listByEvent(EVENT)
     expect(row.attempts).toBe(0)
-    // And the refund is reported, with the count as it stands afterwards —
-    // this is the number that says how often a phone could not get through.
-    expect(h.handlers.onRefunded).toHaveBeenCalledWith(
-      'shot-1',
-      'connection',
-      0,
-    )
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'upload',
+      failure: 'connection',
+      attempts: 0,
+      terminal: false,
+    })
   })
 
   it('still retires a photo the server keeps refusing', async () => {
@@ -846,12 +854,15 @@ describe('an attempt the server never saw', () => {
       await q.drain()
     }
     expect(await stored()).toEqual(['shot-1'])
-    // Every pass reported its refund as a server answer, never as an outage.
-    expect(h.handlers.onRefunded).toHaveBeenCalledWith('shot-1', 'refusal', 0)
-    expect(h.handlers.onRefunded).not.toHaveBeenCalledWith(
+    expect(h.handlers.onIssue).toHaveBeenCalledWith('shot-1', {
+      stage: 'reserve',
+      failure: 'refusal_uploads_disabled',
+      attempts: 0,
+      terminal: false,
+    })
+    expect(h.handlers.onIssue).not.toHaveBeenCalledWith(
       'shot-1',
-      'connection',
-      expect.anything(),
+      expect.objectContaining({ failure: 'connection' }),
     )
 
     // The kill switch comes off and the guest reopens the page.

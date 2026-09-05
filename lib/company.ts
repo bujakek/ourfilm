@@ -73,8 +73,14 @@ export const EMAIL_PROVIDER = 'Resend'
  */
 export const LEGAL_VERSION = '2026-08-31-mor-hu'
 
-/** Shown at the foot of the legal pages. Update when their text changes. */
+/** Shown at the foot of the terms and imprint. */
 export const LAST_UPDATED = '2026. augusztus 31.'
+
+/** The privacy notice changes independently from the contractual terms. */
+export const PRIVACY_LAST_UPDATED = {
+  hu: '2026. szeptember 5.',
+  en: '5 September 2026',
+} as const
 
 /**
  * Flips the legal pages *and* the price page out of draft: hides the

@@ -3,6 +3,7 @@ import {
   renderAuthEmail,
   resolveAuthEmailLocale,
 } from '@/lib/auth-email'
+import { reportServerIssue } from '@/lib/telemetry-server'
 import { Webhook, WebhookVerificationError } from 'standardwebhooks'
 import { z } from 'zod'
 
@@ -112,10 +113,24 @@ export async function POST(request: Request) {
         response.status,
         await response.text(),
       )
+      const deliveryError = new Error('Auth email provider refused request')
+      deliveryError.name = `EmailDeliveryHttp${response.status}Error`
+      await reportServerIssue(deliveryError, {
+        operation: 'auth_email_delivery',
+        route: '/api/auth/send-email',
+        routeType: 'route',
+        method: 'POST',
+      })
       return Response.json({ error: 'Email delivery failed' }, { status: 502 })
     }
   } catch (error) {
     console.error('Auth email delivery failed', error)
+    await reportServerIssue(error, {
+      operation: 'auth_email_delivery',
+      route: '/api/auth/send-email',
+      routeType: 'route',
+      method: 'POST',
+    })
     return Response.json({ error: 'Email delivery failed' }, { status: 502 })
   }
 

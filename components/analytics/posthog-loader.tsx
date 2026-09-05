@@ -23,15 +23,29 @@ import {
 export function PostHogLoader() {
   useEffect(() => {
     const key = telemetryKey()
-    if (!key || telemetryIsAttached()) return
+    // A magic-link credential lives in this route's query string until the
+    // exchange redirects. Nothing, including an SDK initialization request,
+    // needs to run there.
+    if (
+      !key ||
+      telemetryIsAttached() ||
+      window.location.pathname === '/auth/callback'
+    )
+      return
 
     let cancelled = false
     const start = () => {
-      void import('posthog-js').then(({ default: posthog }) => {
-        if (cancelled || telemetryIsAttached()) return
-        posthog.init(key, telemetryConfig())
-        attachTelemetry(posthog)
-      })
+      void import('posthog-js')
+        .then(({ default: posthog }) => {
+          if (cancelled || telemetryIsAttached()) return
+          posthog.init(key, telemetryConfig())
+          attachTelemetry(posthog)
+        })
+        .catch((error: unknown) => {
+          // PostHog cannot report its own chunk failing to load. Keep the app
+          // unaffected and leave one local breadcrumb for development.
+          console.warn('Product health telemetry did not load', error)
+        })
     }
 
     // Idle when the browser offers it, a short timer where it does not (Safari

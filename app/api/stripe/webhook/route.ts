@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripe } from '@/lib/stripe/client'
 import { stripeEnv } from '@/lib/stripe/env'
+import { reportServerIssue } from '@/lib/telemetry-server'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
@@ -65,6 +66,12 @@ export async function POST(request: Request) {
 
   if (claimError && claimError.code !== UNIQUE_VIOLATION) {
     console.error('Could not record webhook event', claimError)
+    await reportServerIssue(claimError, {
+      operation: 'stripe_webhook_claim',
+      route: '/api/stripe/webhook',
+      routeType: 'route',
+      method: 'POST',
+    })
     return new NextResponse('Could not record event', { status: 500 })
   }
 
@@ -117,6 +124,12 @@ export async function POST(request: Request) {
     // 500 so Stripe retries. `processed_at` stays null, so the retry gets past
     // the duplicate check above and runs the handler again.
     console.error(`Stripe webhook handler failed for ${event.type}`, e)
+    await reportServerIssue(e, {
+      operation: 'stripe_webhook_handle',
+      route: '/api/stripe/webhook',
+      routeType: 'route',
+      method: 'POST',
+    })
     return new NextResponse('Handler failed', { status: 500 })
   }
 

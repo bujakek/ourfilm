@@ -91,6 +91,7 @@ Product analytics is one public key, and the app runs without it:
 
 ```bash
 NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=        # phc_… from the EU project; unset = PostHog never loads
+NEXT_PUBLIC_OURFILM_ENV=development       # development | preview | production; label on every browser event
 ```
 
 Abuse and storage emergency controls are server-only:
@@ -281,16 +282,14 @@ this wedding lose a photo" has an answer. The guest path, in order:
 | `guest_join_refused`       | Cap reached vs. a bug — a refusal on an open camera is the latter     |
 | `camera_opened`            | The denominator for the OS camera hand-off                            |
 | `shutter_pressed`          | A file came back; `away_ms` is how long the OS had the screen         |
-| `capture_prepared`         | Compression cost and failures, HEIC vs. JPEG, master size             |
-| `upload_attempt_failed`    | Each server-answered failure by class: `timeout`, `http_5xx`, …       |
-| `upload_refunded`          | Each attempt handed back: connection, or a refusal about the server   |
+| `capture_preparation_slow` | Successful preparation over five seconds, with safe size metadata     |
+| `upload_issue`             | One deduplicated issue: stage, class, attempt and whether terminal    |
 | `upload_confirmed`         | Done, with `elapsed_ms` from the shutter                              |
 | `upload_restored`          | A shot replayed after a killed tab, with its age                      |
 | `upload_discarded`         | A stored row thrown away unseen: expired, exhausted, empty            |
-| `upload_dropped`           | Given up on screen: refused or exhausted                              |
-| `upload_refused`           | The server's refusal, by reason                                       |
 | `upload_store_unavailable` | IndexedDB gave up, and at which stage — photos will not survive       |
-| `frame_delivered`          | The developing cell handed over to the real thumbnail                 |
+| `client_error`             | A rendered error boundary, with redacted stack locations              |
+| `server_error`             | An unhandled or critical handled server failure by operation          |
 
 Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
 is no reliable client-side signal for a cancel, so none is invented. How often
@@ -315,8 +314,11 @@ one so loosening it is a visible decision rather than a config drift:
   an hour: the token validated, a plain `curl` event arrived, and nothing
   from the page did. A new project needs that switch before anything else.
 
-- **No session replay, no autocapture, no surveys, no heatmaps.** Replay
-  would record photos and guest names into a third-party tool.
+- **No session replay, autocapture, automatic pageviews, exception capture,
+  console capture, performance capture, surveys, heatmaps or person
+  profiles.** Replay would record photos and guest names into a third-party
+  tool. Only the events in the table above are sent. Routine events use the
+  SDK batch; rare failures request an immediate send.
 - **Behind our own origin.** The client talks to `/ingest`, which
   `next.config.mjs` rewrites to PostHog. That keeps `connect-src 'self'` in
   the CSP, and an ad blocker cannot silently drop the upload reports.
@@ -324,12 +326,14 @@ one so loosening it is a visible decision rather than a config drift:
   `/ingest/e/` and Next's redirect ran before rewrites — and `proxy.ts` issues
   the 308 for every other trailing-slash URL, so the marketing site's URLs
   behave exactly as before. `curl -I /hu/arak/` must still say 308.
-- **No slug and no event name ever leaves the device.** `sanitizeProperties`
-  masks `/e/<slug>` and `/host/events/<slug>` in every string property on
-  every event, and replaces `title` on those routes — `$pageview` carries
-  `document.title`, which on an event page is the host's event name, and the
-  first live export showed it. The unguessable URL is the album's privacy
-  model; an analytics tool is not a place to keep a copy of it.
+- **No slug, query string, event name, guest name, email, error message or
+  photo ever leaves for PostHog.** `sanitizeEvent` masks `/e/<slug>` and
+  `/host/events/<slug>` in every string property, removes complete queries and
+  fragments from URL properties, and replaces titles on event routes. The
+  loader does not initialize at all on `/auth/callback`, where a magic-link
+  credential lives in the query until exchange. Client error stacks retain
+  code locations but replace the message; server reporting accepts only an
+  error class, safe operation, route template and optional digest.
 - **Loaded late, and only where a key exists.** `components/analytics/
 posthog-loader.tsx` imports `posthog-js` on idle from the product layout.
   Not `instrumentation-client.ts`, which runs before hydration on every
@@ -339,6 +343,29 @@ posthog-loader.tsx` imports `posthog-js` on idle from the product layout.
 
 Feature flags are off (`advanced_disable_flags`) so no `/flags` request is
 made on every page load; flip it when the first flag exists.
+
+Browser events use `NEXT_PUBLIC_OURFILM_ENV` to separate local development,
+previews and production. Vercel must set it explicitly per environment; without
+it the browser falls back to `NODE_ENV`, which cannot distinguish preview from
+production. Server errors use `VERCEL_ENV` automatically and go directly to
+the EU ingest host through `posthog-node`; no request headers, bodies, concrete
+URLs, messages or stacks are passed to that client.
+
+The dashboard is part of the implementation. Before production:
+
+- keep the project in PostHog Cloud EU and execute the account DPA;
+- verify organization and project IP capture are disabled;
+- keep Cookieless server hash mode enabled, or browser events are discarded;
+- enforce the privacy notice's maximum 12-month event retention;
+- restrict project access and create alerts for `server_error`, terminal
+  `upload_issue`, and `upload_store_unavailable`;
+- set the project token and the correct `NEXT_PUBLIC_OURFILM_ENV` separately
+  for Vercel Development, Preview and Production.
+
+`posthog-node` follows Node's security-patched runtime floor: the installed
+version requires Node `^20.20.0` or `>=22.22.0`. Upgrade a local Node 22.18
+installation before the next dependency install even though the current build
+still runs on it; deployed functions must use a supported patched runtime too.
 
 ## The upload queue survives the tab (settled)
 

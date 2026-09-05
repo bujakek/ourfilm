@@ -3,6 +3,7 @@ import 'client-only'
 import { openDB, type IDBPDatabase } from 'idb'
 
 import { track } from '@/lib/telemetry'
+import { failureClass } from '@/lib/upload-failure'
 
 /**
  * Camera files this device still owes the server.
@@ -87,6 +88,7 @@ export type UploadStore = {
 
 let handle: Promise<IDBPDatabase | null> | null = null
 let warned = false
+const captureEvents = new Map<string, string>()
 
 /**
  * Where the store gave up. Reported once per page: the first failure is the
@@ -98,25 +100,30 @@ let warned = false
 type StoreStage =
   'missing' | 'open' | 'open_timeout' | 'blocked' | 'put' | 'list' | 'remove'
 
-function warnOnce(stage: StoreStage, error: unknown) {
+function warnOnce(stage: StoreStage, error: unknown, eventId?: string) {
   if (warned) return
   warned = true
   console.warn(
     'Upload store unavailable; uploads will not survive a reload',
     error,
   )
-  track('upload_store_unavailable', {
-    stage,
-    error: error instanceof Error ? error.name : String(error),
-  })
+  track(
+    'upload_store_unavailable',
+    {
+      event_id: eventId ?? null,
+      stage,
+      error: failureClass(error),
+    },
+    { urgent: true },
+  )
 }
 
-function database(): Promise<IDBPDatabase | null> {
+function database(eventId?: string): Promise<IDBPDatabase | null> {
   if (handle) return handle
 
   handle = (async () => {
     if (typeof indexedDB === 'undefined') {
-      warnOnce('missing', 'no indexedDB')
+      warnOnce('missing', new Error('IndexedDB unavailable'), eventId)
       return null
     }
 
@@ -131,6 +138,7 @@ function database(): Promise<IDBPDatabase | null> {
           warnOnce(
             'blocked',
             new Error('IndexedDB open blocked by another tab'),
+            eventId,
           ),
       })
       const timeout = new Promise<null>((resolve) => {
@@ -141,10 +149,11 @@ function database(): Promise<IDBPDatabase | null> {
       void opening.catch(() => undefined)
       // A silent null here used to be exactly that — silent. It is the case
       // where every photo on this device is one tab-kill from being lost.
-      if (!db) warnOnce('open_timeout', new Error('IndexedDB open timed out'))
+      if (!db)
+        warnOnce('open_timeout', new Error('IndexedDB open timed out'), eventId)
       return db ?? null
     } catch (error) {
-      warnOnce('open', error)
+      warnOnce('open', error, eventId)
       return null
     }
   })()
@@ -154,17 +163,18 @@ function database(): Promise<IDBPDatabase | null> {
 
 export const uploadStore: UploadStore = {
   async put(shot) {
-    const db = await database()
+    captureEvents.set(shot.id, shot.eventId)
+    const db = await database(shot.eventId)
     if (!db) return
     try {
       await db.put(STORE, shot)
     } catch (error) {
-      warnOnce('put', error)
+      warnOnce('put', error, shot.eventId)
     }
   },
 
   async listByEvent(eventId) {
-    const db = await database()
+    const db = await database(eventId)
     if (!db) return []
     try {
       const rows = (await db.getAllFromIndex(
@@ -172,21 +182,24 @@ export const uploadStore: UploadStore = {
         BY_EVENT,
         eventId,
       )) as StoredShot[]
+      rows.forEach((shot) => captureEvents.set(shot.id, shot.eventId))
       return rows.sort((a, b) => a.capturedAt - b.capturedAt)
     } catch (error) {
-      warnOnce('list', error)
+      warnOnce('list', error, eventId)
       return []
     }
   },
 
   async remove(id) {
-    const db = await database()
+    const eventId = captureEvents.get(id)
+    const db = await database(eventId)
     if (!db) return false
     try {
       await db.delete(STORE, id)
+      captureEvents.delete(id)
       return true
     } catch (error) {
-      warnOnce('remove', error)
+      warnOnce('remove', error, eventId)
       return false
     }
   },
@@ -209,6 +222,7 @@ export async function __resetForTests(): Promise<void> {
   const open = handle
   handle = null
   warned = false
+  captureEvents.clear()
   try {
     ;(await open)?.close()
   } catch {
