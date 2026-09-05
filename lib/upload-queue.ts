@@ -184,10 +184,14 @@ export function createUploadQueue({
    * every resume works from a ~2.2MB JPEG and libheif is never loaded again.
    */
   async function settle(item: QueueItem, file: File) {
-    await deps.store.put(item.shot)
-    if (stopped) return
-
     try {
+      // Both writes and the decode sit under one catch: this promise is
+      // awaited on the capture path, and a rejection there would surface as a
+      // throw inside the drain loop rather than as a shot that simply has not
+      // been compressed yet.
+      await deps.store.put(item.shot)
+      if (stopped) return
+
       const master = await deps.compress(file)
       item.shot.blob = master.blob
       item.shot.compressed = true
@@ -196,10 +200,10 @@ export function createUploadQueue({
       item.shot.takenAt = master.takenAt?.toISOString() ?? null
       await deps.store.put(item.shot)
     } catch (error) {
-      // Leave the raw row exactly as it is. `prepare` handles an uncompressed
-      // shot by running the original pipeline, so a failure here costs a
-      // decode per attempt rather than the photo.
-      console.error('Compressing a capture failed', error)
+      // Leave the row exactly as it is. `prepare` handles an uncompressed shot
+      // by running the original pipeline, so a failure here costs a decode per
+      // attempt rather than the photo.
+      console.error('Preparing a capture failed', error)
     }
   }
 
@@ -298,29 +302,59 @@ export function createUploadQueue({
     )
   }
 
+  /**
+   * One drain at a time, and the guard is cleared from outside the loop.
+   *
+   * This shipped as `draining ??= (async () => { … draining = null … })()`,
+   * which is wrong in the one case that happens on every page load. An async
+   * function body runs synchronously up to its first `await`, and a drain with
+   * nothing to do never awaits: the body ran to completion and set the guard to
+   * null *before* `??=` assigned the promise to it. So `draining` was left
+   * holding a resolved promise for the life of the page, every later `drain()`
+   * short-circuited, and a guest's first photo sat in IndexedDB until they
+   * reloaded — which worked only because a reload has a stored row to await.
+   *
+   * A `.finally` callback is a microtask, so it cannot run before the
+   * assignment below. Clearing the guard by identity rather than
+   * unconditionally also means a stale loop cannot clear a newer one's.
+   */
   function drain(): Promise<void> {
     if (stopped) return Promise.resolve()
+    if (draining) return draining
 
-    draining ??= (async () => {
+    const run = drainLoop().finally(() => {
+      if (draining === run) draining = null
+    })
+    draining = run
+    return run
+  }
+
+  async function drainLoop(): Promise<void> {
+    while (!stopped) {
+      const item = pending.shift()
+      if (!item) break
+      let outcome: 'done' | 'retry' | 'stop'
       try {
-        while (!stopped) {
-          const item = pending.shift()
-          if (!item) break
-          const outcome = await runCapture(item)
-          if (outcome === 'retry') {
-            pending.unshift(item)
-            break
-          }
-          if (outcome === 'stop') break
-        }
-      } finally {
-        draining = null
+        outcome = await runCapture(item)
+      } catch (error) {
+        // `runCapture` handles its own failures, so this is a handler throwing
+        // into it. It must take neither the rest of the roll nor the sweep
+        // decision below down with it — without the re-queue the shot would be
+        // dropped from memory while its row stayed on disk.
+        console.error('Upload handler failed', error)
+        pending.unshift(item)
+        break
       }
-      if (stopped) return
-      if (pending.length > 0) scheduleSweep()
-      else cancelSweep()
-    })()
-    return draining
+      if (outcome === 'retry') {
+        pending.unshift(item)
+        break
+      }
+      if (outcome === 'stop') break
+    }
+
+    if (stopped) return
+    if (pending.length > 0) scheduleSweep()
+    else cancelSweep()
   }
 
   async function dropAll(reason: 'refused' | 'exhausted') {
@@ -337,8 +371,11 @@ export function createUploadQueue({
     // No server call may overtake the durable write, and none may run against
     // bytes that are about to be replaced.
     if (item.settled) {
-      await item.settled
+      const settled = item.settled
+      // Cleared *before* the await: a rejected promise stays rejected, so a
+      // retry that awaited the same one again could never get past it.
       item.settled = null
+      await settled
     }
     if (stopped) return 'retry'
 

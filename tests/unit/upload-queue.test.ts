@@ -396,6 +396,88 @@ describe('giving up', () => {
   })
 })
 
+describe('the drain guard', () => {
+  /**
+   * Reported from a real phone: open the guest page, take a photo, and it lands
+   * in IndexedDB and stays there. Reload and it uploads at once.
+   *
+   * A drain with nothing to do never awaits, so its body ran to completion
+   * synchronously and cleared the re-entrancy guard *before* `??=` assigned the
+   * promise into it. The guard was then permanently set, every later `drain()`
+   * returned that resolved promise without running, and the only thing that
+   * ever uploaded was whatever a fresh page's `resume()` had queued before the
+   * first drain — which is exactly what a reload does.
+   */
+  it('survives a drain that had nothing to do', async () => {
+    const h = harness()
+    const q = queueFor(h)
+
+    // Mounting, with an empty store. This is the drain that used to wedge it.
+    await q.resume()
+    await q.drain()
+    expect(h.deps.reserve).not.toHaveBeenCalled()
+
+    // The guest's first shot.
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
+      'shot-1',
+      expect.any(Number),
+    )
+    expect(await stored()).toEqual([])
+  })
+
+  it('keeps draining across any number of idle passes', async () => {
+    // Every reactivation calls `resume()`, which drains. On a quiet page those
+    // are all idle, and one of them must not be able to retire the uploader.
+    const h = harness()
+    const q = queueFor(h)
+    for (let i = 0; i < 5; i++) await q.resume()
+
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onConfirmed).toHaveBeenCalledOnce()
+  })
+
+  it('re-arms rather than swallowing a shot when the loop itself throws', async () => {
+    // `notify` already swallows handler errors, so this is about anything that
+    // can throw *outside* `runCapture`'s own try — a store that rejects rather
+    // than degrading, say. Such a throw used to skip the sweep decision
+    // entirely: the shot left memory and nothing was scheduled to fetch it
+    // back. The retry then has to get past the rejection it already saw.
+    let thrown = false
+    const h = harness({
+      store: {
+        ...uploadStore,
+        // The write-ahead attempt bump: the one store call still outside
+        // `runCapture`'s own try, and so the one that reaches the loop.
+        put: vi.fn(async (shot) => {
+          if (!thrown && shot.attempts === 1) {
+            thrown = true
+            throw new Error('storage went away')
+          }
+          return uploadStore.put(shot)
+        }),
+      },
+    })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onConfirmed).not.toHaveBeenCalled()
+    expect(armed(h)).toBeDefined()
+
+    armed(h)!.run()
+    await until(() => called(h.handlers.onConfirmed) === 1)
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
+      'shot-1',
+      expect.any(Number),
+    )
+  })
+})
+
 describe('compressing a capture', () => {
   it('writes the raw file before it decodes anything', async () => {
     // The order this whole feature turns on. A guest who taps the shutter again
