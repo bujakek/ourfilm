@@ -24,8 +24,11 @@ export function eventUrl(slug: string, locale?: 'en' | 'hu') {
 export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '')
 
 /**
- * PLACEHOLDER — the public contact address shown on /kapcsolat and in the
- * footer. Nothing verifies that this mailbox exists; confirm it (or replace it)
- * before the pages are indexed.
+ * The one inbound address. Shown on /kapcsolat, in the footer and on every
+ * legal page, and it is where the contact form's copy, Early Couple
+ * applications and replies to any mail we send all land — one mailbox, so a
+ * host who replies to the address they were shown reaches the same place.
+ * Outbound mail is `noreply@ourfilm.app` (`LEGAL_EMAIL_FROM`,
+ * `AUTH_EMAIL_FROM`), which is a sender, not somewhere anyone reads.
  */
-export const CONTACT_EMAIL = 'hello@ourfilm.app'
+export const CONTACT_EMAIL = 'support@ourfilm.app'
