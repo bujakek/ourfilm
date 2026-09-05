@@ -151,72 +151,50 @@ Guests are anonymous, so RLS allows insert only — see `ourfilm-supabase` for t
 
 ## Progress and retry
 
-**The queue is persistent, and this section used to say the opposite.** It read
-"manual retry only — automatic background/resumable upload is explicitly out of
-scope". That is no longer true and has not been since the upload-resilience
-change; the surrounding architecture is described under **The upload queue
-survives the tab** in `CLAUDE.md`.
+The camera file is written to IndexedDB (`lib/upload-store.ts`) when the
+shutter fires and deleted when `commit_shot` confirms. `lib/upload-queue.ts`
+drains one shot at a time, in capture order, and replays orphans on mount and
+on `visibilitychange` / `pageshow` / `online`. A drain that still owes work
+retries after `RETRY_MS`. Give up after four attempts or 24 hours — but only
+count attempts the server actually answered. `isConnectionFailure`
+(`lib/upload-failure.ts`) hands the attempt back for a dead connection, a
+teardown, or a refusal about the server rather than the photo; without it a
+forty-second outage deletes a frame that never left the device.
 
-What ships now:
+- **Compress once, store the master — but write the raw file first.** The row's
+  `blob` is the camera original for a second or two, then `compressForStorage`
+  replaces it and sets `compressed`. Persisting before the decode is the point
+  of the store: a 48MP HEIC is a ~50MB bitmap, and a guest tapping the shutter
+  again mid-compression backgrounds the tab holding it. Storing the master is
+  what keeps libheif off the resume path. `view` and `thumb` are derived from
+  the master at upload; the master goes up as it stands, so it never gains a
+  second generation.
+- **`takenAt`, `width` and `height` are scalars on the row.** The canvas round
+  trip strips EXIF — that is how GPS is removed — so once the master exists
+  there is nothing left to read them from. The ZIP export sorts on `taken_at`.
+- **Resume replays with the same capture id.** That id is the idempotency key.
+  Do not persist a photo id or a signed URL. Do not release a reservation
+  between retries — only after the client has exhausted the photo.
+- **Persistence is never a gate.** Store calls swallow; `put` is not awaited
+  on the capture path. Private mode is the old in-memory behaviour.
+- **Never await a network call without a timeout.** A dropped connection does
+  not reliably reject a `fetch`. `REQUEST_TIMEOUTS_MS` is the ceiling, and the
+  Storage PUT must see the abort signal so a retry does not leave the old
+  fetch alive.
+- **A failed shot stays on the strip.** The cell stays counted in
+  `outstanding` until `exhausted` or `refused`. Dropping it early un-gates the
+  shutter on the last frame. Only `ended` and `no_shots` drop the rest of the
+  queue.
 
-- **`lib/upload-store.ts`** writes the raw camera file to IndexedDB (via `idb`)
-  the instant the shutter fires — before decoding, before `reserve_shot`. The
-  row is deleted only once `commit_shot` confirms. Presence in the store _is_
-  the status; there is deliberately no status column.
-- **`lib/upload-queue.ts`** drains it one shot at a time, replays orphans left
-  by a killed tab on mount and on `visibilitychange` / `pageshow` / `online`,
-  and gives up after four attempts or 24 hours. Every dependency is injected,
-  which is why it is the one part of this pipeline with real unit tests.
-- **`lib/upload-retry.ts`** retries each render's PUT with jittered backoff
-  (`p-retry`), transient failures only.
-
-The queue also **re-arms itself** — a drain that leaves work owed schedules the
-next sweep, backing off 5s → 2min. Do not remove that in favour of the event
-listeners alone: they are all edges, and `online` fires when the interface comes
-up rather than when the connection works, so re-joining wifi produces one doomed
-attempt and then silence. That was a shipped bug, found on a laptop with the
-wifi toggled off and on.
-
-Three rules worth not rediscovering:
-
-- **Resume replays with the same idempotency key.** Never persist a photo id or
-  a signed upload URL — the tokens outlive nothing useful, and `reserve_shot`
-  already hands the same frame back for a repeated key.
-- **Classify errors by unwrapping.** `uploadToSignedUrl` returns its failure
-  rather than throwing it, and a dead connection arrives wrapped in a
-  `StorageUnknownError` whose real `TypeError` sits in `originalError`. A
-  `name === 'TypeError'` check is false for every real network failure and
-  fails completely silently.
-- **Persistence is never a gate.** Every store call swallows, `put` is not
-  awaited on the capture path, and Safari private mode simply gets the old
-  in-memory behaviour.
-- **Never await a network call here without a timeout.** A dropped connection
-  does not reliably reject a `fetch`; it hangs. One hung request used to wedge
-  the entire queue — including photos taken later on a working connection —
-  until the page was reloaded. `REQUEST_TIMEOUTS_MS` in `lib/upload-queue.ts` is
-  what stops that, and removing it brings the bug straight back.
-- **A failed-but-owed shot is deferred (`onDeferred`), not dropped.** The
-  cell stays and nothing says "try again" — the queue retries it. Dropping is
-  reserved for `refused` and `exhausted`. Removing the cell early also removes
-  it from `outstanding`, which un-gates the shutter on the last frame.
-- **Do not count an attempt that never left the device.** The attempt budget
-  retires a photo the server keeps rejecting; a guest walking out of wifi range
-  must not spend one. `isConnectionFailure` is the narrow test — a 500 counts,
-  a dead socket does not.
-
-Progress itself is still coarse and still byte-weighted: `uploadToSignedUrl`
-goes through `fetch`, which reports no upload progress, so the fraction moves as
-each of the three renders lands. Per-render retry is part of why — the thumbnail
-that already landed is not re-sent when the master fails, so the fraction never
-walks backwards.
+Progress is coarse and byte-weighted: `uploadToSignedUrl` reports none, so the
+fraction moves as each of the three renders lands.
 
 Other essentials:
 
 - Revoke every `URL.createObjectURL` preview in a cleanup effect.
-- The shutter never blocks on an upload. A roll of film does not stop you
-  pressing it because the last frame is still winding on.
+- The shutter never blocks on an upload.
 - Success state is the frame developing in the strip and the counter rolling
-  down — not a line of text. There is no success message on the guest screen.
+  down. There is no success message on the guest screen.
 
 ## Test on a real phone before shipping
 

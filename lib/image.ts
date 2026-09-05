@@ -4,6 +4,7 @@
 import 'client-only'
 
 import { readCaptureTime } from './exif'
+import type { StoredShot } from './upload-store'
 
 /**
  * Browser-side photo pipeline. Everything here runs on a guest's phone, on
@@ -224,6 +225,105 @@ async function encodeAt(
  * while another uploads, but two decodes at once will run mobile Safari out of
  * memory and take the tab with it.
  */
+/** The master, plus the two things the canvas is about to destroy. */
+export type CompressedCapture = {
+  /** 4096px at q0.92. These exact bytes become `storage_path`. */
+  blob: Blob
+  width: number
+  height: number
+  takenAt: Date | null
+}
+
+/**
+ * Compress one capture down to the single blob worth keeping.
+ *
+ * Run once, right after the shutter, and the result replaces the raw camera
+ * file in the upload store. Everything downstream — every retry, every resume
+ * after a reload — works from this and never touches the original again. That
+ * is what keeps libheif off the resume path: a 48MP HEIC decode is the slowest
+ * and most memory-hungry step in the product, and doing it once per photo
+ * instead of once per attempt is the whole point.
+ *
+ * `takenAt` comes back as a value rather than staying in the bytes because the
+ * canvas round trip strips EXIF — deliberately, that is how GPS is removed —
+ * so after this call there is nothing left to read it from.
+ */
+export async function compressForStorage(
+  file: File,
+): Promise<CompressedCapture> {
+  const takenAt = await readCaptureTime(file)
+  const bitmap = await decode(file)
+  try {
+    const { width, height } = scaledSize(bitmap, MAX_EDGE)
+    const blob = await encodeAt(bitmap, width, height, QUALITY)
+    return { blob, width, height, takenAt }
+  } finally {
+    bitmap.close()
+  }
+}
+
+/**
+ * The three renders for a shot the store is holding.
+ *
+ * A compressed row is the common path: the master goes up **as it stands**, so
+ * it gains no second generation and the print-ready promise is untouched, and
+ * only the lightbox and thumbnail renders are derived from it. Downscaling
+ * 4096 to 1600 averages away q0.92's artifacts, so that generation is not
+ * visible where it lands.
+ *
+ * A row that is still raw only happens when the tab died inside the seconds
+ * between the shutter and compression finishing, or when compression itself
+ * failed. It takes the original path, from the original bytes.
+ */
+export async function prepareStoredShot(
+  shot: Pick<
+    StoredShot,
+    'blob' | 'compressed' | 'takenAt' | 'name' | 'type' | 'lastModified'
+  >,
+): Promise<PreparedPhoto> {
+  if (!shot.compressed) {
+    return prepareForUpload(
+      new File([shot.blob], shot.name, {
+        type: shot.type,
+        lastModified: shot.lastModified,
+      }),
+    )
+  }
+
+  const full = shot.blob
+  const bitmap = await createImageBitmap(full)
+  try {
+    const { width, height } = scaledSize(bitmap, MAX_EDGE)
+
+    const viewSize = scaledSize(bitmap, VIEW_EDGE)
+    const view = await encodeAt(
+      bitmap,
+      viewSize.width,
+      viewSize.height,
+      VIEW_QUALITY,
+    )
+
+    const thumbSize = scaledSize(bitmap, THUMB_EDGE)
+    const thumb = await encodeAt(
+      bitmap,
+      thumbSize.width,
+      thumbSize.height,
+      THUMB_QUALITY,
+    )
+
+    return {
+      full,
+      view,
+      thumb,
+      width,
+      height,
+      takenAt: shot.takenAt ? new Date(shot.takenAt) : null,
+    }
+  } finally {
+    bitmap.close()
+  }
+}
+
 export async function prepareForUpload(file: File): Promise<PreparedPhoto> {
   // Before `decode`, and emphatically before the re-encode below, which is what
   // destroys it. Reading it afterwards would always return null.

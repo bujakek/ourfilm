@@ -261,97 +261,55 @@ than their own.
 
 ## The upload queue survives the tab (settled)
 
-A guest's captured photos are written to **IndexedDB the moment the shutter
-fires**, before decoding and before the first server call, and the row is
-deleted only once `commit_shot` has confirmed. `lib/upload-store.ts` holds the
-bytes, `lib/upload-queue.ts` holds the rules, and
-`components/event/guest-event-view.tsx` keeps only what is genuinely React —
-the developing cells, the object URLs, the counter and the words.
+Tapping the shutter hands the tab to the OS camera, and iOS reclaims a
+backgrounded Safari whenever it likes. There is no retake, so a photo that
+lived only in memory was a lost moment.
 
-This replaced an in-memory ref, and the ref was losing photos: tapping the
-shutter hands the screen to the OS camera, and iOS reclaims a backgrounded tab
-whenever it likes. There is no retake in this product, so that was not a lost
-upload, it was a lost moment.
+The camera file is written to IndexedDB (`lib/upload-store.ts`) the moment the
+shutter fires, and deleted once `commit_shot` confirms. `lib/upload-queue.ts`
+drains one shot at a time, in capture order, and replays whatever a killed tab
+left behind. Persistence swallows: private mode is the old in-memory behaviour.
 
-- **Resume replays; it does not resume.** A stored shot keeps its bytes and its
-  capture id and **nothing else** — no photo id, no signed URLs. Coming back
-  means calling `reserve_shot` again with the same id, because that id is the
-  idempotency key: the RPC looks it up and hands back the frame it already
-  granted rather than spending a second one. Persisting the signed URLs would
-  have been the obvious shape and is the wrong one — the tokens expire in two
-  hours, the pending reservation behind them in ten minutes, and a replay gets
-  fresh ones for free. The whole path is replay-safe: reserve returns the same
-  row whether it is pending or already committed, the PUTs upsert, and
-  `commit_shot` re-commits without complaint.
-- **A network failure does not look like a network error.**
-  `uploadToSignedUrl` _returns_ its error, and a dead connection arrives as a
-  `StorageUnknownError` whose real `TypeError` is one level down in
-  `originalError`. The obvious `error.name === 'TypeError'` check is false for
-  every genuine failure, and getting it wrong throws nothing and logs nothing —
-  retries just never fire. `lib/upload-retry.ts` unwraps first, and
-  `tests/unit/upload-retry.test.ts` pins it.
-- **Retries are per render, not per shot**, so a dead master does not re-send
-  the thumbnail that already landed, and `onProgress` stays monotonic.
-- **Attempts are counted on the record, written before the attempt runs.**
-  Counting afterwards never counts the failure that matters — a decode that runs
-  the tab out of memory takes the page with it — so the entry would retry
-  forever and crash the tab on every load. Four attempts, or 24 hours, and the
-  bytes are dropped.
-- **A refusal deletes every abandoned row, not just its own.** Left behind, the
-  next visibility change restores them all, refuses them all, and burns a
-  reserve round trip per shot per reactivation. That is the difference between a
-  safety net and a battery drain.
-- **A shot that failed but is still owed is _deferred_, never dropped.** It
-  stays on the strip at zero progress, stays counted in `outstanding` — so a
-  guest on their last frame cannot shoot over a photo that is merely waiting —
-  and is held in memory as well as the store, so a browser with no store
-  (private mode) still has it. It shipped the other way at first: a first
-  failure removed the cell and flashed "try again" for a photo the queue was
-  about to retry itself, and that lie was the most visible symptom of the
-  reconnect bug. Only `exhausted` and `refused` remove a cell.
-- **A recovered shot is silent.** It reappears as an ordinary developing cell,
-  and `not_started` / `ended` / `no_shots` say nothing when they refuse one:
-  "Shooting has ended." is true and unhelpful when the app is quietly cleaning up
-  yesterday's failed byte. The three actionable refusals still speak.
-- **Persistence is best-effort and never a gate.** Every export of
-  `lib/upload-store.ts` swallows, `put` is never awaited on the capture path,
-  and a failed open is remembered as "no". A guest in private mode gets exactly
-  the behaviour this product had before the store existed.
-- **Draining stays one shot at a time**, for the reason it always was: two 2MB
-  PUTs racing on venue wifi finish later than the same two in a row.
-- **The queue re-arms itself, and this was missing at first.** Every trigger
-  was an _edge_ — mount, `visibilitychange`, `pageshow`, `online` — and
-  `online` fires when the interface comes up rather than when the connection
-  works. Re-joining wifi therefore produced exactly one doomed attempt and then
-  silence until the guest reloaded, which is how the gap was found. A drain
-  that leaves work owed now schedules its own sweep (`SWEEP_DELAYS_MS`,
-  5s→2min, backing off), and a drain that ran and owes nothing cancels it. A
-  drain that ran _nothing_ decides nothing either way — an empty queue is not
-  evidence of an empty store.
-- **Every network step has a timeout, and this is load-bearing.** A dropped
-  connection does not reliably reject a `fetch` — turning wifi off on a laptop
-  commonly leaves it pending indefinitely. Without a ceiling, one hung request
-  wedges the whole uploader: `runCapture` never returns, the drain loop never
-  advances, and since the sweep is armed _after_ that loop it can never be armed
-  at all. Worse, `drain()` hands back the running loop, so every photo taken
-  afterwards — on a connection that is working again — queues behind the hung
-  one and sits in the store untouched until a reload. That was the shipped bug,
-  and the retry clock above could not fire because of it. `REQUEST_TIMEOUTS_MS`
-  is the ceiling; a timeout reads as a connection failure, so it is refunded and
-  retried like any other.
-- **An attempt that never left the device is refunded.** The bump is
-  write-ahead so a crash mid-attempt still counts, but a connection failure —
-  `isConnectionFailure`, narrower than the transient check, since a 500 did
-  reach the server — hands the attempt back, and `resume()` does not even try
-  while `navigator.onLine` is false. Without that, four bad reconnects would
-  delete a photo that had never once been sent.
+**Compress once, then store the master — and write the raw file first.** The
+row's `blob` is the camera original for a second or two, then
+`compressForStorage` replaces it with the 4096px master and sets `compressed`.
+Order matters both ways round. Persisting before the decode is the point of the
+store: a 48MP HEIC is a ~50MB bitmap, and a guest who taps the shutter again
+mid-compression backgrounds the tab holding it, which is exactly what iOS
+reclaims. And storing the master rather than the original is what keeps libheif
+off the resume path — every retry used to decode the HEIC again. `view` and
+`thumb` are derived from the master at upload time; the master itself goes up as
+it stands, so it gains no second generation and the print-ready promise holds.
 
-Known edge, flagged rather than fixed: `reserve_shot`'s idempotency branch
-returns before the `no_shots` check, so an orphan resumed more than ten minutes
-after capture commits even if the guest has since shot to the limit —
-`shots_per_participant + 1`, once per orphan. Pre-existing, since a manual retry
-after ten minutes did the same; persistence makes it routine rather than rare.
-The fix is server-side.
+`takenAt`, `width` and `height` are stored as scalars beside the blob because
+the canvas round trip strips EXIF — that is how GPS is removed — so once the
+master exists there is nothing left to read them from. `taken_at` is what the
+host's ZIP export sorts the whole album by, and a resumed shot without it lands
+at the bottom of the wedding.
+
+Resume replays with the same capture id — that id is `reserve_shot`'s
+idempotency key. Do not persist photo ids or signed URLs; a replay gets fresh
+ones. Do not release a reservation between retries.
+
+A failed shot stays on the strip and is retried after `RETRY_MS`, and also on
+`visibilitychange` / `pageshow` / `online`. Every network step has a timeout:
+a hung `fetch` otherwise wedges the whole uploader. Four attempts or 24 hours
+and the bytes are dropped. `ended` and `no_shots` drop the rest of the queue;
+other refusals wait and retry.
+
+**The attempt budget is only ever spent on an answer from the server**, and
+`lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten
+seconds is forty seconds — a marquee, a lift, a walk to the car park — so
+charging for requests that never left the phone deleted the photo outright.
+A connection failure, a teardown (`stop()` runs on unmount) and a refusal about
+the server rather than the photo (`uploads_disabled`, `storage_limit`, …) all
+hand the attempt back; a 5xx does not, or a photo Storage will never accept
+would retry for a day. Mind the trap: `uploadToSignedUrl` returns a
+`StorageUnknownError` with the real `TypeError` one level down in
+`originalError`, so the obvious `name === 'TypeError'` check is false for every
+genuine failure — and getting it wrong throws nothing and logs nothing, which
+is how it shipped. Both halves are pinned in `tests/unit/upload-failure.test.ts`
+and in the queue suite; sabotaging either direction turns them red.
 
 ## The create flow is four full-screen questions (settled)
 
