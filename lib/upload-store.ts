@@ -25,7 +25,7 @@ export type StoredShot = {
   eventId: string
   /**
    * The bytes to upload from: the raw camera file at first, replaced by the
-   * 4096px master as soon as compression lands. `compressed` says which.
+   * 3200px master as soon as compression lands. `compressed` says which.
    *
    * The raw write happens before any decode, because that is the window the
    * store exists for — a guest who taps the shutter again while the previous

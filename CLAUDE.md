@@ -380,7 +380,7 @@ left behind. Persistence swallows: private mode is the old in-memory behaviour.
 
 **Compress once, then store the master — and write the raw file first.** The
 row's `blob` is the camera original for a second or two, then
-`compressForStorage` replaces it with the 4096px master and sets `compressed`.
+`compressForStorage` replaces it with the 3200px master and sets `compressed`.
 Order matters both ways round. Persisting before the decode is the point of the
 store: a 48MP HEIC is a ~50MB bitmap, and a guest who taps the shutter again
 mid-compression backgrounds the tab holding it, which is exactly what iOS
@@ -776,11 +776,11 @@ and photo id in the system.
 
 | Render         | Size          | Used by                               |
 | -------------- | ------------- | ------------------------------------- |
-| `storage_path` | 4096px / q92  | ZIP export, print. Nothing on screen. |
+| `storage_path` | 3200px / q90  | ZIP export, print. Nothing on screen. |
 | `view_path`    | ~1600px / q85 | Lightbox                              |
 | `thumb_path`   | ~400px / q80  | Gallery grid, moderation grid         |
 
-Both downscales exist because of measured cost on a phone, not tidiness. Tiling 4096px files at 200px would have one guest pull over a gigabyte to scroll a 600-photo album. And the lightbox showing the master decoded 12.6 megapixels — roughly 50MB of bitmap — per swipe, to fill a screen about 1200px across; that was the second-largest source of device heat in the product.
+Both downscales exist because of measured cost on a phone, not tidiness. Tiling master files at 200px would have one guest pull the better part of a gigabyte to scroll a 600-photo album. And the lightbox showing the master decoded the whole thing — 12.6 megapixels and roughly 50MB of bitmap under the old 4096px cap — per swipe, to fill a screen about 1200px across; that was the second-largest source of device heat in the product.
 
 ## Billing (settled)
 
@@ -911,7 +911,7 @@ now, in the order it was built:
 
 Compress **client-side before upload**, in the browser, straight to Supabase Storage:
 
-- **4096px bounding box, JPEG quality 0.90–0.92.** Below ~85% JPEG drops data exponentially and skin tones go muddy in dim venues; 92% is visually indistinguishable and keeps a 48MP iPhone photo at roughly 1.5–2.2MB instead of 8MB. Print-ready for the couple, fast on congested venue wifi.
+- **3200px bounding box, JPEG quality 0.90.** About 7.7MP for a 4:3 frame: A4 at ~270ppi and a full-bleed 30x30cm photo-book page at 240ppi, which is every print a wedding album realistically gets. Below ~85% JPEG drops data exponentially and skin tones go muddy in dim venues; 90% is visually indistinguishable from higher and keeps a 48MP iPhone photo at roughly 1.5–2.5MB instead of 8MB. Print-ready for the couple, fast on congested venue wifi. **It was 4096px at q0.92 until September 2026** — nearly a 12MP phone's native frame, at a size nobody prints, and the master was the PUT that timed out on slow venue wifi. Events created before then keep their larger masters; nothing reads the dimensions.
 - **HEIC must be converted in the browser.** Only Safari can read HEIC; Chrome, Edge, and desktop break on it. Use `heic-to` (lightweight, libheif 1.18) rather than `heic2any` (600KB+ of WASM), and **dynamically import it only when an HEIC file is detected**.
 
 Full pipeline in `.cursor/skills/ourfilm-upload/SKILL.md`.
@@ -926,7 +926,7 @@ claims are live and load-bearing:
   wrong — that section only ever held a heading and one sentence — and became
   wronger when the marketing page stopped rendering it.
 - **High-resolution, print-ready photos** (`photo-quality.tsx`, FAQ) — satisfied
-  by the 4096px/92% policy above. The pitch is "chat apps crush your photos, we
+  by the 3200px/90% policy above. The pitch is "chat apps crush your photos, we
   don't", which stays true; never re-add claims of literally uncompressed
   originals
 - **Private, unindexed album** (FAQ) — event routes are `noindex`, and the

@@ -16,7 +16,7 @@ import { prepareForUpload } from './image'
  * single image a host picks once; a parallel implementation that could drift
  * from the real one would cost more.
  *
- * Takes the ~1600px render, not the 4096px master. A cover is displayed at
+ * Takes the ~1600px render, not the 3200px master. A cover is displayed at
  * roughly a phone's width and nothing prints it.
  */
 export async function prepareCoverImage(file: File): Promise<File> {

@@ -11,8 +11,12 @@ import type { StoredShot } from './upload-store'
  * venue wifi, with whatever memory the device has left.
  *
  * See `.cursor/skills/ourfilm-upload/SKILL.md` for why the numbers are what
- * they are. The short version: 4096px at q0.92 stays print-ready while cutting
- * a 48MP iPhone photo from ~8MB to under ~2.5MB.
+ * they are. The short version: 3200px at q0.90 is about 7.7MP — A4 at ~270ppi
+ * and a full-bleed 30x30cm photo-book page at 240ppi — while cutting a 48MP
+ * iPhone photo from ~8MB to roughly 1.5–2.5MB. It was 4096px at q0.92 until
+ * September 2026; that stored a 12MP phone frame almost natively, at a size
+ * nobody prints, and the master's PUT was the one timing out on venue wifi.
+ * Events from before then keep their larger masters.
  *
  * This runs on the main thread. Moving it to a worker was tried and reverted:
  * Turbopack (Next 16.3) does not compile `new Worker(new URL('./x.ts',
@@ -27,11 +31,12 @@ import type { StoredShot } from './upload-store'
  * trusting any future attempt.
  */
 
-/** Long-edge cap. Also keeps the canvas under iOS Safari's ~16.7M pixel
- *  ceiling: a 4:3 photo at 4096 lands near 12.6M. Don't raise without
- *  rechecking that. */
-const MAX_EDGE = 4096
-const QUALITY = 0.92
+/** Long-edge cap. A 4:3 photo lands at 3200x2400, 7.7M pixels — well under
+ *  iOS Safari's ~16.7M canvas ceiling. Don't raise past 4096 without
+ *  rechecking that. Below ~2500 the 1600px view render would no longer earn
+ *  its keep as a separate file. */
+const MAX_EDGE = 3200
+const QUALITY = 0.9
 
 /** Gallery tile. The grid must never load the full image — see CLAUDE.md. */
 const THUMB_EDGE = 400
@@ -39,12 +44,12 @@ const THUMB_QUALITY = 0.8
 
 /**
  * Lightbox render. The grid was always careful to serve the thumb; the
- * lightbox was not, and opening a photo used to decode the full 12.6MP master
- * into ~50MB of bitmap on the phone, once per swipe. A phone screen is around
- * 1200px on its long edge at 3x, so 1600px covers it with room to pinch-zoom
- * and costs an eighth of the pixels.
+ * lightbox was not, and opening a photo used to decode the full master (12.6MP
+ * at the time, ~50MB of bitmap) on the phone, once per swipe. A phone screen is
+ * around 1200px on its long edge at 3x, so 1600px covers it with room to
+ * pinch-zoom and costs a quarter of the pixels of a 3200px master.
  *
- * Quality is lower than the master's 0.92 on purpose: this render is looked at
+ * Quality is lower than the master's 0.90 on purpose: this render is looked at
  * on a phone and thrown away, never printed. `storage_path` remains the
  * print-ready artefact and is what the ZIP export hands the couple.
  */
@@ -128,7 +133,7 @@ function scaledSize(bitmap: ImageBitmap, maxEdge: number) {
  * the important part: Safari has historically accepted `resizeWidth` and
  * `resizeHeight` while ignoring `resizeQuality`, and an implementation that
  * ignored the size options too would silently hand back the full-size bitmap —
- * which the encoder would happily turn into a 4096px "thumbnail" and put in
+ * which the encoder would happily turn into a 3200px "thumbnail" and put in
  * the gallery grid. Verify, never assume.
  */
 async function resizedBitmap(
@@ -219,7 +224,7 @@ async function encodeAt(
  * Decode once, encode three times. Producing the smaller renders from the
  * bitmap already in memory costs a resize each rather than another decode of a
  * large file — which is why adding the lightbox render is close to free here
- * and saves a full 12.6MP decode on every phone that later views the photo.
+ * and saves a full-master decode on every phone that later views the photo.
  *
  * Call this **sequentially** across a selection. One photo may be preparing
  * while another uploads, but two decodes at once will run mobile Safari out of
@@ -227,7 +232,7 @@ async function encodeAt(
  */
 /** The master, plus the two things the canvas is about to destroy. */
 export type CompressedCapture = {
-  /** 4096px at q0.92. These exact bytes become `storage_path`. */
+  /** 3200px at q0.90. These exact bytes become `storage_path`. */
   blob: Blob
   width: number
   height: number
@@ -268,7 +273,7 @@ export async function compressForStorage(
  * A compressed row is the common path: the master goes up **as it stands**, so
  * it gains no second generation and the print-ready promise is untouched, and
  * only the lightbox and thumbnail renders are derived from it. Downscaling
- * 4096 to 1600 averages away q0.92's artifacts, so that generation is not
+ * 3200 to 1600 averages away q0.90's artifacts, so that generation is not
  * visible where it lands.
  *
  * A row that is still raw only happens when the tab died inside the seconds
@@ -355,11 +360,11 @@ async function prepareFromBitmap(
     // ZIP export hands every master to the host, so an untouched original
     // means a guest hands over where they were standing along with the photo.
     //
-    // This is the common case, not an edge one — a phone JPEG at 4032px is
-    // under the cap, so nothing is resized, and re-encoding an already
-    // compressed JPEG at q0.92 usually produces a slightly larger file
-    // (measured: 1.35MB in, 1.40MB out). Roughly 4% more bytes buys a
-    // guarantee that no location data leaves the device.
+    // The guarantee has to hold for small files too: a photo already under
+    // the cap is not resized, and re-encoding an already compressed JPEG at
+    // this quality can produce a slightly larger file (measured at the old
+    // 4096/q0.92 settings: 1.35MB in, 1.40MB out). A few percent more bytes
+    // buys a guarantee that no location data leaves the device.
     const full = await encodeAt(bitmap, width, height, QUALITY)
 
     const viewSize = scaledSize(bitmap, VIEW_EDGE)
