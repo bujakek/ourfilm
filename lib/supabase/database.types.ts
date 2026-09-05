@@ -591,6 +591,7 @@ export type Database = {
         Args: { p_event_id: string; p_token_hash: string }
         Returns: {
           frame_index: number
+          photo_id: string
           thumb_path: string
         }[]
       }
