@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { ReactNode } from 'react'
 
+import { PostHogLoader } from '@/components/analytics/posthog-loader'
 import { bodyClassName, siteMetadata, siteViewport } from '@/lib/document'
 import { defaultLocale, localeTag } from '@/lib/i18n'
 import '../globals.css'
@@ -52,6 +53,9 @@ export default function ProductRootLayout({
       <body className={bodyClassName}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        {/* Product analytics — see lib/telemetry.ts. Loads only where
+            NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is set, after the page has painted. */}
+        <PostHogLoader />
       </body>
     </html>
   )

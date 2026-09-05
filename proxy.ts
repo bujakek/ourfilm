@@ -4,7 +4,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Auth gate for the admin area.
+ * Auth gate for the admin area, and the trailing-slash redirect Next no longer
+ * does on its own.
  *
  * Next 16 renamed middleware: this file must be `proxy.ts` and the handler must
  * be `proxy`. A `middleware.ts` here would be silently ignored — no warning, no
@@ -38,7 +39,41 @@ import { NextResponse, type NextRequest } from 'next/server'
  * redirect and discarding the call. Its own page comment has the rest.
  */
 const PUBLIC_ADMIN_PATHS = new Set(['/host/events/new'])
+
+/**
+ * The one prefix that keeps its trailing slash.
+ *
+ * `next.config.mjs` sets `skipTrailingSlashRedirect` so PostHog's `/ingest/e/`
+ * POSTs reach the rewrite instead of a 308. That switch is global, so the
+ * redirect every other URL used to get from Next — `/hu/arak/` → `/hu/arak` —
+ * is issued here instead, with the same status. The matcher's second entry is
+ * what brings those requests through this file at all.
+ */
+const KEEPS_TRAILING_SLASH = '/ingest/'
+
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  if (
+    path.length > 1 &&
+    path.endsWith('/') &&
+    !path.startsWith(KEEPS_TRAILING_SLASH)
+  ) {
+    // A plain `URL`, not `nextUrl.clone()`: `NextURL` remembers that the
+    // request came in with a trailing slash and puts it back when it formats
+    // itself, whatever `pathname` was set to — which turned this into a
+    // redirect to the very same URL. Verified with `curl -I /hu/arak/`.
+    const target = new URL(request.url)
+    target.pathname = path.replace(/\/+$/, '')
+    return NextResponse.redirect(target, 308)
+  }
+
+  // Everything below is the host gate. The trailing-slash matcher also brings
+  // marketing and guest URLs here, and those must pass through untouched — an
+  // auth check on `/hu/` would be the exact failure the matcher note above
+  // warns about.
+  if (!path.startsWith('/host')) return NextResponse.next()
+
   const { url, anonKey } = publicSupabaseEnv()
 
   // Rebuilt whenever Supabase rotates cookies, so a refreshed session is
@@ -70,7 +105,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const path = request.nextUrl.pathname
   const isLoginRoute = path.startsWith('/host/login')
   const isPublicRoute = PUBLIC_ADMIN_PATHS.has(path)
 
@@ -111,5 +145,8 @@ function redirectWithin(request: NextRequest, pathname: string) {
 }
 
 export const config = {
-  matcher: ['/host/:path*'],
+  // `/host/:path*` is the auth gate. `/:path*/` is every URL with a trailing
+  // slash, for the redirect at the top of `proxy` — and nothing else, so a
+  // signed-out visitor on `/` still gets a 200.
+  matcher: ['/host/:path*', '/:path*/'],
 }

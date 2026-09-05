@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { isConnectionFailure } from '@/lib/upload-failure'
+import { failureClass, isConnectionFailure } from '@/lib/upload-failure'
 
 /** What supabase builds when the server answered. */
 const api = (status: number) => ({
@@ -82,5 +82,27 @@ describe('isConnectionFailure', () => {
 
   it.each(answered)('spends the attempt: %s', (_name, error) => {
     expect(isConnectionFailure(error)).toBe(false)
+  })
+})
+
+describe('naming a failure', () => {
+  // Low cardinality on purpose: these become bars on a chart.
+  it('names the queue deadlines and HTTP statuses', () => {
+    expect(failureClass(new DOMException('slow', 'TimeoutError'))).toBe(
+      'timeout',
+    )
+    expect(failureClass(new DOMException('gone', 'AbortError'))).toBe('aborted')
+    expect(failureClass(Object.assign(new Error('x'), { status: 500 }))).toBe(
+      'http_500',
+    )
+    expect(failureClass({ statusCode: '413', message: 'too large' })).toBe(
+      'http_413',
+    )
+  })
+
+  it('names the commit refusal and falls back to the error name', () => {
+    expect(failureClass(new Error('commit refused'))).toBe('commit_refused')
+    expect(failureClass(new RangeError('oom'))).toBe('rangeerror')
+    expect(failureClass('nope')).toBe('unknown')
   })
 })

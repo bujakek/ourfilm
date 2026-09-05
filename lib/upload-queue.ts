@@ -2,7 +2,7 @@ import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
 import type { ShotRefusal } from '@/lib/capture'
 import type { CompressedCapture, PreparedPhoto } from '@/lib/image'
 import type { SignedUpload } from '@/lib/upload-shot'
-import { isConnectionFailure } from '@/lib/upload-failure'
+import { failureClass, isConnectionFailure } from '@/lib/upload-failure'
 import type { StoredShot, UploadStore } from '@/lib/upload-store'
 
 /**
@@ -70,6 +70,34 @@ export type UploadQueueHandlers = {
   onDropped(id: string, reason: 'refused' | 'exhausted'): void
   onRefusal(refusal: ShotRefusal): void
   /**
+   * An attempt was handed back: the request never reached the server
+   * (`connection`) or the server answered about itself rather than the photo
+   * (`refusal`). Reported so a real event can say how often a phone at a
+   * party could not get through — the number every retry policy above is a
+   * guess about until it is measured. `attempts` is the count *after* the
+   * refund.
+   */
+  onRefunded?(id: string, cause: RefundCause, attempts: number): void
+  /**
+   * The server answered and the answer was a failure: a timeout, a 5xx, a
+   * refused commit. Reported per attempt, with the count *after* the bump, so
+   * the shape of a bad night is visible before anything is exhausted.
+   */
+  onFailure?(id: string, failure: string, attempts: number): void
+  /**
+   * `settle` finished: the raw file is on disk and either the master replaced
+   * it or compression failed and the raw row stays. The `File` is passed so the
+   * screen can say what kind of input it was without the queue knowing.
+   */
+  onPrepared?(id: string, file: File, outcome: PreparedOutcome): void
+  /**
+   * A stored row was thrown away on resume without ever being tried in this
+   * tab. `expired` is the age policy, `exhausted` the attempt budget, `empty` a
+   * zero-byte blob. Each is a photo this device lost; nobody is told on screen,
+   * because there is nothing they could do, but somebody should count them.
+   */
+  onDiscarded?(id: string, reason: DiscardReason, ageMs: number): void
+  /**
    * A shot recovered from a killed tab, ready for its developing cell.
    *
    * A `Blob` rather than a `File` because in the common case it is the JPEG
@@ -94,6 +122,12 @@ type QueueItem = {
    */
   settled: Promise<void> | null
 }
+
+export type RefundCause = 'connection' | 'refusal'
+export type DiscardReason = 'expired' | 'exhausted' | 'empty'
+export type PreparedOutcome =
+  | { ok: true; ms: number; bytes: number; width: number; height: number }
+  | { ok: false; ms: number; error: string }
 
 export type UploadQueue = {
   enqueue(id: string, file: File, capturedAt: number): void
@@ -137,12 +171,18 @@ export function createUploadQueue({
    * The cost of writing ahead is that a failure the server never saw counts
    * too. This is the correction, and it is applied only to that case.
    */
-  async function refund(item: QueueItem) {
+  async function refund(item: QueueItem, cause?: RefundCause) {
     item.shot.attempts = Math.max(0, item.shot.attempts - 1)
     // Safe against resurrection: every caller still owns the row. The paths
     // that delete it — commit, exhaustion, a terminal refusal — all return
     // without coming back through here.
     await deps.store.put(item.shot)
+    // A teardown refund has no cause: the page is going away and there is
+    // nobody left to tell.
+    if (cause) {
+      const attempts = item.shot.attempts
+      notify(() => handlers.onRefunded?.(item.shot.id, cause, attempts))
+    }
   }
 
   function enqueue(id: string, file: File, capturedAt: number) {
@@ -184,6 +224,7 @@ export function createUploadQueue({
    * every resume works from a ~2.2MB JPEG and libheif is never loaded again.
    */
   async function settle(item: QueueItem, file: File) {
+    const started = clock()
     try {
       // Both writes and the decode sit under one catch: this promise is
       // awaited on the capture path, and a rejection there would surface as a
@@ -199,11 +240,25 @@ export function createUploadQueue({
       item.shot.height = master.height
       item.shot.takenAt = master.takenAt?.toISOString() ?? null
       await deps.store.put(item.shot)
+      const outcome: PreparedOutcome = {
+        ok: true,
+        ms: clock() - started,
+        bytes: master.blob.size,
+        width: master.width,
+        height: master.height,
+      }
+      notify(() => handlers.onPrepared?.(item.shot.id, file, outcome))
     } catch (error) {
       // Leave the row exactly as it is. `prepare` handles an uncompressed shot
       // by running the original pipeline, so a failure here costs a decode per
       // attempt rather than the photo.
       console.error('Preparing a capture failed', error)
+      const outcome: PreparedOutcome = {
+        ok: false,
+        ms: clock() - started,
+        error: failureClass(error),
+      }
+      notify(() => handlers.onPrepared?.(item.shot.id, file, outcome))
     }
   }
 
@@ -268,8 +323,11 @@ export function createUploadQueue({
 
       for (const stored of await deps.store.listByEvent(eventId)) {
         if (claimed.has(stored.id)) continue
-        if (!survives(stored, at)) {
+        const discard = discardReason(stored, at)
+        if (discard) {
           await deps.store.remove(stored.id)
+          const age = at - stored.capturedAt
+          notify(() => handlers.onDiscarded?.(stored.id, discard, age))
           continue
         }
         claimed.add(stored.id)
@@ -294,12 +352,11 @@ export function createUploadQueue({
     void drain()
   }
 
-  function survives(stored: StoredShot, at: number) {
-    return (
-      stored.blob.size > 0 &&
-      stored.attempts < MAX_ATTEMPTS &&
-      at - stored.capturedAt <= MAX_AGE_MS
-    )
+  function discardReason(stored: StoredShot, at: number): DiscardReason | null {
+    if (stored.blob.size === 0) return 'empty'
+    if (stored.attempts >= MAX_ATTEMPTS) return 'exhausted'
+    if (at - stored.capturedAt > MAX_AGE_MS) return 'expired'
+    return null
   }
 
   /**
@@ -405,7 +462,7 @@ export function createUploadQueue({
         // photo. Spending the budget here retires a perfectly good shot for the
         // duration of an ops kill switch — and poisons its stored row, so the
         // next page load discards it on sight.
-        await refund(item)
+        await refund(item, 'refusal')
         notify(() => handlers.onProgress(shot.id, 0))
         notify(() => handlers.onRefusal(reserved.refusal))
         return 'retry'
@@ -456,7 +513,12 @@ export function createUploadQueue({
       // Nothing left the device — no signal, or it dropped mid-request. Four
       // bad reconnects must not delete a photo that was never once sent.
       const unsent = isConnectionFailure(error)
-      if (unsent) await refund(item)
+      if (unsent) await refund(item, 'connection')
+      else {
+        const failure = failureClass(error)
+        const attempts = shot.attempts
+        notify(() => handlers.onFailure?.(shot.id, failure, attempts))
+      }
 
       if (!unsent && shot.attempts >= MAX_ATTEMPTS) {
         if (await deps.store.remove(shot.id)) claimed.delete(shot.id)

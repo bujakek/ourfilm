@@ -44,6 +44,42 @@
  * message is unpleasant and unavoidable: matching `TypeError` alone would
  * refund genuine bugs for ever, and the photo would never retire.
  */
+/**
+ * A short, low-cardinality name for a failure the server *did* answer, for
+ * telemetry. `timeout` and `aborted` are the queue's own deadlines; `http_500`
+ * is Storage or the action; `commit_refused` is `commit_shot` saying no. The
+ * rest fall back to the error's own name, lowercased, so a new failure shows
+ * up as a new bar rather than as `unknown`.
+ */
+export function failureClass(error: unknown): string {
+  if (error instanceof DOMException || isNamed(error)) {
+    const name = String((error as { name?: unknown }).name ?? '')
+    if (name === 'TimeoutError') return 'timeout'
+    if (name === 'AbortError') return 'aborted'
+  }
+  const status = statusOf(error)
+  if (status !== null) return `http_${status}`
+  if (error instanceof Error) {
+    if (error.message === 'commit refused') return 'commit_refused'
+    return error.name ? error.name.toLowerCase() : 'error'
+  }
+  return 'unknown'
+}
+
+function isNamed(error: unknown): error is { name: unknown } {
+  return typeof error === 'object' && error !== null && 'name' in error
+}
+
+function statusOf(error: unknown): number | null {
+  if (typeof error !== 'object' || error === null) return null
+  for (const key of ['status', 'statusCode'] as const) {
+    const value = (error as Record<string, unknown>)[key]
+    if (typeof value === 'number') return value
+    if (typeof value === 'string' && /^\d{3}$/.test(value)) return Number(value)
+  }
+  return null
+}
+
 export function isConnectionFailure(error: unknown): boolean {
   // The queue's own ceiling on a hung request, thrown with the shape a browser
   // uses. A request that never answered never got an answer to spend.

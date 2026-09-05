@@ -132,6 +132,10 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
     onConfirmed: vi.fn(),
     onDropped: vi.fn(),
     onRefusal: vi.fn(),
+    onRefunded: vi.fn(),
+    onFailure: vi.fn(),
+    onPrepared: vi.fn(),
+    onDiscarded: vi.fn(),
     onRestored: vi.fn(),
   }
   return { deps, handlers, now, sweeps }
@@ -478,6 +482,88 @@ describe('the drain guard', () => {
   })
 })
 
+describe('what the queue reports', () => {
+  // Telemetry hooks. None of these changes what happens to a photo; each one
+  // is a fact the queue already knew and nobody was told.
+
+  it('reports a prepared capture with its size and timing', async () => {
+    const h = harness()
+    const q = queueFor(h)
+    const input = file()
+    q.enqueue('shot-1', input, NOW)
+    await q.drain()
+
+    expect(h.handlers.onPrepared).toHaveBeenCalledWith(
+      'shot-1',
+      input,
+      expect.objectContaining({
+        ok: true,
+        bytes: master.blob.size,
+        width: master.width,
+        height: master.height,
+      }),
+    )
+  })
+
+  it('reports a failed compression without losing the shot', async () => {
+    const h = harness({
+      compress: vi.fn(async () => {
+        throw new RangeError('out of memory')
+      }),
+    })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onPrepared).toHaveBeenCalledWith(
+      'shot-1',
+      expect.anything(),
+      expect.objectContaining({ ok: false, error: 'rangeerror' }),
+    )
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
+      'shot-1',
+      expect.any(Number),
+    )
+  })
+
+  it('names each failure the server answered with', async () => {
+    const h = harness({
+      upload: vi.fn(async () => {
+        throw Object.assign(new Error('HTTP 503'), { status: 503 })
+      }),
+    })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onFailure).toHaveBeenCalledWith('shot-1', 'http_503', 1)
+    // A connection failure is a refund, never a failure.
+    expect(h.handlers.onFailure).toHaveBeenCalledOnce()
+  })
+
+  it('counts the rows it throws away on resume', async () => {
+    await orphan({ id: 'old', capturedAt: NOW - MAX_AGE_MS - 1 })
+    await orphan({ id: 'spent', attempts: MAX_ATTEMPTS })
+    await orphan({ id: 'fine' })
+    const h = harness()
+    const q = queueFor(h)
+    await q.resume()
+
+    expect(h.handlers.onDiscarded).toHaveBeenCalledWith(
+      'old',
+      'expired',
+      MAX_AGE_MS + 1,
+    )
+    expect(h.handlers.onDiscarded).toHaveBeenCalledWith(
+      'spent',
+      'exhausted',
+      expect.any(Number),
+    )
+    expect(h.handlers.onDiscarded).toHaveBeenCalledTimes(2)
+    expect(h.handlers.onRestored).toHaveBeenCalledOnce()
+  })
+})
+
 describe('compressing a capture', () => {
   it('writes the raw file before it decodes anything', async () => {
     // The order this whole feature turns on. A guest who taps the shutter again
@@ -672,6 +758,13 @@ describe('an attempt the server never saw', () => {
 
     const [row] = await uploadStore.listByEvent(EVENT)
     expect(row.attempts).toBe(0)
+    // And the refund is reported, with the count as it stands afterwards —
+    // this is the number that says how often a phone could not get through.
+    expect(h.handlers.onRefunded).toHaveBeenCalledWith(
+      'shot-1',
+      'connection',
+      0,
+    )
   })
 
   it('still retires a photo the server keeps refusing', async () => {
@@ -753,6 +846,13 @@ describe('an attempt the server never saw', () => {
       await q.drain()
     }
     expect(await stored()).toEqual(['shot-1'])
+    // Every pass reported its refund as a server answer, never as an outage.
+    expect(h.handlers.onRefunded).toHaveBeenCalledWith('shot-1', 'refusal', 0)
+    expect(h.handlers.onRefunded).not.toHaveBeenCalledWith(
+      'shot-1',
+      'connection',
+      expect.anything(),
+    )
 
     // The kill switch comes off and the guest reopens the page.
     const back = harness()

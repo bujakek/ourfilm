@@ -2,6 +2,8 @@ import 'client-only'
 
 import { openDB, type IDBPDatabase } from 'idb'
 
+import { track } from '@/lib/telemetry'
+
 /**
  * Camera files this device still owes the server.
  *
@@ -86,20 +88,37 @@ export type UploadStore = {
 let handle: Promise<IDBPDatabase | null> | null = null
 let warned = false
 
-function warnOnce(error: unknown) {
+/**
+ * Where the store gave up. Reported once per page: the first failure is the
+ * one that decided whether this device's photos survive a reload, and the
+ * rest follow from it. `missing` is a browser with no IndexedDB at all,
+ * `open_timeout` one that never answered, `blocked` an older tab holding a
+ * different schema.
+ */
+type StoreStage =
+  'missing' | 'open' | 'open_timeout' | 'blocked' | 'put' | 'list' | 'remove'
+
+function warnOnce(stage: StoreStage, error: unknown) {
   if (warned) return
   warned = true
   console.warn(
     'Upload store unavailable; uploads will not survive a reload',
     error,
   )
+  track('upload_store_unavailable', {
+    stage,
+    error: error instanceof Error ? error.name : String(error),
+  })
 }
 
 function database(): Promise<IDBPDatabase | null> {
   if (handle) return handle
 
   handle = (async () => {
-    if (typeof indexedDB === 'undefined') return null
+    if (typeof indexedDB === 'undefined') {
+      warnOnce('missing', 'no indexedDB')
+      return null
+    }
 
     try {
       let timer: ReturnType<typeof setTimeout> | undefined
@@ -109,7 +128,10 @@ function database(): Promise<IDBPDatabase | null> {
           store.createIndex(BY_EVENT, 'eventId')
         },
         blocked: () =>
-          warnOnce(new Error('IndexedDB open blocked by another tab')),
+          warnOnce(
+            'blocked',
+            new Error('IndexedDB open blocked by another tab'),
+          ),
       })
       const timeout = new Promise<null>((resolve) => {
         timer = setTimeout(() => resolve(null), OPEN_TIMEOUT_MS)
@@ -117,9 +139,12 @@ function database(): Promise<IDBPDatabase | null> {
       const db = await Promise.race([opening, timeout])
       clearTimeout(timer)
       void opening.catch(() => undefined)
+      // A silent null here used to be exactly that — silent. It is the case
+      // where every photo on this device is one tab-kill from being lost.
+      if (!db) warnOnce('open_timeout', new Error('IndexedDB open timed out'))
       return db ?? null
     } catch (error) {
-      warnOnce(error)
+      warnOnce('open', error)
       return null
     }
   })()
@@ -134,7 +159,7 @@ export const uploadStore: UploadStore = {
     try {
       await db.put(STORE, shot)
     } catch (error) {
-      warnOnce(error)
+      warnOnce('put', error)
     }
   },
 
@@ -149,7 +174,7 @@ export const uploadStore: UploadStore = {
       )) as StoredShot[]
       return rows.sort((a, b) => a.capturedAt - b.capturedAt)
     } catch (error) {
-      warnOnce(error)
+      warnOnce('list', error)
       return []
     }
   },
@@ -161,7 +186,7 @@ export const uploadStore: UploadStore = {
       await db.delete(STORE, id)
       return true
     } catch (error) {
-      warnOnce(error)
+      warnOnce('remove', error)
       return false
     }
   },

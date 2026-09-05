@@ -77,7 +77,7 @@ const sections: LegalSection[] = [
   {
     title: 'Szolgáltatók és adattovábbítás',
     body: [
-      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és privát fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), ${EMAIL_PROVIDER} (belépési és jogi visszaigazoló e-mailek), valamint fizetésnél ${PAYMENT_PROCESSOR.name} és ${PAYMENT_PROCESSOR.merchantOfRecord}.`,
+      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és privát fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog (sütimentes termékanalitika és a feltöltések megbízhatóságának mérése, EU-adatközpontban), ${EMAIL_PROVIDER} (belépési és jogi visszaigazoló e-mailek), valamint fizetésnél ${PAYMENT_PROCESSOR.name} és ${PAYMENT_PROCESSOR.merchantOfRecord}.`,
       `A Link Merchant of Recordként kezeli a fizetést, az alkalmazandó közvetett adót, a vásárlói számlát vagy bizonylatot, a visszatérítést, a fizetési vitát, a csalásmegelőzést és a tranzakciós ügyfélszolgálatot. Ezekhez a célokhoz a vásárlótól közvetlenül is gyűjt adatot. A Link tranzakciós támogatása itt érhető el: ${PAYMENT_PROCESSOR.supportUrl}.`,
       'A Supabase projekt jelenlegi régiója Zürich, Svájc. Svájc az EGT-n kívüli ország, amelyre az Európai Bizottság megfelelőségi határozata vonatkozik.',
       'A Vercel, a Stripe/Link és egyes további szolgáltatók az Egyesült Államokban vagy más EGT-n kívüli országban is kezelhetnek adatot. Ilyen továbbításnál az érintett szolgáltató EU–USA adatvédelmi kerettagságára, európai bizottsági megfelelőségi határozatra vagy általános szerződési feltételekre támaszkodik. A Stripe és a Link saját adatkezelésére a Checkout felületén elérhető adatvédelmi tájékoztatójuk vonatkozik.',
@@ -97,7 +97,7 @@ const sections: LegalSection[] = [
     body: [
       'A vendég csatlakozásakor eseményenként egy feltétlenül szükséges, httpOnly munkamenetsüti kerül a böngészőbe. Ez védi a vendég munkamenetét és érvényesíti a képkockakeretet; legfeljebb egy évig marad meg, vagy korábban törlődik a böngészőadatok törlésekor. Hirdetési sütit nem használunk.',
       'A házigazda bejelentkezéséhez a Supabase Auth feltétlenül szükséges munkamenetsütijei kellenek. Az esemény létrehozása előtt a beállítások egy legfeljebb 7 napig élő piszkozatként a böngésző localStorage tárhelyén maradnak, hogy a belépési kör után folytatható legyen a folyamat.',
-      'A Vercel Web Analytics sütik nélkül mér összesített oldalletöltéseket. Amíg nincs nem szükséges süti vagy hasonló követő technológia, külön sütihozzájáruló ablakot nem jelenítünk meg.',
+      'A Vercel Web Analytics sütik nélkül mér összesített oldalletöltéseket. A PostHog szintén süti és helyi tárhely nélkül, összesítve méri az oldalletöltéseket és azt, hogy a vendégek fotói sikeresen feltöltődtek-e; az eseménylinket és a képeket nem kapja meg. Amíg nincs nem szükséges süti vagy hasonló követő technológia, külön sütihozzájáruló ablakot nem jelenítünk meg.',
     ],
   },
   {
@@ -152,7 +152,7 @@ const englishSections: LegalSection[] = [
     title: 'Access and sharing',
     body: [
       'Event links contain a long random identifier and photos are stored privately, but anyone can forward a link. The host can access, download and hide every photo. Guests see revealed photos only where the host permits it. Authorised personnel access content only where needed for operations, security or a report.',
-      `We use Supabase for database and private file storage, Vercel for hosting and cookie-free analytics, ${EMAIL_PROVIDER} for login and legal emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
+      `We use Supabase for database and private file storage, Vercel for hosting and cookie-free analytics, PostHog for cookie-free product analytics and upload-reliability measurement in an EU data centre, ${EMAIL_PROVIDER} for login and legal emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
     ],
   },
   {
@@ -165,7 +165,7 @@ const englishSections: LegalSection[] = [
   {
     title: 'Cookies and local storage',
     body: [
-      'Joining sets one strictly necessary, event-specific httpOnly session cookie for up to one year. Supabase Auth uses strictly necessary session cookies for hosts. Before account creation, an event draft stays in the browser’s localStorage for up to seven days. We do not use advertising cookies; Vercel Web Analytics measures aggregate page views without cookies.',
+      'Joining sets one strictly necessary, event-specific httpOnly session cookie for up to one year. Supabase Auth uses strictly necessary session cookies for hosts. Before account creation, an event draft stays in the browser’s localStorage for up to seven days. We do not use advertising cookies. Vercel Web Analytics measures aggregate page views without cookies, and PostHog measures page views and whether guest photos uploaded successfully, also without cookies or local storage; it never receives the event link or the photos.',
     ],
   },
   {

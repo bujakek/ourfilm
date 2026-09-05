@@ -14,7 +14,8 @@ import {
   reserveShotAction,
 } from '@/app/(product)/e/[slug]/actions'
 import { captureStatus, formatLine, ownRollNote } from '@/lib/event-copy'
-import { compressForStorage, prepareStoredShot } from '@/lib/image'
+import { compressForStorage, isHeic, prepareStoredShot } from '@/lib/image'
+import { track } from '@/lib/telemetry'
 import { createUploadQueue, type UploadQueue } from '@/lib/upload-queue'
 import { uploadShotRenders } from '@/lib/upload-shot'
 import { uploadStore } from '@/lib/upload-store'
@@ -127,6 +128,12 @@ export function GuestEventView({
   const router = useRouter()
   const reduceMotion = useReducedMotion()
   const inputRef = useRef<HTMLInputElement>(null)
+  // Timing for telemetry, keyed by capture id. Refs, not state: none of it is
+  // drawn, and a re-render per timestamp would be a re-render per photo.
+  const startedAt = useRef(new Map<string, number>())
+  const confirmedAt = useRef(new Map<string, number>())
+  const delivered = useRef(new Set<string>())
+  const cameraOpenedAt = useRef<number | null>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
   const [flash, setFlash] = useState<Flash>(null)
   const [now, setNow] = useState(initialNow)
@@ -141,6 +148,21 @@ export function GuestEventView({
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  // The joined half of the funnel's first step. `guest_page_viewed` with
+  // `joined: false` is the ticket (`join-form.tsx`); this one says what the
+  // guest found behind it. Once per mount, with the props as they arrived.
+  useEffect(() => {
+    track('guest_page_viewed', {
+      event_id: eventId,
+      joined: true,
+      camera: initialCanCapture ? 'open' : 'closed',
+      gallery: gallery.open ? 'open' : 'locked',
+      frames: frames.length,
+      shots_remaining: initialShotsRemaining,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- arrival snapshot
+  }, [eventId])
 
   useEffect(() => {
     if (!handedOff) return
@@ -214,6 +236,22 @@ export function GuestEventView({
   // that cell stops being shown. `captures` is appended in capture order and
   // never re-sorted, so the survivors stay in order without sorting.
   const developing = captures.filter((c) => isDeveloping(c, frameIds))
+
+  // The moment a developing cell hands over to the real thumbnail. A confirm
+  // without this afterwards is a guest who never saw proof their photo landed.
+  useEffect(() => {
+    for (const c of captures) {
+      if (!c.confirmed || !c.photoId || !frameIds.has(c.photoId)) continue
+      if (delivered.current.has(c.id)) continue
+      delivered.current.add(c.id)
+      const at = confirmedAt.current.get(c.id)
+      track('frame_delivered', {
+        event_id: eventId,
+        capture_id: c.id,
+        since_confirm_ms: at === undefined ? null : Date.now() - at,
+      })
+    }
+  }, [captures, frameIds, eventId])
 
   const status = captureStatus(
     {
@@ -301,6 +339,18 @@ export function GuestEventView({
           )
         },
         onConfirmed(id, shotsRemaining) {
+          const now = Date.now()
+          const started = startedAt.current.get(id)
+          confirmedAt.current.set(id, now)
+          track('upload_confirmed', {
+            event_id: eventId,
+            capture_id: id,
+            shots_remaining: shotsRemaining,
+            // From the shutter (or the original capture, for a restored shot)
+            // to the server saying yes. Forty seconds here is a guest who has
+            // already walked away from the screen.
+            elapsed_ms: started === undefined ? null : now - started,
+          })
           setRemaining(shotsRemaining)
           setCaptures((current) =>
             current.map((c) =>
@@ -310,6 +360,11 @@ export function GuestEventView({
           router.refresh()
         },
         onDropped(id, reason) {
+          track('upload_dropped', {
+            event_id: eventId,
+            capture_id: id,
+            reason,
+          })
           setCaptures((current) => current.filter((c) => c.id !== id))
           if (reason === 'refused') return
           setFlash(
@@ -319,10 +374,58 @@ export function GuestEventView({
           )
         },
         onRefusal(refusal) {
+          track('upload_refused', { event_id: eventId, refusal })
           if (refusal === 'no_shots') setRemaining(0)
           setFlash(refusalMessage(refusal, locale))
         },
-        onRestored({ id, blob }) {
+        onRefunded(id, cause, attempts) {
+          track('upload_refunded', {
+            event_id: eventId,
+            capture_id: id,
+            cause,
+            attempts,
+          })
+        },
+        onFailure(id, failure, attempts) {
+          track('upload_attempt_failed', {
+            event_id: eventId,
+            capture_id: id,
+            failure,
+            attempts,
+          })
+        },
+        onPrepared(id, file, outcome) {
+          track('capture_prepared', {
+            event_id: eventId,
+            capture_id: id,
+            ok: outcome.ok,
+            ms: outcome.ms,
+            heic: isHeic(file),
+            input_bytes: file.size,
+            ...(outcome.ok
+              ? {
+                  bytes: outcome.bytes,
+                  width: outcome.width,
+                  height: outcome.height,
+                }
+              : { error: outcome.error }),
+          })
+        },
+        onDiscarded(id, reason, ageMs) {
+          track('upload_discarded', {
+            event_id: eventId,
+            capture_id: id,
+            reason,
+            age_ms: ageMs,
+          })
+        },
+        onRestored({ id, blob, capturedAt }) {
+          startedAt.current.set(id, capturedAt)
+          track('upload_restored', {
+            event_id: eventId,
+            capture_id: id,
+            age_ms: Date.now() - capturedAt,
+          })
           claimCell(id, blob)
         },
       },
@@ -360,11 +463,26 @@ export function GuestEventView({
       // key in the store, and the idempotency key that lets a replay after a
       // reload re-claim the same frame instead of spending another.
       const id = crypto.randomUUID()
+      const now = Date.now()
+      startedAt.current.set(id, now)
+      const opened = cameraOpenedAt.current
+      cameraOpenedAt.current = null
+      track('shutter_pressed', {
+        event_id: eventId,
+        capture_id: id,
+        shots_remaining: remaining,
+        outstanding,
+        // How long the OS camera had the screen. Long enough, and iOS has
+        // probably reclaimed the tab — the number every retry rule guesses at.
+        away_ms: opened === null ? null : now - opened,
+        input_bytes: file.size,
+        heic: isHeic(file),
+      })
       setFlash(null)
       claimCell(id, file)
-      queueRef.current?.enqueue(id, file, Date.now())
+      queueRef.current?.enqueue(id, file, now)
     },
-    [claimCell],
+    [claimCell, eventId, remaining, outstanding],
   )
 
   return (
@@ -477,6 +595,12 @@ export function GuestEventView({
         <motion.button
           type="button"
           onClick={() => {
+            cameraOpenedAt.current = Date.now()
+            track('camera_opened', {
+              event_id: eventId,
+              shots_remaining: remaining,
+              outstanding,
+            })
             setHandedOff(true)
             inputRef.current?.click()
           }}
