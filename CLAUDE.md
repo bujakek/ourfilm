@@ -34,12 +34,26 @@ pnpm verify   # typecheck + lint + unit tests + build. Must pass. Offline.
 pnpm format   # Prettier; run after writing files
 ```
 
-`pnpm test:db` is **not** part of `verify` and is run deliberately: it talks to
-the linked remote project and mutates it (throwaway users, events and
-participants, cleaned up in a `finally`). Run it after touching any migration,
-RPC or policy — the properties it checks (a row lock holding under concurrent
-requests, a policy refusing a real anon key) do not exist anywhere but a real
-Postgres.
+`pnpm test:db` is **not** part of `verify`, and runs **only against a local
+Supabase stack** — never the linked project, which holds real customers' events:
+
+```bash
+pnpm supabase start     # once per machine (Docker)
+pnpm supabase db reset  # apply migrations locally
+pnpm test:db            # takes its credentials from the local stack
+```
+
+Run it after touching any migration, RPC or policy. The properties it checks —
+a row lock holding under concurrent requests, an RLS policy refusing a real anon
+key — need a real Postgres and a real PostgREST, and a local stack is both.
+
+It used to run against the linked project, and that is now refused twice over.
+`scripts/test-db.mjs` reads the credentials from `supabase status` and never
+falls back to anything, and `tests/db/local-only.ts` aborts on a non-loopback
+URL before a client is constructed — so running vitest directly cannot reach
+production either. The suite writes throwaway users, events, participants and
+photos and cleans up in a `finally`, which an interrupt or a thrown fixture
+skips; against production those rows would stay.
 
 Never use npm or yarn — this project is **pnpm**. Never re-add `typescript.ignoreBuildErrors` to `next.config.mjs`; it was removed deliberately so type errors actually fail the build.
 
@@ -244,6 +258,58 @@ The cookie is still **not a privacy boundary** — someone who copies it
 impersonates that participant, and album privacy rests on the unguessable slug.
 What it is, is the thing that stops a guest spending someone else's film, or more
 than their own.
+
+## The upload queue survives the tab (settled)
+
+Tapping the shutter hands the tab to the OS camera, and iOS reclaims a
+backgrounded Safari whenever it likes. There is no retake, so a photo that
+lived only in memory was a lost moment.
+
+The camera file is written to IndexedDB (`lib/upload-store.ts`) the moment the
+shutter fires, and deleted once `commit_shot` confirms. `lib/upload-queue.ts`
+drains one shot at a time, in capture order, and replays whatever a killed tab
+left behind. Persistence swallows: private mode is the old in-memory behaviour.
+
+**Compress once, then store the master — and write the raw file first.** The
+row's `blob` is the camera original for a second or two, then
+`compressForStorage` replaces it with the 4096px master and sets `compressed`.
+Order matters both ways round. Persisting before the decode is the point of the
+store: a 48MP HEIC is a ~50MB bitmap, and a guest who taps the shutter again
+mid-compression backgrounds the tab holding it, which is exactly what iOS
+reclaims. And storing the master rather than the original is what keeps libheif
+off the resume path — every retry used to decode the HEIC again. `view` and
+`thumb` are derived from the master at upload time; the master itself goes up as
+it stands, so it gains no second generation and the print-ready promise holds.
+
+`takenAt`, `width` and `height` are stored as scalars beside the blob because
+the canvas round trip strips EXIF — that is how GPS is removed — so once the
+master exists there is nothing left to read them from. `taken_at` is what the
+host's ZIP export sorts the whole album by, and a resumed shot without it lands
+at the bottom of the wedding.
+
+Resume replays with the same capture id — that id is `reserve_shot`'s
+idempotency key. Do not persist photo ids or signed URLs; a replay gets fresh
+ones. Do not release a reservation between retries.
+
+A failed shot stays on the strip and is retried after `RETRY_MS`, and also on
+`visibilitychange` / `pageshow` / `online`. Every network step has a timeout:
+a hung `fetch` otherwise wedges the whole uploader. Four attempts or 24 hours
+and the bytes are dropped. `ended` and `no_shots` drop the rest of the queue;
+other refusals wait and retry.
+
+**The attempt budget is only ever spent on an answer from the server**, and
+`lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten
+seconds is forty seconds — a marquee, a lift, a walk to the car park — so
+charging for requests that never left the phone deleted the photo outright.
+A connection failure, a teardown (`stop()` runs on unmount) and a refusal about
+the server rather than the photo (`uploads_disabled`, `storage_limit`, …) all
+hand the attempt back; a 5xx does not, or a photo Storage will never accept
+would retry for a day. Mind the trap: `uploadToSignedUrl` returns a
+`StorageUnknownError` with the real `TypeError` one level down in
+`originalError`, so the obvious `name === 'TypeError'` check is false for every
+genuine failure — and getting it wrong throws nothing and logs nothing, which
+is how it shipped. Both halves are pinned in `tests/unit/upload-failure.test.ts`
+and in the queue suite; sabotaging either direction turns them red.
 
 ## The create flow is four full-screen questions (settled)
 
@@ -708,7 +774,9 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 - **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
   actually writing and maintaining an English site is a separate decision.
 - Realtime gallery updates (Supabase Realtime) — guests refresh
-- Resumable/background uploads — manual retry only
+- **Background upload while the tab is closed.** Not achievable without a
+  native shell, and not by a service worker either: iOS Safari has no
+  Background Sync. Resuming _in the page_ is built — see The upload queue.
 - Long-running requests, background workers, cron. The reveal is computed at
   request time precisely so none of these is needed.
 

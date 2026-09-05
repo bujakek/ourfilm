@@ -4,49 +4,29 @@ import type { PreparedPhoto } from './image'
 import { PHOTO_BUCKET } from './storage'
 import { createGuestClient } from './supabase/client'
 
-/** One signed slot, as `reserve_shot`'s action handed it back. */
 export type SignedUpload = { path: string; token: string }
 
 /**
- * Put one captured frame's three renders into Storage.
+ * PUT the three renders to the signed URLs `reserve_shot` minted.
  *
- * Every path here was minted by `reserve_shot` inside the transaction that
- * spent the guest's shot, and each signed token is valid for that one path and
- * nothing else. So the browser cannot choose where its bytes land, cannot write
- * to another event's folder, and cannot write at all without having first been
- * granted a frame. That is what replaced the old anon insert policy on
- * `storage.objects`.
- *
- * All three go up together. Sequentially, the ~40KB thumbnail would wait on a
- * whole round trip behind the ~2MB master — pure latency, once per photo, on
- * the highest-latency network the product will ever run on. The lightbox render
- * is ~250KB and rides along in the window the master already occupies.
- *
- * Throws on any failure. The caller releases the reservation and offers a
- * retry; nothing is committed, so a failed upload costs the guest no frame.
+ * Parallel: the thumbnail would otherwise wait a round trip behind the master.
+ * Not retried here — the queue replays the whole capture with a fresh reserve.
+ * `signal` aborts the PUTs when the queue's upload timeout fires.
  */
 export async function uploadShotRenders({
   prepared,
   uploads,
   onProgress,
+  signal,
 }: {
   prepared: PreparedPhoto
   uploads: { full: SignedUpload; view: SignedUpload; thumb: SignedUpload }
-  /**
-   * Called with the fraction of the shot's bytes that have landed, weighted by
-   * render size, as each render completes.
-   *
-   * Three coarse steps rather than a byte-level readout: `uploadToSignedUrl`
-   * goes through `fetch`, which reports no upload progress at all, and the
-   * alternative is hand-rolling the signed-URL request over XHR to get a
-   * number that only feeds an animation. The renders differ in size by nearly
-   * two orders of magnitude, so weighting by bytes makes those three steps
-   * land roughly where the time goes — the ~40KB thumbnail early, the ~2MB
-   * master last.
-   */
   onProgress?: (fraction: number) => void
+  signal?: AbortSignal
 }): Promise<void> {
-  const supabase = createGuestClient()
+  const supabase = createGuestClient(
+    signal ? (input, init) => fetch(input, { ...init, signal }) : undefined,
+  )
 
   const renders = [
     [uploads.full, prepared.full],
@@ -71,7 +51,8 @@ export async function uploadShotRenders({
             onProgress?.(total > 0 ? landed / total : 1)
           }
           return result
-        }),
+        })
+        .catch((error: unknown) => ({ error })),
     ),
   )
 

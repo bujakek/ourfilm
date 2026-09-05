@@ -743,6 +743,31 @@ plus `admin`.
 
 ---
 
+## Open — upload resilience (2026-09-04)
+
+- [ ] **A resumed orphan can over-spend a roll by one frame.**
+      `reserve_shot`'s idempotency branch returns _before_ the `no_shots` check,
+      and `participant_shots_used` stops counting a pending row after the
+      ten-minute TTL. So a shot recovered more than ten minutes after it was
+      captured commits even if the guest has since shot to the limit —
+      `shots_per_participant + 1`, once per orphan. Pre-existing rather than
+      new: a manual retry after ten minutes always did this, and what changed is
+      the frequency, because persistence makes the replay routine instead of
+      rare. `MAX_AGE_MS` in `lib/upload-queue.ts` bounds the blast radius to a
+      day, but the real fix belongs in the RPC — the idempotency branch would
+      have to refuse a row whose reservation has expired _and_ whose participant
+      is now at the limit. Deliberately not done in the client-side change that
+      surfaced it.
+- [ ] **The React half of the upload queue has no automated coverage.** The
+      listeners, the restored cell's `previewUrl` lifecycle and the frame-index
+      arithmetic live in `guest-event-view.tsx`, and the vitest config is
+      node-only with no `.tsx` in its include. Reaching them means jsdom plus a
+      renderer, which is a larger change than the feature was. Until then the
+      manual phone matrix — kill the tab mid-upload, airplane mode, twenty
+      minutes backgrounded, private-mode tab — is the only thing covering them.
+
+---
+
 ## Out of scope
 
 Flag and ask before starting any of these — they are deliberately excluded:
@@ -750,9 +775,15 @@ Flag and ask before starting any of these — they are deliberately excluded:
 App Clip or native app · photographer/multi-tenant dashboard · per-client
 branding · tokens, revenue share, **invoicing** · guest accounts or mandatory
 registration · delayed reveal · film filters · email notifications ·
-multi-language · realtime gallery updates · resumable or background uploads.
+multi-language · realtime gallery updates · background upload while the tab is
+closed.
 
-**Payments left this list on 2026-08-20** — see Phase 7. Invoicing did not: a
+**Payments left this list on 2026-08-20** — see Phase 7. **Resumable uploads
+left it too**: the guest queue is now persisted to IndexedDB and replays orphans
+on reactivation — see "The upload queue survives the tab" in `CLAUDE.md`. What
+remains excluded is only uploading while the tab is _closed_, which needs a
+native shell; a service worker cannot do it either, because iOS Safari has no
+Background Sync. Invoicing did not: a
 Hungarian company selling to consumers must issue an invoice and report it to
 NAV Online Számla, and Stripe does not do that for you. Flag it before the
 first real forint.

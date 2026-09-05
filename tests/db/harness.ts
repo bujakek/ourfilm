@@ -2,6 +2,8 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
+import { assertLocalSupabase } from './local-only'
+
 import type { Database } from '@/lib/supabase/database.types'
 
 /**
@@ -28,14 +30,20 @@ function env(name: string): string {
   const value = process.env[name]
   if (!value) {
     throw new Error(
-      `Missing ${name}. The database suite reads it from .env.local — run it ` +
-        'with `pnpm test:db`, which loads that file.',
+      `Missing ${name}. Run the database suite with \`pnpm test:db\`, which ` +
+        "starts from the local stack's own credentials — never from " +
+        '.env.local, which points at the linked project.',
     )
   }
   return value
 }
 
 export const SUPABASE_URL = env('NEXT_PUBLIC_SUPABASE_URL')
+
+// Before any client exists, and so before any request can be made. See
+// `local-only.ts` for why this is enforced rather than documented.
+assertLocalSupabase(SUPABASE_URL)
+
 export const ANON_KEY = env('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 export const SERVICE_KEY = env('SUPABASE_SERVICE_ROLE_KEY')
 

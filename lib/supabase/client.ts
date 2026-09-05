@@ -24,7 +24,7 @@ export function createClient() {
  * storage, no token refresh, no URL detection. The QR-opened page and the
  * shared-link page then hit Storage as the same role.
  */
-export function createGuestClient() {
+export function createGuestClient(customFetch?: typeof globalThis.fetch) {
   const { url, anonKey } = publicSupabaseEnv()
   return createSupabaseClient<Database>(url, anonKey, {
     auth: {
@@ -32,5 +32,6 @@ export function createGuestClient() {
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
+    global: customFetch ? { fetch: customFetch } : undefined,
   })
 }

@@ -151,20 +151,50 @@ Guests are anonymous, so RLS allows insert only — see `ourfilm-supabase` for t
 
 ## Progress and retry
 
-`supabase-js` `.upload()` gives no byte-level progress. For the MVP, show **per-file status** instead, which is what the Hungarian copy promises:
+The camera file is written to IndexedDB (`lib/upload-store.ts`) when the
+shutter fires and deleted when `commit_shot` confirms. `lib/upload-queue.ts`
+drains one shot at a time, in capture order, and replays orphans on mount and
+on `visibilitychange` / `pageshow` / `online`. A drain that still owes work
+retries after `RETRY_MS`. Give up after four attempts or 24 hours — but only
+count attempts the server actually answered. `isConnectionFailure`
+(`lib/upload-failure.ts`) hands the attempt back for a dead connection, a
+teardown, or a refusal about the server rather than the photo; without it a
+forty-second outage deletes a frame that never left the device.
 
-`várakozik → előkészítés → feltöltés → kész | hiba`
+- **Compress once, store the master — but write the raw file first.** The row's
+  `blob` is the camera original for a second or two, then `compressForStorage`
+  replaces it and sets `compressed`. Persisting before the decode is the point
+  of the store: a 48MP HEIC is a ~50MB bitmap, and a guest tapping the shutter
+  again mid-compression backgrounds the tab holding it. Storing the master is
+  what keeps libheif off the resume path. `view` and `thumb` are derived from
+  the master at upload; the master goes up as it stands, so it never gains a
+  second generation.
+- **`takenAt`, `width` and `height` are scalars on the row.** The canvas round
+  trip strips EXIF — that is how GPS is removed — so once the master exists
+  there is nothing left to read them from. The ZIP export sorts on `taken_at`.
+- **Resume replays with the same capture id.** That id is the idempotency key.
+  Do not persist a photo id or a signed URL. Do not release a reservation
+  between retries — only after the client has exhausted the photo.
+- **Persistence is never a gate.** Store calls swallow; `put` is not awaited
+  on the capture path. Private mode is the old in-memory behaviour.
+- **Never await a network call without a timeout.** A dropped connection does
+  not reliably reject a `fetch`. `REQUEST_TIMEOUTS_MS` is the ceiling, and the
+  Storage PUT must see the abort signal so a retry does not leave the old
+  fetch alive.
+- **A failed shot stays on the strip.** The cell stays counted in
+  `outstanding` until `exhausted` or `refused`. Dropping it early un-gates the
+  shutter on the last frame. Only `ended` and `no_shots` drop the rest of the
+  queue.
 
-Keep one state object per selected file (`id`, `previewUrl`, `status`, `error`) and render a list. If true byte-level percentage is ever needed, create a signed upload URL and `PUT` it with `XMLHttpRequest` to get `upload.onprogress` — only do that if a real device test shows the staged states aren't reassuring enough.
-
-On failure, set `status: 'hiba'` and show a retry button that re-runs the single file. **Manual retry only** — automatic background/resumable upload is explicitly out of scope, and the landing copy was rewritten to match.
+Progress is coarse and byte-weighted: `uploadToSignedUrl` reports none, so the
+fraction moves as each of the three renders lands.
 
 Other essentials:
 
 - Revoke every `URL.createObjectURL` preview in a cleanup effect.
-- Keep the optional `uploader_name` in `localStorage` so a guest types their nickname once per device.
-- Disable the picker while the queue is running, and never navigate away mid-upload without a confirmation.
-- Success state must be unmistakable and celebratory — this is the moment the pilot is measuring.
+- The shutter never blocks on an upload.
+- Success state is the frame developing in the strip and the counter rolling
+  down. There is no success message on the guest screen.
 
 ## Test on a real phone before shipping
 

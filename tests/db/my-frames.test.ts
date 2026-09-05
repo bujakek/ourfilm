@@ -69,6 +69,14 @@ describe('my_frames', () => {
 
       expect(frames).toHaveLength(2)
       expect(frames.map((f) => f.frame_index)).toEqual([1, 2])
+      // The identity the guest screen matches its in-flight cells against.
+      // Matching by position instead drew the wrong cell whenever a deferred
+      // upload let a later shot land ahead of it.
+      expect(frames.map((f) => f.photo_id)).toEqual([
+        expect.any(String),
+        expect.any(String),
+      ])
+      expect(new Set(frames.map((f) => f.photo_id)).size).toBe(2)
       // Three photos exist in this event; only two of them are ours.
       expect(await myFrames(event.id, theirs)).toHaveLength(1)
     } finally {
