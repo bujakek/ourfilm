@@ -34,12 +34,26 @@ pnpm verify   # typecheck + lint + unit tests + build. Must pass. Offline.
 pnpm format   # Prettier; run after writing files
 ```
 
-`pnpm test:db` is **not** part of `verify` and is run deliberately: it talks to
-the linked remote project and mutates it (throwaway users, events and
-participants, cleaned up in a `finally`). Run it after touching any migration,
-RPC or policy — the properties it checks (a row lock holding under concurrent
-requests, a policy refusing a real anon key) do not exist anywhere but a real
-Postgres.
+`pnpm test:db` is **not** part of `verify`, and runs **only against a local
+Supabase stack** — never the linked project, which holds real customers' events:
+
+```bash
+pnpm supabase start     # once per machine (Docker)
+pnpm supabase db reset  # apply migrations locally
+pnpm test:db            # takes its credentials from the local stack
+```
+
+Run it after touching any migration, RPC or policy. The properties it checks —
+a row lock holding under concurrent requests, an RLS policy refusing a real anon
+key — need a real Postgres and a real PostgREST, and a local stack is both.
+
+It used to run against the linked project, and that is now refused twice over.
+`scripts/test-db.mjs` reads the credentials from `supabase status` and never
+falls back to anything, and `tests/db/local-only.ts` aborts on a non-loopback
+URL before a client is constructed — so running vitest directly cannot reach
+production either. The suite writes throwaway users, events, participants and
+photos and cleans up in a `finally`, which an interrupt or a thrown fixture
+skips; against production those rows would stay.
 
 Never use npm or yarn — this project is **pnpm**. Never re-add `typescript.ignoreBuildErrors` to `next.config.mjs`; it was removed deliberately so type errors actually fail the build.
 

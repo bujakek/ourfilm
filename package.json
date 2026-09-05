@@ -20,7 +20,7 @@
     "reset:data": "node --env-file=.env.local --experimental-strip-types scripts/reset-data.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "OURFILM_TEST_SUITE=db node --env-file=.env.local node_modules/vitest/vitest.mjs run"
+    "test:db": "node scripts/test-db.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
