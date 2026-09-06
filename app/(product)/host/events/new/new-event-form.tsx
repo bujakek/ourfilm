@@ -22,6 +22,7 @@ import {
 import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
 import type { EventPlan } from '@/lib/onboarding'
 import { type Locale, resolveLocale } from '@/lib/i18n'
+import { track, type OnboardingStep } from '@/lib/telemetry'
 import { createEventFromDraft } from './actions'
 import { endScreen } from './step-end'
 import { guestsScreen } from './step-guests'
@@ -34,6 +35,20 @@ import { revealScreen } from './step-reveal'
 const STEP_COUNT = 4
 const LAST_STEP = STEP_COUNT - 1
 const END_STEP = 1
+
+/**
+ * The four screens by name, for telemetry.
+ *
+ * Indexed the same way the dots are, so a step that moves here moves in both.
+ * Names rather than numbers because the whole value of this funnel is reading
+ * off where hosts stop, and "40% never got past 1" is not that.
+ */
+const STEP_NAMES: readonly OnboardingStep[] = [
+  'name',
+  'end',
+  'reveal',
+  'guests',
+]
 
 type Props = {
   nowIso: string
@@ -111,8 +126,25 @@ export function NewEventForm(props: Props) {
       <DraftRestoreDialog
         open={askRestore}
         locale={locale}
-        onResume={() => setChoice('stored')}
+        onResume={() => {
+          // The prompt has stopped appearing once before — the form wrote its
+          // untouched defaults over the stored draft on mount — and it was
+          // found by hand. Both answers are counted now, so the failure is a
+          // series that goes to zero rather than a bug report.
+          track('draft_restored', {
+            creation_key: stored?.creationKey ?? props.initialCreationKey,
+            step: stored?.step ?? 0,
+            age_ms: stored
+              ? Date.now() - new Date(stored.updatedAt).getTime()
+              : null,
+          })
+          setChoice('stored')
+        }}
         onDiscard={() => {
+          track('draft_discarded', {
+            creation_key: stored?.creationKey ?? props.initialCreationKey,
+            step: stored?.step ?? 0,
+          })
           clearDraft()
           invalidateStoredDraft()
           setChoice('fresh')
@@ -261,6 +293,26 @@ function OnboardingFlow({
         creationKey: initialCreationKey,
       })
 
+      // The last screen answered, whatever came back. `auth_required` is the
+      // ordinary path rather than a failure — the account is asked for here —
+      // and is the step where the funnel crosses an email round trip.
+      //
+      // Best effort, and deliberately: PostHog loads on idle, and the success
+      // branch below navigates immediately. `event_created` is reported by the
+      // server for exactly that reason and is the number to count.
+      track('onboarding_create_attempted', {
+        creation_key: initialCreationKey,
+        plan,
+        outcome: result.ok
+          ? 'created'
+          : result.reason === 'auth'
+            ? 'auth_required'
+            : result.reason === 'end'
+              ? 'stale_end'
+              : 'error',
+        source: 'flow',
+      })
+
       if (result.ok) {
         // Only now. The draft is the only copy of these answers until the row
         // exists, so it outlives every failure between here and there.
@@ -291,7 +343,27 @@ function OnboardingFlow({
     else window.location.assign(destination)
   }
 
-  const advance = () => setStep((s) => Math.min(LAST_STEP, s + 1))
+  /**
+   * Forward, and the only record that this screen was ever answered.
+   *
+   * Nothing about the first three screens reaches the database — a host who
+   * stops on the reveal question leaves no row anywhere, and until now no
+   * trace at all. `creation_key` is the draft's own random uuid, minted before
+   * anything exists, which is what lets these four screens be joined to each
+   * other and to the `event_created` the server reports at the end.
+   */
+  const advance = () =>
+    setStep((s) => {
+      const next = Math.min(LAST_STEP, s + 1)
+      if (next !== s) {
+        track('onboarding_step_completed', {
+          creation_key: initialCreationKey,
+          step: STEP_NAMES[s],
+          index: s,
+        })
+      }
+      return next
+    })
 
   // One shell, four questions. Each step file returns its own copy, its own
   // CTA and its fields; the shell above them is the same element on every
@@ -339,6 +411,15 @@ function OnboardingFlow({
               plan,
               setPlan: (value) => {
                 setPlan(value)
+                // Price intent, at the one moment a host is thinking about how
+                // many people are coming — and before any Stripe object
+                // exists. `payments_enabled` separates a host who chose the
+                // paid tier from one who was shown "Hamarosan" instead of it.
+                track('onboarding_plan_chosen', {
+                  creation_key: initialCreationKey,
+                  plan: value,
+                  payments_enabled: paymentsEnabled,
+                })
                 // The paid wording also contains the early-performance
                 // request, so changing plan requires a fresh, explicit choice.
                 setLegalAccepted(false)
@@ -362,7 +443,18 @@ function OnboardingFlow({
         stepCount={STEP_COUNT}
         backHref={step === 0 ? '/host' : undefined}
         onBack={step === 0 ? undefined : () => setStep((s) => s - 1)}
-        onNext={step === LAST_STEP ? create : advance}
+        onNext={
+          step === LAST_STEP
+            ? () => {
+                track('onboarding_step_completed', {
+                  creation_key: initialCreationKey,
+                  step: STEP_NAMES[LAST_STEP],
+                  index: LAST_STEP,
+                })
+                create()
+              }
+            : advance
+        }
         error={error}
       >
         {content}

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { LoadingStatus } from '@/components/loading-status'
 import { localeTag, type Locale } from '@/lib/i18n'
 import { clearDraft, loadDraft, saveDraft } from '@/lib/event-draft'
+import { track } from '@/lib/telemetry'
 import { createEventFromDraft } from '@/app/(product)/host/events/new/actions'
 import { buttonVariants } from '@/components/ui/button'
 
@@ -49,12 +50,26 @@ const dbg = (m: string) => {
 
 async function run(): Promise<Outcome> {
   const draft = loadDraft(new Date())
-  if (!draft) return { kind: 'no-draft' }
+  if (!draft) {
+    // The create flow's one unrecoverable failure, and the reason this event
+    // exists. The answers live in the `localStorage` of the browser that gave
+    // them, so a host who filled the form on a phone and opened the mail on a
+    // laptop has just lost the whole event — and reads a screen that looks
+    // like an ordinary "not found". Nothing anywhere counted this.
+    //
+    // Reported before the screen renders, and this branch does not navigate,
+    // so the buffered event survives until PostHog attaches.
+    track('draft_missing_on_complete', { reason: 'no_draft' })
+    return { kind: 'no-draft' }
+  }
 
   // A host who signed in from somewhere else and happens to have an unfinished
   // form. Nothing was asked for, so nothing is created — back to the flow,
   // where the restore prompt will offer it.
   if (!draft.pendingCreate) {
+    // Separated from the case above, which loses an event; this one loses
+    // nothing and is the ordinary shape of an unrelated sign-in.
+    track('draft_missing_on_complete', { reason: 'not_pending' })
     window.location.replace('/host/events/new')
     return { kind: 'working' }
   }
@@ -74,8 +89,30 @@ async function run(): Promise<Outcome> {
       creationKey: draft.creationKey,
     })
   } catch {
+    track('onboarding_create_attempted', {
+      creation_key: draft.creationKey,
+      plan: draft.plan,
+      outcome: 'error',
+      source: 'magic_link',
+    })
     return { kind: 'error', message: GENERIC_ERROR }
   }
+
+  // The other side of the round trip the flow's own `auth_required` opened.
+  // Best effort, like its twin — the success branch navigates immediately, and
+  // the server's `event_created` is what counts.
+  track('onboarding_create_attempted', {
+    creation_key: draft.creationKey,
+    plan: draft.plan,
+    outcome: result.ok
+      ? 'created'
+      : result.reason === 'auth'
+        ? 'auth_required'
+        : result.reason === 'end'
+          ? 'stale_end'
+          : 'error',
+    source: 'magic_link',
+  })
 
   dbg('result:' + JSON.stringify(result).slice(0, 120))
   if (result.ok) {

@@ -3,6 +3,7 @@ import { exifDateSegment, withExifDate } from '@/lib/exif-write'
 import { eventWallClock, formatFileStamp } from '@/lib/format'
 import { getAllEventPhotos, photoUploaderName } from '@/lib/photos'
 import { signPhotoUrls } from '@/lib/photo-urls'
+import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { downloadZip } from 'client-zip'
 import { NextResponse } from 'next/server'
 
@@ -36,12 +37,35 @@ export async function GET(
   const event = await getOwnedEventBySlug(slug)
   if (!event) return new NextResponse('Nincs ilyen esemény', { status: 404 })
 
-  const photos = await getAllEventPhotos(event.id)
+  let photos
+  try {
+    photos = await getAllEventPhotos(event.id)
+  } catch (e) {
+    // The one failure a host sees as a broken download rather than a short
+    // archive. Reported by class, like every other server failure.
+    await reportServerIssue(e, {
+      operation: 'album_export',
+      eventId: event.id,
+      route: '/host/events/[slug]/export',
+      routeType: 'route',
+      method: 'GET',
+    })
+    return new NextResponse('Nem sikerült előkészíteni a letöltést', {
+      status: 500,
+    })
+  }
+
   if (photos.length === 0) {
     return new NextResponse('Ehhez az eseményhez még nincs kép', {
       status: 404,
     })
   }
+
+  const startedAt = Date.now()
+  await reportServerEvent('album_export_started', {
+    event_id: event.id,
+    photo_count: photos.length,
+  })
 
   // Oldest first, so the numbering follows the order the night actually
   // happened in — which is `taken_at`, not `created_at`. Guests shoot all
@@ -61,6 +85,11 @@ export async function GET(
   // name a photo taken at 14:32 as 1232.
   const zone = event.time_zone
 
+  // Read out here for the same reason `zone` is: `entries()` below is a
+  // hoisted function declaration, so nothing narrowed in this scope survives
+  // into it.
+  const eventId = event.id
+
   // The bucket is private, so every master needs a signature. Signed in one
   // batch up front rather than per entry: the entries are pulled one at a time
   // on purpose, and a round trip to Storage between each would add a whole
@@ -69,7 +98,21 @@ export async function GET(
   // The one-hour expiry bounds how long an export may take to *start*, not how
   // long it may run — the URLs are redeemed as each entry is pulled, and a
   // signature checked at redemption is only checked once.
-  const signed = await signPhotoUrls(ordered.map((p) => p.storage_path))
+  let signed: Map<string, string>
+  try {
+    signed = await signPhotoUrls(ordered.map((p) => p.storage_path))
+  } catch (e) {
+    await reportServerIssue(e, {
+      operation: 'album_export_sign',
+      eventId: event.id,
+      route: '/host/events/[slug]/export',
+      routeType: 'route',
+      method: 'GET',
+    })
+    return new NextResponse('Nem sikerült előkészíteni a letöltést', {
+      status: 500,
+    })
+  }
 
   // An async generator rather than an array of promises: client-zip pulls one
   // entry at a time, so exactly one object is in flight at any moment. Kicking
@@ -134,6 +177,22 @@ export async function GET(
           '\n',
       }
     }
+
+    // The last thing the generator does, so it only fires for an export that
+    // actually finished streaming. A start with no finish is a host who
+    // cancelled — or a function that ran out of time on a real wedding, which
+    // is the failure this pair exists to make visible.
+    //
+    // `missing_count` is the number worth an alert. Those photos are named in
+    // a text file inside an archive nobody opens, and the couple's album is
+    // short by exactly that many frames with nothing anywhere else to say so.
+    await reportServerEvent('album_export_finished', {
+      event_id: eventId,
+      photo_count: ordered.length,
+      missing_count: missing.length,
+      hidden_count: ordered.filter((photo) => photo.hidden_at).length,
+      elapsed_ms: Date.now() - startedAt,
+    })
   }
 
   // No Content-Length on purpose. It would need the exact compressed size of

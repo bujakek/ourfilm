@@ -5,10 +5,12 @@ const mocks = vi.hoisted(() => ({
   constructEventAsync: vi.fn(),
   createAdminClient: vi.fn(),
   reportServerIssue: vi.fn(async () => undefined),
+  reportServerEvent: vi.fn(async () => undefined),
 }))
 
 vi.mock('@/lib/telemetry-server', () => ({
   reportServerIssue: mocks.reportServerIssue,
+  reportServerEvent: mocks.reportServerEvent,
 }))
 
 vi.mock('@/lib/stripe/client', () => ({
@@ -86,7 +88,17 @@ function database({
           return {
             eq(column: string, value: unknown) {
               updates.push({ table, values, column, value })
-              return Promise.resolve({ error: null })
+              // Awaited directly by the `processed_at` stamp, and with a
+              // `.select()` by the refund — which needs the rows back to
+              // report one settled purchase per album it revoked.
+              return {
+                select: async () => ({
+                  data: [{ event_id: 'event-id' }],
+                  error: null,
+                }),
+                then: (resolve: (result: { error: null }) => unknown) =>
+                  resolve({ error: null }),
+              }
             },
           }
         },
@@ -145,6 +157,7 @@ describe('Stripe webhook', () => {
     mocks.constructEventAsync.mockReset()
     mocks.createAdminClient.mockReset()
     mocks.reportServerIssue.mockClear()
+    mocks.reportServerEvent.mockClear()
   })
 
   afterEach(() => {
@@ -187,6 +200,45 @@ describe('Stripe webhook', () => {
         expired_at: null,
       },
     })
+  })
+
+  it('reports a sale only when the ledger took the row', async () => {
+    const { db } = database()
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event('checkout.session.completed', session()),
+    )
+
+    await POST(request())
+
+    // The only trustworthy end of the payment funnel — `?checkout=success` is
+    // a URL a host can type — and it carries the event id rather than
+    // anything of Stripe's, so it joins to `checkout_started` and to nothing
+    // that identifies a person.
+    expect(mocks.reportServerEvent).toHaveBeenCalledWith('checkout_settled', {
+      event_id: 'event-id',
+      status: 'paid',
+      amount_minor: 1_290_000,
+      currency: 'huf',
+      event_deleted: false,
+    })
+  })
+
+  it('reports no sale for a completed but unpaid Session', async () => {
+    const { db } = database()
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        session({ payment_status: 'unpaid' }),
+      ),
+    )
+
+    await POST(request())
+
+    // A delayed payment method completes checkout and settles later. Counting
+    // it here would report revenue the ledger deliberately does not have.
+    expect(mocks.reportServerEvent).not.toHaveBeenCalled()
   })
 
   it('does not fulfil a completed but unpaid Session', async () => {

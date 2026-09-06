@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Check, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import type { Locale } from '@/lib/i18n'
+import { track } from '@/lib/telemetry'
 
 /**
  * Lets a guest forward the album link.
@@ -19,10 +20,14 @@ import type { Locale } from '@/lib/i18n'
  */
 export function InviteButton({
   url,
+  eventId,
   locale = 'hu',
   iconOnly = false,
 }: {
   url: string
+  /** For telemetry only. The link itself is never reported — it contains the
+   *  slug, which is the album's whole lock. */
+  eventId: string
   locale?: Locale
   /**
    * The guest surface's shape: a 58px bordered square beside the shutter, with
@@ -41,6 +46,15 @@ export function InviteButton({
     if (navigator.share) {
       try {
         await navigator.share({ url })
+        // The sheet opened and was not dismissed. Whether the guest then chose
+        // a recipient is not something the API reports, and nothing here
+        // pretends otherwise — this is the link leaving the page, which is the
+        // step that was previously invisible.
+        track('invite_shared', {
+          event_id: eventId,
+          surface: 'guest',
+          method: 'share_sheet',
+        })
         return
       } catch (error) {
         // Closing the native sheet is a complete, normal outcome. Only a real
@@ -53,9 +67,23 @@ export function InviteButton({
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+      track('invite_shared', {
+        event_id: eventId,
+        surface: 'guest',
+        method: 'clipboard',
+      })
     } catch {
       // Clipboard needs a secure context and can still be refused. Nothing
       // useful to offer here beyond leaving the button as it was.
+      //
+      // Worth reporting rather than shrugging at: from the guest's side the
+      // button simply does nothing, and an event where the link cannot be
+      // forwarded at all is an event nobody else joins.
+      track('invite_shared', {
+        event_id: eventId,
+        surface: 'guest',
+        method: 'unavailable',
+      })
     }
   }
 

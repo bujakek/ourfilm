@@ -18,6 +18,7 @@ import {
 } from '@/lib/participants'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLocale } from '@/lib/i18n'
+import { reportServerIssue } from '@/lib/telemetry-server'
 
 /**
  * Everything a guest can do, and the only way they can do it.
@@ -74,7 +75,22 @@ export async function joinEventAction(
   // a new participant row — which is why the form is only shown to someone who
   // has no usable cookie in the first place.
   const session = newParticipantSession()
-  const result = await joinEvent({ slug, name, session })
+
+  let result
+  try {
+    result = await joinEvent({ slug, name, session })
+  } catch (e) {
+    // A refusal comes back as `result.ok === false` and is reported by the
+    // browser as `guest_join_refused`. Reaching here instead means the RPC
+    // itself failed, and only the server can name why — a PostgREST code
+    // rather than the "something went wrong" the guest is about to read.
+    await reportServerIssue(e, {
+      operation: 'join_event',
+      route: '/e/[slug]',
+      routeType: 'action',
+    })
+    throw e
+  }
 
   if (!result.ok) {
     if (result.reason === 'cap_reached') {
@@ -158,7 +174,22 @@ export async function reserveShotAction(
     }
   }
 
-  const result = await reserveShot({ eventId, tokenHash, idempotencyKey })
+  let result
+  try {
+    result = await reserveShot({ eventId, tokenHash, idempotencyKey })
+  } catch (e) {
+    // The guest's browser already reports this as an `upload_issue` with a
+    // failure class. What it cannot know is the reason — the RPC's own code —
+    // which stays on this side of the call and was being thrown away.
+    // Re-thrown, so nothing about what the camera does changes.
+    await reportServerIssue(e, {
+      operation: 'reserve_shot',
+      eventId,
+      route: '/e/[slug]',
+      routeType: 'action',
+    })
+    throw e
+  }
   if (!result.ok) return { ok: false, refusal: result.refusal }
 
   return {
@@ -188,14 +219,27 @@ export async function commitShotAction({
   const tokenHash = await readParticipantTokenHash()
   if (!tokenHash) return { committed: false, shotsRemaining: 0 }
 
-  const result = await commitShot({
-    photoId,
-    tokenHash,
-    width,
-    height,
-    byteSize,
-    takenAt,
-  })
+  let result
+  try {
+    result = await commitShot({
+      photoId,
+      tokenHash,
+      width,
+      height,
+      byteSize,
+      takenAt,
+    })
+  } catch (e) {
+    // The most expensive failure in the product: the bytes are in Storage and
+    // the row never went `ready`, so the photo exists and nobody will ever be
+    // shown it.
+    await reportServerIssue(e, {
+      operation: 'commit_shot',
+      route: '/e/[slug]',
+      routeType: 'action',
+    })
+    throw e
+  }
 
   // The unified event page may already show the instant-reveal gallery, so its
   // server render has to drop. The client still uses the authoritative count

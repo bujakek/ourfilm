@@ -13,6 +13,11 @@ import { eventLocalToIso } from '@/lib/format'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
+import {
+  reportServerEvent,
+  reportServerIssue,
+  type ServerEventProperties,
+} from '@/lib/telemetry-server'
 
 /**
  * Everything a host can change about a running camera.
@@ -36,6 +41,56 @@ function revalidateEvent(slug: string) {
   revalidatePath(`/host/events/${slug}/settings`)
   revalidatePath('/host')
   revalidatePath(`/e/${slug}`, 'layout')
+}
+
+type Setting = ServerEventProperties['event_setting_changed']['setting']
+
+/**
+ * Report a settings write the database refused, and hand the error back so the
+ * caller can throw it — `throw await refused(error, 'reveal')`.
+ *
+ * Both refusals go through here, and the second is the reason it exists. An
+ * UPDATE that matches zero rows carries no error at all: it is what a missing
+ * or non-matching policy looks like from this side, and it reaches the host as
+ * "Az esemény nem módosult" with nothing recorded anywhere. That is precisely
+ * the failure the docblock above warns about, and it has never been counted.
+ */
+async function refused(error: unknown, setting: Setting) {
+  await reportServerIssue(error, {
+    operation: `event_setting_${setting}`,
+    route: '/host/events/[slug]/settings',
+    routeType: 'action',
+  })
+  return error
+}
+
+async function refusedPhoto(error: unknown) {
+  await reportServerIssue(error, {
+    operation: 'photo_hidden',
+    route: '/host/events/[slug]',
+    routeType: 'action',
+  })
+  return error
+}
+
+/** One event for all five controls, so "what do hosts adjust, and when" is a
+ *  single breakdown rather than five series to line up by hand. */
+function changed(
+  eventId: string,
+  setting: Setting,
+  values: Partial<
+    Omit<ServerEventProperties['event_setting_changed'], 'event_id' | 'setting'>
+  > = {},
+) {
+  return reportServerEvent('event_setting_changed', {
+    event_id: eventId,
+    setting,
+    reveal_mode: null,
+    shots: null,
+    guests_can_view: null,
+    moved_minutes: null,
+    ...values,
+  })
 }
 
 /**
@@ -63,9 +118,14 @@ export async function setPhotoHidden(
     .eq('id', photoId)
     .select('id')
 
-  if (error) throw error
+  // Moderation is not a setting, so it is reported under its own operation.
+  // The zero-row case matters here for the same reason it does below: it is a
+  // policy refusal arriving with no error attached.
+  if (error) throw await refusedPhoto(error)
   if (!data || data.length === 0) {
-    throw new Error('A kép nem módosult — lehet, hogy nincs jogosultságod.')
+    throw await refusedPhoto(
+      new Error('A kép nem módosult — lehet, hogy nincs jogosultságod.'),
+    )
   }
 
   revalidatePath(`/host/events/${slug}`)
@@ -84,8 +144,15 @@ export async function setGuestsCanView(slug: string, canView: boolean) {
     .eq('slug', slug)
     .select('id')
 
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+  if (error) throw await refused(error, 'guests_can_view')
+  if (!data || data.length === 0) {
+    throw await refused(
+      new Error('Az esemény nem módosult.'),
+      'guests_can_view',
+    )
+  }
+
+  await changed(data[0].id, 'guests_can_view', { guests_can_view: canView })
 
   revalidateEvent(slug)
   revalidatePath(`/e/${slug}`)
@@ -126,8 +193,15 @@ export async function renameEvent(slug: string, name: string) {
     .eq('slug', slug)
     .select('id')
 
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+  if (error) throw await refused(error, 'name')
+  if (!data || data.length === 0) {
+    throw await refused(new Error('Az esemény nem módosult.'), 'name')
+  }
+
+  // The name itself is never reported — it is the one field a guest reads and
+  // a host writes freely, so it is exactly the kind of string that must not
+  // reach a third party. That it changed is the whole event.
+  await changed(data[0].id, 'name')
 
   revalidateEvent(slug)
   revalidatePath(`/e/${slug}`)
@@ -176,8 +250,20 @@ export async function setCaptureEnd(slug: string, endLocal: string) {
     .eq('slug', slug)
     .select('id')
 
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+  if (error) throw await refused(error, 'capture_end')
+  if (!data || data.length === 0) {
+    throw await refused(new Error('Az esemény nem módosult.'), 'capture_end')
+  }
+
+  // Signed, and it is the sign that carries the meaning: negative closes the
+  // camera early, which is a host standing in the room ending the night, and
+  // positive is a party running long. Both say the default window was wrong.
+  await changed(data[0].id, 'capture_end', {
+    moved_minutes: Math.round(
+      (new Date(endIso).getTime() - new Date(event.capture_end_at).getTime()) /
+        60_000,
+    ),
+  })
 
   revalidateEvent(slug)
   revalidatePath(`/e/${slug}`)
@@ -205,8 +291,12 @@ export async function setReveal(slug: string, mode: string) {
     .eq('slug', slug)
     .select('id')
 
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+  if (error) throw await refused(error, 'reveal')
+  if (!data || data.length === 0) {
+    throw await refused(new Error('Az esemény nem módosult.'), 'reveal')
+  }
+
+  await changed(data[0].id, 'reveal', { reveal_mode: mode })
 
   revalidateEvent(slug)
   revalidatePath(`/e/${slug}`)
@@ -230,8 +320,12 @@ export async function setShotsPerParticipant(slug: string, shots: number) {
     .eq('slug', slug)
     .select('id')
 
-  if (error) throw error
-  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+  if (error) throw await refused(error, 'shots')
+  if (!data || data.length === 0) {
+    throw await refused(new Error('Az esemény nem módosult.'), 'shots')
+  }
+
+  await changed(data[0].id, 'shots', { shots })
 
   revalidateEvent(slug)
 }
@@ -284,7 +378,7 @@ export async function deleteEvent(slug: string) {
 
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, event_name')
+    .select('id, event_name, created_at')
     .eq('slug', slug)
     .maybeSingle()
   if (eventError) throw eventError
@@ -358,6 +452,25 @@ export async function deleteEvent(slug: string) {
   if (!deleted || deleted.length === 0) {
     throw new Error('Az esemény nem törlődött.')
   }
+
+  // Reported after the rows are gone, and only then — a deletion that threw
+  // halfway is not a deletion. Nothing about the album survives this, so the
+  // count of objects and the age of the event are the only two things left
+  // that can say what was lost. An album erased days after a wedding and one
+  // erased minutes after a mistaken creation are the same row in the database
+  // and completely different news.
+  //
+  // The name goes nowhere near this. The event id is about to stop resolving
+  // to anything, which is what makes it safe to keep: it joins this to the
+  // creation and the payment that came before it and to nothing else.
+  await reportServerEvent('event_deleted', {
+    event_id: event.id,
+    object_count: paths.length,
+    age_hours:
+      Math.round(
+        ((Date.now() - new Date(event.created_at).getTime()) / 3_600_000) * 10,
+      ) / 10,
+  })
 
   revalidatePath('/host')
   redirect('/host')

@@ -11,7 +11,7 @@ import { eventLocalToIso, isValidTimeZone } from '@/lib/format'
 import { isEventPlan } from '@/lib/onboarding'
 import { type Locale, resolveLocale } from '@/lib/i18n'
 import { generateEventSlug } from '@/lib/slug'
-import { reportServerIssue } from '@/lib/telemetry-server'
+import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
@@ -197,17 +197,49 @@ export async function createEventFromDraft(
       ? input.creationKey
       : null
 
+  /**
+   * The end of the create funnel, reported from the one place that knows the
+   * row exists.
+   *
+   * Not from the browser: every success here is immediately followed by a
+   * `window.location.replace`, and a client-side event buffered while PostHog
+   * loads on idle does not survive that. `creation_key` is what joins this
+   * back to the four onboarding screens, which happened before any row — and
+   * often in a different session, on the other side of a magic link.
+   */
+  const reportCreated = (eventId: string, repeat: boolean) =>
+    reportServerEvent('event_created', {
+      event_id: eventId,
+      creation_key: creationKey,
+      locale,
+      plan: planRaw,
+      shots,
+      reveal_mode: revealModeRaw,
+      guests_can_view: guestsCanView,
+      window_hours:
+        Math.round(
+          ((captureEndAt.getTime() - captureStartAt.getTime()) / 3_600_000) *
+            10,
+        ) / 10,
+      repeat,
+    })
+
   // Idempotency, first pass: the common case is a resumed draft whose event
   // already exists — a reloaded callback URL, a second tab, a back button. One
   // indexed lookup is cheaper than an insert that has to fail.
   if (creationKey) {
     const { data: existing } = await supabase
       .from('events')
-      .select('slug')
+      .select('id, slug')
       .eq('owner_id', user.id)
       .eq('creation_key', creationKey)
       .maybeSingle()
     if (existing) {
+      // The idempotency key did its job: a reloaded callback, a second tab or
+      // a re-opened magic link. Reported as a creation with `repeat` set
+      // rather than not at all, so the count of created events matches the
+      // count of hosts who pressed the button.
+      await reportCreated(existing.id, true)
       return {
         ok: true,
         destination: `/host/events/${existing.slug}?lang=${locale}`,
@@ -259,15 +291,17 @@ export async function createEventFromDraft(
       if (error.message.includes(CREATION_KEY_INDEX) && creationKey) {
         const { data: raced } = await supabase
           .from('events')
-          .select('slug')
+          .select('id, slug')
           .eq('owner_id', user.id)
           .eq('creation_key', creationKey)
           .maybeSingle()
-        if (raced)
+        if (raced) {
+          await reportCreated(raced.id, true)
           return {
             ok: true,
             destination: `/host/events/${raced.slug}?lang=${locale}`,
           }
+        }
         return { ok: false, error: copy.retry }
       }
       // Otherwise it is a slug collision, which a fresh random suffix clears.
@@ -292,6 +326,8 @@ export async function createEventFromDraft(
     }
   }
 
+  await reportCreated(eventId, false)
+
   // Where the host lands, which is the only thing the plan choice decides.
   //
   // `full` is not a column and nothing about the row above is different for
@@ -307,13 +343,27 @@ export async function createEventFromDraft(
     // payments not switched on, or try again — better than a silent landing on
     // the QR code would.
     destination = `/host/events/${slug}/settings?lang=${locale}`
-    if (stripeIsConfigured()) {
+    if (!stripeIsConfigured()) {
+      // The host picked the paid tier on a deployment with no Stripe keys.
+      // The tile reads "Hamarosan" there, so this should be rare — and if it
+      // is not rare in production, that is the incident.
+      await reportServerEvent('checkout_blocked', {
+        event_id: eventId,
+        source: 'onboarding',
+        reason: 'stripe_not_configured',
+      })
+    } else {
       try {
         // An admin's own events are already unlimited, so there is nothing to
         // sell them. Same predicate the billing card reads.
         const quota = await getEventQuota(eventId)
         if (quota.unlimited) {
           destination = `/host/events/${slug}?lang=${locale}`
+          await reportServerEvent('checkout_blocked', {
+            event_id: eventId,
+            source: 'onboarding',
+            reason: 'already_unlimited',
+          })
         } else {
           destination = await createEventCheckoutUrl({
             eventId,
@@ -322,6 +372,12 @@ export async function createEventFromDraft(
             ownerEmail: user.email ?? null,
             locale,
             termsAcceptedAt: new Date().toISOString(),
+          })
+          await reportServerEvent('checkout_started', {
+            event_id: eventId,
+            source: 'onboarding',
+            currency: locale === 'en' ? 'usd' : 'huf',
+            locale,
           })
         }
       } catch (e) {

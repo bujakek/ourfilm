@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useOptimistic, useState, useTransition } from 'react'
 import { setPhotoHidden } from '@/app/(product)/host/events/[slug]/actions'
 import { T, still } from '@/lib/motion'
+import { track } from '@/lib/telemetry'
 
 /**
  * Stands in for a real `hidden_at` until the server sends one back.
@@ -24,12 +25,14 @@ type Filter = 'all' | 'hidden'
 function Tile({
   photo,
   slug,
+  eventId,
   onToggle,
   locale,
   filteredOut,
 }: {
   photo: ModerationTile
   slug: string
+  eventId: string
   onToggle: (photoId: string) => void
   locale: 'en' | 'hu'
   /** Hidden by the filter, not by the host. Still mounted — see the grid. */
@@ -112,6 +115,11 @@ function Tile({
             onToggle(photo.id)
             try {
               await setPhotoHidden(slug, photo.id, !hidden)
+              // After the round trip, not beside the optimistic flip: the
+              // whole point of the number is how much of an album a host takes
+              // out, and a tap that failed took nothing out. The photo id
+              // stays here — it identifies one guest's frame.
+              track('photo_moderated', { event_id: eventId, hidden: !hidden })
             } catch {
               setError(true)
             }
@@ -161,12 +169,15 @@ function Tile({
 export function ModerationGrid({
   photos,
   slug,
+  eventId,
   locale,
   title,
   albumHref,
 }: {
   photos: ModerationTile[]
   slug: string
+  /** Telemetry only. */
+  eventId: string
   locale: 'en' | 'hu'
   /** The section heading, rendered beside the toolbar it belongs with. */
   title: string
@@ -255,6 +266,15 @@ export function ModerationGrid({
           {albumHref ? (
             <a
               href={albumHref}
+              // The intent. The route reports what the stream then did, and
+              // the gap between the two is an export that never ran — a
+              // function that timed out, a download the browser refused.
+              onClick={() =>
+                track('album_export_requested', {
+                  event_id: eventId,
+                  photo_count: items.length,
+                })
+              }
               className="inline-flex items-center gap-2 rounded-full border border-white/14 px-3.5 py-1.5 text-[11px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground"
             >
               <Download className="size-3.5" aria-hidden="true" />
@@ -279,6 +299,7 @@ export function ModerationGrid({
               key={photo.id}
               photo={photo}
               slug={slug}
+              eventId={eventId}
               onToggle={toggle}
               locale={locale}
               filteredOut={filter === 'hidden' && photo.hidden_at === null}

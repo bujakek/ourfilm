@@ -7,12 +7,16 @@ import { useState } from 'react'
 import { Lightbox } from './lightbox'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
+import { track } from '@/lib/telemetry'
 
 export function PhotoGrid({
   photos,
+  eventId,
   locale = 'hu',
 }: {
   photos: GalleryTile[]
+  /** Telemetry only. */
+  eventId: string
   locale?: Locale
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
@@ -47,12 +51,28 @@ export function PhotoGrid({
           >
             <motion.button
               type="button"
-              onClick={() => setOpenIndex(i)}
+              onClick={() => {
+                setOpenIndex(i)
+                // The payoff of the whole format, and the one part of the
+                // guest funnel that was never measured: the reveal opens
+                // because a request arrives after an instant, and until this
+                // there was no way to tell whether anybody came back to look.
+                track('gallery_photo_opened', {
+                  event_id: eventId,
+                  index: i,
+                  photos: photos.length,
+                })
+              }}
               whileTap={reduceMotion ? undefined : { scale: 0.975 }}
               transition={reduceMotion ? still : T.snap}
               className="group relative block aspect-square w-full overflow-hidden rounded-sm"
             >
-              <Tile photo={photo} locale={locale} reduceMotion={reduceMotion} />
+              <Tile
+                photo={photo}
+                eventId={eventId}
+                locale={locale}
+                reduceMotion={reduceMotion}
+              />
             </motion.button>
           </motion.li>
         ))}
@@ -62,6 +82,7 @@ export function PhotoGrid({
         {openIndex !== null ? (
           <Lightbox
             photos={photos}
+            eventId={eventId}
             locale={locale}
             index={openIndex}
             onClose={() => setOpenIndex(null)}
@@ -88,10 +109,12 @@ export function PhotoGrid({
  */
 function Tile({
   photo,
+  eventId,
   locale,
   reduceMotion,
 }: {
   photo: GalleryTile
+  eventId: string
   locale: Locale
   reduceMotion: boolean | null
 }) {
@@ -119,7 +142,14 @@ function Tile({
         sizes="(max-width: 640px) 50vw, 33vw"
         unoptimized
         onLoad={() => setDeveloped(true)}
-        onError={() => setDeveloped(true)}
+        onError={() => {
+          setDeveloped(true)
+          // A photo the guest can see a space for and not the photo. The
+          // expected cause is a signed URL that expired — they last an hour —
+          // under a tab left open and scrolled later, and from the page it is
+          // indistinguishable from a photo that was never there.
+          track('gallery_image_failed', { event_id: eventId, surface: 'grid' })
+        }}
         className="object-cover transition-transform duration-500 group-hover:scale-105"
       />
     </motion.span>

@@ -156,7 +156,12 @@ export default async function AdminEventPage({ params }: Props) {
           </div>
 
           {quota && !quota.unlimited ? (
-            <QuotaBanner slug={event.slug} quota={quota} locale={locale} />
+            <QuotaBanner
+              slug={event.slug}
+              eventId={event.id}
+              quota={quota}
+              locale={locale}
+            />
           ) : null}
         </HostBlock>
 
@@ -165,6 +170,7 @@ export default async function AdminEventPage({ params }: Props) {
           <QrCard
             name={event.event_name}
             url={url}
+            eventId={event.id}
             shots={event.shots_per_participant}
             locale={locale}
           />
@@ -176,6 +182,7 @@ export default async function AdminEventPage({ params }: Props) {
           <ModerationGrid
             photos={tiles}
             slug={event.slug}
+            eventId={event.id}
             locale={locale}
             title={en ? 'Photos' : 'Elkészült képek'}
             albumHref={
