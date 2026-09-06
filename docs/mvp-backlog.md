@@ -27,14 +27,15 @@ otherwise order is flexible.
 
 Do not reopen these without a reason; the tickets below already assume them.
 
-- [x] **D1 — Slug format → readable stem plus a random suffix.**
-      `anna-peter-k3f9x7`. Guests have no gate of any kind, so the URL is the
-      only lock on the album, and `anna-peter` is enumerable in minutes from a
-      list of common Hungarian first names. Six characters from a 30-character
-      alphabet (no `0`/`o`, `1`/`l`/`i`, or `u`) gives ~729 million
-      combinations. **Implemented** in `lib/slug.ts`: `slugify()` stays
-      deterministic because the landing page calls it on every keystroke;
-      `generateEventSlug()` is what real events get.
+- [x] **D1 — Slug format → a random code, and nothing else.**
+      `k3f9x7ab2m`. Guests have no gate of any kind, so the URL is the only
+      lock on the album. **Superseded September 2026:** the slug used to be a
+      readable stem plus a six-character suffix (`anna-peter-k3f9x7`), which
+      renaming turned into a permanent record of the name a host had already
+      corrected. The stem is gone and the code grew to ten characters from the
+      same 30-character alphabet (no `0`/`o`, `1`/`l`/`i`, or `u`) — ~5.9e14
+      combinations — because the stem had been carrying part of the guess.
+      `generateEventSlug()` in `lib/slug.ts` is the only way to mint one.
 - [x] **D2 — Supabase free during development, Pro before the wedding.**
       Region is Zurich (`eu-central-2`), provisioned via the Vercel integration.
       Latency from Hungary is indistinguishable from Frankfurt. Note that

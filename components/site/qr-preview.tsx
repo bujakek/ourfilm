@@ -1,9 +1,9 @@
 'use client'
 
-import { EXAMPLE_SLUG_SUFFIX, slugify } from '@/lib/slug'
+import { EXAMPLE_SLUG } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
 import Image from 'next/image'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Reveal } from './reveal'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
@@ -20,8 +20,13 @@ import { marketingCopy } from '@/lib/marketing-copy'
  *
  * **The live name field stays, and it is why this section is still here.** The
  * hero's ticket is static; this is the only place a visitor types their own
- * event name and watches their own address appear under it, which is the
- * difference between being told the code is theirs and seeing it.
+ * event name and watches it land on the card, which is the difference between
+ * being told the card is theirs and seeing it.
+ *
+ * What it no longer does is retype the name into the URL. Slugs are opaque
+ * codes — see `lib/slug.ts` — so the address below the name is fixed, and the
+ * two lines say exactly what a host is given: a name they choose and can
+ * change, over a code they are issued and cannot.
  *
  * The code itself is *not* redrawn here. There is already one on the hero
  * ticket, one on the host's screen in step 02, and one in the persistent card
@@ -32,8 +37,7 @@ import { marketingCopy } from '@/lib/marketing-copy'
 export function QrPreview({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].qr
   const [name, setName] = useState(copy.placeholder)
-  const slug = useMemo(() => `${slugify(name)}-${EXAMPLE_SLUG_SUFFIX}`, [name])
-  const url = eventUrl(slug)
+  const url = eventUrl(EXAMPLE_SLUG)
 
   return (
     <section
@@ -70,15 +74,25 @@ export function QrPreview({ locale }: { locale: Locale }) {
                 placeholder={copy.placeholder}
                 className="w-full min-w-0 border-b border-[rgba(20,19,18,.2)] bg-transparent pb-3 font-display text-[30px] leading-[1.1] text-[color:var(--paper-foreground)] outline-none placeholder:text-[rgba(20,19,18,.3)] focus:border-[rgba(20,19,18,.5)]"
               />
-              {/* The address on its own line. Inline after the label it had
-                  barely a word's width left and `break-all` was stranding the
-                  slug's last character on a line of its own. */}
-              <p className="paper-muted min-w-0 text-[13.5px]">
-                {copy.link}
-                <span className="mt-1 block font-mono text-[12.5px] break-all text-[rgba(20,19,18,.75)]">
-                  {url.replace('https://', '')}
-                </span>
-              </p>
+              {/* The stub: what the typed name turns into. The name is set
+                  in the card's own display face rather than echoed as plain
+                  text, because the thing being demonstrated is that this ends
+                  up printed. `fallback` covers an emptied field — a card with
+                  no name on it would read as a rendering bug. */}
+              <div className="paper-rule mt-1.5 min-w-0 rounded-sm border px-4.5 py-4">
+                <p className="paper-muted font-mono text-[8.5px] font-medium tracking-[0.2em]">
+                  {copy.cardLabel}
+                </p>
+                <p className="mt-2.5 font-display text-[20px] leading-[1.15] text-balance">
+                  {name.trim() || copy.fallback}
+                </p>
+                <p className="paper-rule paper-muted mt-3.5 border-t pt-3 text-[13.5px]">
+                  {copy.link}
+                  <span className="mt-1 block font-mono text-[12.5px] break-all text-[rgba(20,19,18,.75)]">
+                    {url.replace('https://', '')}
+                  </span>
+                </p>
+              </div>
             </div>
           </Reveal>
 

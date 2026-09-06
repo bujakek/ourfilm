@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
 import { T, still } from '@/lib/motion'
-import { EXAMPLE_SLUG_SUFFIX, slugify } from '@/lib/slug'
+import { EXAMPLE_SLUG } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
 
 /**
@@ -83,10 +83,7 @@ export function TryCameraCard({ locale }: { locale: Locale }) {
     }
   }
 
-  const url = eventUrl(
-    `${slugify('Anna & Péter')}-${EXAMPLE_SLUG_SUFFIX}`,
-    locale,
-  )
+  const url = eventUrl(EXAMPLE_SLUG, locale)
 
   return (
     <div className="pointer-events-none fixed right-7 bottom-7 z-40 hidden md:block">

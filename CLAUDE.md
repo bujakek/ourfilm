@@ -219,7 +219,7 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   locale and must not replace the production hook. Deployment details are in
   `supabase/templates/README.md`.
 
-- `lib/slug.ts` holds the canonical `slugify()` — the host area and the QR preview must both use it so printed QR codes never disagree.
+- `lib/slug.ts` mints the slug, and it is an **opaque 10-character code** with nothing of the event name in it. It stopped carrying a readable stem when renaming shipped: the stem is minted once and printed onto QR cards, so a renamed event's link said the old name for ever. There is no `slugify()` any more and `generateEventSlug()` takes no arguments — nothing a caller could pass should influence an address. The marketing previews show `EXAMPLE_SLUG` for the same reason: a mockup with a name in the URL teaches hosts to expect a link they will never be given. Events created before September 2026 keep their name-shaped slugs; nothing reads them.
 - `vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
   (Zurich) and Vercel's default is `iad1` (Washington DC), so every query on
   the guest path was crossing the Atlantic twice. Frankfurt is the closest
@@ -680,7 +680,7 @@ inert — unread and unvalidated — until step 1.
   (`lib/participants.ts`).
 - **Host: Supabase Auth magic link.** Only `/host` is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
 - **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/host` to list **every** event once you promote an account.
-- Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Slugs therefore carry a random suffix (`anna-peter-k3f9x7`); `slugify()` stays deterministic for the QR preview, and `generateEventSlug()` is what real events get. Never create an event with a bare `slugify()` result.
+- Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. The slug is therefore the whole lock: ten characters from a 30-character alphabet (`k3f9x7ab2m`, ~5.9e14), cryptographically random. It was six while a readable name stem sat in front of it — the stem was quietly carrying part of the guess, so removing it and keeping six would have made albums enumerable. Only `generateEventSlug()` may mint one.
 
 ## Data model (settled)
 

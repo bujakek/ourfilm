@@ -99,7 +99,7 @@ async function main() {
     const { data: created, error: createError } = await supabase
       .from('events')
       .insert({
-        slug: generateEventSlug(EVENT_NAME),
+        slug: generateEventSlug(),
         event_name: EVENT_NAME,
         owner_id: host.id,
         // A camera that is open right now and stays open for a week, revealing
