@@ -1,7 +1,9 @@
 import { EventList } from '@/components/host/event-list'
 import { EventListSkeleton } from '@/components/host/skeletons'
 import { captureIsOpen, getEventListItems } from '@/lib/events'
-import { localeTag, resolveLocale } from '@/lib/i18n'
+import { localeTag } from '@/lib/i18n'
+import { hostLocale } from '@/lib/roles'
+import { LanguageToggle } from '@/components/host/language-toggle'
 import { CalendarPlus, LogOut, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -18,7 +20,7 @@ export async function generateMetadata({
   const { lang } = await searchParams
   return {
     title:
-      resolveLocale(lang) === 'hu'
+      (await hostLocale(lang)) === 'hu'
         ? 'Áttekintés — OurFilm'
         : 'Dashboard — OurFilm',
     robots: { index: false, follow: false },
@@ -31,7 +33,10 @@ export default async function AdminPage({
   searchParams: Promise<{ lang?: string }>
 }) {
   const { lang } = await searchParams
-  const locale = resolveLocale(lang)
+  // `?lang` wins where a link set it; otherwise the account's own language, so
+  // a bookmarked `/host` renders in the language the host reads rather than
+  // the site default.
+  const locale = await hostLocale(lang)
   const en = locale === 'en'
   return (
     <main
@@ -49,6 +54,7 @@ export default async function AdminPage({
           {en ? 'Your events' : 'Eseményeid'}
         </h1>
         <div className="flex items-center gap-2.5">
+          <LanguageToggle locale={locale} />
           <form action={`/auth/signout?lang=${locale}`} method="post">
             <button
               type="submit"

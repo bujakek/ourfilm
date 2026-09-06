@@ -141,7 +141,11 @@ function EventRow({
           markup stays a real `<ul>` of `<li>`s. */}
       <HostBlock index={index}>
         <Link
-          href={`/host/events/${event.slug}?lang=${event.locale}`}
+          // No `?lang`: the destination is a host screen and reads the
+          // host's own language. Carrying `event.locale` here is what made
+          // opening an English event render a Hungarian host's console in
+          // English.
+          href={`/host/events/${event.slug}`}
           className={`block overflow-hidden rounded-lg border transition-colors ${
             open
               ? 'border-white/12 hover:border-white/25'

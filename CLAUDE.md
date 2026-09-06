@@ -587,6 +587,52 @@ because no human navigates to it and the URL is pasted into Stripe's dashboard.
 
 The `/e/` prefix is what the landing page already advertises in `qr-preview.tsx` and `how-it-works.tsx`, and it keeps the root namespace free for marketing pages.
 
+## Three locales, and which question each answers (settled)
+
+They are separate columns because they are separate questions, and collapsing
+any two of them breaks something concrete.
+
+|              | Whose language | Stored in         | Also decides           |
+| ------------ | -------------- | ----------------- | ---------------------- |
+| **Account**  | the host       | `profiles.locale` | auth email language    |
+| **Event**    | the guests     | `events.locale`   | **which Stripe Price** |
+| **Override** | one request    | `?lang`           | nothing                |
+
+- **`profiles.locale` is what makes a bookmark work.** `/host`, `/host/login`
+  and `/auth` sit outside the locale tree and take their language from `?lang`;
+  every internal link sets it, so the gap only showed when something did not —
+  a bookmark, a hand-typed URL, an email client that dropped the query — and
+  `resolveLocale()` then fell back to `defaultLocale`, handing an English host
+  a Hungarian dashboard. Read it through `hostLocale(lang)` in `lib/roles.ts`,
+  never inline: an explicit `?lang` wins, the account answers otherwise, and
+  `defaultLocale` catches a signed-out visitor.
+- **It is seeded at signup with no application code.** `sendSignInLink`
+  already writes `data: { locale }` into user metadata on every magic link, so
+  `handle_new_user()` reads `raw_user_meta_data ->> 'locale'` — exactly how
+  `role` is handled. A junk or absent value falls back to `hu` rather than
+  failing the signup.
+- **Changing it must go through `set_profile_locale`, never an UPDATE.**
+  `profiles` has no self-update policy on purpose, and `20260831150000` grants
+  `authenticated` a blanket UPDATE on _every column_ of that table — so the
+  missing policy is the only thing between a host and `role = 'admin'`. A
+  "users update own profile" policy to let someone switch language would open
+  that door. The RPC is `security definer`, writes one named column, and reads
+  `auth.uid()` inside rather than taking it as an argument.
+  `tests/db/profile-locale.test.ts` pins both halves.
+- **`events.locale` stays independent, and the create flow only _defaults_ it.**
+  A Hungarian host running an English-language wedding holds a Hungarian
+  dashboard and an English camera, billed in forint. The default arrives for
+  free: `/host`'s "New camera" link carries `?lang=<account locale>`, which the
+  draft stores and the insert writes. Nothing awaits the account inside
+  `/host/events/new` — that page **must stay synchronous** and is in
+  `PUBLIC_ADMIN_PATHS`, so it is often reached signed out.
+- **Host chrome renders in the host's language; guest-facing URLs keep the
+  event's.** `app/(product)/host/events/[slug]/page.tsx` holds both, named
+  `locale` and `guestLocale`, and the split is load-bearing: the page used to
+  render entirely in `event.locale` and link back as `/host?lang=${locale}`, so
+  opening one English event flipped the whole dashboard to English. For the
+  same reason the dashboard's row link carries no `?lang` at all any more.
+
 ## Locales and the blog (settled)
 
 `lib/i18n.ts` holds `locales = ['hu'] as const`, and everything else is derived
@@ -752,7 +798,7 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 **Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); the host area reads the tables directly under ownership policies. Details in the Supabase skill.
 
-- **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `created_at`. One row per account, written by a trigger at signup. Read it through `lib/roles.ts`, never inline.
+- **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `locale` (`en` | `hu`, the language the _host_ reads), `created_at`. One row per account, written by a trigger at signup. Read it through `lib/roles.ts`, never inline. `role` and `locale` are both writable only by an admin or the service role — see Three locales for why the locale needs an RPC rather than a self-update policy.
 
 - **`purchases`** — `event_id`, `owner_id`, `stripe_checkout_session_id` (unique), `stripe_payment_intent_id`, `stripe_customer_id`, `amount_minor`, `currency`, `status` (`pending` | `paid` | `refunded` | `failed` | `expired`), `created_at`, `paid_at`, `refunded_at`, `failed_at`, `expired_at`. A ledger, not a flag: every terminal Checkout outcome remains explainable, which is why `getEventPurchase()` sorts on `paid_at` before `created_at`.
 

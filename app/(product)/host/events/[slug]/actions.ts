@@ -10,6 +10,7 @@ import {
   resolveRevealAt,
 } from '@/lib/camera'
 import { eventLocalToIso } from '@/lib/format'
+import { isLocale } from '@/lib/i18n'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
@@ -123,6 +124,44 @@ export async function renameEvent(slug: string, name: string) {
   const { data, error } = await supabase
     .from('events')
     .update({ event_name: trimmed })
+    .eq('slug', slug)
+    .select('id')
+
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+
+  revalidateEvent(slug)
+  revalidatePath(`/e/${slug}`)
+}
+
+/**
+ * Change the language the guests read this event in.
+ *
+ * **Not the host's own language.** `profiles.locale` is what the host reads —
+ * the dashboard, the settings screens, the auth emails. This is what a guest
+ * scanning the QR code reads: the join ticket, the camera, the gallery. A
+ * Hungarian host running an English-language wedding wants exactly that split,
+ * which is why the two columns are never written together. The account locale
+ * is only ever the value this one *starts* at, carried in by the `?lang` on
+ * the dashboard's "New camera" link.
+ *
+ * It also selects the Stripe Price — `createEventCheckoutUrl` reads
+ * `locale === 'en' ? eventPriceUsdId : eventPriceId` — so switching an unpaid
+ * event changes the currency of the next checkout. That is deliberate and the
+ * card says so: the alternative is a host who picked English being quoted in
+ * forint. An event that is already paid keeps its receipt, because `purchases`
+ * is a ledger of what was actually charged and nothing here rewrites it.
+ *
+ * The guest pages are revalidated along with the host's, since the language
+ * they render in is exactly the column being written.
+ */
+export async function setEventLocale(slug: string, locale: string) {
+  if (!isLocale(locale)) throw new Error('Ismeretlen nyelv.')
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('events')
+    .update({ locale })
     .eq('slug', slug)
     .select('id')
 

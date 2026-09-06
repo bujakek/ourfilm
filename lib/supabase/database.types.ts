@@ -340,16 +340,19 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          locale: string
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
           created_at?: string
           id: string
+          locale?: string
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
           created_at?: string
           id?: string
+          locale?: string
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
@@ -656,6 +659,7 @@ export type Database = {
         Args: { p_event_slug: string; p_note?: string }
         Returns: boolean
       }
+      set_profile_locale: { Args: { p_locale: string }; Returns: string }
       shot_reservation_ttl: { Args: never; Returns: string }
     }
     Enums: {

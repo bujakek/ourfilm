@@ -1,6 +1,7 @@
 import { BillingCard } from '@/components/host/billing-card'
 import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
+import { EventLocaleCard } from '@/components/host/event-locale-card'
 import { EventNameCard } from '@/components/host/event-name-card'
 import { GuestsToggle } from '@/components/host/guests-toggle'
 import { RevealCard } from '@/components/host/reveal-card'
@@ -19,6 +20,7 @@ import {
 } from '@/lib/camera'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { localeTag } from '@/lib/i18n'
+import { hostLocale } from '@/lib/roles'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
 import { planNote } from '@/lib/plan-copy'
@@ -33,7 +35,7 @@ export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ checkout?: string }>
+  searchParams: Promise<{ checkout?: string; lang?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -66,7 +68,10 @@ export default async function AdminEventSettingsPage({
   const { slug } = await params
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
-  const locale = event.locale
+  // The host's own language for every label on this page; the event's own
+  // locale is a *setting* shown by `EventLocaleCard` rather than the language
+  // this screen is written in. See the note on the event page.
+  const locale = await hostLocale((await searchParams).lang)
   const en = locale === 'en'
 
   // Every date field is rendered in the event's own zone, not the server's and
@@ -128,6 +133,17 @@ export default async function AdminEventSettingsPage({
           locale={locale}
         />
 
+        {/* Second, and behind a boundary: unlike the name, it needs the plan
+            read to decide whether to quote a price. */}
+        <Suspense fallback={<CardSkeleton />}>
+          <EventLocale
+            slug={event.slug}
+            eventId={event.id}
+            eventLocale={event.locale}
+            hostLocale={locale}
+          />
+        </Suspense>
+
         <CaptureEndCard
           slug={event.slug}
           endValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
@@ -187,6 +203,57 @@ function BillingCardSkeleton() {
     <div
       className="skeleton h-32 animate-pulse rounded-2xl"
       aria-hidden="true"
+    />
+  )
+}
+
+function CardSkeleton() {
+  return (
+    <div
+      className="skeleton h-44 animate-pulse rounded-2xl"
+      aria-hidden="true"
+    />
+  )
+}
+
+/**
+ * The guest-language card, which needs the plan only to decide whether to
+ * quote a price.
+ *
+ * Its own boundary for the same reason `EventBilling` has one: a quota read
+ * that throws must not take the whole route to the error boundary and strand a
+ * host who came here to change a date or delete an event. `getEventQuota` is
+ * `cache()`d, so reading it here and in the billing card below costs one round
+ * trip between them.
+ *
+ * On failure it claims the event is already on the full plan, which is the
+ * safe direction: that hides the price line, and quoting a price to a host who
+ * has already paid is a worse thing to be wrong about than saying nothing.
+ */
+async function EventLocale({
+  slug,
+  eventId,
+  eventLocale,
+  hostLocale,
+}: {
+  slug: string
+  eventId: string
+  eventLocale: 'en' | 'hu'
+  hostLocale: 'en' | 'hu'
+}) {
+  let unlimited = true
+  try {
+    unlimited = (await getEventQuota(eventId)).unlimited
+  } catch (e) {
+    console.error('Could not read the plan for the locale card', e)
+  }
+
+  return (
+    <EventLocaleCard
+      slug={slug}
+      locale={eventLocale}
+      hostLocale={hostLocale}
+      unlimited={unlimited}
     />
   )
 }

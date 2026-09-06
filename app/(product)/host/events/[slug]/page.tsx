@@ -14,6 +14,7 @@ import { revealSummary, shortTimeRemaining } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatDeadline } from '@/lib/format'
 import { localeTag } from '@/lib/i18n'
+import { hostLocale } from '@/lib/roles'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
 
@@ -21,6 +22,7 @@ export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ lang?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -45,11 +47,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * host reads once are a ruled mono strip at the bottom rather than a 56px
  * disclosure, and everything editable is still one tap away in settings.
  */
-export default async function AdminEventPage({ params }: Props) {
+export default async function AdminEventPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const { lang } = await searchParams
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
-  const locale = event.locale
+  // **Two locales on this screen, and they answer different questions.**
+  // `locale` is what the *host* reads — the labels, the dates, the links back
+  // into their own area. `guestLocale` is the event's own, and it belongs only
+  // to the things a guest will see: the URL in the QR code and the guest-view
+  // preview. Rendering the host's chrome in the event's language is what made
+  // opening one English event flip the whole dashboard to English on the way
+  // back, which is precisely the drift `profiles.locale` exists to stop.
+  const locale = await hostLocale(lang)
+  const guestLocale = event.locale
   const en = locale === 'en'
 
   const [quota, photos] = await Promise.all([
@@ -60,7 +71,7 @@ export default async function AdminEventPage({ params }: Props) {
     getAllEventPhotos(event.id),
   ])
   const tiles = await toModerationTiles(photos)
-  const url = eventUrl(event.slug, locale)
+  const url = eventUrl(event.slug, guestLocale)
   const now = new Date()
   const windowState = captureWindowState({
     now,
@@ -92,7 +103,11 @@ export default async function AdminEventPage({ params }: Props) {
           {en ? 'YOUR EVENTS' : 'ESEMÉNYEID'}
         </Link>
         <div className="flex items-center gap-2">
-          <Link href={`/e/${event.slug}?lang=${locale}`} className={pillClass}>
+          {/* A preview of what a guest sees, so it opens in *their* language. */}
+          <Link
+            href={`/e/${event.slug}?lang=${guestLocale}`}
+            className={pillClass}
+          >
             <ExternalLink className="size-3.5" aria-hidden="true" />
             {en ? 'Guest view' : 'Vendégnézet'}
           </Link>
