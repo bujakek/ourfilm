@@ -3,7 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import { isRevealChoice, isShotOption, resolveRevealAt } from '@/lib/camera'
+import {
+  eventNameProblem,
+  isRevealChoice,
+  isShotOption,
+  resolveRevealAt,
+} from '@/lib/camera'
 import { eventLocalToIso } from '@/lib/format'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { PHOTO_BUCKET } from '@/lib/storage'
@@ -76,6 +81,48 @@ export async function setGuestsCanView(slug: string, canView: boolean) {
   const { data, error } = await supabase
     .from('events')
     .update({ guests_can_view: canView })
+    .eq('slug', slug)
+    .select('id')
+
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Az esemény nem módosult.')
+
+  revalidateEvent(slug)
+  revalidatePath(`/e/${slug}`)
+}
+
+/**
+ * Rename an event.
+ *
+ * **The slug does not move, and that is the point.** It is minted once from
+ * the name the host first typed and then printed onto QR codes, taped to a
+ * table and shared in a group chat — so re-deriving it here would turn a typo
+ * fix into a wall of dead cards halfway through a wedding. `event_name` is a
+ * label; `slug` is an address, and only the first one is editable. The card
+ * says so in as many words, because a host who expects the link to follow the
+ * name would otherwise find out from a guest.
+ *
+ * Nothing else is derived from the name either: the ZIP export names its file
+ * from the slug, and the photos are keyed on the event id. So this really is
+ * one column, and every screen picks the new name up from `revalidateEvent`.
+ *
+ * The refusals are `eventNameProblem`'s, which is the same function the card's
+ * own Save button consults — a name the field accepts and this rejects would be
+ * a host meeting the rule only after tapping. The sentences here are Hungarian
+ * like the rest of this file and are the backstop for a direct call; the card
+ * writes its own in whichever language it is rendered in, and never shows one
+ * of these.
+ */
+export async function renameEvent(slug: string, name: string) {
+  const trimmed = name.trim()
+  const problem = eventNameProblem(trimmed)
+  if (problem === 'required') throw new Error('Adj nevet az eseménynek.')
+  if (problem === 'too_long') throw new Error('Ez a név túl hosszú.')
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('events')
+    .update({ event_name: trimmed })
     .eq('slug', slug)
     .select('id')
 

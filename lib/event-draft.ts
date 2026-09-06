@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-import { DEFAULT_SHOTS, REVEAL_CHOICES, SHOT_OPTIONS } from '@/lib/camera'
+import {
+  DEFAULT_SHOTS,
+  EVENT_NAME_MAX_LENGTH,
+  REVEAL_CHOICES,
+  SHOT_OPTIONS,
+} from '@/lib/camera'
 import { defaultLocale, locales } from '@/lib/i18n'
 
 /**
@@ -38,7 +43,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 const draftSchema = z.object({
   locale: z.enum(locales),
-  name: z.string().max(80),
+  name: z.string().max(EVENT_NAME_MAX_LENGTH),
   /** `YYYY-MM-DDTHH:mm`, or empty while the host is editing the time field. */
   endLocal: z.string().max(20),
   /** The zone the wall clock above was typed in. Stored so a draft resumed on
