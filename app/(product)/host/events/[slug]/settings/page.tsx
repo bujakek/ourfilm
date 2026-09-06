@@ -1,6 +1,7 @@
 import { BillingCard } from '@/components/host/billing-card'
 import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
+import { EventNameCard } from '@/components/host/event-name-card'
 import { GuestsToggle } from '@/components/host/guests-toggle'
 import { RevealCard } from '@/components/host/reveal-card'
 import { ShotsCard } from '@/components/host/shots-card'
@@ -113,11 +114,20 @@ export default async function AdminEventSettingsPage({
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {en
-          ? 'Change when shooting ends, when photos appear, each guest’s roll, gallery access, billing and deletion.'
-          : 'Itt állíthatod be, meddig lehet fotózni, mikor jelenjenek meg a képek, hányat készíthet egy vendég — és itt törölheted az eseményt.'}
+          ? 'Change the name, when shooting ends, when photos appear, each guest’s roll, gallery access, billing and deletion.'
+          : 'Itt állíthatod be az esemény nevét, meddig lehet fotózni, mikor jelenjenek meg a képek, hányat készíthet egy vendég — és itt törölheted az eseményt.'}
       </p>
 
       <div className="mt-8 flex flex-col gap-4">
+        {/* First, and with no boundary around it: it needs nothing but the row
+            this page already has, and it is the likeliest reason a host opened
+            these settings at all — a name typed on a phone in a hurry. */}
+        <EventNameCard
+          slug={event.slug}
+          name={event.event_name}
+          locale={locale}
+        />
+
         <CaptureEndCard
           slug={event.slug}
           endValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}

@@ -160,3 +160,31 @@ export function validateEventDraft({
 
   return errors
 }
+
+/**
+ * How long an event name may be.
+ *
+ * One number for the create flow's field, the draft schema and the rename
+ * action, because a name the wizard accepts and the settings page refuses is a
+ * host discovering the rule at the worst moment. There is no check constraint
+ * behind it — the column is plain `text` — so this file is the rule.
+ */
+export const EVENT_NAME_MAX_LENGTH = 80
+
+/**
+ * What is wrong with a proposed event name, if anything.
+ *
+ * Pure, and returns a code rather than a sentence, because the two callers
+ * write the refusal for different readers: the settings card in whichever
+ * language it is rendered in, `renameEvent` in Hungarian as a backstop.
+ *
+ * It judges the trimmed name, since that is what every caller stores — so a
+ * field holding three spaces is an empty name rather than a three-character
+ * one, and a pasted name is not rejected for the whitespace around it.
+ */
+export function eventNameProblem(name: string): 'required' | 'too_long' | null {
+  const trimmed = name.trim()
+  if (!trimmed) return 'required'
+  if (trimmed.length > EVENT_NAME_MAX_LENGTH) return 'too_long'
+  return null
+}

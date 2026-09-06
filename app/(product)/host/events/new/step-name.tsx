@@ -3,6 +3,7 @@
 import { motion, useAnimationControls, useReducedMotion } from 'motion/react'
 
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
+import { EVENT_NAME_MAX_LENGTH } from '@/lib/camera'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
@@ -86,7 +87,7 @@ function NameFields({
       <div className="w-full border-b-[1.5px] border-white/20 pb-3 transition-colors has-[:focus]:border-white/45">
         <motion.input
           aria-label={en ? 'Event name' : 'Az esemény neve'}
-          maxLength={80}
+          maxLength={EVENT_NAME_MAX_LENGTH}
           autoFocus
           enterKeyHint="next"
           autoCapitalize="sentences"

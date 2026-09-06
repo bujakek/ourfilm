@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   DEFAULT_SHOTS,
+  EVENT_NAME_MAX_LENGTH,
   SHOT_OPTIONS,
   captureWindowState,
+  eventNameProblem,
   guestGalleryIsOpen,
   isRevealChoice,
   isRevealMode,
@@ -302,5 +304,33 @@ describe('validateEventDraft', () => {
     expect(errors).toContain('name_required')
     expect(errors).toContain('window_backwards')
     expect(errors).toContain('invalid_shots')
+  })
+})
+
+describe('event names', () => {
+  it('accepts an ordinary name', () => {
+    expect(eventNameProblem('Anna és Péter esküvője')).toBeNull()
+  })
+
+  it('refuses a name that is only whitespace', () => {
+    // The rename card trims before saving, so a field holding three spaces is
+    // an empty name rather than a three-character one.
+    for (const blank of ['', ' ', '\n', '   \t ']) {
+      expect(eventNameProblem(blank)).toBe('required')
+    }
+  })
+
+  it('measures the length after trimming', () => {
+    const longest = 'x'.repeat(EVENT_NAME_MAX_LENGTH)
+    expect(eventNameProblem(longest)).toBeNull()
+    expect(eventNameProblem(`  ${longest}  `)).toBeNull()
+    expect(eventNameProblem(`${longest}x`)).toBe('too_long')
+  })
+
+  it('is the limit the create flow and the draft schema use', () => {
+    // The field's maxLength, the zod schema and `renameEvent` all read this
+    // one constant. A name the wizard accepts and the settings page refuses
+    // would be a host meeting the rule at the worst possible moment.
+    expect(EVENT_NAME_MAX_LENGTH).toBe(80)
   })
 })
