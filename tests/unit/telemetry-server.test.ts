@@ -22,4 +22,37 @@ describe('server telemetry privacy boundary', () => {
     expect(safeServerErrorName({ name: 'JohnDoe' })).toBe('UnknownError')
     expect(safeServerErrorName('secret value')).toBe('UnknownError')
   })
+
+  it('names a PostgREST refusal by its code and nothing else', () => {
+    // supabase-js returns the error as a plain object with no `name`.
+    expect(
+      safeServerErrorName({
+        message:
+          'insert or update on table "purchases" violates foreign key constraint',
+        details: 'Key (event_id)=(645c322a) is not present in table "events".',
+        hint: null,
+        code: '23503',
+      }),
+    ).toBe('PostgrestError:23503')
+    expect(
+      safeServerErrorName({
+        message: 'FetchError: fetch failed',
+        details: '',
+        hint: '',
+        code: '',
+      }),
+    ).toBe('PostgrestError')
+    expect(
+      safeServerErrorName({
+        message: 'x',
+        details: '',
+        hint: '',
+        code: 'email@example.com',
+      }),
+    ).toBe('PostgrestError')
+    // An unrelated object that happens to carry a code is still unknown.
+    expect(safeServerErrorName({ message: 'x', code: '23503' })).toBe(
+      'UnknownError',
+    )
+  })
 })

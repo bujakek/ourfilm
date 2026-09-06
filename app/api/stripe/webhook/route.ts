@@ -15,6 +15,20 @@ type AdminClient = ReturnType<typeof createAdminClient>
 const UNIQUE_VIOLATION = '23505'
 
 /**
+ * A settled payment whose event has since been deleted.
+ *
+ * Its own class so the report carries a name that says what happened. The
+ * database's foreign-key refusal arrives as a plain object and used to be
+ * reported as `UnknownError`.
+ */
+class OrphanedPaymentError extends Error {
+  constructor(sessionId: string, eventId: string) {
+    super(`Paid session ${sessionId} references deleted event ${eventId}`)
+    this.name = 'OrphanedPaymentError'
+  }
+}
+
+/**
  * Stripe's server-to-server report of what actually happened.
  *
  * This is the *only* thing that marks a purchase paid. The browser coming back
@@ -166,7 +180,15 @@ async function recordPaidSession(
   if (session.payment_status !== 'paid') return
 
   const identity = await sessionIdentity(db, session)
-  if (!identity) return
+  if (identity.kind === 'no_event_id') return
+
+  // Real money for an album that no longer exists. Nothing here can put the
+  // row back, and a silent 2xx would leave a payment with no ledger entry, so
+  // this stays a 500: Stripe keeps retrying and every attempt is reported by
+  // name until somebody refunds it or reconciles it from the Dashboard.
+  if (identity.kind === 'event_deleted') {
+    throw new OrphanedPaymentError(session.id, identity.eventId)
+  }
 
   const { error } = await db.from('purchases').upsert(
     {
@@ -201,7 +223,18 @@ async function recordTerminalSession(
   status: 'failed' | 'expired',
 ) {
   const identity = await sessionIdentity(db, session)
-  if (!identity) return
+  if (identity.kind === 'no_event_id') return
+
+  // The host deleted the event after starting to pay, and the cascade took
+  // the pending row with it. No money moved, so there is nothing to keep: the
+  // upsert would only fail on the foreign key, and a 500 here has Stripe
+  // retrying for three days something no retry can fix.
+  if (identity.kind === 'event_deleted') {
+    console.warn(
+      `Checkout session ${session.id} ${status} for deleted event ${identity.eventId}`,
+    )
+    return
+  }
 
   const terminalAt = new Date().toISOString()
   const { error } = await db.from('purchases').upsert(
@@ -223,35 +256,46 @@ async function recordTerminalSession(
   if (error) throw error
 }
 
-/** Resolve the application identifiers shared by every Session handler. */
+type SessionIdentity =
+  | { kind: 'ok'; eventId: string; ownerId: string }
+  | { kind: 'no_event_id' }
+  | { kind: 'event_deleted'; eventId: string }
+
+/**
+ * Resolve the application identifiers shared by every Session handler.
+ *
+ * The event row is always read, even though the session metadata carries the
+ * owner: `purchases.event_id` and `owner_id` are cascading foreign keys, so a
+ * host who deletes their event between starting a checkout and Stripe
+ * reporting on it leaves an upsert that can never succeed. Trusting the
+ * metadata alone is how an expired session was retried for a day with only
+ * `UnknownError` to show for it. Each handler decides what a missing event
+ * means for its own outcome.
+ */
 async function sessionIdentity(
   db: AdminClient,
   session: Stripe.Checkout.Session,
-): Promise<{ eventId: string; ownerId: string } | null> {
+): Promise<SessionIdentity> {
   const eventId = session.metadata?.event_id ?? session.client_reference_id
   if (!eventId) {
     // Nothing to attach the event to. Retrying the identical payload cannot add
     // metadata, so retain the Stripe event in the audit table and reconcile it
     // from the Dashboard rather than asking Stripe to retry for three days.
     console.error(`Checkout session ${session.id} carried no event_id`)
-    return null
+    return { kind: 'no_event_id' }
   }
 
-  let ownerId = session.metadata?.owner_id ?? null
-  if (!ownerId) {
-    const { data: event } = await db
-      .from('events')
-      .select('owner_id')
-      .eq('id', eventId)
-      .maybeSingle()
-    ownerId = event?.owner_id ?? null
-  }
-  if (!ownerId) {
-    console.error(`No owner for event ${eventId} (session ${session.id})`)
-    return null
-  }
+  const { data: event, error } = await db
+    .from('events')
+    .select('owner_id')
+    .eq('id', eventId)
+    .maybeSingle()
 
-  return { eventId, ownerId }
+  // A failed read is transient and worth a retry; a missing row is not.
+  if (error) throw error
+  if (!event) return { kind: 'event_deleted', eventId }
+
+  return { kind: 'ok', eventId, ownerId: event.owner_id }
 }
 
 /**

@@ -115,13 +115,17 @@ STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
 
-**The Stripe account exists and test mode is wired up locally.** All four
-are filled in in `.env.local`, so `stripeIsConfigured()` is true and the admin
-billing card offers checkout. Nothing is set on Vercel yet, so payments are
-still off in every deployed environment — `stripeIsConfigured()` is what keeps
-that UI honest.
+**Stripe is live in production and in test mode locally.** All four are
+filled in in `.env.local` with test-mode values, so `stripeIsConfigured()` is
+true and the billing card offers a test checkout on a dev machine. Since
+1 September 2026 the same four names are set on Vercel **Production** with
+live-mode values, and a live webhook endpoint at
+`https://ourfilm.app/api/stripe/webhook` is enabled for the five event types
+the handler knows. Preview has none of them, so previews still say payment is
+not switched on — `stripeIsConfigured()` is what keeps that UI honest.
 
-- `STRIPE_SECRET_KEY` is an **`sk_test_`** key. Live mode is not activated.
+- `STRIPE_SECRET_KEY` in `.env.local` is an **`sk_test_`** key. Production
+  holds the live key; the two never meet.
 - `STRIPE_PRICE_EVENT` is `price_1U6nve35IJWm7mht2mSfIVDO` — a test-mode
   one-time Price, 1290000 HUF minor units (12 900 Ft), on product
   `prod_V71zasJ11DOF1Y` ("OurFilm - korlátlan feltöltés egy eseményhez"). That
@@ -142,8 +146,13 @@ that UI honest.
   `whsec_`, taken from that endpoint in the dashboard. Copying this one to
   Vercel would fail every signature check.
 
-Provision production with `vercel integration add stripe` — it is the
-Marketplace provider for `payments` and wires the production variables itself.
+`stripe events list --live --delivery-success=false` is the first thing to run
+when PostHog shows `server_error` on `/api/stripe/webhook`: it names the exact
+event Stripe is retrying, and Stripe retries a failed live delivery for three
+days before disabling the endpoint. A host deleting an event mid-checkout used
+to be one such cause (the cascade takes the pending `purchases` row, and the
+upsert then fails on the foreign key); the handler now acknowledges expired
+and failed sessions for a deleted event and keeps a 500 only for paid ones.
 
 **`vercel env pull` does not work on this project — don't reach for it.** The Vercel–Supabase integration created all 16 of its variables as _Sensitive_, which on Vercel means write-only: the value cannot be read back by the CLI, the API or the dashboard, and a pull returns the literal string `[SENSITIVE]` for every one. This is a property of the Sensitive flag, not of the environment scope, so re-scoping them to Development does not help either. Copy the three values from the Supabase dashboard instead.
 
@@ -195,11 +204,11 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   account. It creates a camera that is open now, reveals instantly, and has five
   participants with photos — every screen reachable without editing a timestamp.
 
-- **Roles are live; Stripe is live in test mode only.** `.env.local` has all
-  three `STRIPE_*` keys, so a host can run a full test checkout on a dev
-  machine. No `STRIPE_*` variable is set on Vercel, so every deployed
-  environment still says payment is not switched on. The comment in
-  `lib/stripe/env.ts` claiming there is no Stripe account is stale. See Billing.
+- **Roles are live; Stripe is live in production and in test mode locally.**
+  `.env.local` has the four `STRIPE_*` keys in test mode, so a host can run a
+  full test checkout on a dev machine; Vercel Production has them in live
+  mode, so a real host can pay. Preview has none and says payment is not
+  switched on. See Local env and Billing.
 
 - **Production auth email is localized by a signed Send Email Hook.** Both
   `signInWithOtp` callers put `lang=en|hu` in `emailRedirectTo` and user

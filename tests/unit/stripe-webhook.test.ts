@@ -4,6 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   constructEventAsync: vi.fn(),
   createAdminClient: vi.fn(),
+  reportServerIssue: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/lib/telemetry-server', () => ({
+  reportServerIssue: mocks.reportServerIssue,
 }))
 
 vi.mock('@/lib/stripe/client', () => ({
@@ -29,7 +34,10 @@ type Write = {
   value?: unknown
 }
 
-function database({ duplicate = false }: { duplicate?: boolean } = {}) {
+function database({
+  duplicate = false,
+  eventDeleted = false,
+}: { duplicate?: boolean; eventDeleted?: boolean } = {}) {
   const upserts: Write[] = []
   const updates: Write[] = []
 
@@ -52,12 +60,20 @@ function database({ duplicate = false }: { duplicate?: boolean } = {}) {
           return {
             eq() {
               return {
-                maybeSingle: async () => ({
-                  data: duplicate
-                    ? { processed_at: '2026-09-01T12:00:00.000Z' }
-                    : null,
-                  error: null,
-                }),
+                maybeSingle: async () => {
+                  if (table === 'events') {
+                    return {
+                      data: eventDeleted ? null : { owner_id: 'owner-id' },
+                      error: null,
+                    }
+                  }
+                  return {
+                    data: duplicate
+                      ? { processed_at: '2026-09-01T12:00:00.000Z' }
+                      : null,
+                    error: null,
+                  }
+                },
               }
             },
           }
@@ -128,6 +144,7 @@ describe('Stripe webhook', () => {
   beforeEach(() => {
     mocks.constructEventAsync.mockReset()
     mocks.createAdminClient.mockReset()
+    mocks.reportServerIssue.mockClear()
   })
 
   afterEach(() => {
@@ -205,6 +222,71 @@ describe('Stripe webhook', () => {
       status,
     })
     expect(upserts[0].values[timestampField]).toEqual(expect.any(String))
+  })
+
+  it('takes the owner from the event row, not the session metadata', async () => {
+    const { db, upserts } = database()
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        session({ metadata: { event_id: 'event-id', owner_id: 'someone' } }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    expect(upserts[0].values).toMatchObject({ owner_id: 'owner-id' })
+  })
+
+  it.each([
+    ['checkout.session.async_payment_failed', 'failed'],
+    ['checkout.session.expired', 'expired'],
+  ] as const)(
+    'acknowledges a %s session whose event was deleted',
+    async (type, status) => {
+      // The host deleted the event after starting to pay; the pending row went
+      // with it. No money moved, so there is nothing to insert, and a 500 here
+      // only has Stripe retry a foreign-key violation for three days.
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const { db, upserts, updates } = database({ eventDeleted: true })
+      mocks.createAdminClient.mockReturnValue(db)
+      mocks.constructEventAsync.mockResolvedValue(
+        event(type, session({ payment_status: 'unpaid' })),
+      )
+
+      const response = await POST(request())
+
+      expect(response.status).toBe(200)
+      expect(upserts).toHaveLength(0)
+      expect(mocks.reportServerIssue).not.toHaveBeenCalled()
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(status))
+      // Marked processed, so a redelivery is a no-op rather than a rerun.
+      expect(updates).toContainEqual(
+        expect.objectContaining({
+          table: 'stripe_webhook_events',
+          values: { processed_at: expect.any(String) },
+        }),
+      )
+    },
+  )
+
+  it('keeps failing loudly for a paid session whose event was deleted', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { db, upserts, updates } = database({ eventDeleted: true })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event('checkout.session.completed', session()),
+    )
+
+    const response = await POST(request())
+
+    expect(response.status).toBe(500)
+    expect(upserts).toHaveLength(0)
+    expect(updates).toEqual([])
+    expect(mocks.reportServerIssue).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'OrphanedPaymentError' }),
+      expect.objectContaining({ operation: 'stripe_webhook_handle' }),
+    )
   })
 
   it('skips an event that was already processed', async () => {
