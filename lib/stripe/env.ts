@@ -3,9 +3,9 @@
  *
  * Same shape and same reasoning as `lib/supabase/env.ts`: a function rather
  * than module-level constants, so a missing key fails the request that needed
- * it instead of the build. That matters more here than there — Stripe is not
- * wired up yet, and every page in the product has to keep building and
- * rendering while it is not.
+ * it instead of the build. That matters more here than there — a Preview
+ * deployment without Stripe keys still has to build and render every page
+ * in the product, with only the checkout offer switched off.
  *
  * None of these are `NEXT_PUBLIC_`. Checkout runs entirely server-side: the
  * session is created in a Server Action which redirects to Stripe's hosted
@@ -41,10 +41,9 @@ function read(): Partial<StripeEnv> {
 /**
  * Whether payments are switched on at all.
  *
- * There is no Stripe account yet, so this is `false` in every environment
- * today, and the UI has to stay honest about that rather than offering a
- * button that 500s. Once the account exists, filling in the three variables is
- * the entire switch — no code change.
+ * Live keys are set on Vercel Production and test keys locally; an
+ * environment without all four gets no checkout button rather than one that
+ * 500s. Filling in the variables is the entire switch — no code change.
  */
 export function stripeIsConfigured(): boolean {
   const env = read()

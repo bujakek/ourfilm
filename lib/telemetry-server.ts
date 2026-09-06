@@ -54,7 +54,30 @@ export function safeServerRoute(
   )
 }
 
+/**
+ * A PostgREST refusal, which supabase-js hands back as a plain object with no
+ * `name` unless `throwOnError` is on. Its `code` is a fixed Postgres or
+ * PostgREST identifier — `23503`, `PGRST204` — never user data, and it is the
+ * whole difference between "the database said no" and knowing why. Without it
+ * four days of a foreign-key violation read as `UnknownError`.
+ */
+const POSTGREST_CODE = /^[A-Z0-9]{1,10}$/i
+
+function postgrestCode(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null
+  if (!('code' in error) || typeof error.code !== 'string') return null
+  if (!('message' in error) || typeof error.message !== 'string') return null
+  const isPostgrestInstance =
+    error instanceof Error && error.name === 'PostgrestError'
+  const isPlainRefusal = !(error instanceof Error) && 'details' in error
+  if (!isPostgrestInstance && !isPlainRefusal) return null
+  return POSTGREST_CODE.test(error.code) ? error.code : ''
+}
+
 export function safeServerErrorName(error: unknown): string {
+  const code = postgrestCode(error)
+  if (code !== null) return code ? `PostgrestError:${code}` : 'PostgrestError'
+
   const name =
     error instanceof Error
       ? error.name
