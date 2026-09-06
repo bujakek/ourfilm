@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, Share2 } from 'lucide-react'
+import { Check, Download, Share2 } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { useRef, useState } from 'react'
 
@@ -36,18 +36,48 @@ export function QrCard({
 }) {
   const en = locale === 'en'
   const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const inlineRef = useRef<HTMLCanvasElement>(null)
   const sheetRef = useRef<HTMLCanvasElement>(null)
 
   /**
-   * Canvas → PNG → File, then either the share sheet or a download.
+   * Share sends the link, not a picture of it.
    *
-   * One mechanism, two entry points. `Megosztás` tries `navigator.share` first
-   * because on a phone that is what puts the code into a chat with the venue;
-   * `Letöltés` skips straight to the file, because a host who asked to
-   * download did not ask to be shown a share sheet.
+   * The two buttons used to be one mechanism: both produced a PNG, and share
+   * handed that file to `navigator.share`. But a QR code is for the wall of a
+   * venue — something a guest points a phone at — and it is the wrong object
+   * to put in a chat, where the recipient is already holding the phone and
+   * would have to scan an image off a second screen to get anywhere. What
+   * belongs in a message is the address, tappable. The code is still what gets
+   * printed, and `Letöltés` is still how it gets out of here.
+   *
+   * Desktop has no share sheet, so the fallback is the clipboard — the same
+   * outcome, by hand.
    */
-  async function saveQrCode(share: boolean) {
+  async function shareLink() {
+    if (navigator.share && (navigator.canShare?.({ url }) ?? true)) {
+      try {
+        await navigator.share({ title: name, url })
+        return
+      } catch (error) {
+        // Dismissing the share sheet is a complete, normal outcome; only a
+        // real failure falls through to the clipboard.
+        if (error instanceof DOMException && error.name === 'AbortError') return
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2_000)
+    } catch {
+      // Clipboard access can be refused outright. Nothing useful is left to
+      // try, and the full address is printed on the card directly above.
+    }
+  }
+
+  /** Canvas → PNG → download. The print-size sheet uses its own canvas. */
+  function downloadQrCode() {
     const canvas = (open ? sheetRef : inlineRef).current ?? inlineRef.current
     if (!canvas) return
 
@@ -65,21 +95,6 @@ export function QrCard({
       character.charCodeAt(0),
     )
     const blob = new Blob([bytes], { type: 'image/png' })
-    const file = new File([blob], fileName, { type: blob.type })
-
-    if (share && navigator.share && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: `${name} QR code`,
-        })
-        return
-      } catch (error) {
-        // Closing the share sheet is a complete, normal outcome; only a real
-        // failure falls through to the download.
-        if (error instanceof DOMException && error.name === 'AbortError') return
-      }
-    }
 
     const objectUrl = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -130,7 +145,7 @@ export function QrCard({
         <div className="paper-rule mt-4 flex gap-2 border-t pt-3.5">
           <button
             type="button"
-            onClick={() => saveQrCode(false)}
+            onClick={downloadQrCode}
             className="flex-1 rounded-[10px] bg-[color:var(--paper-foreground)] py-2.5 text-[11.5px] font-semibold text-[color:var(--paper)]"
           >
             <span className="inline-flex items-center gap-1.5">
@@ -140,12 +155,24 @@ export function QrCard({
           </button>
           <button
             type="button"
-            onClick={() => saveQrCode(true)}
+            onClick={shareLink}
             className="flex-1 rounded-[10px] border border-[rgba(20,19,18,.2)] py-2.5 text-[11.5px] font-semibold"
           >
+            {/* The label is the only receipt a clipboard copy leaves — a
+                share sheet announces itself, and a silent copy does not. */}
             <span className="inline-flex items-center gap-1.5">
-              <Share2 className="size-3.5" aria-hidden="true" />
-              {en ? 'Share' : 'Megosztás'}
+              {copied ? (
+                <Check className="size-3.5" aria-hidden="true" />
+              ) : (
+                <Share2 className="size-3.5" aria-hidden="true" />
+              )}
+              {copied
+                ? en
+                  ? 'Link copied'
+                  : 'Link kimásolva'
+                : en
+                  ? 'Share'
+                  : 'Megosztás'}
             </span>
           </button>
         </div>
@@ -194,7 +221,7 @@ export function QrCard({
 
         <button
           type="button"
-          onClick={() => saveQrCode(false)}
+          onClick={downloadQrCode}
           className="hover:border-strong mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold transition-colors"
         >
           <Download className="size-4" aria-hidden="true" />

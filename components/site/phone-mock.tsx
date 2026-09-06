@@ -18,7 +18,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import type { ReactNode } from 'react'
 
 import type { Locale } from '@/lib/i18n'
-import { EXAMPLE_SLUG_SUFFIX, slugify } from '@/lib/slug'
+import { EXAMPLE_SLUG } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
 
 /**
@@ -329,7 +329,7 @@ export function ScreenReveal({ locale }: { locale: Locale }) {
 /** Step 02 — the host console at `/host/events/[slug]`. */
 export function ScreenTicket({ locale }: { locale: Locale }) {
   const en = locale === 'en'
-  const url = eventUrl(`${slugify(NAME)}-${EXAMPLE_SLUG_SUFFIX}`, locale)
+  const url = eventUrl(EXAMPLE_SLUG, locale)
 
   const figures: [string, string][] = [
     ['84', en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'],

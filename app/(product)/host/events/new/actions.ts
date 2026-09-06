@@ -226,7 +226,7 @@ export async function createEventFromDraft(
   let eventId: string | null = null
 
   for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt++) {
-    const candidate = generateEventSlug(name)
+    const candidate = generateEventSlug()
     const { data, error } = await supabase
       .from('events')
       .insert({

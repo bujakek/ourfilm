@@ -4,7 +4,7 @@ import { QRCodeSVG } from 'qrcode.react'
 
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
-import { EXAMPLE_SLUG_SUFFIX, slugify } from '@/lib/slug'
+import { EXAMPLE_SLUG } from '@/lib/slug'
 import { SITE_HOST, eventUrl } from '@/lib/site'
 
 /**
@@ -14,10 +14,9 @@ import { SITE_HOST, eventUrl } from '@/lib/site'
  * an app this product deliberately does not have. What a host is actually
  * given is a code on a piece of paper, so that is what the hero shows.
  *
- * **The URL is derived, never written down.** `slugify()` and
- * `EXAMPLE_SLUG_SUFFIX` are the same helpers the live QR preview and the real
- * create flow use, so the shape a visitor sees here — readable stem plus a
- * random suffix — is the shape they will be given. A hardcoded string here
+ * **The code under the QR is not the name.** `EXAMPLE_SLUG` is the shape a
+ * host is really given — an opaque code — so the ticket cannot promise a
+ * name-shaped link the create flow will never mint. A hardcoded string here
  * would eventually disagree with a printed card.
  *
  * Static, unlike `components/site/qr-preview.tsx`, which keeps its live name
@@ -27,7 +26,7 @@ import { SITE_HOST, eventUrl } from '@/lib/site'
 export function HeroTicket({ name, locale }: { name: string; locale: Locale }) {
   const en = locale === 'en'
   const copy = marketingCopy[locale].qr
-  const url = eventUrl(`${slugify(name)}-${EXAMPLE_SLUG_SUFFIX}`, locale)
+  const url = eventUrl(EXAMPLE_SLUG, locale)
 
   return (
     <div className="paper w-full max-w-[330px] rotate-[-1.5deg] rounded-lg px-7 pt-7.5 text-center">
