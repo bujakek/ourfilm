@@ -10,6 +10,7 @@ import {
   makeAdmin,
   markPaid,
   newSession,
+  serviceClient,
   userClient,
   type TestUser,
 } from './harness'
@@ -125,6 +126,72 @@ describe('owned_events_with_previews', () => {
     } finally {
       await deleteEvent(mine.id)
       await deleteUser(operator.id)
+    }
+  }, 60_000)
+})
+
+/**
+ * The write half of the same policy, which every host-area settings action
+ * leans on and none of them re-checks.
+ *
+ * `renameEvent`, `setGuestsCanView` and `setShotsPerParticipant` all update
+ * `events` by **slug** through the host's own session and then inspect the
+ * returned row count. That reads like an IDOR — nothing in the TypeScript
+ * compares an owner — and it is safe only because "host manages own events" is
+ * `for all`, so a stranger's UPDATE matches zero rows and the count check turns
+ * that into a refusal. An automated review flagged exactly this shape, which is
+ * the argument for pinning the property instead of asserting it in a comment:
+ * if the policy is ever narrowed to `for select`, four actions silently become
+ * a real IDOR and this test is what says so.
+ *
+ * A slug is the right thing to attack with. It is the value those actions take
+ * from the URL, and it is not secret — it is printed on the QR code every guest
+ * at the party scanned.
+ */
+describe('the host ownership policy on events', () => {
+  it('matches no rows when a stranger updates by slug', async () => {
+    const stranger = await createUser()
+    const mine = await createEvent({ ownerId: host.id })
+    try {
+      const { data, error } = await userClient(stranger.accessToken)
+        .from('events')
+        .update({ event_name: 'Elloptam' })
+        .eq('slug', mine.slug)
+        .select('id')
+
+      // RLS filters rather than raises, so the refusal arrives as an empty
+      // array and no error at all. That is precisely why every action in
+      // app/(product)/host/events/[slug]/actions.ts checks the count.
+      expect(error).toBeNull()
+      expect(data ?? []).toHaveLength(0)
+
+      const { data: after } = await serviceClient()
+        .from('events')
+        .select('event_name')
+        .eq('id', mine.id)
+        .single()
+      expect(after?.event_name).toBe('Teszt esemény')
+    } finally {
+      await deleteEvent(mine.id)
+      await deleteUser(stranger.id)
+    }
+  }, 60_000)
+
+  it('lets the owner update by slug', async () => {
+    // The other direction, so the test above cannot pass because the update is
+    // broken for everyone.
+    const mine = await createEvent({ ownerId: host.id })
+    try {
+      const { data, error } = await userClient(host.accessToken)
+        .from('events')
+        .update({ event_name: 'Az esküvőnk' })
+        .eq('slug', mine.slug)
+        .select('id')
+
+      expect(error).toBeNull()
+      expect(data ?? []).toHaveLength(1)
+    } finally {
+      await deleteEvent(mine.id)
     }
   }, 60_000)
 })
