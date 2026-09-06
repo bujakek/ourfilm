@@ -44,6 +44,7 @@ export type HostPhoto = {
   storage_path: string
   thumb_path: string
   view_path: string | null
+  byte_size: number | null
   hidden_at: string | null
   width: number | null
   height: number | null
@@ -62,6 +63,8 @@ export type HostPhoto = {
  *
  * Filters to `ready`. A reserved-but-uncommitted frame has no bytes behind it,
  * so showing it to a host would be a permanently broken tile in their grid.
+ * `byte_size` is read as well because the album exporter uses the bytes already
+ * measured at upload to keep each streamed ZIP request inside a safe budget.
  */
 export const getAllEventPhotos = cache(
   async (eventId: string): Promise<HostPhoto[]> => {
@@ -69,7 +72,7 @@ export const getAllEventPhotos = cache(
     const { data, error } = await supabase
       .from('photos')
       .select(
-        'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, participant_id, participants(display_name)',
+        'id, storage_path, thumb_path, view_path, byte_size, hidden_at, width, height, created_at, taken_at, participant_id, participants(display_name)',
       )
       .eq('event_id', eventId)
       .eq('status', 'ready')
