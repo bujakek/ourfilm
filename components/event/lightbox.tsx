@@ -7,17 +7,21 @@ import Image from 'next/image'
 import { useCallback, useEffect, useRef } from 'react'
 import type { Locale } from '@/lib/i18n'
 import { T } from '@/lib/motion'
+import { track } from '@/lib/telemetry'
 
 const SWIPE_THRESHOLD = 50
 
 export function Lightbox({
   photos,
+  eventId,
   index,
   onClose,
   onNavigate,
   locale = 'hu',
 }: {
   photos: GalleryTile[]
+  /** Telemetry only. */
+  eventId: string
   index: number
   onClose: () => void
   onNavigate: (next: number) => void
@@ -119,6 +123,16 @@ export function Lightbox({
                 fill
                 sizes="100vw"
                 unoptimized
+                onError={() =>
+                  // The same expiry as the grid's, one render up: a `view`
+                  // URL signed an hour ago for a lightbox opened now. Worth
+                  // separating, because here the guest is looking at one photo
+                  // deliberately rather than scrolling past a gap.
+                  track('gallery_image_failed', {
+                    event_id: eventId,
+                    surface: 'lightbox',
+                  })
+                }
                 className="object-contain"
                 priority
               />

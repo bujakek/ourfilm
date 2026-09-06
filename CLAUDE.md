@@ -297,12 +297,66 @@ this wedding lose a photo" has an answer. The guest path, in order:
 | `upload_restored`          | A shot replayed after a killed tab, with its age                      |
 | `upload_discarded`         | A stored row thrown away unseen: expired, exhausted, empty            |
 | `upload_store_unavailable` | IndexedDB gave up, and at which stage — photos will not survive       |
+| `gallery_photo_opened`     | Somebody looked at the developed album — the format's whole payoff    |
+| `gallery_image_failed`     | A render would not load; a signed URL expires after an hour           |
+| `invite_shared`            | The link left the page, or the clipboard refused and it did not       |
 | `client_error`             | A rendered error boundary, with redacted stack locations              |
 | `server_error`             | An unhandled or critical handled server failure by operation          |
 
 Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
 is no reliable client-side signal for a cancel, so none is invented. How often
 iOS actually reclaims the tab is `away_ms` together with `upload_restored`.
+
+**The host path is the second half, and it is keyed differently.** Cookieless
+persistence means there is no person to join a funnel on, so each event
+carries the correlation key its own funnel needs: `creation_key` — the draft's
+own random uuid, minted in the browser before any row exists — for the four
+onboarding screens, and `event_id` from the moment there is a row.
+
+| Event                           | Answers                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| `onboarding_step_completed`     | Which of the four questions a host stops at. No row exists yet           |
+| `onboarding_plan_chosen`        | Free or unlimited, and whether the paid tile was even offered            |
+| `onboarding_create_attempted`   | The last CTA and what came back; `auth_required` is the email round trip |
+| `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once     |
+| `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost        |
+| `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it          |
+| `quota_upgrade_clicked`         | …and went to the billing card                                            |
+| `photo_moderated`               | How much of an album a host takes out, after the round trip              |
+| `album_export_requested`        | The Album button; the route below says what the stream then did          |
+| `create_own_album_clicked`      | The guest-to-host loop. Nothing mounts that component at the moment      |
+
+**And the server reports what the browser cannot see honestly** — a payment
+Stripe confirmed rather than a browser that reached a success URL, a stream
+that finished, a row that exists. `reportServerEvent` in `lib/telemetry-server.ts`
+is the whole of it, and it is a separate list from the browser's because these
+are separate promises: every property is reduced to a bounded scalar, and
+`event_id` and `creation_key` are refused unless they are uuids.
+
+| Event                   | Answers                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `checkout_started`      | A host reached Stripe, and from which of the two entry points             |
+| `checkout_blocked`      | …or was refused first, and why. Six reasons, all of them a sentence read  |
+| `checkout_settled`      | What Stripe reported server to server: paid, failed, expired, refunded    |
+| `event_created`         | The row exists, with the shape the host chose and whether it was a repeat |
+| `event_deleted`         | The one destructive path, with the album's size and age                   |
+| `event_setting_changed` | What hosts adjust on a running camera, and how far they move the end      |
+| `album_export_started`  | A ZIP began streaming                                                     |
+| `album_export_finished` | …and finished. `missing_count` is silent data loss and wants an alert     |
+| `auth_email_sent`       | The mail was accepted, in the language the hook actually rendered         |
+
+Three of those pairs are read as gaps rather than as counts. A
+`checkout_started` with no `checkout_settled` is an abandoned Stripe page; an
+`album_export_started` with no `album_export_finished` is an export that timed
+out or was cancelled; and `quota_banner_viewed` without a later
+`checkout_started` on the same `event_id` is a host watching guests be turned
+away. The last of those is the number this product most needs.
+
+Everything reported from the browser about the host is **best effort by
+design**: PostHog loads on idle, and a screen that navigates immediately — to
+Stripe, to a fresh event — can leave before the buffer flushes. Every outcome
+that has to be counted exactly is on the server's list instead. That is why
+`event_created` is reported from the action and not from the form.
 
 It was adopted under conditions, and `tests/unit/telemetry.test.ts` pins each
 one so loosening it is a visible decision rather than a config drift:
@@ -335,14 +389,21 @@ one so loosening it is a visible decision rather than a config drift:
   `/ingest/e/` and Next's redirect ran before rewrites — and `proxy.ts` issues
   the 308 for every other trailing-slash URL, so the marketing site's URLs
   behave exactly as before. `curl -I /hu/arak/` must still say 308.
-- **No slug, query string, event name, guest name, email, error message or
-  photo ever leaves for PostHog.** `sanitizeEvent` masks `/e/<slug>` and
+- **No slug, query string, event name, guest name, email, error message,
+  Stripe identifier or photo ever leaves for PostHog.** `sanitizeEvent` masks `/e/<slug>` and
   `/host/events/<slug>` in every string property, removes complete queries and
   fragments from URL properties, and replaces titles on event routes. The
   loader does not initialize at all on `/auth/callback`, where a magic-link
   credential lives in the query until exchange. Client error stacks retain
   code locations but replace the message; server reporting accepts only an
-  error class, safe operation, route template and optional digest.
+  error class, safe operation, route template and optional digest. Server
+  _events_ go through `safeServerValue`, which reduces a string to a token,
+  drops a non-finite number and refuses anything in `event_id` or a `_key`
+  field that is not a uuid — so a slug or a name that reached one of those
+  fields by mistake arrives as `null` rather than as itself. A renamed event
+  reports that it was renamed and never the new name; a checkout reports the
+  event id and never the Session. `tests/unit/telemetry-server.test.ts` pins
+  both halves.
 - **Loaded late, and only where a key exists.** `components/analytics/
 posthog-loader.tsx` imports `posthog-js` on idle from the product layout.
   Not `instrumentation-client.ts`, which runs before hydration on every
@@ -367,7 +428,10 @@ The dashboard is part of the implementation. Before production:
 - keep Cookieless server hash mode enabled, or browser events are discarded;
 - enforce the privacy notice's maximum 12-month event retention;
 - restrict project access and create alerts for `server_error`, terminal
-  `upload_issue`, and `upload_store_unavailable`;
+  `upload_issue`, `upload_store_unavailable`, a non-zero `missing_count` on
+  `album_export_finished`, and `checkout_blocked` with reason
+  `stripe_not_configured` (which in production means a host was offered a
+  payment the deployment cannot take);
 - set the project token and the correct `NEXT_PUBLIC_OURFILM_ENV` separately
   for Vercel Development, Preview and Production.
 

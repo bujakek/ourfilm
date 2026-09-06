@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { safeServerErrorName, safeServerRoute } from '@/lib/telemetry-server'
+import {
+  safeServerErrorName,
+  safeServerRoute,
+  safeServerValue,
+} from '@/lib/telemetry-server'
 
 describe('server telemetry privacy boundary', () => {
   it('keeps route templates and masks concrete event links', () => {
@@ -54,5 +58,38 @@ describe('server telemetry privacy boundary', () => {
     expect(safeServerErrorName({ message: 'x', code: '23503' })).toBe(
       'UnknownError',
     )
+  })
+
+  it('accepts a uuid in an id field and nothing else', () => {
+    // The whole point of these two fields: they hold a random identifier the
+    // database or the browser minted, so anything shaped differently is a
+    // value that arrived by mistake — a slug, an event name, an address.
+    const id = '9f8b1c62-4f2a-4d70-9c5e-2a1b3c4d5e6f'
+    expect(safeServerValue('event_id', id)).toBe(id)
+    expect(safeServerValue('creation_key', id)).toBe(id)
+    expect(safeServerValue('event_id', 'k3f9x7ab2m')).toBeNull()
+    expect(safeServerValue('event_id', 'Anna és Bence esküvője')).toBeNull()
+    expect(safeServerValue('creation_key', 'guest@example.com')).toBeNull()
+  })
+
+  it('reduces every other property to a bounded scalar', () => {
+    // A string is a token, never prose: a name or an address that reached one
+    // of these fields cannot survive the substitution intact.
+    expect(safeServerValue('reason', 'already_unlimited')).toBe(
+      'already_unlimited',
+    )
+    expect(safeServerValue('setting', 'Anna Kovács')).toBe('Anna_Kov_cs')
+    expect(safeServerValue('note', 'x'.repeat(200))).toHaveLength(80)
+
+    expect(safeServerValue('missing_count', 0)).toBe(0)
+    expect(safeServerValue('amount_minor', 1_290_000)).toBe(1_290_000)
+    expect(safeServerValue('guests_can_view', false)).toBe(false)
+
+    // Always a computation that went wrong upstream, and `NaN` serialises to
+    // `null` in transit anyway — so it arrives as one honestly.
+    expect(safeServerValue('age_hours', Number.NaN)).toBeNull()
+    expect(safeServerValue('elapsed_ms', Number.POSITIVE_INFINITY)).toBeNull()
+    expect(safeServerValue('currency', undefined)).toBeNull()
+    expect(safeServerValue('currency', null)).toBeNull()
   })
 })

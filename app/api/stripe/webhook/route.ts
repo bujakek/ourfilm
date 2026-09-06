@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripe } from '@/lib/stripe/client'
 import { stripeEnv } from '@/lib/stripe/env'
-import { reportServerIssue } from '@/lib/telemetry-server'
+import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 
@@ -208,6 +208,18 @@ async function recordPaidSession(
   )
 
   if (error) throw error
+
+  // After the write, never before: this event means the album is unlocked, and
+  // reporting it from ahead of the upsert would claim a sale the ledger does
+  // not have. Stripe's own identifiers stay out of it — `event_id` is what
+  // joins this to `checkout_started` and to everything the host does next.
+  await reportServerEvent('checkout_settled', {
+    event_id: identity.eventId,
+    status: 'paid',
+    amount_minor: session.amount_total,
+    currency: session.currency,
+    event_deleted: false,
+  })
 }
 
 /**
@@ -233,6 +245,13 @@ async function recordTerminalSession(
     console.warn(
       `Checkout session ${session.id} ${status} for deleted event ${identity.eventId}`,
     )
+    await reportServerEvent('checkout_settled', {
+      event_id: identity.eventId,
+      status,
+      amount_minor: session.amount_total,
+      currency: session.currency,
+      event_deleted: true,
+    })
     return
   }
 
@@ -254,6 +273,14 @@ async function recordTerminalSession(
   )
 
   if (error) throw error
+
+  await reportServerEvent('checkout_settled', {
+    event_id: identity.eventId,
+    status,
+    amount_minor: session.amount_total,
+    currency: session.currency,
+    event_deleted: false,
+  })
 }
 
 type SessionIdentity =
@@ -311,13 +338,27 @@ async function recordRefund(db: AdminClient, charge: Stripe.Charge) {
   const paymentIntentId = idOf(charge.payment_intent)
   if (!paymentIntentId) return
 
-  const { error } = await db
+  const { data: refunded, error } = await db
     .from('purchases')
     .update({
       status: 'refunded',
       refunded_at: new Date().toISOString(),
     })
     .eq('stripe_payment_intent_id', paymentIntentId)
+    .select('event_id')
 
   if (error) throw error
+
+  // A refund is a revoked entitlement, so it is worth one report per album it
+  // took back — and none at all when the payment intent matched nothing,
+  // which is an ordinary outcome for a charge this product never sold.
+  for (const row of refunded ?? []) {
+    await reportServerEvent('checkout_settled', {
+      event_id: row.event_id,
+      status: 'refunded',
+      amount_minor: charge.amount_refunded,
+      currency: charge.currency,
+      event_deleted: false,
+    })
+  }
 }

@@ -3,7 +3,7 @@ import {
   renderAuthEmail,
   resolveAuthEmailLocale,
 } from '@/lib/auth-email'
-import { reportServerIssue } from '@/lib/telemetry-server'
+import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { Webhook, WebhookVerificationError } from 'standardwebhooks'
 import { z } from 'zod'
 
@@ -133,6 +133,18 @@ export async function POST(request: Request) {
     })
     return Response.json({ error: 'Email delivery failed' }, { status: 502 })
   }
+
+  // The positive half. The failure above has been reported since the hook
+  // shipped, which answers "is delivery broken" but not "is the Hungarian
+  // branch rendering at all" — a hook that silently sent every mail in one
+  // language would look identical from here without this.
+  //
+  // The address is deliberately not among the properties, and neither is
+  // anything derived from it.
+  await reportServerEvent('auth_email_sent', {
+    locale,
+    action: emailData.email_action_type,
+  })
 
   return Response.json({})
 }

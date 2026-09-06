@@ -6,6 +6,7 @@ import { Sparkles, X } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { buttonVariants } from '@/components/ui/button'
+import { track } from '@/lib/telemetry'
 
 /**
  * Invites a guest who has seen an album to host their own event next time.
@@ -19,7 +20,14 @@ import { buttonVariants } from '@/components/ui/button'
  * Dismissal is global and permanent: a guest who says no should not be asked
  * again at the next wedding.
  */
-export function CreateOwnAlbum() {
+export function CreateOwnAlbum({
+  eventId = null,
+}: {
+  /** The album the guest is looking at, for telemetry only. Optional because
+   *  nothing renders this component at the moment — see the note above the
+   *  CTA. */
+  eventId?: string | null
+}) {
   const eligible = useGuestState(() => !upsellDismissed(), false)
   // localStorage is not reactive, so dismissing needs local state to re-render.
   const [dismissed, setDismissed] = useState(false)
@@ -56,8 +64,12 @@ export function CreateOwnAlbum() {
         albumot. A vendégeid QR-kóddal csatlakoznak, app és regisztráció nélkül.
       </p>
 
+      {/* The guest-to-host loop, and the only growth mechanism the product
+          has. Nothing mounts this component right now, so the event will not
+          appear until something does — which is itself the finding. */}
       <Link
         href="/host/login"
+        onClick={() => track('create_own_album_clicked', { event_id: eventId })}
         className={buttonVariants({ className: 'mt-5 w-full' })}
       >
         Saját album indítása — ingyen

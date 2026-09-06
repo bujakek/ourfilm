@@ -23,6 +23,9 @@ export type TelemetryEventProperties = {
     gallery?: 'open' | 'locked'
     frames?: number
     shots_remaining?: number
+    /** How big the developed album is, where one is on screen. `frames` is
+     *  this guest's own strip and is a different number. */
+    photos?: number
   }
   guest_join_refused: { event_id: string; reason: string }
   camera_opened: {
@@ -86,7 +89,81 @@ export type TelemetryEventProperties = {
     route: string | null
     stack: string | null
   }
+
+  // The host's side. Cookieless persistence means there is no person to join
+  // a funnel on, so each of these carries the correlation key its own funnel
+  // is keyed by: `creation_key` for the four onboarding screens (the draft's
+  // own random uuid, minted before any row exists) and `event_id` afterwards.
+  //
+  // Everything here is best effort in a way the guest events are not: PostHog
+  // loads on idle, and a screen that navigates immediately — to Stripe, to a
+  // fresh event — can leave before the buffer flushes. Every outcome that has
+  // to be counted exactly is reported by the server instead.
+
+  /** One of the four questions answered. The denominator for the next. */
+  onboarding_step_completed: {
+    creation_key: string
+    step: OnboardingStep
+    index: number
+  }
+  /** Free or unlimited, at the one moment a host is thinking about how many
+   *  people are coming. `payments_enabled` is false where the paid tile reads
+   *  "Hamarosan" rather than a price. */
+  onboarding_plan_chosen: {
+    creation_key: string
+    plan: string
+    payments_enabled: boolean
+  }
+  /** The last screen's CTA, and what came back. `auth_required` is the
+   *  ordinary path — the account is asked for here — not a failure. */
+  onboarding_create_attempted: {
+    creation_key: string
+    plan: string
+    outcome: 'created' | 'auth_required' | 'stale_end' | 'error'
+    source: 'flow' | 'magic_link'
+  }
+  draft_restored: { creation_key: string; step: number; age_ms: number | null }
+  draft_discarded: { creation_key: string; step: number }
+  /**
+   * A magic link came back to a browser with no draft in it.
+   *
+   * The create flow's one unrecoverable failure: the answers live in the
+   * `localStorage` of the browser that gave them, so a host who fills the form
+   * on a phone and opens the mail on a laptop loses the event entirely. It
+   * looks like an ordinary "not found" screen and has never been counted.
+   */
+  draft_missing_on_complete: { reason: 'no_draft' | 'not_pending' }
+
+  /** The album link left the device — or failed to. Nothing reaches a guest
+   *  before this happens, so a zero-participant event starts here. */
+  invite_shared: {
+    event_id: string
+    surface: 'guest' | 'host'
+    method: 'share_sheet' | 'clipboard' | 'unavailable'
+  }
+  /** The free cap, seen by the person who can act on it. */
+  quota_banner_viewed: {
+    event_id: string
+    participant_count: number
+    participant_limit: number
+    full: boolean
+  }
+  quota_upgrade_clicked: { event_id: string; full: boolean }
+  photo_moderated: { event_id: string; hidden: boolean }
+  /** The Album button. The server reports what the stream then did. */
+  album_export_requested: { event_id: string; photo_count: number }
+  /** Somebody is looking at the developed album — the payoff of the whole
+   *  format, and until now unmeasured. */
+  gallery_photo_opened: { event_id: string; index: number; photos: number }
+  /** A render would not load. Signed URLs expire after an hour, so a tab left
+   *  open and scrolled later is the expected cause. */
+  gallery_image_failed: { event_id: string; surface: 'grid' | 'lightbox' }
+  /** The guest-to-host loop, and the only growth mechanism in the product. */
+  create_own_album_clicked: { event_id: string | null }
 }
+
+/** The four questions, in the order they are asked. */
+export type OnboardingStep = 'name' | 'end' | 'reveal' | 'guests'
 
 export type TelemetryEvent = keyof TelemetryEventProperties
 export type TelemetryProperties = Record<

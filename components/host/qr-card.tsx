@@ -6,6 +6,7 @@ import { useRef, useState } from 'react'
 
 import { Sheet } from '@/components/host/sheet'
 import type { Locale } from '@/lib/i18n'
+import { track } from '@/lib/telemetry'
 
 /**
  * The printable ticket, on the page rather than behind a button.
@@ -26,11 +27,14 @@ import type { Locale } from '@/lib/i18n'
 export function QrCard({
   name,
   url,
+  eventId,
   shots,
   locale,
 }: {
   name: string
   url: string
+  /** Telemetry only — the printed URL itself never leaves the page. */
+  eventId: string
   shots: number
   locale: Locale
 }) {
@@ -58,6 +62,11 @@ export function QrCard({
     if (navigator.share && (navigator.canShare?.({ url }) ?? true)) {
       try {
         await navigator.share({ title: name, url })
+        track('invite_shared', {
+          event_id: eventId,
+          surface: 'host',
+          method: 'share_sheet',
+        })
         return
       } catch (error) {
         // Dismissing the share sheet is a complete, normal outcome; only a
@@ -70,9 +79,23 @@ export function QrCard({
       await navigator.clipboard.writeText(url)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2_000)
+      track('invite_shared', {
+        event_id: eventId,
+        surface: 'host',
+        method: 'clipboard',
+      })
     } catch {
       // Clipboard access can be refused outright. Nothing useful is left to
       // try, and the full address is printed on the card directly above.
+      //
+      // Reported, because the host's version of this failure is the one that
+      // matters most: an event whose link never reaches anybody has no guests,
+      // and this is the first place that can go wrong.
+      track('invite_shared', {
+        event_id: eventId,
+        surface: 'host',
+        method: 'unavailable',
+      })
     }
   }
 

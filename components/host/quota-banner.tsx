@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import type { EventQuota } from '@/lib/billing'
 import { T, still } from '@/lib/motion'
 import { eventPriceLabel } from '@/lib/pricing'
+import { track } from '@/lib/telemetry'
 
 /**
  * The free tier's edge, seen from the host's side.
@@ -29,16 +30,35 @@ const SEVERITY_DELAY_MS = 240
 
 export function QuotaBanner({
   slug,
+  eventId,
   quota,
   locale,
 }: {
   slug: string
+  /** Telemetry only. */
+  eventId: string
   quota: EventQuota
   locale: 'en' | 'hu'
 }) {
   const full = quota.participantCount >= quota.participantLimit
   const en = locale === 'en'
   const reduceMotion = useReducedMotion()
+
+  // The host's side of `guest_join_refused`. Together they answer the question
+  // this product most needs answered: of the events that hit the free cap, how
+  // many hosts then paid — and how many simply watched guests be turned away.
+  //
+  // Once per mount, with the counts as they arrived. A host reloading their
+  // dashboard through an evening is a legitimate repeat.
+  useEffect(() => {
+    track('quota_banner_viewed', {
+      event_id: eventId,
+      participant_count: quota.participantCount,
+      participant_limit: quota.participantLimit,
+      full,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- arrival snapshot
+  }, [eventId])
 
   const [severe, setSevere] = useState(false)
   useEffect(() => {
@@ -98,6 +118,9 @@ export function QuotaBanner({
       </div>
       <Link
         href={`/host/events/${slug}/settings?lang=${locale}#billing`}
+        onClick={() =>
+          track('quota_upgrade_clicked', { event_id: eventId, full })
+        }
         className="relative shrink-0 rounded-full bg-primary px-4.5 py-2.5 text-[12.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
       >
         {en ? 'Unlock' : 'Feloldás'} — {eventPriceLabel(locale)}

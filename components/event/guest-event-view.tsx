@@ -165,6 +165,7 @@ export function GuestEventView({
       gallery: gallery.open ? 'open' : 'locked',
       frames: frames.length,
       shots_remaining: initialShotsRemaining,
+      photos: photos.length,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- arrival snapshot
   }, [eventId])
@@ -619,6 +620,7 @@ export function GuestEventView({
 
         <InviteButton
           url={`${eventUrl}?lang=${locale}`}
+          eventId={eventId}
           locale={locale}
           iconOnly
         />
@@ -724,7 +726,7 @@ export function GuestEventView({
           </p>
         ) : (
           <div className="mt-4">
-            <PhotoGrid photos={photos} locale={locale} />
+            <PhotoGrid photos={photos} eventId={eventId} locale={locale} />
           </div>
         )}
       </motion.div>
