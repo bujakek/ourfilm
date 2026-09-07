@@ -10,9 +10,11 @@
  * left to read. Rows that had already been replaced by our own compressed
  * Blob restored fine on the same phone in the same minute.
  *
- * So the raw row must hold a copy. Reading a 3MB JPEG into memory is
- * milliseconds and is not a decode, which keeps the persist-before-decode
- * ordering the store is built on. Isomorphic on purpose — `Blob` is standard
+ * So the raw row must hold a copy, and compression must work from that copy
+ * rather than the handle. Reading a 3MB JPEG into memory is milliseconds and
+ * is not a decode, which keeps the persist-before-decode ordering the store
+ * is built on. (The copy alone was not enough — see `lib/upload-store.ts` for
+ * why the store then writes bytes inline rather than a Blob at all.) Isomorphic on purpose — `Blob` is standard
  * in Node — so the queue's tests can exercise it.
  */
 
