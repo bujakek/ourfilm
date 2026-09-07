@@ -447,7 +447,23 @@ backgrounded Safari whenever it likes. There is no retake, so a photo that
 lived only in memory was a lost moment.
 
 The camera file is written to IndexedDB (`lib/upload-store.ts`) the moment the
-shutter fires, and deleted once `commit_shot` confirms. `lib/upload-queue.ts`
+shutter fires, and deleted once `commit_shot` confirms. **What is written is a
+copy of the bytes, never the input `File` itself.** On iOS that object is a
+handle to a temporary camera file that does not outlive the page; a raw row
+holding it came back on reload with its size intact and nothing behind it, and
+`createImageBitmap` threw `InvalidStateError`. Two guest photos were lost that
+way in September 2026 before `lib/blob-bytes.ts` existed. **The copy alone
+was not enough:** on the preview, with the handle replaced, our own 2.2MB
+canvas-produced master came back unreadable the same way after a reload.
+WebKit keeps a Blob property as a separate file beside the database, written
+outside the transaction, and that file does not reliably survive the page
+going away right after the write. So the store serialises the bytes **inline as
+an ArrayBuffer** and rebuilds a Blob on read; when `put` resolves the bytes are
+in the database. A restored row is
+also probed with a four-byte read and discarded as `unreadable` if that fails,
+because retrying a read that cannot succeed only spends the budget in front of
+the guest. Prepare failures carry a `step` (`decode` | `encode`) and `raw`, so
+the next unknown one is not a mystery. `lib/upload-queue.ts`
 drains one shot at a time, in capture order, and replays whatever a killed tab
 left behind. Persistence swallows: private mode is the old in-memory behaviour.
 

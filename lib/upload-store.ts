@@ -80,6 +80,52 @@ export type StoredShot = {
   attempts: number
 }
 
+/**
+ * What actually sits in IndexedDB: the shot with its bytes **inline**, as an
+ * ArrayBuffer inside the record, never as a Blob.
+ *
+ * WebKit stores a Blob property as a separate file beside the database and
+ * keeps a reference in the record. That file is written outside the SQLite
+ * transaction, and it does not reliably survive the page going away right
+ * after the write. Seen twice on iOS in September 2026: first the raw camera
+ * `File` (a handle to a temp file, see `lib/blob-bytes.ts`), then — with the
+ * handle already replaced by a copy — our own canvas-produced 2.2MB master,
+ * restored after a reload with its size intact and `createImageBitmap`
+ * throwing `InvalidStateError` on it. An ArrayBuffer is serialised into the
+ * record itself, so when `put` resolves the bytes are in the database, full
+ * stop.
+ *
+ * `blob` is kept on the type for rows written before this shape existed;
+ * `fromRecord` reads both. A row is at most 24 hours old, so the legacy
+ * branch can go after one release.
+ */
+type StoredRecord = Omit<StoredShot, 'blob'> & {
+  bytes?: ArrayBuffer
+  blobType?: string
+  blob?: Blob
+}
+
+async function toRecord(shot: StoredShot): Promise<StoredRecord> {
+  const { blob, ...rest } = shot
+  try {
+    return { ...rest, bytes: await blob.arrayBuffer(), blobType: blob.type }
+  } catch {
+    // Bytes that cannot be read now will not read later either, but a row
+    // that exists says what happened; one that was never written says nothing.
+    return { ...rest, blob }
+  }
+}
+
+function fromRecord(record: StoredRecord): StoredShot {
+  const { bytes, blobType, blob, ...rest } = record
+  return {
+    ...rest,
+    blob: bytes
+      ? new Blob([bytes], { type: blobType ?? rest.type })
+      : (blob ?? new Blob([], { type: rest.type })),
+  }
+}
+
 export type UploadStore = {
   put(shot: StoredShot): Promise<void>
   listByEvent(eventId: string): Promise<StoredShot[]>
@@ -167,7 +213,7 @@ export const uploadStore: UploadStore = {
     const db = await database(shot.eventId)
     if (!db) return
     try {
-      await db.put(STORE, shot)
+      await db.put(STORE, await toRecord(shot))
     } catch (error) {
       warnOnce('put', error, shot.eventId)
     }
@@ -177,11 +223,9 @@ export const uploadStore: UploadStore = {
     const db = await database(eventId)
     if (!db) return []
     try {
-      const rows = (await db.getAllFromIndex(
-        STORE,
-        BY_EVENT,
-        eventId,
-      )) as StoredShot[]
+      const rows = (
+        (await db.getAllFromIndex(STORE, BY_EVENT, eventId)) as StoredRecord[]
+      ).map(fromRecord)
       rows.forEach((shot) => captureEvents.set(shot.id, shot.eventId))
       return rows.sort((a, b) => a.capturedAt - b.capturedAt)
     } catch (error) {

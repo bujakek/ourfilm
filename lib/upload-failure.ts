@@ -44,6 +44,8 @@
  * message is unpleasant and unavoidable: matching `TypeError` alone would
  * refund genuine bugs for ever, and the photo would never retire.
  */
+import { isPrepareError } from './prepare-error'
+
 /**
  * A short, low-cardinality name for a failure the server *did* answer, for
  * telemetry. `timeout` and `aborted` are the queue's own deadlines; `http_500`
@@ -52,6 +54,9 @@
  * up as a new bar rather than as `unknown`.
  */
 export function failureClass(error: unknown): string {
+  // A step tag wraps the real exception; the class is the real one's. The
+  // step itself travels separately on the issue.
+  if (isPrepareError(error)) return failureClass(error.cause)
   if (error instanceof DOMException || isNamed(error)) {
     const name = String((error as { name?: unknown }).name ?? '')
     if (name === 'TimeoutError') return 'timeout'

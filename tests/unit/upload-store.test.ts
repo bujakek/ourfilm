@@ -81,6 +81,86 @@ describe('keeping a captured shot', () => {
     expect(file.name).toBe('IMG_0002.HEIC')
   })
 
+  it('writes the bytes inline as an ArrayBuffer, never a Blob', async () => {
+    // WebKit keeps a Blob property as a file beside the database, written
+    // outside the transaction, and that file did not survive a reload right
+    // after the write — twice, on iOS, in September 2026. Bytes inside the
+    // record are in the database the moment `put` resolves.
+    const original = shot()
+    await uploadStore.put(original)
+
+    const raw = await new Promise<Record<string, unknown>>(
+      (resolve, reject) => {
+        const request = indexedDB.open('ourfilm-uploads')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const db = request.result
+          const get = db
+            .transaction('shots')
+            .objectStore('shots')
+            .get(original.id)
+          get.onerror = () => reject(get.error)
+          get.onsuccess = () => {
+            db.close()
+            resolve(get.result as Record<string, unknown>)
+          }
+        }
+      },
+    )
+
+    expect(raw.bytes).toBeInstanceOf(ArrayBuffer)
+    expect((raw.bytes as ArrayBuffer).byteLength).toBe(4)
+    expect(raw.blobType).toBe('image/jpeg')
+    expect(raw.blob).toBeUndefined()
+
+    const [read] = await uploadStore.listByEvent(EVENT)
+    expect(read.blob.type).toBe('image/jpeg')
+    expect(new Uint8Array(await read.blob.arrayBuffer())).toEqual(
+      new Uint8Array([0xff, 0xd8, 0xff, 0xdb]),
+    )
+  })
+
+  it('still reads a row written as a Blob before the bytes moved inline', async () => {
+    // Rows live at most 24 hours, but a deploy lands mid-party.
+    const legacy = shot()
+    await uploadStore.put(legacy) // opens and upgrades the database
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('ourfilm-uploads')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('shots', 'readwrite')
+        tx.objectStore('shots').put({ ...legacy, id: 'legacy-row' })
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () => reject(tx.error)
+      }
+    })
+
+    const rows = await uploadStore.listByEvent(EVENT)
+    const read = rows.find((r) => r.id === 'legacy-row')
+    expect(read?.blob.size).toBe(4)
+    expect(read?.blob.type).toBe('image/jpeg')
+  })
+
+  it('falls back to storing the Blob itself when its bytes cannot be read', async () => {
+    class Broken extends Blob {
+      override arrayBuffer(): Promise<ArrayBuffer> {
+        return Promise.reject(new DOMException('gone', 'InvalidStateError'))
+      }
+    }
+    const original = shot({
+      blob: new Broken([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' }),
+    })
+    await uploadStore.put(original)
+
+    const [read] = await uploadStore.listByEvent(EVENT)
+    expect(read.id).toBe(original.id)
+    expect(read.blob.size).toBe(3)
+  })
+
   it('keeps one event’s roll out of another’s', async () => {
     await uploadStore.put(shot())
     await uploadStore.put(shot({ eventId: OTHER }))
