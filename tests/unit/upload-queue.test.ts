@@ -23,6 +23,7 @@ import {
   __resetForTests,
   type StoredShot,
 } from '@/lib/upload-store'
+import { PrepareError } from '@/lib/prepare-error'
 
 const EVENT = '11111111-1111-4111-8111-111111111111'
 const NOW = 1_700_000_000_000
@@ -677,6 +678,127 @@ describe('compressing a capture', () => {
     expect(await uploadStore.listByEvent(EVENT)).not.toContainEqual(
       expect.objectContaining({ id: row.id }),
     )
+  })
+
+  it('persists a copy of the camera file, never the File handle', async () => {
+    // On iOS the input `File` is a reference to a temporary file that does
+    // not survive the page. Two photos were lost in September 2026 because
+    // the raw row held that reference: it came back with its size intact
+    // and nothing behind it. The row, and compression, get a copy instead.
+    class Handle extends File {
+      reads = 0
+      override arrayBuffer() {
+        this.reads += 1
+        return super.arrayBuffer()
+      }
+    }
+    const handle = new Handle(
+      [new Uint8Array([0xff, 0xd8, 0xff, 0xdb])],
+      'IMG_0001.JPG',
+      {
+        type: 'image/jpeg',
+        lastModified: NOW,
+      },
+    )
+    const compressing = deferred<typeof master>()
+    const h = harness({ compress: vi.fn(() => compressing.promise) })
+    const q = queueFor(h)
+
+    q.enqueue('shot-1', handle, NOW)
+    await until(async () => (await uploadStore.listByEvent(EVENT)).length === 1)
+
+    expect(handle.reads).toBe(1)
+    const [row] = await uploadStore.listByEvent(EVENT)
+    expect(row.compressed).toBe(false)
+    expect(row.blob.size).toBe(handle.size)
+    expect(row.blob.type).toBe('image/jpeg')
+
+    const given = vi.mocked(h.deps.compress).mock.calls[0][0]
+    expect(given).not.toBe(handle)
+    expect(given.name).toBe('IMG_0001.JPG')
+    expect(given.size).toBe(handle.size)
+
+    compressing.resolve(master)
+    await q.drain()
+  })
+
+  it('still persists the handle when its bytes cannot be read at all', async () => {
+    // That photo is already gone. The old behaviour is kept so compression
+    // reports exactly how, rather than the shot vanishing without a row.
+    class Broken extends File {
+      override arrayBuffer(): Promise<ArrayBuffer> {
+        return Promise.reject(new DOMException('gone', 'InvalidStateError'))
+      }
+    }
+    const broken = new Broken([new Uint8Array([0xff, 0xd8])], 'IMG_0002.JPG', {
+      type: 'image/jpeg',
+      lastModified: NOW,
+    })
+    const h = harness()
+    const q = queueFor(h)
+
+    q.enqueue('shot-1', broken, NOW)
+    await q.drain()
+
+    expect(vi.mocked(h.deps.compress).mock.calls[0][0]).toBe(broken)
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 23)
+  })
+
+  it('discards a stored shot whose bytes cannot be read, spending nothing', async () => {
+    // A stale handle passes the empty check — it reports its original size —
+    // and fails only when read. Retrying cannot bring the bytes back, and the
+    // budget used to go in under thirty seconds while the guest watched.
+    const row = await orphan({ compressed: false, attempts: 1 })
+    const h = harness({ readable: vi.fn(async () => false) })
+    const q = queueFor(h)
+
+    await q.resume()
+    await q.drain()
+
+    expect(h.handlers.onDiscarded).toHaveBeenCalledWith(
+      row.id,
+      'unreadable',
+      expect.any(Number),
+    )
+    expect(h.handlers.onRestored).not.toHaveBeenCalled()
+    expect(h.deps.prepare).not.toHaveBeenCalled()
+    expect(h.deps.reserve).not.toHaveBeenCalled()
+    expect(await uploadStore.listByEvent(EVENT)).toEqual([])
+  })
+
+  it('reports which step failed and whether the row was still raw', async () => {
+    // `stage: prepare, failure: invalidstateerror` named the exception and
+    // nothing else. The step names the API; `raw` says which kind of row it
+    // was given, which is the distinction that explained the lost photos.
+    const row = await orphan({ compressed: false })
+    const h = harness({
+      prepare: vi.fn(async () => {
+        throw new PrepareError(
+          'decode',
+          new DOMException('bad', 'InvalidStateError'),
+        )
+      }),
+    })
+    const q = queueFor(h)
+
+    await q.resume()
+    await q.drain()
+
+    expect(h.handlers.onIssue).toHaveBeenCalledWith(
+      row.id,
+      expect.objectContaining({
+        stage: 'prepare',
+        failure: 'invalidstateerror',
+        step: 'decode',
+        raw: true,
+        blob_size: 2,
+        terminal: false,
+      }),
+    )
+    // A local failure still spends an attempt, as before: the crash it
+    // guards against — a decode taking the tab with it — has no other signal.
+    const [stored] = await uploadStore.listByEvent(EVENT)
+    expect(stored.attempts).toBe(1)
   })
 
   it('compresses once, however many times the shot is retried', async () => {

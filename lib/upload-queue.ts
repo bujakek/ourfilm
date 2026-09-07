@@ -1,6 +1,8 @@
 import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
 import type { ShotRefusal } from '@/lib/capture'
 import type { CompressedCapture, PreparedPhoto } from '@/lib/image'
+import { isReadable, materializeBlob } from '@/lib/blob-bytes'
+import { prepareStepOf, type PrepareStep } from '@/lib/prepare-error'
 import type { SignedUpload } from '@/lib/upload-shot'
 import { failureClass, isConnectionFailure } from '@/lib/upload-failure'
 import type { StoredShot, UploadStore } from '@/lib/upload-store'
@@ -55,6 +57,9 @@ export type UploadQueueDeps = {
   store: UploadStore
   now?: () => number
   schedule?: (run: () => void, delayMs: number) => () => void
+  /** Whether a stored blob's bytes can still be read. Injectable because a
+   *  stale handle cannot be built in a test — it only exists on a phone. */
+  readable?: (blob: Blob) => Promise<boolean>
   timeouts?: typeof REQUEST_TIMEOUTS_MS
 }
 
@@ -114,13 +119,17 @@ type QueueItem = {
   settled: Promise<void> | null
 }
 
-export type DiscardReason = 'expired' | 'exhausted' | 'empty'
+export type DiscardReason = 'expired' | 'exhausted' | 'empty' | 'unreadable'
 export type UploadStage = 'prepare' | 'reserve' | 'upload' | 'commit'
 export type UploadIssue = {
   stage: UploadStage
   failure: string
   attempts: number
   terminal: boolean
+  /** Prepare failures only. See `lib/prepare-error.ts`. */
+  step?: PrepareStep
+  raw?: boolean
+  blob_size?: number
 }
 export type PreparedOutcome =
   | { ok: true; ms: number; bytes: number; width: number; height: number }
@@ -143,6 +152,7 @@ export function createUploadQueue({
   handlers: UploadQueueHandlers
 }): UploadQueue {
   const clock = deps.now ?? (() => Date.now())
+  const readable = deps.readable ?? isReadable
   const limits = deps.timeouts ?? REQUEST_TIMEOUTS_MS
   const schedule =
     deps.schedule ??
@@ -221,10 +231,17 @@ export function createUploadQueue({
       // awaited on the capture path, and a rejection there would surface as a
       // throw inside the drain loop rather than as a shot that simply has not
       // been compressed yet.
+      // A copy of the bytes, never the input `File` itself. On iOS that
+      // object is a handle to a temporary file that does not survive the
+      // page, so a raw row holding it comes back unreadable — see
+      // `lib/blob-bytes.ts`. Compression works from the same copy, so nothing
+      // downstream depends on the handle staying valid either.
+      const source = await materialize(file)
+      item.shot.blob = source
       await deps.store.put(item.shot)
       if (stopped) return
 
-      const master = await deps.compress(file)
+      const master = await deps.compress(source)
       item.shot.blob = master.blob
       item.shot.compressed = true
       item.shot.width = master.width
@@ -322,7 +339,12 @@ export function createUploadQueue({
 
       for (const stored of await deps.store.listByEvent(eventId)) {
         if (claimed.has(stored.id)) continue
-        const discard = discardReason(stored, at)
+        // A stale handle reports its full size and fails only when read, and
+        // retrying a read that cannot succeed just spends the budget in front
+        // of the guest. Four bytes decide it here instead.
+        const discard =
+          discardReason(stored, at) ??
+          ((await readable(stored.blob)) ? null : 'unreadable')
         if (discard) {
           await deps.store.remove(stored.id)
           const age = at - stored.capturedAt
@@ -349,6 +371,23 @@ export function createUploadQueue({
     }
 
     void drain()
+  }
+
+  /**
+   * The bytes, as a `File` so `isHeic` still sees the name. Falls back to the
+   * handle itself when even a plain read fails: that photo is already gone,
+   * and the old behaviour at least lets compression report exactly how.
+   */
+  async function materialize(file: File): Promise<File> {
+    try {
+      const blob = await materializeBlob(file)
+      return new File([blob], file.name, {
+        type: file.type,
+        lastModified: file.lastModified,
+      })
+    } catch {
+      return file
+    }
   }
 
   function discardReason(stored: StoredShot, at: number): DiscardReason | null {
@@ -543,14 +582,22 @@ export function createUploadQueue({
       const unsent = isConnectionFailure(error)
       if (unsent) await refund(item)
       const terminal = !unsent && shot.attempts >= MAX_ATTEMPTS
-      notify(() =>
-        handlers.onIssue?.(shot.id, {
-          stage,
-          failure: unsent ? 'connection' : failureClass(error),
-          attempts: shot.attempts,
-          terminal,
-        }),
-      )
+      const issue: UploadIssue = {
+        stage,
+        failure: unsent ? 'connection' : failureClass(error),
+        attempts: shot.attempts,
+        terminal,
+      }
+      if (stage === 'prepare') {
+        // Which API threw, and what it was given. The two lost photos of
+        // September 2026 were indistinguishable from a decoder bug without
+        // this; with it they read as raw rows whose bytes had gone.
+        const step = prepareStepOf(error)
+        if (step) issue.step = step
+        issue.raw = !shot.compressed
+        issue.blob_size = shot.blob.size
+      }
+      notify(() => handlers.onIssue?.(shot.id, issue))
 
       if (terminal) {
         if (await deps.store.remove(shot.id)) claimed.delete(shot.id)

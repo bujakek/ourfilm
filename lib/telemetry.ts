@@ -65,6 +65,11 @@ export type TelemetryEventProperties = {
     failure: string
     attempts: number
     terminal: boolean
+    /** Prepare failures only: which browser API threw, whether the row was
+     *  still the raw camera file, and how big it claimed to be. */
+    step?: 'decode' | 'encode'
+    raw?: boolean
+    blob_size?: number
   }
   upload_restored: {
     event_id: string
@@ -74,7 +79,7 @@ export type TelemetryEventProperties = {
   upload_discarded: {
     event_id: string
     capture_id: string
-    reason: 'expired' | 'exhausted' | 'empty'
+    reason: 'expired' | 'exhausted' | 'empty' | 'unreadable'
     age_ms: number
   }
   upload_store_unavailable: {

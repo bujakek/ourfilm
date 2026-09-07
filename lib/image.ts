@@ -4,6 +4,7 @@
 import 'client-only'
 
 import { readCaptureTime } from './exif'
+import { atStep } from './prepare-error'
 import type { StoredShot } from './upload-store'
 
 /**
@@ -94,6 +95,10 @@ export function isHeic(file: File): boolean {
  * a phone, for an intermediate we throw away.
  */
 async function decode(file: File): Promise<ImageBitmap> {
+  return atStep('decode', () => decodeBitmap(file))
+}
+
+async function decodeBitmap(file: File): Promise<ImageBitmap> {
   if (isHeic(file)) {
     // Dynamic, and the /next entry specifically: it inlines its worker rather
     // than relying on the bundler emitting a separate asset.
@@ -206,6 +211,15 @@ async function encodeAt(
   height: number,
   quality: number,
 ): Promise<Blob> {
+  return atStep('encode', () => encodeResized(bitmap, width, height, quality))
+}
+
+async function encodeResized(
+  bitmap: ImageBitmap,
+  width: number,
+  height: number,
+  quality: number,
+): Promise<Blob> {
   if (width === bitmap.width && height === bitmap.height) {
     return toJpeg(bitmap, width, height, quality)
   }
@@ -296,7 +310,7 @@ export async function prepareStoredShot(
   }
 
   const full = shot.blob
-  const bitmap = await createImageBitmap(full)
+  const bitmap = await atStep('decode', () => createImageBitmap(full))
   try {
     const { width, height } = scaledSize(bitmap, MAX_EDGE)
 

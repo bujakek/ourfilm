@@ -19,6 +19,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { PrepareError } from '@/lib/prepare-error'
 import { failureClass, isConnectionFailure } from '@/lib/upload-failure'
 
 /** What supabase builds when the server answered. */
@@ -98,6 +99,16 @@ describe('naming a failure', () => {
     expect(failureClass({ statusCode: '413', message: 'too large' })).toBe(
       'http_413',
     )
+  })
+
+  it('names the exception inside a preparation step, not the wrapper', () => {
+    // The step travels on the issue; the class must stay the browser's own,
+    // or every decode failure would read as `prepareerror`.
+    const inner = new DOMException('cannot decode', 'InvalidStateError')
+    expect(failureClass(new PrepareError('decode', inner))).toBe(
+      'invalidstateerror',
+    )
+    expect(isConnectionFailure(new PrepareError('encode', inner))).toBe(false)
   })
 
   it('names the commit refusal and falls back to the error name', () => {
