@@ -155,8 +155,31 @@ export type TelemetryEventProperties = {
   }
   quota_upgrade_clicked: { event_id: string; full: boolean }
   photo_moderated: { event_id: string; hidden: boolean }
-  /** The Album button. The server reports what the stream then did. */
-  album_export_requested: { event_id: string; photo_count: number }
+  /** The Album button, and which path the endpoint sent it down. A small
+   *  album is zipped right here in the browser; a large one is prepared
+   *  elsewhere, and the server reports what happened to it. */
+  album_export_requested: {
+    event_id: string
+    photo_count: number
+    mode: 'browser' | 'prepared' | 'unknown'
+  }
+  /** The browser finished its own ZIP and handed it to the save dialog.
+   *  `missing_count` is the same number the server's export reports: photos
+   *  the archive is short of, named in a note inside it. */
+  album_export_browser_finished: {
+    event_id: string
+    photo_count: number
+    missing_count: number
+    elapsed_ms: number
+  }
+  /** The browser ZIP did not reach the save dialog. A blob that fails to save
+   *  on a phone is otherwise invisible — the host just has no file. */
+  album_export_browser_failed: {
+    event_id: string
+    photo_count: number
+    stage: 'manifest' | 'fetch' | 'zip' | 'save'
+    error_class: string
+  }
   /** Somebody is looking at the developed album — the payoff of the whole
    *  format, and until now unmeasured. */
   gallery_photo_opened: { event_id: string; index: number; photos: number }

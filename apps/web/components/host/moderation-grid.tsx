@@ -1,8 +1,9 @@
 'use client'
 
+import { AlbumDownload } from '@/components/host/album-download'
 import type { ModerationTile } from '@/lib/photos'
 import { cn } from '@/lib/utils'
-import { Download, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
 import { useOptimistic, useState, useTransition } from 'react'
@@ -183,7 +184,7 @@ export function ModerationGrid({
   eventId,
   locale,
   title,
-  albumHref,
+  exportEndpoint,
 }: {
   photos: ModerationTile[]
   slug: string
@@ -192,8 +193,8 @@ export function ModerationGrid({
   locale: 'en' | 'hu'
   /** The section heading, rendered beside the toolbar it belongs with. */
   title: string
-  /** The ZIP export, or null when there is nothing to export. */
-  albumHref: string | null
+  /** The album export endpoint, or null when there is nothing to export. */
+  exportEndpoint: string | null
 }) {
   const en = locale === 'en'
   // Held for the whole grid rather than per tile so the "N rejtve" counter
@@ -274,23 +275,13 @@ export function ModerationGrid({
             </div>
           ) : null}
 
-          {albumHref ? (
-            <a
-              href={albumHref}
-              // The intent. The route reports what the stream then did, and
-              // the gap between the two is an export that never ran — a
-              // function that timed out, a download the browser refused.
-              onClick={() =>
-                track('album_export_requested', {
-                  event_id: eventId,
-                  photo_count: items.length,
-                })
-              }
-              className="inline-flex items-center gap-2 rounded-full border border-white/14 px-3.5 py-1.5 text-[11px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground"
-            >
-              <Download className="size-3.5" aria-hidden="true" />
-              {en ? 'Album' : 'Album'}
-            </a>
+          {exportEndpoint ? (
+            <AlbumDownload
+              endpoint={exportEndpoint}
+              eventId={eventId}
+              photoCount={items.length}
+              locale={locale}
+            />
           ) : null}
         </div>
       </div>

@@ -51,6 +51,8 @@ export type HostPhoto = {
   height: number | null
   created_at: string
   taken_at: string | null
+  /** The master's size, as committed by the uploader; null on early rows. */
+  byte_size: number | null
   participant_id: string
   participants: { display_name: string } | null
 }
@@ -71,7 +73,7 @@ export const getAllEventPhotos = cache(
     const { data, error } = await supabase
       .from('photos')
       .select(
-        'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, participant_id, participants(display_name)',
+        'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, byte_size, participant_id, participants(display_name)',
       )
       .eq('event_id', eventId)
       .eq('status', 'ready')

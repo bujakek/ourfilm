@@ -66,8 +66,27 @@ export function exifDateSegment(iso: string, timeZone?: string): Uint8Array {
   // The event's own zone, not the server's. A capture stamp and its offset are
   // the two halves of one fact, so both read from the same zone or the file
   // claims a time that disagrees with the offset beside it.
-  const stamp = asciiz(eventStamp(iso, timeZone)) // "2026:08:15 14:32:10"
-  const zone = asciiz(eventUtcOffset(iso, timeZone)) // "+02:00"
+  return exifDateSegmentFrom(
+    eventStamp(iso, timeZone),
+    eventUtcOffset(iso, timeZone),
+  )
+}
+
+/**
+ * The same segment from an already-rendered stamp and offset.
+ *
+ * This is the half a consumer with no zone knowledge calls: the export
+ * manifest carries `2026:08:15 14:32:10` and `+02:00` ready-made, so the
+ * browser today and the export worker later splice a capture time into a
+ * file without ever knowing which zone it was rendered in. Pure bytes in,
+ * pure bytes out.
+ */
+export function exifDateSegmentFrom(
+  stampText: string,
+  offsetText: string,
+): Uint8Array {
+  const stamp = asciiz(stampText) // "2026:08:15 14:32:10"
+  const zone = asciiz(offsetText) // "+02:00"
 
   // Little-endian TIFF. IFD0 carries DateTime and the sub-IFD pointer; the
   // sub-IFD carries the two capture stamps and all three offsets.

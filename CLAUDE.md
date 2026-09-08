@@ -340,18 +340,20 @@ carries the correlation key its own funnel needs: `creation_key` — the draft's
 own random uuid, minted in the browser before any row exists — for the four
 onboarding screens, and `event_id` from the moment there is a row.
 
-| Event                           | Answers                                                                  |
-| ------------------------------- | ------------------------------------------------------------------------ |
-| `onboarding_step_completed`     | Which of the four questions a host stops at. No row exists yet           |
-| `onboarding_plan_chosen`        | Free or unlimited, and whether the paid tile was even offered            |
-| `onboarding_create_attempted`   | The last CTA and what came back; `auth_required` is the email round trip |
-| `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once     |
-| `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost        |
-| `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it          |
-| `quota_upgrade_clicked`         | …and went to the billing card                                            |
-| `photo_moderated`               | How much of an album a host takes out, after the round trip              |
-| `album_export_requested`        | The Album button; the route below says what the stream then did          |
-| `create_own_album_clicked`      | The guest-to-host loop. Nothing mounts that component at the moment      |
+| Event                           | Answers                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `onboarding_step_completed`     | Which of the four questions a host stops at. No row exists yet                 |
+| `onboarding_plan_chosen`        | Free or unlimited, and whether the paid tile was even offered                  |
+| `onboarding_create_attempted`   | The last CTA and what came back; `auth_required` is the email round trip       |
+| `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once           |
+| `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost              |
+| `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it                |
+| `quota_upgrade_clicked`         | …and went to the billing card                                                  |
+| `photo_moderated`               | How much of an album a host takes out, after the round trip                    |
+| `album_export_requested`        | The Album button, and which path the endpoint chose: `browser` or `prepared`   |
+| `album_export_browser_finished` | A small album zipped in the host's browser reached the save dialog             |
+| `album_export_browser_failed`   | …or did not, and at which stage. A blob that fails to save is otherwise silent |
+| `create_own_album_clicked`      | The guest-to-host loop. Nothing mounts that component at the moment            |
 
 **And the server reports what the browser cannot see honestly** — a payment
 Stripe confirmed rather than a browser that reached a success URL, a stream
@@ -669,6 +671,8 @@ because a client-side counter is a display and the database is the count.
 | `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                          |
 | `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                                                                          |
 | `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                                                                      |
+| `/host/events/[slug]/export`                                                               | JSON: what happens to this album. Up to 20 photos, a manifest the browser zips itself; above, where the prepared archive is              |
+| `/host/events/[slug]/export/stream`                                                        | The large-album path for now: the whole ZIP streamed through a function. Retired by the export worker                                    |
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed

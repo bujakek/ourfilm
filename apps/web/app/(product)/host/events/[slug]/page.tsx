@@ -185,7 +185,7 @@ export default async function AdminEventPage({ params }: Props) {
             eventId={event.id}
             locale={locale}
             title={en ? 'Photos' : 'Elkészült képek'}
-            albumHref={
+            exportEndpoint={
               photos.length > 0 ? `/host/events/${event.slug}/export` : null
             }
           />

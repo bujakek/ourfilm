@@ -279,3 +279,107 @@ describe('hosts and storage', () => {
     }
   }, 60_000)
 })
+
+describe('the exports bucket', () => {
+  // Where finished album archives land (`20260909100000_event_exports_bucket`).
+  // Everything the photo bucket gives up by being public, this one keeps: a
+  // ZIP of a whole wedding is the object whose address must not be a
+  // permanent public URL.
+  const EXPORTS = 'event-exports'
+
+  it('is private and sized for a wedding', async () => {
+    const { data, error } = await serviceClient().storage.getBucket(EXPORTS)
+    expect(error).toBeNull()
+    expect(data?.public).toBe(false)
+    expect(data?.file_size_limit).toBeGreaterThan(1024 * 1024 * 1024)
+  })
+
+  it('does not serve an object over the public route', async () => {
+    const path = `probe/${crypto.randomUUID()}/ourfilm.zip`
+    const db = serviceClient()
+    try {
+      await db.storage.from(EXPORTS).upload(path, JPEG, { upsert: true })
+      const response = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/public/${EXPORTS}/${path}`,
+      )
+      expect(response.ok).toBe(false)
+    } finally {
+      await db.storage.from(EXPORTS).remove([path])
+    }
+  }, 60_000)
+
+  it('cannot be listed with the anon key', async () => {
+    const response = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/list/${EXPORTS}`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: ANON_KEY,
+          Authorization: `Bearer ${ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prefix: '', limit: 100 }),
+      },
+    )
+    const listed = response.ok ? await response.json() : []
+    expect(Array.isArray(listed) ? listed : []).toHaveLength(0)
+  })
+
+  it('accepts a resumable upload that carries only a signed token', async () => {
+    // The worker's whole upload story, in miniature: Vercel mints the token,
+    // the uploader holds nothing else. `apps/worker/scripts/tus-probe.ts` is
+    // the same check at real size.
+    const path = `probe/${crypto.randomUUID()}/ourfilm.zip`
+    const db = serviceClient()
+    try {
+      const { data: signed, error } = await db.storage
+        .from(EXPORTS)
+        .createSignedUploadUrl(path, { upsert: true })
+      expect(error).toBeNull()
+
+      const body = new Uint8Array(64 * 1024)
+      const create = await fetch(
+        `${SUPABASE_URL}/storage/v1/upload/resumable/sign`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: ANON_KEY,
+            'x-signature': signed!.token,
+            'x-upsert': 'true',
+            'Tus-Resumable': '1.0.0',
+            'Upload-Length': String(body.byteLength),
+            'Upload-Metadata': [
+              `bucketName ${btoa(EXPORTS)}`,
+              `objectName ${btoa(path)}`,
+              `contentType ${btoa('application/zip')}`,
+            ].join(','),
+          },
+        },
+      )
+      expect(create.status).toBe(201)
+      const location = create.headers.get('location')!
+      expect(location).toBeTruthy()
+
+      const patch = await fetch(location, {
+        method: 'PATCH',
+        headers: {
+          apikey: ANON_KEY,
+          'x-signature': signed!.token,
+          'Tus-Resumable': '1.0.0',
+          'Upload-Offset': '0',
+          'Content-Type': 'application/offset+octet-stream',
+        },
+        body,
+      })
+      expect(patch.status).toBe(204)
+      expect(patch.headers.get('upload-offset')).toBe(String(body.byteLength))
+
+      const { data: listed } = await db.storage
+        .from(EXPORTS)
+        .list(path.slice(0, path.lastIndexOf('/')))
+      expect(listed?.[0]?.metadata?.size).toBe(body.byteLength)
+    } finally {
+      await db.storage.from(EXPORTS).remove([path])
+    }
+  }, 60_000)
+})

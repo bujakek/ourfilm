@@ -1,6 +1,6 @@
 # Public photo CDN, and moving album export off Vercel
 
-**Status:** Phase 1 merged and live; Phase 1.5 built on `feat-apps-web`, awaiting the Vercel Root Directory change; Phase 2 not started · **Written:** 2026-09-07 · **Validated
+**Status:** Phases 1 and 1.5 merged; Phase 2 in progress on `feat-export-worker` — the browser path (§2.6.0), the exports bucket and the upload probe (§2.6.1) are built; schema, endpoints, worker, email and sweep are not · **Written:** 2026-09-07 · **Validated
 against the repo and revised:** 2026-09-08 (line references are as of commit
 `d28f2bc`)
 
@@ -904,16 +904,16 @@ when missed until the disk is full:
   Pro at the time of writing); confirm it on the plan actually in use and set
   the floor from that, not from this document.
 
-> **Prove the upload once, and commit the script.** A known-length TUS upload
-> of a multi-gigabyte file with the signed-token variant, from Node, against
-> the local stack and then the linked project. This is the documented path, so
-> it is a confirmation rather than a gate — but the earlier single-PUT and
-> multipart experiments were never committed and this document is their only
-> record, and the same must not happen again. Two things to read off the same
-> run: whether `x-signature` must accompany every `PATCH` or only the creation
-> (`tus-js-client`'s `onBeforeRequest` handles either), and the token's
-> lifetime — a signed upload URL for photos expires after two hours, so if an
-> export can outlive it, `heartbeat` returns a fresh one.
+> **Proven, and the script is committed:** `apps/worker/scripts/tus-probe.ts`
+> (`pnpm --filter worker probe:tus --mb 40`). Against the local stack on
+> 2026-09-08 a 40MB file went up over seven 6MB `PATCH` requests carrying
+> nothing but `apikey` and the `x-signature` token, in under a second, and the
+> stored size matched. `tests/db/storage.test.ts` pins the same handshake at
+> 64KB so it runs in CI. Still to read off a run against the linked project
+> at real size: the token's lifetime — a signed upload URL for photos expires
+> after two hours, so if an export can outlive it, `heartbeat` returns a fresh
+> one — and whether the hosted edge treats the chunks any differently. The
+> probe sends the signature on every request; nothing was tried without it.
 
 Two size limits, both set deliberately. `event-exports` gets a
 `file_size_limit` sized for whole weddings (`event-photos` is capped at 15MB).

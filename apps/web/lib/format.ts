@@ -198,6 +198,20 @@ export function eventWallClock(iso: string, zone = EVENT_TIME_ZONE): Date {
   )
 }
 
+/**
+ * The same wall clock as a naive `YYYY-MM-DDTHH:mm:ss`, for carrying across a
+ * process boundary. A `Date` cannot make the trip: serialised it becomes an
+ * instant, and the receiver's local components would then depend on the
+ * receiver's zone. `wallClockToDate` in `lib/album-export.ts` is the way back.
+ */
+export function eventWallClockNaive(
+  iso: string,
+  zone = EVENT_TIME_ZONE,
+): string {
+  const p = eventParts(iso, zone)
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`
+}
+
 const MOMENT_CACHE = new Map<string, Intl.DateTimeFormat>()
 
 /**
