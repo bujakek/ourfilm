@@ -1,5 +1,6 @@
 import { getOwnedEventBySlug } from '@/lib/events'
 import { exportAnswer, requestAnswer } from '@/lib/exports/answer'
+import type { ExportResponse } from '@/lib/album-export'
 import { getAllEventPhotos, type HostPhoto } from '@/lib/photos'
 import { reportServerIssue } from '@/lib/telemetry-server'
 import { NextResponse } from 'next/server'
@@ -70,10 +71,28 @@ export async function GET(
   const { slug } = await params
   const loaded = await load(slug, 'GET')
   if (loaded instanceof NextResponse) return loaded
-  return NextResponse.json(
-    await exportAnswer(loaded.event, loaded.photos),
-    NO_STORE,
-  )
+  return answer(() => exportAnswer(loaded.event, loaded.photos), loaded, 'GET')
+}
+
+/** One JSON answer or one reported 500 — never an unhandled throw that the
+ *  button has to interpret from a Next error page. */
+async function answer(
+  produce: () => Promise<ExportResponse>,
+  loaded: Loaded,
+  method: 'GET' | 'POST',
+) {
+  try {
+    return NextResponse.json(await produce(), NO_STORE)
+  } catch (e) {
+    await reportServerIssue(e, {
+      operation: 'album_export_answer',
+      eventId: loaded.event.id,
+      route: '/host/events/[slug]/export',
+      routeType: 'route',
+      method,
+    })
+    return NextResponse.json({ error: 'unavailable' }, { status: 500 })
+  }
 }
 
 /** Ask for an archive. Idempotent: a job in flight or a matching ready
@@ -85,8 +104,9 @@ export async function POST(
   const { slug } = await params
   const loaded = await load(slug, 'POST')
   if (loaded instanceof NextResponse) return loaded
-  return NextResponse.json(
-    await requestAnswer(loaded.event, loaded.photos),
-    NO_STORE,
+  return answer(
+    () => requestAnswer(loaded.event, loaded.photos),
+    loaded,
+    'POST',
   )
 }

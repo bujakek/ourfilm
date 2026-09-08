@@ -17,6 +17,7 @@ import { formatDeadline } from '@/lib/format'
 import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
+import { reportServerIssue } from '@/lib/telemetry-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,8 +65,25 @@ export default async function AdminEventPage({ params }: Props) {
   // What the Album button should say before anyone taps it: a host coming
   // back to a prepared archive, or to one still being built, sees that state
   // rendered rather than a generic button they have to tap to find out.
+  //
+  // Best effort, never fatal: the album is the page, and the export's state
+  // is a line on a button. If reading it throws — the migration not yet on
+  // this database, Storage refusing to sign — the button starts blank and
+  // finds out on tap, and the failure is reported rather than shown as a
+  // whole-page error.
   const initialExport =
-    photos.length > 0 ? await exportAnswer(event, photos) : null
+    photos.length > 0
+      ? await exportAnswer(event, photos).catch(async (e) => {
+          await reportServerIssue(e, {
+            operation: 'album_export_status',
+            eventId: event.id,
+            route: '/host/events/[slug]',
+            routeType: 'page',
+            method: 'GET',
+          })
+          return null
+        })
+      : null
   const url = eventUrl(event.slug, locale)
   const now = new Date()
   const windowState = captureWindowState({
