@@ -15,6 +15,7 @@ per job; the database it never sees.
 ```bash
 OURFILM_API_URL=                # https://ourfilm.app
 EXPORT_WORKER_SECRET=           # the same value Vercel holds
+VERCEL_PROTECTION_BYPASS=       # only when OURFILM_API_URL is a preview deployment
 EXPORT_TMP_DIR=                 # default: <os tmpdir>/ourfilm-exports
 EXPORT_DISK_FLOOR_BYTES=        # default 2 GiB; no job is claimed with less free
 EXPORT_POLL_SECONDS=            # default 60

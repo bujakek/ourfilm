@@ -41,7 +41,7 @@ export class ApiError extends Error {
 }
 
 async function post(path: string, body: unknown): Promise<Response> {
-  const { apiUrl, secret } = env()
+  const { apiUrl, secret, protectionBypass } = env()
   let lastError: unknown
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     const controller = new AbortController()
@@ -53,6 +53,10 @@ async function post(path: string, body: unknown): Promise<Response> {
           authorization: `Bearer ${secret}`,
           'content-type': 'application/json',
           accept: 'application/json',
+          // Only ever set for a preview deployment; see `Env.protectionBypass`.
+          ...(protectionBypass
+            ? { 'x-vercel-protection-bypass': protectionBypass }
+            : {}),
         },
         body: JSON.stringify(body ?? {}),
         signal: controller.signal,

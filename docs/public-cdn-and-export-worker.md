@@ -1062,6 +1062,7 @@ EXPORT_WORKER_SECRET=            # shared with the worker and the cron job; auth
 # Railway
 OURFILM_API_URL=                 # https://ourfilm.app
 EXPORT_WORKER_SECRET=            # the same value
+VERCEL_PROTECTION_BYPASS=        # only while OURFILM_API_URL is a preview deployment
 EXPORT_TMP_DIR=                  # where archives are built; swept on boot
 EXPORT_DISK_FLOOR_BYTES=         # do not claim a job with less free space than this
 

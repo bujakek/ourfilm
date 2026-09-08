@@ -12,6 +12,14 @@ import { join } from 'node:path'
 export type Env = {
   apiUrl: string
   secret: string
+  /**
+   * Vercel's "Protection Bypass for Automation" secret, for pointing the
+   * worker at a preview deployment. Previews sit behind Vercel Authentication,
+   * which answers a worker's POST with a login page; this header lets the
+   * request through without lowering protection for everyone. Unset in
+   * production, where `ourfilm.app` is public.
+   */
+  protectionBypass: string | null
   tmpDir: string
   diskFloorBytes: number
   pollSeconds: number
@@ -44,6 +52,7 @@ export function readEnv(): Env {
   return {
     apiUrl: required('OURFILM_API_URL').replace(/\/+$/, ''),
     secret: required('EXPORT_WORKER_SECRET'),
+    protectionBypass: process.env.VERCEL_PROTECTION_BYPASS || null,
     tmpDir: process.env.EXPORT_TMP_DIR || join(tmpdir(), 'ourfilm-exports'),
     // Two gigabytes of headroom below which no job is claimed: a wedding ZIP
     // is written in full before it is uploaded, and running out of disk
