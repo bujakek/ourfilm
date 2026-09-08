@@ -79,7 +79,10 @@ describe('the export-ready mail', () => {
       expect(mail.text).toContain('/host/events/k3f9x7ab2m')
       expect(mail.html).toContain('/host/events/k3f9x7ab2m')
       expect(mail.html).not.toContain('/storage/v1/object/sign')
-      expect(mail.text).toContain('487')
+      // No figures in the mail: a host wants to know it is ready and where
+      // to tap, and the page carries the rest.
+      expect(mail.text).not.toContain('487')
+      expect(mail.html).not.toContain('GB')
       expect(mail.html).toContain('Anna &amp; Bence')
     }
   })

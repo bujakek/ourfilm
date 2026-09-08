@@ -40,62 +40,49 @@ export function renderExportReadyEmail(input: {
   byteSize?: number | null
   missingCount?: number
 }): { subject: string; html: string; text: string } {
-  const { eventName, url, photoCount } = input
+  const { eventName, url } = input
   const hu = input.locale === 'hu'
   const subject = hu
     ? `Elkészült az album: ${eventName}`
     : `Your album is ready: ${eventName}`
-  const size = formatBytes(input.byteSize ?? null, input.locale)
-  const figures = [
-    { label: hu ? 'Kép' : 'Photos', value: String(photoCount) },
-    ...(size ? [{ label: hu ? 'Méret' : 'Size', value: size }] : []),
-    {
-      label: hu ? 'Elérhető' : 'Available',
-      value: hu ? '48 óráig' : '48 hours',
-    },
-  ]
+
+  // No figures, no sizes, no filenames. A host reading this on their phone
+  // wants to know one thing — the album is ready — and where to tap. Anything
+  // they need beyond that is on the page the button opens.
   const missing =
     input.missingCount && input.missingCount > 0
       ? hu
-        ? `${input.missingCount} képet nem sikerült beletenni; a ZIP-ben egy HIANYZO-KEPEK.txt sorolja fel őket.`
-        : `${input.missingCount} photo(s) could not be included; HIANYZO-KEPEK.txt inside the ZIP lists them.`
+        ? input.missingCount === 1
+          ? 'Egy kép nem került bele az albumba; a letöltött mappában egy rövid jegyzet mutatja, melyik.'
+          : `${input.missingCount} kép nem került bele az albumba; a letöltött mappában egy rövid jegyzet mutatja, melyek.`
+        : input.missingCount === 1
+          ? 'One photo could not be included; a short note in the downloaded folder says which.'
+          : `${input.missingCount} photos could not be included; a short note in the downloaded folder says which.`
       : null
 
   const { html, text } = renderEmailLayout({
     locale: input.locale,
     preheader: hu
-      ? `${photoCount} kép egy ZIP-fájlban, 48 óráig letölthető.`
-      : `${photoCount} photos in one ZIP, available for 48 hours.`,
+      ? 'Az album készen áll a letöltésre.'
+      : 'Your album is ready to download.',
     eyebrow: hu ? 'Album' : 'Album',
     heading: eventName,
     intro: [
       hu
-        ? 'Elkészült az album. Minden kép egyetlen ZIP-fájlban, a felvétel idejével a fájlnevekben és a képekben.'
-        : 'The album is ready. Every photo in one ZIP, with the capture time in the filenames and in the files themselves.',
+        ? 'Elkészült az album. Az eseményed oldaláról egy gombnyomással letöltheted.'
+        : 'The album is ready. Open your event page and download it with one tap.',
     ],
-    figures,
     button: { label: hu ? 'Album letöltése' : 'Download the album', url },
-    underButton: hu
-      ? 'A gomb az eseményed oldalára visz; a letöltés onnan indul.'
-      : 'The button opens your event page; the download starts there.',
     note:
       missing ??
       (hu
         ? 'A letöltés 48 óráig érhető el. Utána ugyanezen az oldalon újra elkészítjük, ha kéred.'
         : 'The download is available for 48 hours. After that we prepare it again on request, on the same page.'),
     footer: hu
-      ? 'Ezt a levelet azért kaptad, mert a házigazdaként albumot kértél az eseményedhez.'
+      ? 'Ezt a levelet azért kaptad, mert házigazdaként albumot kértél az eseményedhez.'
       : 'You received this because, as the host, you asked for the album of your event.',
   })
   return { subject, html, text }
-}
-
-function formatBytes(bytes: number | null, locale: Locale): string | null {
-  if (!bytes) return null
-  const gb = bytes / 1024 ** 3
-  if (gb >= 1)
-    return `${gb.toFixed(1).replace('.', locale === 'hu' ? ',' : '.')} GB`
-  return `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`
 }
 
 /**
