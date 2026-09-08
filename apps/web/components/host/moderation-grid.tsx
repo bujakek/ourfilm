@@ -1,6 +1,7 @@
 'use client'
 
 import { AlbumDownload } from '@/components/host/album-download'
+import type { ExportResponse } from '@/lib/album-export'
 import type { ModerationTile } from '@/lib/photos'
 import { cn } from '@/lib/utils'
 import { Eye, EyeOff } from 'lucide-react'
@@ -185,6 +186,8 @@ export function ModerationGrid({
   locale,
   title,
   exportEndpoint,
+  exportInitial = null,
+  exportNote = null,
 }: {
   photos: ModerationTile[]
   slug: string
@@ -195,6 +198,10 @@ export function ModerationGrid({
   title: string
   /** The album export endpoint, or null when there is nothing to export. */
   exportEndpoint: string | null
+  /** What the server already knows about a prepared archive, if anything. */
+  exportInitial?: ExportResponse | null
+  /** One sentence under the toolbar saying what the button will do. */
+  exportNote?: string | null
 }) {
   const en = locale === 'en'
   // Held for the whole grid rather than per tile so the "N rejtve" counter
@@ -281,10 +288,15 @@ export function ModerationGrid({
               eventId={eventId}
               photoCount={items.length}
               locale={locale}
+              initial={exportInitial}
             />
           ) : null}
         </div>
       </div>
+
+      {exportNote ? (
+        <p className="mt-2 text-xs text-muted-foreground">{exportNote}</p>
+      ) : null}
 
       {items.length === 0 ? (
         <p className="mt-4.5 rounded-2xl border border-border px-5 py-6 text-center text-sm text-muted-foreground">

@@ -12,6 +12,7 @@ import {
 import { eventLocalToIso } from '@/lib/format'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { PHOTO_BUCKET } from '@/lib/storage'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import {
   reportServerEvent,
@@ -383,6 +384,26 @@ export async function deleteEvent(slug: string) {
     .maybeSingle()
   if (eventError) throw eventError
   if (!event) throw new Error('Nincs ilyen esemény.')
+
+  // An album being prepared right now holds a lease on this event. Deleting
+  // underneath it would cascade the job away mid-build and leave a ZIP in the
+  // exports bucket with no row to expire it. Refuse while the lease is live
+  // — bounded by the lease itself, so a worker that died cannot block a
+  // deletion for longer than ten minutes. The read needs the service role:
+  // `album_exports` has no policies, by design.
+  const { data: inFlight, error: inFlightError } = await createAdminClient()
+    .from('album_exports')
+    .select('id')
+    .eq('event_id', event.id)
+    .eq('status', 'processing')
+    .gt('locked_until', new Date().toISOString())
+    .limit(1)
+  if (inFlightError) throw inFlightError
+  if (inFlight && inFlight.length > 0) {
+    throw new Error(
+      'Az album éppen készül. Várd meg, amíg elkészül, és próbáld újra.',
+    )
+  }
 
   // Collect every path first, remove second. Deleting inside the paging loop
   // would shift the offsets out from under it and skip whole pages.

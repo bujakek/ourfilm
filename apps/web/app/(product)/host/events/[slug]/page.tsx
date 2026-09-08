@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 
 import { HostBlock } from '@/components/host/host-block'
 import { ModerationGrid } from '@/components/host/moderation-grid'
+import { exportAnswer, exportNote } from '@/lib/exports/answer'
 import { QrCard } from '@/components/host/qr-card'
 import { QuotaBanner } from '@/components/host/quota-banner'
 import { Odometer } from '@/components/ui/odometer'
@@ -59,7 +60,12 @@ export default async function AdminEventPage({ params }: Props) {
     }),
     getAllEventPhotos(event.id),
   ])
-  const tiles = await toModerationTiles(photos)
+  const tiles = toModerationTiles(photos)
+  // What the Album button should say before anyone taps it: a host coming
+  // back to a prepared archive, or to one still being built, sees that state
+  // rendered rather than a generic button they have to tap to find out.
+  const initialExport =
+    photos.length > 0 ? await exportAnswer(event, photos) : null
   const url = eventUrl(event.slug, locale)
   const now = new Date()
   const windowState = captureWindowState({
@@ -188,6 +194,8 @@ export default async function AdminEventPage({ params }: Props) {
             exportEndpoint={
               photos.length > 0 ? `/host/events/${event.slug}/export` : null
             }
+            exportInitial={initialExport}
+            exportNote={exportNote(photos.length, locale)}
           />
         </section>
 

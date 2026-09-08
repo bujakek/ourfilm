@@ -4,10 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "probe:tus": "node --experimental-strip-types scripts/tus-probe.ts"
   },
   "dependencies": {
+    "@ourfilm/shared": "workspace:*",
     "@supabase/supabase-js": "^2.112.3",
     "archiver": "^7.0.1",
     "tus-js-client": "^4.3.1"
@@ -15,6 +18,7 @@
   "devDependencies": {
     "@types/archiver": "^6.0.3",
     "@types/node": "^26.2.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.11"
   }
 }

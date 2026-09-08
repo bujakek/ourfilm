@@ -61,18 +61,59 @@ export type ServerEventProperties = {
     /** The event was deleted between paying and Stripe reporting it. */
     event_deleted: boolean
   }
-  album_export_started: { event_id: string; photo_count: number }
+  /** A large album was asked for and a job row now exists. Nothing has been
+   *  built yet; `album_export_started` is the worker picking it up. */
+  album_export_queued: {
+    event_id: string
+    photo_count: number
+    estimated_bytes: number
+  }
+  /** An archive began: the streaming route started sending, or a worker
+   *  claimed the job (`attempt` counts claims; null for the stream). */
+  album_export_started: {
+    event_id: string
+    photo_count: number
+    mode: 'stream' | 'worker'
+    attempt: number | null
+  }
   /**
-   * The ZIP finished streaming. `missing_count` is the number this event
-   * exists for: those photos are named in a text file inside an archive
-   * nobody opens, and were otherwise silent data loss.
+   * An archive finished — the stream completed, or Storage confirmed the
+   * worker's object. `missing_count` is the number this event exists for:
+   * those photos are named in a text file inside an archive nobody opens,
+   * and were otherwise silent data loss. `hidden_count` is only known on the
+   * stream, which built the archive itself.
    */
   album_export_finished: {
     event_id: string
     photo_count: number
     missing_count: number
-    hidden_count: number
+    hidden_count: number | null
     elapsed_ms: number
+    mode: 'stream' | 'worker'
+  }
+  /** A worker gave up on an attempt. `final` means no retry follows and the
+   *  host sees "Nem sikerült"; otherwise the job is queued again. */
+  album_export_failed: {
+    event_id: string
+    code: string
+    attempt: number
+    final: boolean
+  }
+  /** Resend accepted the export-ready mail. The gap this pairs with is
+   *  `album_export_finished` without this on the same event: a host who does
+   *  not know their album is ready. */
+  album_export_email_sent: { event_id: string; locale: 'en' | 'hu' }
+  album_export_email_failed: { event_id: string; attempts: number }
+  /** One run of the sweep endpoint. pg_cron never reads the response, so this
+   *  is the only record that the schedule is alive. */
+  album_export_sweep: {
+    expired: number
+    released: number
+    failed: number
+    objects_removed: number
+    orphans_removed: number
+    emails_sent: number
+    emails_failed: number
   }
   /** The row exists. The end of a funnel that starts four screens and one
    *  magic link earlier. */

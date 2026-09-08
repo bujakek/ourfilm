@@ -67,14 +67,17 @@ export type HostPhoto = {
  * Filters to `ready`. A reserved-but-uncommitted frame has no bytes behind it,
  * so showing it to a host would be a permanently broken tile in their grid.
  */
+/** The columns a host-side read needs, shared with the export job's loader so
+ *  the archive built by the worker sees exactly what the host's page saw. */
+export const HOST_PHOTO_COLUMNS =
+  'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, byte_size, participant_id, participants(display_name)'
+
 export const getAllEventPhotos = cache(
   async (eventId: string): Promise<HostPhoto[]> => {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('photos')
-      .select(
-        'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, byte_size, participant_id, participants(display_name)',
-      )
+      .select(HOST_PHOTO_COLUMNS)
       .eq('event_id', eventId)
       .eq('status', 'ready')
       .order('created_at', { ascending: false })

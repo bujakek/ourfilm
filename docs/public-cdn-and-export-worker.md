@@ -1,6 +1,6 @@
 # Public photo CDN, and moving album export off Vercel
 
-**Status:** Phases 1 and 1.5 merged; Phase 2 in progress on `feat-export-worker` — the browser path (§2.6.0), the exports bucket and the upload probe (§2.6.1) are built; schema, endpoints, worker, email and sweep are not · **Written:** 2026-09-07 · **Validated
+**Status:** Phases 1 and 1.5 merged; Phase 2 built on `feat-export-worker` and proven end to end on the local stack — browser path, schema and RPCs, the six endpoints, the worker, the album-ready mail, the pg_cron sweep and the host UI. Not yet done: the manual setup in §2.9, the stress test at real size, the cutover (`OURFILM_EXPORT_WORKER=true`) and removing the old route · **Written:** 2026-09-07 · **Validated
 against the repo and revised:** 2026-09-08 (line references are as of commit
 `d28f2bc`)
 
@@ -1037,19 +1037,20 @@ much as a correctness one.
 
 ## 2.9 Manual setup
 
-| Where    | What                                                                                                                 |
-| -------- | -------------------------------------------------------------------------------------------------------------------- |
-| Supabase | create **private** `event-exports` bucket, with a `file_size_limit` sized for a whole wedding                        |
-| Supabase | raise the **project-wide** upload limit (Project Settings → Storage); it caps every bucket, and the default is small |
-| Supabase | enable `pg_cron` and `pg_net` (Database → Extensions; the migration also does `create extension if not exists`)      |
-| Supabase | put `EXPORT_WORKER_SECRET` in Vault as `export_worker_secret`; the cron job reads it from `vault.decrypted_secrets`  |
-| Railway  | create a service pointing at `apps/worker` in this repo                                                              |
-| Railway  | region: `europe-west4` (Amsterdam), closest to Supabase `eu-central-2` (Zurich)                                      |
-| Railway  | watch paths `apps/worker/**` so web-only pushes do not rebuild it                                                    |
-| Railway  | a plan with ephemeral disk for one wedding ZIP plus headroom (100GB on Pro at the time of writing — confirm)         |
-| Railway  | env vars, start command, restart policy                                                                              |
-| Railway  | no public domain required — the worker makes outbound calls only                                                     |
-| Vercel   | add an Ignored Build Step so worker-only pushes do not rebuild the web app                                           |
+| Where    | What                                                                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase | create **private** `event-exports` bucket, with a `file_size_limit` sized for a whole wedding                                                                                                     |
+| Supabase | raise the **project-wide** upload limit (Project Settings → Storage); it caps every bucket, and the default is small                                                                              |
+| Supabase | enable `pg_cron` and `pg_net` (Database → Extensions; the migration also does `create extension if not exists`)                                                                                   |
+| Supabase | put `EXPORT_WORKER_SECRET` in Vault as `export_worker_secret` and the site origin as `ourfilm_api_url`; the cron job reads both from `vault.decrypted_secrets` and posts nothing until both exist |
+| Vercel   | set `EXPORT_WORKER_SECRET`; leave `OURFILM_EXPORT_WORKER` unset until the worker is live, then `true` — that is the cutover                                                                       |
+| Railway  | create a service pointing at `apps/worker` in this repo                                                                                                                                           |
+| Railway  | region: `europe-west4` (Amsterdam), closest to Supabase `eu-central-2` (Zurich)                                                                                                                   |
+| Railway  | watch paths `apps/worker/**` so web-only pushes do not rebuild it                                                                                                                                 |
+| Railway  | a plan with ephemeral disk for one wedding ZIP plus headroom (100GB on Pro at the time of writing — confirm)                                                                                      |
+| Railway  | env vars, start command, restart policy                                                                                                                                                           |
+| Railway  | no public domain required — the worker makes outbound calls only                                                                                                                                  |
+| Vercel   | add an Ignored Build Step so worker-only pushes do not rebuild the web app                                                                                                                        |
 
 Vercel holds the credentials it already had; the worker holds almost nothing.
 

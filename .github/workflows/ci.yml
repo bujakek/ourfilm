@@ -42,6 +42,9 @@ jobs:
       - name: Run verification suite
         run: pnpm verify
 
+      - name: Typecheck and test the export worker and the shared package
+        run: pnpm verify:worker
+
   database:
     name: Migrations, generated types, and DB tests
     runs-on: ubuntu-latest

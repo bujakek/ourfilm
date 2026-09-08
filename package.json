@@ -21,7 +21,8 @@
     "seed": "pnpm --filter web seed",
     "grant": "pnpm --filter web grant",
     "takedown": "pnpm --filter web takedown",
-    "reset:data": "pnpm --filter web reset:data"
+    "reset:data": "pnpm --filter web reset:data",
+    "verify:worker": "pnpm --filter @ourfilm/shared typecheck && pnpm --filter worker typecheck && pnpm --filter worker test"
   },
   "devDependencies": {
     "prettier": "^3.9.6",

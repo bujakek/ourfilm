@@ -73,6 +73,8 @@ export async function GET(
   await reportServerEvent('album_export_started', {
     event_id: event.id,
     photo_count: photos.length,
+    mode: 'stream',
+    attempt: null,
   })
 
   const manifest = buildExportManifest(event, photos.map(toArchivePhoto))
@@ -141,6 +143,7 @@ export async function GET(
       missing_count: missing.length,
       hidden_count: hiddenCount,
       elapsed_ms: Date.now() - startedAt,
+      mode: 'stream',
     })
   }
 

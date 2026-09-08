@@ -6,11 +6,12 @@ import {
   wallClockToDate,
   type ExportManifest,
   type ExportResponse,
+  type PreparedExport,
 } from '@/lib/album-export'
 import { exifDateSegmentFrom, withExifDate } from '@/lib/exif-write'
 import { track } from '@/lib/telemetry'
 import { Download } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
  * The Album button.
@@ -20,8 +21,14 @@ import { useRef, useState } from 'react'
  * from the public masters — a second or two, no queue, no round trip through
  * a function. A host who shot three test photos and tapped this is deciding
  * whether the promise on the landing page is real, and "we will let you know"
- * is the wrong answer to a three-photo album. A large album is prepared
- * elsewhere; the endpoint says where, and today that is the streaming route.
+ * is the wrong answer to a three-photo album.
+ *
+ * A large album is prepared elsewhere. While the worker is switched off that
+ * is the streaming route, and the button navigates to it. With the worker on,
+ * one tap asks for an archive and the button then polls until it is ready,
+ * showing `Album készítése… 487 kép`; the host may also just leave — the
+ * email says when it is done — and come back to a `ready` button that carries
+ * a fresh signed URL each time the page asks.
  *
  * The browser zip and the server zip start from the same manifest
  * (`lib/album-export.ts`) and use the same EXIF splice, so they produce the
@@ -34,9 +41,15 @@ type Phase =
   | { kind: 'idle' }
   | { kind: 'asking' }
   | { kind: 'zipping'; done: number; total: number }
-  | { kind: 'failed' }
+  | { kind: 'preparing'; prepared: PreparedExport }
+  | { kind: 'ready'; prepared: PreparedExport }
+  | { kind: 'failed'; where: 'browser' | 'prepared' }
 
 type Stage = 'manifest' | 'fetch' | 'zip' | 'save'
+
+/** How often the page asks while a job is in flight. The email covers the
+ *  host who leaves; this covers the one who stays. */
+const POLL_MS = 4_000
 
 class StagedError extends Error {
   constructor(
@@ -53,6 +66,7 @@ export function AlbumDownload({
   eventId,
   photoCount,
   locale,
+  initial,
 }: {
   /** The JSON export endpoint for this event. */
   endpoint: string
@@ -60,38 +74,81 @@ export function AlbumDownload({
   eventId: string
   photoCount: number
   locale: 'en' | 'hu'
+  /** What the server already knew when it rendered the page, so a host
+   *  returning to a ready album sees the download without a tap. */
+  initial?: ExportResponse | null
 }) {
   const en = locale === 'en'
-  const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
+  const [phase, setPhase] = useState<Phase>(() => fromResponse(initial))
   const busy = phase.kind === 'asking' || phase.kind === 'zipping'
   // The download anchor lives in the DOM for the whole component's life so
   // iOS Safari treats the click as user-initiated rather than a popup.
   const anchor = useRef<HTMLAnchorElement>(null)
 
+  // Poll while a job is in flight. Keyed on the phase kind so a state update
+  // that keeps the kind does not restart the timer.
+  const preparing = phase.kind === 'preparing'
+  useEffect(() => {
+    if (!preparing) return
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const answer = await ask(endpoint, 'GET')
+        if (!cancelled) setPhase(fromResponse(answer))
+      } catch {
+        // A poll that fails is not a failed export; the next tick asks again.
+      }
+    }
+    const timer = setInterval(tick, POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [preparing, endpoint])
+
   async function run() {
+    // A ready archive: the button is a download link.
+    if (phase.kind === 'ready' && phase.prepared.url) {
+      window.location.assign(phase.prepared.url)
+      return
+    }
+
     const startedAt = Date.now()
     setPhase({ kind: 'asking' })
     let stage: Stage = 'manifest'
 
     try {
-      const response = await fetch(endpoint, {
-        headers: { accept: 'application/json' },
-        cache: 'no-store',
-      })
-      if (!response.ok) throw new Error(`export ${response.status}`)
-      const answer = (await response.json()) as ExportResponse
+      let answer = await ask(endpoint, 'GET')
+
+      // Nothing usable prepared: ask for one. `POST` dedupes server-side.
+      if (
+        answer.mode === 'none' ||
+        answer.mode === 'failed' ||
+        answer.mode === 'expired'
+      ) {
+        answer = await ask(endpoint, 'POST')
+      }
 
       track('album_export_requested', {
         event_id: eventId,
         photo_count: photoCount,
-        mode: answer.mode,
+        mode: answer.mode === 'browser' ? 'browser' : 'prepared',
       })
 
-      if (answer.mode === 'prepared') {
+      if (answer.mode === 'stream') {
         // The server owns the download. Assigning the location starts it
         // without leaving the page: the response is an attachment.
         window.location.assign(answer.url)
         setPhase({ kind: 'idle' })
+        return
+      }
+
+      if (answer.mode !== 'browser') {
+        const next = fromResponse(answer)
+        if (next.kind === 'ready' && next.prepared.url) {
+          window.location.assign(next.prepared.url)
+        }
+        setPhase(next)
         return
       }
 
@@ -125,32 +182,20 @@ export function AlbumDownload({
         stage: failure.stage,
         error_class: failure.name,
       })
-      setPhase({ kind: 'failed' })
+      setPhase({ kind: 'failed', where: 'browser' })
     }
   }
 
-  const label =
-    phase.kind === 'zipping'
-      ? en
-        ? `Downloading… ${phase.done} / ${phase.total}`
-        : `Letöltés… ${phase.done} / ${phase.total}`
-      : phase.kind === 'asking'
-        ? en
-          ? 'Preparing…'
-          : 'Előkészítés…'
-        : phase.kind === 'failed'
-          ? en
-            ? 'Could not download the album. Retry'
-            : 'Nem sikerült letölteni az albumot. Újra'
-          : 'Album'
+  const label = labelFor(phase, en)
+  const disabled = busy || phase.kind === 'preparing'
 
   return (
     <>
       <button
         type="button"
         onClick={run}
-        disabled={busy}
-        aria-busy={busy}
+        disabled={disabled}
+        aria-busy={disabled}
         className="inline-flex items-center gap-2 rounded-full border border-white/14 px-3.5 py-1.5 text-[11px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground disabled:cursor-progress disabled:opacity-70"
       >
         <Download className="size-3.5" aria-hidden="true" />
@@ -159,6 +204,79 @@ export function AlbumDownload({
       <a ref={anchor} hidden aria-hidden="true" href="#" download />
     </>
   )
+}
+
+async function ask(
+  endpoint: string,
+  method: 'GET' | 'POST',
+): Promise<ExportResponse> {
+  const response = await fetch(endpoint, {
+    method,
+    headers: { accept: 'application/json' },
+    cache: 'no-store',
+  })
+  if (!response.ok) throw new Error(`export ${response.status}`)
+  return (await response.json()) as ExportResponse
+}
+
+function fromResponse(answer: ExportResponse | null | undefined): Phase {
+  if (!answer) return { kind: 'idle' }
+  switch (answer.mode) {
+    case 'queued':
+    case 'processing':
+      return { kind: 'preparing', prepared: answer.prepared }
+    case 'ready':
+      return { kind: 'ready', prepared: answer.prepared }
+    case 'failed':
+      return { kind: 'failed', where: 'prepared' }
+    default:
+      return { kind: 'idle' }
+  }
+}
+
+function labelFor(phase: Phase, en: boolean): string {
+  switch (phase.kind) {
+    case 'zipping':
+      return en
+        ? `Downloading… ${phase.done} / ${phase.total}`
+        : `Letöltés… ${phase.done} / ${phase.total}`
+    case 'asking':
+      return en ? 'Preparing…' : 'Előkészítés…'
+    case 'preparing':
+      return en
+        ? `Preparing the album… ${phase.prepared.photoCount} photos`
+        : `Album készítése… ${phase.prepared.photoCount} kép`
+    case 'ready': {
+      const size = formatBytes(phase.prepared.byteSize, en)
+      const short =
+        phase.prepared.missingCount > 0
+          ? en
+            ? ` · ${phase.prepared.missingCount} missing`
+            : ` · ${phase.prepared.missingCount} kép hiányzik`
+          : ''
+      return en
+        ? `Download the album · ${phase.prepared.photoCount} photos${size ? ` · ${size}` : ''}${short}`
+        : `Album letöltése · ${phase.prepared.photoCount} kép${size ? ` · ${size}` : ''}${short}`
+    }
+    case 'failed':
+      return phase.where === 'browser'
+        ? en
+          ? 'Could not download the album. Retry'
+          : 'Nem sikerült letölteni az albumot. Újra'
+        : en
+          ? 'Could not prepare the album. Retry'
+          : 'Nem sikerült elkészíteni az albumot. Újra'
+    default:
+      return 'Album'
+  }
+}
+
+function formatBytes(bytes: number | null, en: boolean): string {
+  if (!bytes) return ''
+  const gb = bytes / 1024 ** 3
+  if (gb >= 1) return `${gb.toFixed(1).replace('.', en ? '.' : ',')} GB`
+  const mb = bytes / 1024 ** 2
+  return `${Math.max(1, Math.round(mb))} MB`
 }
 
 /**

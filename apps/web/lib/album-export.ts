@@ -1,4 +1,10 @@
-import { archiveEntryNames, type ArchivePhoto } from './archive-naming'
+import type { ExportManifest } from '@ourfilm/shared/export-job'
+
+import {
+  archiveEntryNames,
+  sortForArchive,
+  type ArchivePhoto,
+} from './archive-naming'
 import { eventStamp, eventUtcOffset, eventWallClockNaive } from './format'
 import { publicPhotoUrl } from './photo-urls'
 
@@ -61,42 +67,94 @@ export function chooseExportMode(
   return bytes > BROWSER_EXPORT_MAX_BYTES ? 'prepared' : 'browser'
 }
 
-export type ExportEntry = {
-  /** The photo id, for telemetry and for matching a failure back to a row. */
-  id: string
-  /** The master's public URL. No credential is needed to fetch it. */
-  url: string
-  /** The entry's full name inside the archive, `rejtett/` prefix included. */
-  name: string
-  /**
-   * The modification time the extracted file should carry, as a naive
-   * `YYYY-MM-DDTHH:mm:ss` in the event's zone. Naive on purpose: a ZIP stores
-   * DOS time with no zone, so what has to travel is the wall clock, and an
-   * instant would be shifted by whatever zone the consumer happens to run in.
-   * Turn it back into a `Date` with `wallClockToDate`.
-   */
-  lastModified: string
-  /** The EXIF capture time to splice in, or null when the file carried none. */
-  exif: { stamp: string; offset: string } | null
-}
-
-export type ExportManifest = {
-  eventId: string
-  /** The download's filename, `<slug>-ourfilm.zip`. */
-  filename: string
-  entries: ExportEntry[]
-}
+export type { ExportEntry, ExportManifest } from '@ourfilm/shared/export-job'
+export {
+  MISSING_PHOTOS_ENTRY,
+  missingPhotosNote,
+  wallClockToDate,
+} from '@ourfilm/shared/export-job'
 
 export type ManifestPhoto = ArchivePhoto & { storage_path: string }
+
+/**
+ * What a prepared archive was built from, as one hash.
+ *
+ * Over more than the photo ids: `hidden_at` decides the `rejtett/` folder,
+ * `taken_at` and `created_at` decide order and stamps, the uploader name is in
+ * the filename, and the zone renders every stamp. Hide a photo after an
+ * export and the id set is unchanged — the hash is not, so the stale ZIP is
+ * not served again. SHA-256 through Web Crypto, which both the Node server
+ * and a browser have.
+ */
+export async function computeSourceHash(
+  photos: readonly ManifestPhoto[],
+  zone: string,
+): Promise<string> {
+  const tuple = sortForArchive(photos).map((p) => [
+    p.id,
+    p.hidden_at,
+    p.taken_at,
+    p.created_at,
+    p.uploaderName,
+  ])
+  const bytes = new TextEncoder().encode(JSON.stringify([zone, tuple]))
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return Array.from(new Uint8Array(digest), (b) =>
+    b.toString(16).padStart(2, '0'),
+  ).join('')
+}
+
+/** The sum of the masters, for the worker's disk check. Rows that predate
+ *  `byte_size` count at the assumed size, so the estimate errs high. */
+export function estimateArchiveBytes(
+  photos: readonly { byte_size: number | null }[],
+): number {
+  return photos.reduce(
+    (sum, photo) => sum + (photo.byte_size ?? ASSUMED_MASTER_BYTES),
+    0,
+  )
+}
 
 /**
  * What the export endpoint answers. Declared beside the manifest rather than
  * in the route file so the button can import the type without importing a
  * route module.
  */
+export type PreparedExport = {
+  exportId: string
+  photoCount: number
+  /** What Storage reported for the finished object; null until ready. */
+  byteSize: number | null
+  missingCount: number
+  /** A signed download URL, only when `mode` is `ready`. */
+  url: string | null
+  expiresAt: string | null
+}
+
+/**
+ * What the export endpoint answers.
+ *
+ * - `browser`: zip it here, from the manifest.
+ * - `stream`: the large-album path while the worker is not switched on —
+ *   navigate to `url` and the function streams the ZIP.
+ * - `none`: nothing prepared yet, or the last archive is stale or gone;
+ *   `POST` to request one.
+ * - `queued` / `processing`: being prepared; poll.
+ * - `ready`: `prepared.url` downloads it.
+ * - `failed` / `expired`: the last attempt did not produce an archive that
+ *   can be downloaded; `POST` to try again.
+ *
+ * Declared beside the manifest rather than in the route file so the button
+ * can import the type without importing a route module.
+ */
 export type ExportResponse =
   | { mode: 'browser'; manifest: ExportManifest }
-  | { mode: 'prepared'; url: string; photoCount: number }
+  | { mode: 'stream'; url: string; photoCount: number }
+  | { mode: 'none'; photoCount: number }
+  | {
+      mode: 'queued' | 'processing' | 'ready' | 'failed' | 'expired'
+      prepared: PreparedExport
+    }
 
 /** Order and name every photo, and resolve everything a zipper needs. */
 export function buildExportManifest(
@@ -123,40 +181,4 @@ export function buildExportManifest(
         : null,
     })),
   }
-}
-
-/**
- * A naive wall-clock string back into a `Date` whose *local* components are
- * that wall clock — which is what a ZIP writer reads. Built with the local
- * constructor, never by parsing an ISO string, because the parse would fix an
- * instant and the local components would then depend on the machine's zone.
- */
-export function wallClockToDate(naive: string): Date {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(naive)
-  if (!m) throw new Error(`Not a wall-clock timestamp: ${naive}`)
-  const [, y, mo, d, h, mi, s] = m
-  return new Date(
-    Number(y),
-    Number(mo) - 1,
-    Number(d),
-    Number(h),
-    Number(mi),
-    Number(s),
-  )
-}
-
-/** The name of the note that lists photos the archive is short of. */
-export const MISSING_PHOTOS_ENTRY = 'HIANYZO-KEPEK.txt'
-
-/**
- * Silent data loss is the thing to avoid: an archive that is short says so in
- * a file rather than just being quietly short. The same note whoever built
- * the archive, so the host reads one sentence, not two.
- */
-export function missingPhotosNote(names: readonly string[]): string {
-  return (
-    'Ezeket a képeket nem sikerült letölteni a tárhelyről:\n\n' +
-    names.join('\n') +
-    '\n'
-  )
 }

@@ -126,7 +126,7 @@ Abuse and storage emergency controls are server-only:
 ```bash
 OURFILM_UPLOADS_DISABLED=false          # true pauses all new reservations
 OURFILM_EVENT_STORAGE_LIMIT_BYTES=      # optional positive per-event master-byte cap
-RESEND_API_KEY=                         # auth and legal request emails
+RESEND_API_KEY=                         # auth, legal request and album-ready emails
 LEGAL_EMAIL_FROM=                       # optional sender override
 SEND_EMAIL_HOOK_SECRET=                 # Supabase Send Email Hook signature
 AUTH_EMAIL_FROM=                        # optional auth sender override
@@ -141,6 +141,21 @@ STRIPE_WEBHOOK_SECRET=          # whsec_…, from the endpoint or `stripe listen
 STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
+
+The prepared album export (Phase 2 of `docs/public-cdn-and-export-worker.md`)
+adds three, all server-only:
+
+```bash
+OURFILM_EXPORT_WORKER=false     # true routes albums over 20 photos to the worker; false streams them
+EXPORT_WORKER_SECRET=           # shared with the Railway worker and the pg_cron sweep (via Vault)
+SUPABASE_STORAGE_URL=           # optional; the direct storage hostname for the worker's uploads
+```
+
+`OURFILM_EXPORT_WORKER` is the cutover switch: off, a large album streams
+through the function as before; on, it is queued for `apps/worker`. The same
+`EXPORT_WORKER_SECRET` goes on Railway and into Supabase Vault as
+`export_worker_secret`, beside `ourfilm_api_url` — without the two Vault
+secrets the cron's HTTP sweep posts nothing.
 
 **Stripe is live in production and in test mode locally.** All four are
 filled in in `apps/web/.env.local` with test-mode values, so `stripeIsConfigured()` is
@@ -362,17 +377,22 @@ is the whole of it, and it is a separate list from the browser's because these
 are separate promises: every property is reduced to a bounded scalar, and
 `event_id` and `creation_key` are refused unless they are uuids.
 
-| Event                   | Answers                                                                   |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `checkout_started`      | A host reached Stripe, and from which of the two entry points             |
-| `checkout_blocked`      | …or was refused first, and why. Six reasons, all of them a sentence read  |
-| `checkout_settled`      | What Stripe reported server to server: paid, failed, expired, refunded    |
-| `event_created`         | The row exists, with the shape the host chose and whether it was a repeat |
-| `event_deleted`         | The one destructive path, with the album's size and age                   |
-| `event_setting_changed` | What hosts adjust on a running camera, and how far they move the end      |
-| `album_export_started`  | A ZIP began streaming                                                     |
-| `album_export_finished` | …and finished. `missing_count` is silent data loss and wants an alert     |
-| `auth_email_sent`       | The mail was accepted, in the language the hook actually rendered         |
+| Event                       | Answers                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `checkout_started`          | A host reached Stripe, and from which of the two entry points                 |
+| `checkout_blocked`          | …or was refused first, and why. Six reasons, all of them a sentence read      |
+| `checkout_settled`          | What Stripe reported server to server: paid, failed, expired, refunded        |
+| `event_created`             | The row exists, with the shape the host chose and whether it was a repeat     |
+| `event_deleted`             | The one destructive path, with the album's size and age                       |
+| `event_setting_changed`     | What hosts adjust on a running camera, and how far they move the end          |
+| `album_export_queued`       | A large album was asked for; a job row exists and nothing is built yet        |
+| `album_export_started`      | An archive began: the stream started, or a worker claimed the job             |
+| `album_export_finished`     | …and finished. `missing_count` is silent data loss and wants an alert         |
+| `album_export_failed`       | A worker gave up on an attempt; `final` is the one the host sees              |
+| `album_export_email_sent`   | Resend accepted the album-ready mail. Its absence after a finish is the alert |
+| `album_export_email_failed` | …or refused it; the sweep retries up to five times                            |
+| `album_export_sweep`        | One run of the cron-driven sweep. No run for an hour is the alert             |
+| `auth_email_sent`           | The mail was accepted, in the language the hook actually rendered             |
 
 Three of those pairs are read as gaps rather than as counts. A
 `checkout_started` with no `checkout_settled` is an abandoned Stripe page; an
@@ -873,6 +893,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
 
+- **`album_exports`** — one prepared album archive per row: `event_id` (cascade), `status` (`queued` | `processing` | `ready` | `failed` | `expired`), `source_hash` (over ids, `hidden_at`, `taken_at`, `created_at`, uploader name and zone, so a hide after an export never serves the stale ZIP), `photo_count`, `estimated_bytes`, `byte_size` (what Storage reported, never what the worker said), `storage_path`, `missing_count`, `attempt_count` (four claims is the budget), `next_attempt_at`, `locked_at` / `locked_until` (the lease), `tus_upload_url`, `notified_at` / `notify_attempts`, `last_error_code`, timestamps. One in-flight row per event by partial unique index. RLS on with no policies; every RPC (`request_album_export`, `album_export_status`, `claim_album_export`, `heartbeat_album_export`, `complete_album_export`, `fail_album_export`, `sweep_album_exports`) is service-role only. The host reaches it only through their own page after an ownership check; the worker only through `/api/exports/*` behind `EXPORT_WORKER_SECRET`. `20260909110000` also schedules two `pg_cron` jobs: the SQL sweep every minute and the HTTP sweep every five.
+
 Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it, and `{event_id}/cover-{uuid}.jpg` for the cover (a fresh id per upload, because on a public bucket the URL is the CDN cache key and an overwrite under the same key serves the old bytes for an hour; events from before September 2026 keep a `cover.jpg`). Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
 
 **The bucket is public, and a photo URL is a pure function of its path.**
@@ -1008,15 +1030,18 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 - Retake, in-camera preview, or an editor
 - Video, audio guestbook, live slideshow, RSVP
 - Leaderboard, recap, gamification, analytics, referral
-- Email notifications and lifecycle email
+- Lifecycle and marketing email. The one transactional mail beyond auth — the album-ready mail from the export worker — is built and is the exception, not the start of a list
 - **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
   actually writing and maintaining an English site is a separate decision.
 - Realtime gallery updates (Supabase Realtime) — guests refresh
 - **Background upload while the tab is closed.** Not achievable without a
   native shell, and not by a service worker either: iOS Safari has no
   Background Sync. Resuming _in the page_ is built — see The upload queue.
-- Long-running requests, background workers, cron. The reveal is computed at
-  request time precisely so none of these is needed.
+- Long-running requests on Vercel. The reveal is computed at request time
+  precisely so no function has to wait. The one job that cannot fit a
+  function — zipping a whole wedding — runs on the Railway worker in
+  `apps/worker`, and its housekeeping is two `pg_cron` jobs; nothing else
+  may grow a worker or a schedule without the same argument.
 
 **Reversed by the pivot.** Per-guest shot scarcity, delayed reveal and a
 capture-window were all on this list before, and the Once review had explicitly
