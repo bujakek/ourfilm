@@ -22,7 +22,10 @@ if (generated.status !== 0) {
   process.exit(generated.status ?? 1)
 }
 
-const committed = readFileSync('lib/supabase/database.types.ts', 'utf8')
+const committed = readFileSync(
+  'apps/web/lib/supabase/database.types.ts',
+  'utf8',
+)
 const expected = normalize(committed)
 const actual = normalize(generated.stdout)
 

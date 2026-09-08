@@ -12,7 +12,7 @@ description: OurFilm's client-side native-camera upload pipeline — capture inp
 > What changed is everything around it:
 >
 > - **There is no custom web camera or separate camera page.** The highlighted
->   camera action on `components/event/guest-event-view.tsx` activates one
+>   camera action on `apps/web/components/event/guest-event-view.tsx` activates one
 >   hidden file input with `capture="environment"`, so a phone opens its native
 >   camera UI. The input accepts one image and never advertises gallery upload.
 > - **The returned camera file follows the regular decode path.**
@@ -136,14 +136,14 @@ if (insertError) throw insertError
 ```
 
 The reverse trip matters just as much: the **export** writes the time back into
-the file (`lib/exif-write.ts`), because a date held only in the database is
+the file (`apps/web/lib/exif-write.ts`), because a date held only in the database is
 invisible to Photos, Lightroom and Finder. A ZIP entry's timestamp does not
 substitute — it becomes the file's modification date, and Photos reads
 `DateTimeOriginal`, falling back to the creation date, i.e. when the archive was
 unzipped. Time tags only; never write a location back.
 
 **Read the capture time before you touch the pixels.** `readCaptureTime()` in
-`lib/exif.ts` must run on the original `File`; the canvas re-encode below is what
+`apps/web/lib/exif.ts` must run on the original `File`; the canvas re-encode below is what
 strips EXIF, and after it there is nothing left to read. This is a one-way door
 — a photo uploaded without its capture time can never get it back.
 
@@ -153,13 +153,13 @@ Guests are anonymous, so RLS allows insert only — see `ourfilm-supabase` for t
 
 ## Progress and retry
 
-The camera file is written to IndexedDB (`lib/upload-store.ts`) when the
-shutter fires and deleted when `commit_shot` confirms. `lib/upload-queue.ts`
+The camera file is written to IndexedDB (`apps/web/lib/upload-store.ts`) when the
+shutter fires and deleted when `commit_shot` confirms. `apps/web/lib/upload-queue.ts`
 drains one shot at a time, in capture order, and replays orphans on mount and
 on `visibilitychange` / `pageshow` / `online`. A drain that still owes work
 retries after `RETRY_MS`. Give up after four attempts or 24 hours — but only
 count attempts the server actually answered. `isConnectionFailure`
-(`lib/upload-failure.ts`) hands the attempt back for a dead connection, a
+(`apps/web/lib/upload-failure.ts`) hands the attempt back for a dead connection, a
 teardown, or a refusal about the server rather than the photo; without it a
 forty-second outage deletes a frame that never left the device.
 

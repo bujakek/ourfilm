@@ -16,7 +16,7 @@ description: OurFilm's Supabase conventions — browser and server client setup 
 >    `20260825080000_lock_down_capture_rpcs.sql`, which exists because a test
 >    caught `reserve_shot` callable with the browser's anon key.
 > 3. **The `event-photos` bucket is public, and reads are plain URLs.**
->    `lib/photo-urls.ts` builds `/object/public/…` from the path, no signing,
+>    `apps/web/lib/photo-urls.ts` builds `/object/public/…` from the path, no signing,
 >    no round trip (it was private for a month in 2026; see
 >    `20260908120000_public_photo_bucket.sql` for what that bought and cost).
 >    Uploads still go only to signed upload URLs minted by `reserve_shot`. The
@@ -27,8 +27,8 @@ description: OurFilm's Supabase conventions — browser and server client setup 
 > The rest of this file — RLS reasoning, the security-definer trap, migration
 > workflow, client factories, `getUser()` over `getSession()` — is unchanged and
 > still correct. Two corrections: the DB tests are now
-> `pnpm test:db` (vitest, `tests/db/`), not `supabase/tests/*.py`; and the Next 16
-> proxy matcher export is `config`, not `proxyConfig` (verify in `proxy.ts`).
+> `pnpm test:db` (vitest, `apps/web/tests/db/`), not `supabase/tests/*.py`; and the Next 16
+> proxy matcher export is `config`, not `proxyConfig` (verify in `apps/web/proxy.ts`).
 
 # OurFilm Supabase
 
@@ -38,7 +38,7 @@ Postgres + Storage + Auth. Guests are **anonymous** (never signed in); only the 
 
 `@supabase/supabase-js` and `@supabase/ssr` are installed, and the Supabase CLI is a **devDependency**, so invoke it as `pnpm supabase …` rather than a global binary.
 
-Env keys are maintained **by hand** in `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and server-only `SUPABASE_SERVICE_ROLE_KEY`. `vercel env pull` does not work on this project — the integration's variables are marked Sensitive and pull back as `[SENSITIVE]`; see the Local env section of `CLAUDE.md`. The service role key must **never** be imported into a Client Component or any file reachable from one.
+Env keys are maintained **by hand** in `apps/web/.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and server-only `SUPABASE_SERVICE_ROLE_KEY`. `vercel env pull` does not work on this project — the integration's variables are marked Sensitive and pull back as `[SENSITIVE]`; see the Local env section of `CLAUDE.md`. The service role key must **never** be imported into a Client Component or any file reachable from one.
 
 Mind the prefix: the integration also provisions bare `SUPABASE_URL` and `SUPABASE_ANON_KEY`. Next.js only exposes variables to the browser when they start with `NEXT_PUBLIC_`, so the browser client reads `undefined` if you wire it to the bare names.
 
@@ -88,7 +88,7 @@ create table public.photos (
   byte_size     integer,
   mime_type     text,
   -- When the shutter fired, not when the file arrived; the two differ by hours
-  -- at a real event. Read by `lib/exif.ts` before the canvas re-encode strips
+  -- at a real event. Read by `apps/web/lib/exif.ts` before the canvas re-encode strips
   -- EXIF. Commonly null (screenshots, downloads, many Android pickers), so
   -- every reader falls back to created_at. No default: now() would be a
   -- plausible-looking lie.
@@ -242,14 +242,14 @@ The bucket is public, which in Supabase means the `/storage/v1/object/public/…
 - Guests get insert only — no update, no delete — so knowing an exact path is not enough to overwrite or remove someone else's photo.
 - **Public objects are CDN-cached, so removal is not instant.** A deleted file keeps answering `200` from the edge for a while, and hiding a photo (`hidden_at`) only drops it from the gallery — the object itself stays fetchable at its URL to anyone who already has it. Fine for moderation, where the point is that guests stop seeing it in the album; worth stating plainly if a deletion is ever requested under GDPR, where 5.8 must remove the object and you should expect cache lag.
 - Only `image/jpeg` is allowed because the client always converts and compresses to JPEG first (see `ourfilm-upload`). HEIC never reaches the bucket.
-- Public bucket = privacy comes from unguessable event slugs, not from storage ACLs. A slug is an opaque 10-character code with no event name in it (`lib/slug.ts`, `generateEventSlug()`); add `noindex` to event routes.
+- Public bucket = privacy comes from unguessable event slugs, not from storage ACLs. A slug is an opaque 10-character code with no event name in it (`apps/web/lib/slug.ts`, `generateEventSlug()`); add `noindex` to event routes.
 - Guests can insert but never update or delete an object, so nobody can overwrite someone else's photo by guessing its path.
 
 ## Clients
 
 Two files, two purposes. Never import the server client from a Client Component.
 
-`lib/supabase/client.ts` — two browser helpers:
+`apps/web/lib/supabase/client.ts` — two browser helpers:
 
 - `createClient()` — `createBrowserClient` from `@supabase/ssr`. Reads the auth cookies. Use this for `/host` sign-in and anything that should see the host session.
 - `createGuestClient()` — `@supabase/supabase-js` with `persistSession: false`. Always the anon key, no cookies. **Guest uploads must use this**, so a leftover admin session on the phone cannot change the role Storage sees. The QR-opened page and the shared-link page then hit the API as the same role.
@@ -281,7 +281,7 @@ export function createGuestClient() {
 }
 ```
 
-`lib/supabase/server.ts` — Server Components, Route Handlers, Server Actions. `cookies()` is **async** in Next.js 16:
+`apps/web/lib/supabase/server.ts` — Server Components, Route Handlers, Server Actions. `cookies()` is **async** in Next.js 16:
 
 ```ts
 import { createServerClient } from '@supabase/ssr'
@@ -314,7 +314,7 @@ export async function createClient() {
 
 ## Data access
 
-Keep queries in `lib/` modules (`lib/events.ts`, `lib/photos.ts`), not inline in components, so admin and guest pages share one definition of "visible photo".
+Keep queries in `apps/web/lib/` modules (`apps/web/lib/events.ts`, `apps/web/lib/photos.ts`), not inline in components, so admin and guest pages share one definition of "visible photo".
 
 Guest-facing reads go through the RPCs, never `.from('events')` — the table returns nothing to `anon` by design:
 
@@ -350,7 +350,7 @@ The gallery must show photos uploaded seconds ago, so it cannot be statically ca
 
 ## Admin auth
 
-Magic link, guarded by **`proxy.ts`**. Next.js 16 renamed middleware:
+Magic link, guarded by **`apps/web/proxy.ts`**. Next.js 16 renamed middleware:
 
 > **Email delivery is the weak link.** Supabase's built-in service only delivers
 > to project team members and allows 2 messages per hour, with no SLA — it is
@@ -372,7 +372,7 @@ export const proxyConfig = { matcher: ['/host/:path*'] }
 
 |        | Next 14–15      | **Next 16 (this project)** |
 | ------ | --------------- | -------------------------- |
-| File   | `middleware.ts` | `proxy.ts`                 |
+| File   | `middleware.ts` | `apps/web/proxy.ts`        |
 | Export | `middleware()`  | `proxy()`                  |
 | Config | `config`        | `proxyConfig`              |
 

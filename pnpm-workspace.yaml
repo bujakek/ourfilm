@@ -1,3 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
 allowBuilds:
   # posthog-js pulls in core-js; its install script only prints a banner.
   core-js: false

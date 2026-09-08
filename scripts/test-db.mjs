@@ -55,10 +55,14 @@ if (!url || !anonKey || !serviceKey) {
   process.exit(1)
 }
 
+// The suite and its vitest config belong to the web app, so vitest runs from
+// there; the Supabase project it reads credentials for lives at the root,
+// which is where this script stays.
 const result = spawnSync(
   process.execPath,
   ['node_modules/vitest/vitest.mjs', 'run', ...process.argv.slice(2)],
   {
+    cwd: 'apps/web',
     stdio: 'inherit',
     env: {
       ...process.env,

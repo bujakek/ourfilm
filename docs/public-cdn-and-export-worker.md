@@ -1,6 +1,6 @@
 # Public photo CDN, and moving album export off Vercel
 
-**Status:** Phase 1 built on `feat-public-photo-bucket`, awaiting the bucket flip and deploy (§1.9); Phases 1.5 and 2 not started · **Written:** 2026-09-07 · **Validated
+**Status:** Phase 1 merged and live; Phase 1.5 built on `feat-apps-web`, awaiting the Vercel Root Directory change; Phase 2 not started · **Written:** 2026-09-07 · **Validated
 against the repo and revised:** 2026-09-08 (line references are as of commit
 `d28f2bc`)
 
@@ -67,7 +67,7 @@ each removes a property the system currently has.
 
 ### D1 — the three renders stay derivable from one another. **Accepted.**
 
-`lib/storage.ts:16-20` (and `reserve_shot`, which mints the same shape) lay the
+`apps/web/lib/storage.ts:16-20` (and `reserve_shot`, which mints the same shape) lay the
 renders out as `{eventId}/{photoId}.jpg`, `_view.jpg`, `_thumb.jpg`, so any URL
 for one is a URL for all three by string edit. No path change; no migration.
 
@@ -77,7 +77,7 @@ What that costs, and what to do about it:
   rewritten.** It names as load-bearing that `my_frames` returns `thumb_path`
   only, so the endpoint "cannot hand out the master". After the flip it can:
   `my_frames` is deliberately not reveal-gated, so a guest watching their own
-  52px strip (`components/event/film-strip.tsx:129-133`) can delete `_thumb`
+  52px strip (`apps/web/components/event/film-strip.tsx:129-133`) can delete `_thumb`
   from that URL and fetch their own 3200px master before the album develops.
   Delete constraint #2 and say plainly what is true instead — the endpoint
   returns only the thumb path, and the object layout makes the other renders
@@ -95,10 +95,10 @@ What that costs, and what to do about it:
 ### D2 — permanent per-photo delete. **Deferred to a follow-up.**
 
 `setPhotoHidden` writes `hidden_at` and nothing else
-(`app/(product)/host/events/[slug]/actions.ts:117`), and the only product code
+(`apps/web/app/(product)/host/events/[slug]/actions.ts:117`), and the only product code
 that removes Storage objects is whole-event deletion (`deleteEvent`,
 `:376-477`). The one other caller of `storage.remove` is the operator script
-`scripts/reset-data.ts:150`, which is the closer precedent for the takedown
+`apps/web/scripts/reset-data.ts:150`, which is the closer precedent for the takedown
 script below than `pnpm grant` is. None of that changes in Phase 1. CLAUDE.md's
 "never hard-delete" rule therefore stays as it is, and no amendment is needed
 yet.
@@ -110,13 +110,13 @@ removal is deleting the entire event.
 > **One piece of this cannot wait for the follow-up.** The published terms and
 > privacy notice promise _removal_, not hiding:
 >
-> - `app/[locale]/adatvedelem/page.tsx:125` / `:186` — "A szülő vagy törvényes
+> - `apps/web/app/[locale]/adatvedelem/page.tsx:125` / `:186` — "A szülő vagy törvényes
 >   képviselő ... kérheti a kép elrejtését **vagy eltávolítását**" / "a parent or
 >   guardian may request that a photo be hidden **or removed**."
 > - `:111` — the same offer for anyone pictured.
-> - `app/[locale]/aszf/page.tsx:168` — "We may hide, **remove** or restrict
+> - `apps/web/app/[locale]/aszf/page.tsx:168` — "We may hide, **remove** or restrict
 >   content".
-> - `app/[locale]/kapcsolat/page.tsx:167` — the takedown form calls the host
+> - `apps/web/app/[locale]/kapcsolat/page.tsx:167` — the takedown form calls the host
 >   "aki azonnal elrejtheti a képet" the fastest remedy.
 >
 > Today `hidden_at` plus a private bucket effectively delivers removal: no new
@@ -157,7 +157,7 @@ Idempotent, so it may land after the manual dashboard flip.
 
 ## 1.2 Privacy policy — three sentences, two languages
 
-`app/[locale]/adatvedelem/page.tsx` currently tells customers the opposite of
+`apps/web/app/[locale]/adatvedelem/page.tsx` currently tells customers the opposite of
 what the system will do:
 
 | Line        | Hungarian                                           | English twin                           |
@@ -178,14 +178,14 @@ server-side, and the files themselves sit behind unguessable addresses that do
 not expire. Do not write "private storage" in any form.
 
 The blog was checked and needs nothing: neither
-`content/blog/hu/eskuvoi-fotoalbum-adatvedelem.mdx` nor
-`content/blog/hu/legjobb-eskuvoi-qr-kodos-fotoalbumok.mdx` claims private
+`apps/web/content/blog/hu/eskuvoi-fotoalbum-adatvedelem.mdx` nor
+`apps/web/content/blog/hu/legjobb-eskuvoi-qr-kodos-fotoalbumok.mdx` claims private
 storage. The nearest sentence is a checklist item, "album nem nyilvános", about
 choosing a private album setting, which stays true.
 
 ## 1.3 Replace signed reads with a deterministic URL builder
 
-`lib/photo-urls.ts` becomes a pure, synchronous builder. No network call, no
+`apps/web/lib/photo-urls.ts` becomes a pure, synchronous builder. No network call, no
 `createSignedUrl`, no `createSignedUrls`, no `READ_TTL_SECONDS`, no admin
 client. Either `supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path)` or a
 plain string builder over `NEXT_PUBLIC_SUPABASE_URL` — the latter is preferable
@@ -196,17 +196,17 @@ bucket is private and becomes actively misleading.
 
 **Every consumer**, all of which currently `await`:
 
-| File                                                   | Use                                |
-| ------------------------------------------------------ | ---------------------------------- |
-| `lib/photos.ts:121`                                    | gallery photos (thumb + view)      |
-| `lib/photos.ts:163`                                    | moderation grid (thumb)            |
-| `lib/frames.ts:63`                                     | the guest's own film strip (thumb) |
-| `lib/events.ts:227`                                    | `/host` event previews             |
-| `app/(product)/e/[slug]/page.tsx:67`                   | event cover                        |
-| `app/(product)/host/events/[slug]/export/route.ts:103` | ZIP masters                        |
+| File                                                            | Use                                |
+| --------------------------------------------------------------- | ---------------------------------- |
+| `apps/web/lib/photos.ts:121`                                    | gallery photos (thumb + view)      |
+| `apps/web/lib/photos.ts:163`                                    | moderation grid (thumb)            |
+| `apps/web/lib/frames.ts:63`                                     | the guest's own film strip (thumb) |
+| `apps/web/lib/events.ts:227`                                    | `/host` event previews             |
+| `apps/web/app/(product)/e/[slug]/page.tsx:67`                   | event cover                        |
+| `apps/web/app/(product)/host/events/[slug]/export/route.ts:103` | ZIP masters                        |
 
 **A behaviour change to handle deliberately.** `signPhotoUrls` omits paths that
-fail to sign, and `lib/photos.ts:130` does `if (!thumbUrl || !viewUrl) return []`
+fail to sign, and `apps/web/lib/photos.ts:130` does `if (!thumbUrl || !viewUrl) return []`
 — today a missing object is silently dropped from the gallery. A deterministic
 builder always returns a URL, so a missing object becomes a broken `<img>`
 instead. That is better (it is now visible), but `gallery_image_failed` becomes
@@ -221,7 +221,7 @@ event's baseline rate to move.
   still no anon `select` policy on `storage.objects` — one scoped to the bucket
   would let anyone walk every event id and photo id in the system.
 - **The signed-upload write path is untouched.** `reserve_shot` → server action
-  mints signed upload URLs (`lib/capture.ts:110`) → phone PUTs → `commit_shot`.
+  mints signed upload URLs (`apps/web/lib/capture.ts:110`) → phone PUTs → `commit_shot`.
 - **No Supabase Image Transformations.** The phone still produces master /
   view / thumb at 3200·q90, 1600·q85, 400·q80.
 - **`unoptimized` stays on every remote `<Image>`** (`photo-grid.tsx:143`,
@@ -235,24 +235,24 @@ event's baseline rate to move.
   `host/events/new/page.tsx:12`, `auth/event-complete/page.tsx:5`, the export
   route, and the auth-email and Stripe webhook routes — and none of them for
   signature freshness. The one sentence that ties the two together is
-  `lib/photo-urls.ts:21` ("pages that use this are already `force-dynamic`, so
+  `apps/web/lib/photo-urls.ts:21` ("pages that use this are already `force-dynamic`, so
   a fresh signature per render costs nothing extra"); it goes with the
   rewrite.
 - **CSP needs no change.** `img-src 'self' data: blob: https://*.supabase.co`
-  (`next.config.mjs:22`) already covers the public route.
+  (`apps/web/next.config.mjs:22`) already covers the public route.
 
 ## 1.5 Cache headers: photos are done, the cover is not
 
-`lib/upload-shot.ts:46` already sets `cacheControl: '31536000'` on all three
+`apps/web/lib/upload-shot.ts:46` already sets `cacheControl: '31536000'` on all three
 renders, so **every existing customer object already carries a one-year
 header**. No re-upload, no byte migration; verification is a URL check.
 
-`attachEventCover` (`app/(product)/host/events/new/actions.ts:411-425`) sets no
+`attachEventCover` (`apps/web/app/(product)/host/events/new/actions.ts:411-425`) sets no
 `cacheControl`, so covers get Supabase's default of one hour (not verified
 here; check the response header) — the staleness window is an hour, not for
 ever. Still, version the cover path:
 
-- `coverStoragePath()` in `lib/storage.ts` takes a fresh id:
+- `coverStoragePath()` in `apps/web/lib/storage.ts` takes a fresh id:
   `{eventId}/cover-{uuid}.jpg`; the `cover_path` column already stores whatever
   it is given.
 - Delete the old object after the `cover_path` write succeeds, not before.
@@ -273,7 +273,7 @@ blast radius.
 
 ## 1.7 Tests — invert, do not delete
 
-`tests/db/storage.test.ts:48` (`is private`) and `:54` (`does not serve objects
+`apps/web/tests/db/storage.test.ts:48` (`is private`) and `:54` (`does not serve objects
 over the public route`) will go red. Rewrite both as positive assertions: the
 bucket reports `public: true`, and `/object/public/...` serves the object.
 
@@ -352,7 +352,7 @@ Between Phase 1 shipping and the worker being written, and **in its own PR**.
 ```
 
 The root stops being "the Next app". That is the point: once a second runtime
-exists, a root full of `next.config.mjs` and `components.json` misdescribes the
+exists, a root full of `apps/web/next.config.mjs` and `apps/web/components.json` misdescribes the
 repository.
 
 **Sequenced here deliberately.** Do it during Phase 1 and every review diff in
@@ -380,7 +380,7 @@ Two structural calls, both already made:
   restructure with nothing in it; create it when the worker imports that file.
 
 Also needs doing: re-point the Vercel project's root directory, and make sure
-`vercel.json`'s `fra1` pin lands where the new root expects it. Small, but it is
+`apps/web/vercel.json`'s `fra1` pin lands where the new root expects it. Small, but it is
 production configuration — another reason not to do this in the same week as the
 bucket flip.
 
@@ -445,7 +445,7 @@ of the host's connection — a 2.4GB album on a 10 Mbps line gets about 375MB in
 before a 504. **The album download is therefore already broken for any large
 wedding**, and nobody has noticed because no real album has been exported yet.
 
-(Nothing in the repository names the Vercel plan: `vercel.json` carries only
+(Nothing in the repository names the Vercel plan: `apps/web/vercel.json` carries only
 the `fra1` pin, no `functions` block. "Hobby" here is what the owner says,
 not something the code shows. Confirm it in the dashboard before repeating
 the 300-second argument anywhere else.)
@@ -484,7 +484,7 @@ lives. Consequences, and they are most of why this shape was chosen:
 - **No service-role key on Railway.** A worker that could read every album in
   the system is a much larger thing to secure than one that fetches public URLs.
 - **No S3 keys anywhere.** The upload is a resumable (TUS) upload authorised by
-  a signed upload token — the same `createSignedUploadUrl` call `lib/capture.ts`
+  a signed upload token — the same `createSignedUploadUrl` call `apps/web/lib/capture.ts`
   makes for every guest photo. The only Supabase credential in the whole path
   is the service role Vercel already holds (§2.6).
 - **Phase 1 is what makes this cheap.** Once `event-photos` is public the worker
@@ -557,7 +557,7 @@ parts, and the first is the one that bites:
   that blocks deletion of the event for ever, with nothing on screen explaining
   why. It is the same predicate the claimer uses, which is the point.
 - **Keep the tolerance anyway — it is three lines.** The gate lives in a Server
-  Action, so the service role, `scripts/reset-data.ts` and any future operator
+  Action, so the service role, `apps/web/scripts/reset-data.ts` and any future operator
   path go straight around it. With `on delete cascade`, deleting the event
   removes the job row and the next status write affects zero rows. Treat that as
   a normal terminal outcome — stop, do not mark `failed`, do not retry.
@@ -789,7 +789,7 @@ What it reuses, which is why it is cheap:
   as a browser one. The Node usage in the Vercel route — with its ZIP-4.5 flag
   and server-side bundling caveat — is what goes.
 - **The CSP already allows it.** `connect-src 'self' https://*.supabase.co`
-  (`next.config.mjs:24`) exists because guests upload from the browser, and
+  (`apps/web/next.config.mjs:24`) exists because guests upload from the browser, and
   public objects serve with CORS — it is how Once does the same thing.
 - **It works before Phase 1.** A 20-photo album finishes well inside a signed
   URL's hour, so this can replace the Vercel route as the small-album path
@@ -851,7 +851,7 @@ those stay single-sourced.
 token.** Supabase Storage speaks TUS at `/storage/v1/upload/resumable`, and
 its `/upload/resumable/sign` variant takes a **signed upload token** in an
 `x-signature` header in place of a JWT — the token `createSignedUploadUrl`
-returns, which is the call `lib/capture.ts:107-113` already makes for every
+returns, which is the call `apps/web/lib/capture.ts:107-113` already makes for every
 guest photo. Vercel mints one for the destination object at claim time
 (§2.3); the worker uploads the file with `tus-js-client`, which runs in Node,
 takes a file stream, and buffers exactly one chunk. Chunk size is 6MB, fixed by
@@ -893,7 +893,7 @@ when missed until the disk is full:
   `disk_full` and let the retry policy in §2.7 handle it. One job at a time,
   which the worker already does. The claim payload could carry the sum of
   `photos.byte_size` as a hint, but not until that column is confirmed to be
-  the master alone — `lib/upload-shot.ts` sums what landed across all three
+  the master alone — `apps/web/lib/upload-shot.ts` sums what landed across all three
   renders, so it may well not be.
 - **Clean up in `finally`, and again on startup.** Delete the archive once
   `complete` has been acknowledged, and delete it on any failure. Then sweep
@@ -930,13 +930,13 @@ silent drift the monorepo was chosen to eliminate — two implementations
 producing differently-stamped archives with no error anywhere.
 
 **But the module as it stands is not yet that shape.** `exifDateSegment` at
-`lib/exif-write.ts:65` is `(iso: string, timeZone?: string) => Uint8Array`: it
+`apps/web/lib/exif-write.ts:65` is `(iso: string, timeZone?: string) => Uint8Array`: it
 takes an ISO instant and an IANA zone and does the wall-clock conversion
 itself. Shipped as-is, the worker would need `event.time_zone` in the payload
 and would be doing zone arithmetic — the domain knowledge §2.0 says it must
 not carry. Split it before the worker imports it: the ISO-plus-zone → `2026:06:14
 18:32:10` / `+02:00` formatting stays on Vercel next to `formatFileStamp` in
-`lib/format.ts`, and the shared module takes those two strings and returns the
+`apps/web/lib/format.ts`, and the shared module takes those two strings and returns the
 bytes. The golden fixture below pins the formatting half through that split.
 
 So there is no drift to detect, and the **golden fixture becomes a regression
@@ -950,7 +950,7 @@ anyone reaching for `[^a-zA-Z0-9]` produces `Kov-cs-R-ka`), a hidden photo in
 December timestamp where Budapest is `+01:00` rather than `+02:00`.
 
 **Prerequisite, and it belongs in Phase 1:** `photoUploaderName` currently lives
-in `lib/photos.ts`, which opens with `import 'server-only'` and pulls in React's
+in `apps/web/lib/photos.ts`, which opens with `import 'server-only'` and pulls in React's
 `cache` and the Next server client. Extract the archive's naming rules into a
 portable module — the filename builder, the `rejtett/` rule, the no-name
 fallback and the `taken_at ?? created_at` comparator — so the payload builder in
@@ -1113,7 +1113,7 @@ module with its golden fixture (§2.6) · invert the two db tests ·
 
 **Phase 1.5** — one PR: `apps/web`, `supabase/` to the root, doc sweep across
 `CLAUDE.md`, `AGENTS.md` and the three skills · re-point Vercel's root directory
-· verify `vercel.json`'s `fra1` pin still applies.
+· verify `apps/web/vercel.json`'s `fra1` pin still applies.
 
 **Phase 2** — manifest outcome on the download endpoint + browser ZIP for
 ≤ 20 photos, shared EXIF splice in the page (§2.6.0; shippable first) ·
@@ -1147,7 +1147,7 @@ Phase 1:
   structural one). The "never hard-delete" rule stands — D2 is deferred.
 - `.cursor/skills/ourfilm-supabase/SKILL.md` — bucket privacy and read path.
 - `20260902100000_guest_own_frames.sql:22` — constraint #2 is now false (D1).
-- `lib/photo-urls.ts` header, `export/route.ts:32`, `tests/db/storage.test.ts`
+- `apps/web/lib/photo-urls.ts` header, `export/route.ts:32`, `apps/web/tests/db/storage.test.ts`
   preamble.
 - **The terms and privacy notice's removal language**, both locales —
   `adatvedelem/page.tsx:111`, `:125`, `:186`; `aszf/page.tsx:100`, `:168`;
@@ -1170,7 +1170,7 @@ Phase 2:
   jogi visszaigazoló e-mailek" / "login and legal emails", which an
   export-ready mail makes untrue.
 - the `RESEND_API_KEY` comment in `CLAUDE.md`'s Local env block (`:102`, "auth
-  and legal request emails"). `.env.local` itself has no `RESEND_API_KEY` line
+  and legal request emails"). `apps/web/.env.local` itself has no `RESEND_API_KEY` line
   to update.
 - `CLAUDE.md`'s server telemetry table gains `album_export_sweep` beside
   `album_export_email_sent`; the browser table's `album_export_requested` row

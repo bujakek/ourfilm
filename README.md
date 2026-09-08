@@ -18,6 +18,13 @@ share URLs.
 - Resend-backed transactional email through Supabase Auth
 - Vercel hosting and Web Analytics
 
+## Repository layout
+
+A pnpm workspace. The Next.js app lives in `apps/web`; `supabase/` at the root
+holds the migrations, config and email templates; `scripts/` at the root holds
+the two scripts that drive the Supabase CLI. Every command below runs from the
+root and forwards to the app where needed.
+
 ## Local development
 
 ```bash
@@ -25,7 +32,7 @@ pnpm install
 pnpm dev
 ```
 
-Copy the required environment variables into `.env.local` (never commit it):
+Copy the required environment variables into `apps/web/.env.local` (never commit it):
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
@@ -75,8 +82,9 @@ pnpm format
 pnpm verify
 ```
 
-Database tests use the linked remote project and mutate temporary data, so run
-`pnpm test:db` deliberately after applying migrations. Migrations are
+Database tests run only against a local Supabase stack (`pnpm supabase start`,
+`pnpm supabase db reset`, then `pnpm test:db`), never against the linked
+project; run them after touching any migration, RPC or policy. Migrations are
 append-only and guest writes remain service-role-only server actions/RPCs.
 
 See `CLAUDE.md` for architecture decisions, security boundaries and operational

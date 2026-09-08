@@ -82,7 +82,7 @@ jobs:
         run: pnpm types:check:local
 
       - name: Run database integration tests
-        run: OURFILM_TEST_SUITE=db pnpm exec vitest run
+        run: OURFILM_TEST_SUITE=db pnpm --filter web exec vitest run
 
       - name: Stop local Supabase
         if: always()
