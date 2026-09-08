@@ -1,6 +1,6 @@
 # Public photo CDN, and moving album export off Vercel
 
-**Status:** planned, not started · **Written:** 2026-09-07 · **Validated
+**Status:** Phase 1 built on `feat-public-photo-bucket`, awaiting the bucket flip and deploy (§1.9); Phases 1.5 and 2 not started · **Written:** 2026-09-07 · **Validated
 against the repo and revised:** 2026-09-08 (line references are as of commit
 `d28f2bc`)
 
@@ -778,7 +778,7 @@ What it reuses, which is why it is cheap:
 - **The manifest is the claim payload.** One builder on Vercel produces the
   ordered entries — URL, finished name, `lastModified`, pre-formatted stamp —
   and both the browser and the worker consume it. Naming, `rejtett/`, the
-  `'Vendég'` fallback and the zone never leave Vercel, and the browser cannot
+  nameless-photo rule and the zone never leave Vercel, and the browser cannot
   route around moderation because the manifest is owner-gated and decides the
   folder.
 - **The EXIF splice is already browser code.** `withExifDate` is written
@@ -952,7 +952,7 @@ December timestamp where Budapest is `+01:00` rather than `+02:00`.
 **Prerequisite, and it belongs in Phase 1:** `photoUploaderName` currently lives
 in `lib/photos.ts`, which opens with `import 'server-only'` and pulls in React's
 `cache` and the Next server client. Extract the archive's naming rules into a
-portable module — the filename builder, the `rejtett/` rule, the `'Vendég'`
+portable module — the filename builder, the `rejtett/` rule, the no-name
 fallback and the `taken_at ?? created_at` comparator — so the payload builder in
 §2.3 can use them and the golden fixture has one place to point at. Do it with
 the fixture, not before it: refactoring the filename logic with nothing pinning

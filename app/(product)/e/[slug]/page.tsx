@@ -12,7 +12,7 @@ import {
 import { galleryLock, joinStateLabel } from '@/lib/event-copy'
 import { captureWindowState } from '@/lib/camera'
 import { getMyFrames } from '@/lib/frames'
-import { signPhotoUrl } from '@/lib/photo-urls'
+import { publicPhotoUrl } from '@/lib/photo-urls'
 import { getGalleryPhotosBySlug, toGalleryTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
 import { isLocale, type Locale, resolveLocale } from '@/lib/i18n'
@@ -64,7 +64,7 @@ export default async function EventPage({ params, searchParams }: Props) {
   }
 
   if (!hasJoined(event)) {
-    const coverUrl = await signPhotoUrl(event.cover_path)
+    const coverUrl = event.cover_path ? publicPhotoUrl(event.cover_path) : null
     return (
       <JoinForm
         eventId={event.id}

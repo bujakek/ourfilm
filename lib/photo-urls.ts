@@ -1,70 +1,42 @@
-import 'server-only'
-
+import { publicSupabaseEnv } from './supabase/env'
 import { PHOTO_BUCKET } from './storage'
-import { createAdminClient } from './supabase/admin'
 
 /**
- * Signed read URLs for photos.
+ * Photo URLs.
  *
- * The bucket is private. It used to be public, and privacy came from the two
- * unguessable uuids in the path — a fair bet for an album with no reveal, and
- * an untenable one now. A public object URL keeps working forever regardless of
- * what the reveal predicate says, so the promise "nobody sees these until the
- * album is developed" could not have been kept by a URL anyone could hold.
+ * The bucket is public, and a photo's URL is a pure function of its storage
+ * path: no signature, no expiry, no round trip to Storage, and the same string
+ * for every viewer. That last part is the point. A signed URL carries its token
+ * in the query, so every render minted an address no other guest's cache could
+ * hit; a public URL is one cache key per object for the whole wedding.
  *
- * Signing is therefore not a detail of how images load; it is where the reveal
- * is enforced for the bytes themselves. Only server code that has already
- * decided a viewer is entitled calls in here.
+ * What this module deliberately is not: an authorization layer. Which paths a
+ * guest is ever told about is decided by the reveal-gated RPCs
+ * (`event_gallery_by_slug`, `my_frames`) and by ownership RLS on the host side.
+ * A URL built here is only as private as the path it was built from, and the
+ * path is two unguessable uuids that nothing anonymous can enumerate — there is
+ * no anon `select` policy on `storage.objects`, so the bucket cannot be listed.
  *
- * One batch call per grid rather than one per tile: `createSignedUrls` takes an
- * array, and a gallery of 200 photos must not be 200 round trips. Pages that
- * use this are already `force-dynamic`, so a fresh signature per render costs
- * nothing extra.
+ * It was private, and reads were signed, until September 2026. Signing bought
+ * one thing: revoking an address already handed out, bounded by the hour-long
+ * TTL. It cost a Storage round trip on every grid, a URL per viewer, and a
+ * broken image whenever a signature expired mid-session. See
+ * `docs/public-cdn-and-export-worker.md` for the trade in full.
+ *
+ * No `server-only` marker, on purpose: nothing here needs a secret, and the
+ * browser-side album download planned for Phase 2 builds the same URLs.
  */
-
-/** An hour. Long enough that a guest can scroll, open a photo and pinch around
- *  without a link going stale mid-session; short enough that a URL pasted
- *  somewhere else stops working the same afternoon. */
-const READ_TTL_SECONDS = 60 * 60
 
 /**
- * Sign many paths at once.
+ * The public URL of one stored object.
  *
- * Returns a lookup rather than an array so callers index by the path they
- * already hold, and a path that failed to sign is simply absent — the caller
- * skips that tile instead of rendering a broken image. Duplicates are collapsed
- * before signing; the grid and the lightbox often want the same object.
+ * Always returns a string. A path whose object has gone missing yields a URL
+ * that 404s, which the grid renders as a broken tile and reports as
+ * `gallery_image_failed` — visible, rather than silently absent as it was when
+ * a failed signature simply dropped the photo.
  */
-export async function signPhotoUrls(
-  paths: readonly (string | null | undefined)[],
-): Promise<Map<string, string>> {
-  const unique = [...new Set(paths.filter((p): p is string => Boolean(p)))]
-  const signed = new Map<string, string>()
-  if (unique.length === 0) return signed
-
-  const db = createAdminClient()
-  const { data, error } = await db.storage
-    .from(PHOTO_BUCKET)
-    .createSignedUrls(unique, READ_TTL_SECONDS)
-
-  if (error) throw error
-
-  for (const entry of data ?? []) {
-    // `createSignedUrls` reports per-path failures inside the array rather than
-    // rejecting, so an object that has gone missing must not take the whole
-    // gallery down with it.
-    if (entry.error || !entry.signedUrl || !entry.path) continue
-    signed.set(entry.path, entry.signedUrl)
-  }
-
-  return signed
-}
-
-/** One path. Convenience for the cover image, which is never part of a batch. */
-export async function signPhotoUrl(
-  path: string | null | undefined,
-): Promise<string | null> {
-  if (!path) return null
-  const signed = await signPhotoUrls([path])
-  return signed.get(path) ?? null
+export function publicPhotoUrl(path: string): string {
+  const { url } = publicSupabaseEnv()
+  const encoded = path.split('/').map(encodeURIComponent).join('/')
+  return `${url}/storage/v1/object/public/${PHOTO_BUCKET}/${encoded}`
 }

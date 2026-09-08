@@ -15,10 +15,14 @@ description: OurFilm's Supabase conventions — browser and server client setup 
 >    `revoke all on function … from anon, authenticated` by name — see
 >    `20260825080000_lock_down_capture_rpcs.sql`, which exists because a test
 >    caught `reserve_shot` callable with the browser's anon key.
-> 3. **The `event-photos` bucket is private.** Reads are signed server-side
->    (`lib/photo-urls.ts`, batched per grid); uploads go to signed upload URLs
->    minted by `reserve_shot`. The absence of an anon _select_ policy still
->    matters and is still deliberate.
+> 3. **The `event-photos` bucket is public, and reads are plain URLs.**
+>    `lib/photo-urls.ts` builds `/object/public/…` from the path, no signing,
+>    no round trip (it was private for a month in 2026; see
+>    `20260908120000_public_photo_bucket.sql` for what that bought and cost).
+>    Uploads still go only to signed upload URLs minted by `reserve_shot`. The
+>    absence of an anon _select_ policy is what keeps a public bucket from
+>    being a listable one, and is still deliberate. The "Public download, but
+>    no listing" section below is current again.
 >
 > The rest of this file — RLS reasoning, the security-definer trap, migration
 > workflow, client factories, `getUser()` over `getSession()` — is unchanged and

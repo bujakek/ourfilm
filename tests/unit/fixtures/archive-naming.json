@@ -1,0 +1,153 @@
+[
+  {
+    "name": "an accented name keeps its letters",
+    "zone": "Europe/Budapest",
+    "input": [
+      {
+        "id": "a1",
+        "taken_at": "2026-08-15T12:32:10Z",
+        "created_at": "2026-08-16T07:00:00Z",
+        "hidden_at": null,
+        "uploaderName": "Kovács Réka"
+      }
+    ],
+    "expected": ["001-2026-08-15_1432-Kovács-Réka.jpg"]
+  },
+  {
+    "name": "a hidden photo lands in rejtett/ and keeps its number",
+    "zone": "Europe/Budapest",
+    "input": [
+      {
+        "id": "h1",
+        "taken_at": "2026-06-14T16:00:00Z",
+        "created_at": "2026-06-14T16:00:30Z",
+        "hidden_at": null,
+        "uploaderName": "Anna"
+      },
+      {
+        "id": "h2",
+        "taken_at": "2026-06-14T16:05:00Z",
+        "created_at": "2026-06-14T16:05:30Z",
+        "hidden_at": "2026-06-15T09:00:00Z",
+        "uploaderName": "Bence"
+      }
+    ],
+    "expected": [
+      "001-2026-06-14_1800-Anna.jpg",
+      "rejtett/002-2026-06-14_1805-Bence.jpg"
+    ]
+  },
+  {
+    "name": "no taken_at means no stamp, and created_at decides the order",
+    "zone": "Europe/Budapest",
+    "input": [
+      {
+        "id": "n1",
+        "taken_at": null,
+        "created_at": "2026-06-14T20:00:00Z",
+        "hidden_at": null,
+        "uploaderName": "Dóra"
+      },
+      {
+        "id": "n2",
+        "taken_at": "2026-06-14T18:30:00Z",
+        "created_at": "2026-06-15T08:00:00Z",
+        "hidden_at": null,
+        "uploaderName": "Eszter"
+      }
+    ],
+    "expected": ["001-2026-06-14_2030-Eszter.jpg", "002-Dóra.jpg"]
+  },
+  {
+    "name": "the stamp follows the zone's offset on that date, +02:00 in July and +01:00 in December",
+    "zone": "Europe/Budapest",
+    "input": [
+      {
+        "id": "w1",
+        "taken_at": "2026-12-24T17:30:00Z",
+        "created_at": "2026-12-24T17:31:00Z",
+        "hidden_at": null,
+        "uploaderName": "Gábor"
+      },
+      {
+        "id": "w2",
+        "taken_at": "2026-07-24T17:30:00Z",
+        "created_at": "2026-07-24T17:31:00Z",
+        "hidden_at": null,
+        "uploaderName": "Gábor"
+      }
+    ],
+    "expected": [
+      "001-2026-07-24_1930-Gábor.jpg",
+      "002-2026-12-24_1830-Gábor.jpg"
+    ]
+  },
+  {
+    "name": "runs of punctuation and spaces collapse to one hyphen, including a trailing one",
+    "zone": "Europe/Budapest",
+    "input": [
+      {
+        "id": "p1",
+        "taken_at": "2026-06-14T16:00:00Z",
+        "created_at": "2026-06-14T16:00:30Z",
+        "hidden_at": null,
+        "uploaderName": "Tóth-Szabó  Ádám (fotós)!"
+      }
+    ],
+    "expected": ["001-2026-06-14_1800-Tóth-Szabó-Ádám-fotós-.jpg"]
+  },
+  {
+    "name": "a missing name means no name segment, not a placeholder",
+    "zone": "Europe/Budapest",
+    "input": [
+      {
+        "id": "v1",
+        "taken_at": "2026-06-14T16:00:00Z",
+        "created_at": "2026-06-14T16:00:30Z",
+        "hidden_at": null,
+        "uploaderName": null
+      }
+    ],
+    "expected": ["001-2026-06-14_1800.jpg"]
+  },
+  {
+    "name": "input order is ignored: taken_at sorts, created_at breaks the tie",
+    "zone": "Europe/Budapest",
+    "input": [
+      {
+        "id": "c",
+        "taken_at": "2026-06-14T20:00:00Z",
+        "created_at": "2026-06-14T20:00:05Z",
+        "hidden_at": null,
+        "uploaderName": "Csilla"
+      },
+      {
+        "id": "d",
+        "taken_at": "2026-06-14T18:00:00Z",
+        "created_at": "2026-06-14T18:00:09Z",
+        "hidden_at": null,
+        "uploaderName": "Dani"
+      },
+      {
+        "id": "a",
+        "taken_at": "2026-06-14T18:00:00Z",
+        "created_at": "2026-06-14T18:00:05Z",
+        "hidden_at": null,
+        "uploaderName": "Ági"
+      },
+      {
+        "id": "b",
+        "taken_at": "2026-06-14T19:00:00Z",
+        "created_at": "2026-06-14T19:00:05Z",
+        "hidden_at": null,
+        "uploaderName": "Kata 2"
+      }
+    ],
+    "expected": [
+      "001-2026-06-14_2000-Ági.jpg",
+      "002-2026-06-14_2000-Dani.jpg",
+      "003-2026-06-14_2100-Kata-2.jpg",
+      "004-2026-06-14_2200-Csilla.jpg"
+    ]
+  }
+]

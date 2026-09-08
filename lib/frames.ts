@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { readParticipantTokenHash } from './participants'
-import { signPhotoUrls } from './photo-urls'
+import { publicPhotoUrl } from './photo-urls'
 import { createAdminClient } from './supabase/admin'
 
 /**
@@ -60,11 +60,9 @@ export async function getMyFrames(eventId: string): Promise<Frame[]> {
     thumb_path: string | null
   }[]
 
-  const signed = await signPhotoUrls(rows.map((row) => row.thumb_path))
-
   return rows.map((row) => ({
     id: row.photo_id,
     index: row.frame_index,
-    thumbUrl: row.thumb_path ? (signed.get(row.thumb_path) ?? null) : null,
+    thumbUrl: row.thumb_path ? publicPhotoUrl(row.thumb_path) : null,
   }))
 }

@@ -21,10 +21,18 @@ export function photoStoragePaths(eventId: string, photoId: string) {
 }
 
 /**
- * The event's cover image. One per event, overwritten in place when the host
- * changes it — there is no history to keep and a stable path means nothing has
- * to remember the old one to delete it.
+ * The event's cover image, versioned by a fresh id per upload.
+ *
+ * It was a stable `{eventId}/cover.jpg`, overwritten in place, while reads
+ * were signed and every render minted a fresh URL. On a public bucket the URL
+ * is the cache key, and an object overwritten under the same key keeps serving
+ * the old bytes from the CDN for as long as the cache header allows. A new id
+ * per upload is a new URL, so a replaced cover appears the moment the
+ * `cover_path` write lands; the caller deletes the old object afterwards.
+ *
+ * Events created before September 2026 keep their `cover.jpg`; nothing reads
+ * the filename, only the column.
  */
-export function coverStoragePath(eventId: string) {
-  return `${eventId}/cover.jpg`
+export function coverStoragePath(eventId: string, coverId: string) {
+  return `${eventId}/cover-${coverId}.jpg`
 }

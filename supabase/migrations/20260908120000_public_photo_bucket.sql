@@ -1,0 +1,43 @@
+-- Open the photo bucket.
+--
+-- `20260824174543_private_photo_bucket.sql` closed it, on the argument that a
+-- public object URL keeps working forever regardless of the reveal predicate,
+-- so the reveal could only be a UI state. That argument over-credited the
+-- bucket. The reveal is enforced by `event_gallery_by_slug`, which withholds
+-- every path until `now() >= reveal_at`; signing those paths afterwards only
+-- guarded a 122-bit uuid path behind a ~49-bit slug that had already let the
+-- visitor in. What privacy actually bought was narrow: revoking an address
+-- already handed out, bounded by the hour-long TTL.
+--
+-- What it cost was every read. A signed URL carries its token in the query,
+-- so every render minted an address no other viewer's cache could hit, every
+-- grid was a Storage round trip, and a signature expiring mid-session was a
+-- broken image. A public URL is one cache key per object for the whole
+-- wedding, built from the path with no call at all.
+--
+-- Knowingly given up, and recorded in docs/public-cdn-and-export-worker.md:
+--   - a leaked photo URL now works for ever rather than dying within the hour;
+--   - hiding a photo (`hidden_at`) removes it from the app, not from the CDN —
+--     an actual takedown is `pnpm takedown <photo-id>`, which removes the
+--     objects and keeps the row;
+--   - a guest's own master is reachable before the reveal by editing `_thumb`
+--     out of a URL `my_frames` returned; see that migration's comment.
+--
+-- What does NOT change, and is load-bearing:
+--   - no new policies. `public` governs anonymous *read of a known object*
+--     through /object/public/…, which consults no policy at all. `anon` still
+--     cannot INSERT, UPDATE or DELETE, and uploads still go only to signed
+--     upload URLs bound to a path `reserve_shot` already agreed to;
+--   - there is still deliberately NO anon select policy on storage.objects. A
+--     select policy governs *listing*, and one scoped to the bucket would let
+--     anyone POST /storage/v1/object/list/event-photos and walk every event id
+--     and photo id in the system. "Anyone holding this exact URL may GET it"
+--     is the property; "anyone may find out what URLs exist" is not.
+--
+-- Idempotent, so it may land after the manual dashboard flip. Without it the
+-- repo would assert the opposite of production, and `supabase db reset` would
+-- recreate a private bucket locally — every public URL a 400 in `next dev`
+-- and in `pnpm test:db`, silently, as broken images.
+update storage.buckets
+   set public = true
+ where id = 'event-photos';

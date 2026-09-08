@@ -1,8 +1,9 @@
+import { archiveEntryNames } from '@/lib/archive-naming'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { exifDateSegment, withExifDate } from '@/lib/exif-write'
-import { eventWallClock, formatFileStamp } from '@/lib/format'
-import { getAllEventPhotos, photoUploaderName } from '@/lib/photos'
-import { signPhotoUrls } from '@/lib/photo-urls'
+import { eventWallClock } from '@/lib/format'
+import { getAllEventPhotos, toArchivePhoto } from '@/lib/photos'
+import { publicPhotoUrl } from '@/lib/photo-urls'
 import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { downloadZip } from 'client-zip'
 import { NextResponse } from 'next/server'
@@ -16,13 +17,15 @@ export const runtime = 'nodejs'
  * Streams the whole album as a ZIP — the "download everything" the landing page
  * promises the couple.
  *
- * Notably this does **not** use the service-role key, which the Supabase skill
- * originally called for. That advice assumed the export had to bypass RLS. It
- * does not: the bucket is public so objects fetch without credentials, and the
- * host's own session already reads exactly their own rows. Keeping the service
- * key out of a path that streams user data is worth the sentence of
- * explanation. `getOwnedEventBySlug` returning null *is* the ownership check —
- * RLS makes "not yours" and "does not exist" the same answer.
+ * No service-role key anywhere in this path. The rows come off the host's own
+ * session under ownership RLS, so `getOwnedEventBySlug` returning null *is*
+ * the ownership check — "not yours" and "does not exist" are the same answer.
+ * The bytes come off the public bucket by URL, so fetching a master needs no
+ * credential either. Keeping the service key out of a route that streams user
+ * data is worth the sentence.
+ *
+ * Entry order and names are `lib/archive-naming.ts`, pinned by a golden
+ * fixture, so a second runtime producing this archive cannot drift from it.
  *
  * Files stream from storage straight into the archive, so memory stays flat
  * whatever the album weighs. Buffering it (JSZip and friends) would run a
@@ -67,76 +70,30 @@ export async function GET(
     photo_count: photos.length,
   })
 
-  // Oldest first, so the numbering follows the order the night actually
-  // happened in — which is `taken_at`, not `created_at`. Guests shoot all
-  // evening and upload in a batch the next morning, so upload order would
-  // number one guest's whole camera roll as if the night were theirs alone.
-  // `created_at` is the fallback for photos whose file carried no EXIF.
-  const when = (photo: (typeof photos)[number]) =>
-    Date.parse(photo.taken_at ?? photo.created_at)
-  const ordered = [...photos].sort(
-    (a, b) =>
-      when(a) - when(b) || Date.parse(a.created_at) - Date.parse(b.created_at),
-  )
-  const missing: string[] = []
-
   // Filenames and ZIP entry dates are rendered in the *event's* zone, not the
   // server's. Vercel runs UTC, so an event set up in Budapest would otherwise
   // name a photo taken at 14:32 as 1232.
   const zone = event.time_zone
+
+  // Ordering and naming live in `lib/archive-naming.ts`; see there for why the
+  // album is numbered by `taken_at` rather than upload order.
+  const ordered = archiveEntryNames(photos.map(toArchivePhoto), zone)
+  const missing: string[] = []
 
   // Read out here for the same reason `zone` is: `entries()` below is a
   // hoisted function declaration, so nothing narrowed in this scope survives
   // into it.
   const eventId = event.id
 
-  // The bucket is private, so every master needs a signature. Signed in one
-  // batch up front rather than per entry: the entries are pulled one at a time
-  // on purpose, and a round trip to Storage between each would add a whole
-  // latency hop per photo to an export that already streams for minutes.
-  //
-  // The one-hour expiry bounds how long an export may take to *start*, not how
-  // long it may run — the URLs are redeemed as each entry is pulled, and a
-  // signature checked at redemption is only checked once.
-  let signed: Map<string, string>
-  try {
-    signed = await signPhotoUrls(ordered.map((p) => p.storage_path))
-  } catch (e) {
-    await reportServerIssue(e, {
-      operation: 'album_export_sign',
-      eventId: event.id,
-      route: '/host/events/[slug]/export',
-      routeType: 'route',
-      method: 'GET',
-    })
-    return new NextResponse('Nem sikerült előkészíteni a letöltést', {
-      status: 500,
-    })
-  }
-
   // An async generator rather than an array of promises: client-zip pulls one
   // entry at a time, so exactly one object is in flight at any moment. Kicking
   // off 500 fetches up front would open 500 connections and defeat the point of
   // streaming.
   async function* entries() {
-    for (const [index, photo] of ordered.entries()) {
-      const n = String(index + 1).padStart(3, '0')
-      const who = `-${photoUploaderName(photo).replace(/[^\p{L}\p{N}]+/gu, '-')}`
-      // Hidden photos ship too, but in their own folder: the host keeps
-      // everything without a moderated shot turning up among the rest.
-      const folder = photo.hidden_at ? 'rejtett/' : ''
-      // The capture time goes in the name too, not only in `lastModified`: a
-      // file dragged out of the folder keeps its place in the day, and the
-      // couple can still tell when a shot was taken years from now.
-      const stamp = photo.taken_at
-        ? `-${formatFileStamp(photo.taken_at, zone)}`
-        : ''
-      const name = `${folder}${n}${stamp}${who}.jpg`
-
-      const url = signed.get(photo.storage_path)
-      const response = url
-        ? await fetch(url)
-        : new Response(null, { status: 404 })
+    for (const { photo, name } of ordered) {
+      // A public URL is a pure function of the path — no signature to mint up
+      // front, nothing that can expire while a long export is still running.
+      const response = await fetch(publicPhotoUrl(photo.storage_path))
       if (!response.ok || !response.body) {
         // Aborting here would truncate an archive the host is already
         // downloading. Skip, and account for it at the end instead.
@@ -190,7 +147,7 @@ export async function GET(
       event_id: eventId,
       photo_count: ordered.length,
       missing_count: missing.length,
-      hidden_count: ordered.filter((photo) => photo.hidden_at).length,
+      hidden_count: ordered.filter(({ photo }) => photo.hidden_at).length,
       elapsed_ms: Date.now() - startedAt,
     })
   }

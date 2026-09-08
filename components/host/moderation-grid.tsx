@@ -78,14 +78,17 @@ function Tile({
           transition={reduceMotion ? still : T.develop}
         >
           <Image
-            // Signed server-side: the bucket is private, so the URL is a
-            // short-lived capability rather than an address this component
-            // could have built for itself.
+            // Built server-side from the storage path, so this component
+            // never learns the bucket's layout.
             src={photo.thumbUrl}
             alt={
-              en
-                ? `Photo by ${photo.uploaderName}`
-                : `${photo.uploaderName} fotója`
+              photo.uploaderName
+                ? en
+                  ? `Photo by ${photo.uploaderName}`
+                  : `${photo.uploaderName} fotója`
+                : en
+                  ? 'Photo'
+                  : 'Fotó'
             }
             fill
             sizes="(max-width: 640px) 50vw, 200px"
@@ -129,11 +132,19 @@ function Tile({
         aria-label={
           hidden
             ? en
-              ? `Restore photo by ${photo.uploaderName}`
-              : `${photo.uploaderName} fotójának visszaállítása`
+              ? photo.uploaderName
+                ? `Restore photo by ${photo.uploaderName}`
+                : 'Restore photo'
+              : photo.uploaderName
+                ? `${photo.uploaderName} fotójának visszaállítása`
+                : 'Fotó visszaállítása'
             : en
-              ? `Hide photo by ${photo.uploaderName}`
-              : `${photo.uploaderName} fotójának elrejtése`
+              ? photo.uploaderName
+                ? `Hide photo by ${photo.uploaderName}`
+                : 'Hide photo'
+              : photo.uploaderName
+                ? `${photo.uploaderName} fotójának elrejtése`
+                : 'Fotó elrejtése'
         }
         // No spinner. The icon has already flipped, so a spinner on top of it
         // would be reporting on work the host has been told is done. The dimmed
@@ -145,7 +156,7 @@ function Tile({
             ? en
               ? 'HIDDEN'
               : 'REJTVE'
-            : photo.uploaderName.toUpperCase()}
+            : (photo.uploaderName?.toUpperCase() ?? '')}
         </span>
         {hidden ? (
           <Eye className="size-3.5 shrink-0 text-white/90" aria-hidden="true" />

@@ -63,10 +63,13 @@ export function Lightbox({
 
   if (!photo) return null
 
-  const caption =
-    locale === 'en'
+  const caption = photo.uploaderName
+    ? locale === 'en'
       ? `Photo by ${photo.uploaderName}`
       : `${photo.uploaderName} fotója`
+    : locale === 'en'
+      ? 'Photo'
+      : 'Fotó'
 
   return (
     <dialog
