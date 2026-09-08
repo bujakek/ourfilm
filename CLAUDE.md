@@ -485,9 +485,14 @@ The dashboard is part of the implementation. Before production:
   for Vercel Development, Preview and Production.
 
 `posthog-node` follows Node's security-patched runtime floor: the installed
-version requires Node `^20.20.0` or `>=22.22.0`. Upgrade a local Node 22.18
-installation before the next dependency install even though the current build
-still runs on it; deployed functions must use a supported patched runtime too.
+version requires Node `^20.20.0` or `>=22.22.0`, and the root `package.json`
+declares `engines` to match. CI and the export worker's image run Node 24,
+where TypeScript type stripping is no longer experimental — which is also why
+the worker's tests stopped having to filter Node's warnings. Upgrade a local
+Node 22.18 installation before the next dependency install even though the
+current build still runs on it; deployed functions must use a supported
+patched runtime too, so check the Vercel project's Node setting when this
+changes.
 
 ## The upload queue survives the tab (settled)
 
