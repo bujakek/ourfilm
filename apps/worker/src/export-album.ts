@@ -10,7 +10,7 @@ import { exifDateSegmentFrom, withExifDate } from '@ourfilm/shared/exif-splice'
 import archiver from 'archiver'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
-import { Readable } from 'node:stream'
+import { Readable, Transform } from 'node:stream'
 import { Upload } from 'tus-js-client'
 
 import { env } from './env.ts'
@@ -38,9 +38,28 @@ export type BuildResult = {
   missing: string[]
 }
 
+/**
+ * A fetched master, held by its `Response` and not only its body.
+ *
+ * The `Response` is load-bearing. Node's fetch registers every `Response` in a
+ * FinalizationRegistry that cancels the body stream if the object is garbage
+ * collected while the body is still unread — freeing the socket of a caller
+ * that forgot about it. The fetch-ahead below holds up to `concurrency`
+ * unread bodies for seconds at a time while a multi-megabyte entry streams,
+ * which is exactly when a GC runs; the first version kept only `body`, the
+ * `Response` was collected, and the body closed with zero bytes. The archive
+ * then contained 21 empty photos, no error anywhere, and a `missing_count` of
+ * zero. Keep the `Response`, and check the byte count regardless.
+ */
 type Fetched =
-  | { entry: ExportEntry; body: ReadableStream<Uint8Array> }
-  | { entry: ExportEntry; body: null }
+  | {
+      entry: ExportEntry
+      response: Response
+      body: ReadableStream<Uint8Array>
+      /** From `content-length`, or null when the server did not say. */
+      expectedBytes: number | null
+    }
+  | { entry: ExportEntry; response: null; body: null; expectedBytes: null }
 
 const FETCH_RETRY_DELAYS_MS = [500, 2_000]
 
@@ -56,12 +75,20 @@ async function fetchMaster(entry: ExportEntry): Promise<Fetched> {
       const response = await fetch(entry.url)
       if (!response.ok || !response.body) {
         await response.body?.cancel()
-        return { entry, body: null }
+        return { entry, response: null, body: null, expectedBytes: null }
       }
-      return { entry, body: response.body }
+      const length = Number(response.headers.get('content-length'))
+      return {
+        entry,
+        response,
+        body: response.body,
+        expectedBytes: Number.isFinite(length) && length > 0 ? length : null,
+      }
     } catch {
       const delay = FETCH_RETRY_DELAYS_MS[attempt]
-      if (delay === undefined) return { entry, body: null }
+      if (delay === undefined) {
+        return { entry, response: null, body: null, expectedBytes: null }
+      }
       await new Promise((r) => setTimeout(r, delay))
     }
   }
@@ -108,6 +135,11 @@ export async function buildArchive(
     })
   })
   archive.pipe(output)
+  // A failure inside the loop throws before `finished` is awaited, after
+  // which the aborted archive and the destroyed file still emit their own
+  // errors into it. Those are the same failure, already being reported;
+  // without a handler here they surface as an unhandled rejection instead.
+  finished.catch(() => {})
 
   // One promise per appended entry, resolved when archiver has fully written
   // it. Waiting on it before advancing the fetch window is what bounds the
@@ -156,11 +188,37 @@ export async function buildArchive(
               exifDateSegmentFrom(entry.exif.stamp, entry.exif.offset),
             )
           : fetched.body
+        const counted = countBytes()
+        const source = Readable.fromWeb(
+          body as import('node:stream/web').ReadableStream,
+        )
+        // A body that errors mid-way — the connection dropped, the server
+        // closed — must not hang archiver on an entry that will never end.
+        // `pipe` forwards nothing on error, so end the counted stream by hand;
+        // archiver then finishes a short entry, and the check below turns
+        // that into a failed job instead of a shipped one.
+        let sourceError: unknown = null
+        source.on('error', (error) => {
+          sourceError = error
+          counted.stream.end()
+        })
         await appendAndWait(
-          Readable.fromWeb(body as import('node:stream/web').ReadableStream),
+          source.pipe(counted.stream),
           entry.name,
           wallClockToDate(entry.lastModified),
         )
+        // `fetched.response` is still referenced here, so it could not have
+        // been collected before its body was read. See `Fetched`.
+        void fetched.response
+        if (sourceError) {
+          throw new WorkerFailure(
+            'fetch_failed',
+            true,
+            `entry ${entry.id} did not arrive whole`,
+            { cause: sourceError },
+          )
+        }
+        assertComplete(entry, counted.bytes(), fetched.expectedBytes)
       }
       done += 1
       hooks.onEntry?.(done, entries.length)
@@ -198,6 +256,41 @@ export async function buildArchive(
 
   const { size } = await stat(tmpFile)
   return { bytes: size, missing }
+}
+
+/** A pass-through that counts what went by, so a short entry is caught. */
+function countBytes() {
+  let total = 0
+  const stream = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      total += chunk.length
+      callback(null, chunk)
+    },
+  })
+  return { stream, bytes: () => total }
+}
+
+/**
+ * An entry that arrived short is a corrupt archive, not a missing photo.
+ *
+ * The EXIF splice adds a few hundred bytes, so the check is "at least the
+ * object's length", and an object of unknown length must at least not be
+ * empty. Failing the job — with a retry, since the bytes exist — is the only
+ * honest answer: a short entry ships as a zero-byte photo the host discovers
+ * months later, and no note inside the archive could describe it.
+ */
+function assertComplete(
+  entry: ExportEntry,
+  written: number,
+  expected: number | null,
+): void {
+  const short = expected === null ? written === 0 : written < expected
+  if (!short) return
+  throw new WorkerFailure(
+    'fetch_failed',
+    true,
+    `entry ${entry.id} arrived short: ${written} of ${expected ?? '?'} bytes`,
+  )
 }
 
 /** Fixed by Supabase's resumable endpoint. Not a tuning knob. */

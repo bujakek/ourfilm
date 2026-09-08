@@ -884,6 +884,19 @@ endpoints — and every URL it touches is either a public photo URL or an upload
 it was handed a token for. It cannot write anywhere it was not given
 permission for, and it cannot read a photo it was not given.
 
+**A fetched body is only as alive as its `Response`.** The first real export
+shipped 21 zero-byte photos out of 48, with `missing_count` 0 and no error
+anywhere. Node's fetch registers every `Response` in a FinalizationRegistry
+that cancels the body if the object is collected while the body is unread
+(undici, `lib/web/fetch/response.js`); the fetch-ahead window holds several
+unread bodies for seconds while a multi-megabyte entry streams, which is when
+a collection runs, and the worker had kept only `response.body`. Two rules
+came out of it, both pinned by `apps/worker/tests/fetch-ahead-gc.test.ts`:
+hold the `Response` until the entry is written, and count the bytes of every
+entry against `content-length` — a short entry fails the job with a retry,
+never ships. The archive is derived data; a corrupt one is worse than a late
+one.
+
 **Disk is now a correctness concern.** Three rules, all cheap, all invisible
 when missed until the disk is full:
 
