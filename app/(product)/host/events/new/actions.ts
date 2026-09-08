@@ -410,17 +410,40 @@ export async function createEventFromDraft(
  */
 export async function attachEventCover(eventId: string, cover: File) {
   const supabase = await createClient()
+
+  // Read the current path first so the old object can be removed once the
+  // new one is live. Ownership RLS scopes this read, so a caller who does not
+  // own the event gets null here and a refused update below.
+  const { data: current, error: readError } = await supabase
+    .from('events')
+    .select('cover_path')
+    .eq('id', eventId)
+    .maybeSingle()
+  if (readError) throw readError
+
+  // A fresh path per upload rather than an overwrite: on a public bucket the
+  // URL is the CDN's cache key, and a cover replaced under the same key would
+  // keep showing the old image for up to an hour. See `coverStoragePath`.
+  const path = coverStoragePath(eventId, crypto.randomUUID())
   const { error } = await supabase.storage
     .from(PHOTO_BUCKET)
-    .upload(coverStoragePath(eventId), cover, {
+    .upload(path, cover, {
       contentType: 'image/jpeg',
-      upsert: true,
+      cacheControl: '31536000',
     })
   if (error) throw error
 
   const { error: patchError } = await supabase
     .from('events')
-    .update({ cover_path: coverStoragePath(eventId) })
+    .update({ cover_path: path })
     .eq('id', eventId)
   if (patchError) throw patchError
+
+  // Only after the column points at the new object. Deleting first would
+  // leave a row pointing at nothing if the update failed, and a stale object
+  // costs a few hundred kilobytes, not a broken join screen. Best effort: a
+  // failure here is an orphaned file, not a failed action.
+  if (current?.cover_path && current.cover_path !== path) {
+    await supabase.storage.from(PHOTO_BUCKET).remove([current.cover_path])
+  }
 }

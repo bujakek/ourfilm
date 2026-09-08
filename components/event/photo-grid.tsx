@@ -134,9 +134,13 @@ function Tile({
       <Image
         src={photo.thumbUrl}
         alt={
-          locale === 'en'
-            ? `Photo by ${photo.uploaderName}`
-            : `${photo.uploaderName} fotója`
+          photo.uploaderName
+            ? locale === 'en'
+              ? `Photo by ${photo.uploaderName}`
+              : `${photo.uploaderName} fotója`
+            : locale === 'en'
+              ? 'Photo'
+              : 'Fotó'
         }
         fill
         sizes="(max-width: 640px) 50vw, 33vw"
@@ -144,10 +148,10 @@ function Tile({
         onLoad={() => setDeveloped(true)}
         onError={() => {
           setDeveloped(true)
-          // A photo the guest can see a space for and not the photo. The
-          // expected cause is a signed URL that expired — they last an hour —
-          // under a tab left open and scrolled later, and from the page it is
-          // indistinguishable from a photo that was never there.
+          // A photo the guest can see a space for and not the photo. URLs
+          // are public and never expire, so this is a missing object or the
+          // network — and from the page it is indistinguishable from a photo
+          // that was never there, which is why it is reported.
           track('gallery_image_failed', { event_id: eventId, surface: 'grid' })
         }}
         className="object-cover transition-transform duration-500 group-hover:scale-105"

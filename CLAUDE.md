@@ -285,23 +285,23 @@ there is one, the capture id (both random uuids), plus whether the browser
 thought it was online. Filter on `event_id` and the question "did anyone at
 this wedding lose a photo" has an answer. The guest path, in order:
 
-| Event                      | Answers                                                               |
-| -------------------------- | --------------------------------------------------------------------- |
-| `guest_page_viewed`        | How many scans reach the ticket, and what they find (camera, gallery) |
-| `guest_join_refused`       | Cap reached vs. a bug — a refusal on an open camera is the latter     |
-| `camera_opened`            | The denominator for the OS camera hand-off                            |
-| `shutter_pressed`          | A file came back; `away_ms` is how long the OS had the screen         |
-| `capture_preparation_slow` | Successful preparation over five seconds, with safe size metadata     |
-| `upload_issue`             | One deduplicated issue: stage, class, attempt and whether terminal    |
-| `upload_confirmed`         | Done, with `elapsed_ms` from the shutter                              |
-| `upload_restored`          | A shot replayed after a killed tab, with its age                      |
-| `upload_discarded`         | A stored row thrown away unseen: expired, exhausted, empty            |
-| `upload_store_unavailable` | IndexedDB gave up, and at which stage — photos will not survive       |
-| `gallery_photo_opened`     | Somebody looked at the developed album — the format's whole payoff    |
-| `gallery_image_failed`     | A render would not load; a signed URL expires after an hour           |
-| `invite_shared`            | The link left the page, or the clipboard refused and it did not       |
-| `client_error`             | A rendered error boundary, with redacted stack locations              |
-| `server_error`             | An unhandled or critical handled server failure by operation          |
+| Event                      | Answers                                                                |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `guest_page_viewed`        | How many scans reach the ticket, and what they find (camera, gallery)  |
+| `guest_join_refused`       | Cap reached vs. a bug — a refusal on an open camera is the latter      |
+| `camera_opened`            | The denominator for the OS camera hand-off                             |
+| `shutter_pressed`          | A file came back; `away_ms` is how long the OS had the screen          |
+| `capture_preparation_slow` | Successful preparation over five seconds, with safe size metadata      |
+| `upload_issue`             | One deduplicated issue: stage, class, attempt and whether terminal     |
+| `upload_confirmed`         | Done, with `elapsed_ms` from the shutter                               |
+| `upload_restored`          | A shot replayed after a killed tab, with its age                       |
+| `upload_discarded`         | A stored row thrown away unseen: expired, exhausted, empty             |
+| `upload_store_unavailable` | IndexedDB gave up, and at which stage — photos will not survive        |
+| `gallery_photo_opened`     | Somebody looked at the developed album — the format's whole payoff     |
+| `gallery_image_failed`     | A render would not load; URLs never expire, so a missing object or net |
+| `invite_shared`            | The link left the page, or the clipboard refused and it did not        |
+| `client_error`             | A rendered error boundary, with redacted stack locations               |
+| `server_error`             | An unhandled or critical handled server failure by operation           |
 
 Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
 is no reliable client-side signal for a cancel, so none is invented. How often
@@ -760,7 +760,7 @@ inert — unread and unvalidated — until step 1.
   (`lib/participants.ts`).
 - **Host: Supabase Auth magic link.** Only `/host` is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
 - **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/host` to list **every** event once you promote an account.
-- Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. The slug is therefore the whole lock: ten characters from a 30-character alphabet (`k3f9x7ab2m`, ~5.9e14), cryptographically random. It was six while a readable name stem sat in front of it — the stem was quietly carrying part of the guess, so removing it and keeping six would have made albums enumerable. Only `generateEventSlug()` may mint one.
+- Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Photo files are public objects at unguessable, unlistable paths, so the same holds one level down: knowing a path is holding the photo, and nothing anonymous can discover one. The slug is therefore the whole lock: ten characters from a 30-character alphabet (`k3f9x7ab2m`, ~5.9e14), cryptographically random. It was six while a readable name stem sat in front of it — the stem was quietly carrying part of the guess, so removing it and keeping six would have made albums enumerable. Only `generateEventSlug()` may mint one.
 
 ## Data model (settled)
 
@@ -842,15 +842,25 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
 
-Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it, and `{event_id}/cover.jpg` for the cover. Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
+Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it, and `{event_id}/cover-{uuid}.jpg` for the cover (a fresh id per upload, because on a public bucket the URL is the CDN cache key and an overwrite under the same key serves the old bytes for an hour; events from before September 2026 keep a `cover.jpg`). Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
 
-**The bucket is private.** It used to be public, with privacy resting on two
-unguessable uuids in the path — a fair bet for an album with no reveal and an
-untenable one now: a public object URL keeps working forever regardless of what
-the reveal predicate says, so "nobody sees these until the album develops" could
-not have been kept by a URL anyone could hold. Reads are signed server-side in
-`lib/photo-urls.ts` (one batch `createSignedUrls` per grid, 1-hour expiry);
-guests never construct a photo URL.
+**The bucket is public, and a photo URL is a pure function of its path.**
+`lib/photo-urls.ts` builds `/storage/v1/object/public/…` from the path with no
+signature, no expiry and no round trip, so every viewer at a wedding shares one
+cache key per object. It was private from August to September 2026, with every
+read signed; that over-credited the bucket. The reveal is enforced by
+`event_gallery_by_slug` withholding paths until `now() >= reveal_at`, and
+signing them afterwards only guarded a 122-bit uuid path behind a slug that had
+already let the visitor in — at the cost of a Storage round trip per grid, a
+URL per viewer, and a broken image whenever a signature expired mid-session.
+`docs/public-cdn-and-export-worker.md` records the trade in full. Three things
+were knowingly given up: a leaked photo URL works for ever; hiding a photo
+removes it from the app and not from the CDN, so an actual takedown is
+`pnpm takedown <photo-id>` (removes the three objects, keeps the row, sets
+`hidden_at`); and a guest can reach their own master before the reveal by
+editing `_thumb` out of a URL `my_frames` returned. What was **not** given up:
+the bucket cannot be listed (below), and no anonymous request can find out
+what paths exist.
 
 **Guests hold no direct write access to Supabase at all.** Both anon insert
 policies — on `photos` and on `storage.objects` — are gone. Uploads go to signed
@@ -1018,8 +1028,11 @@ claims are live and load-bearing:
   by the 3200px/90% policy above. The pitch is "chat apps crush your photos, we
   don't", which stays true; never re-add claims of literally uncompressed
   originals
-- **Private, unindexed album** (FAQ) — event routes are `noindex`, and the
-  bucket is now private as well
+- **Private, unindexed album** (FAQ) — event routes are `noindex`, which
+  photos a guest is told about is decided by the reveal-gated RPCs, and the
+  bucket cannot be listed. Photo files themselves sit at public, unguessable,
+  unexpiring addresses; the privacy notice says so in both languages, and
+  nothing may claim "private storage" again
 - **Host can hide unwanted photos** (FAQ) — `hidden_at`
 
 - **Up to five participants are free; the paid event admits unlimited
@@ -1029,10 +1042,14 @@ claims are live and load-bearing:
   never removes the per-person format
 - **No preview and no retakes** (`hero.tsx`'s claim row, the guest event page's
   format line, the join ticket) — this is the format rather than a feature, and
-  it is true because there is no preview surface and `reserve_shot` spends a
-  frame per shutter press. It moved onto the landing page in the "Ticket & Roll"
-  pass; it had always been what the product does and was never stated where
-  someone deciding whether to use it would read it.
+  it is true in the sense a guest reads it: there is no preview surface, and
+  `reserve_shot` spends a frame per shutter press whatever anyone does with a
+  URL. It is a property of the UI, not of the system: since the bucket went
+  public a guest who edits `_thumb` out of a film-strip URL can fetch their own
+  master early. Nobody is stopped from doing that, and nothing is built to
+  invite it. It moved onto the landing page in the "Ticket & Roll" pass; it had
+  always been what the product does and was never stated where someone
+  deciding whether to use it would read it.
 - **No app and no sign-up for guests** (`hero.tsx`, the join ticket) — the guest
   flow is one name field and an httpOnly cookie; there is no account to make
 

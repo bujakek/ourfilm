@@ -160,8 +160,9 @@ export type TelemetryEventProperties = {
   /** Somebody is looking at the developed album — the payoff of the whole
    *  format, and until now unmeasured. */
   gallery_photo_opened: { event_id: string; index: number; photos: number }
-  /** A render would not load. Signed URLs expire after an hour, so a tab left
-   *  open and scrolled later is the expected cause. */
+  /** A render would not load. URLs are public and never expire, so this is a
+   *  missing object or a network failure, never a stale signature — a
+   *  non-zero rate on a developed album is a bug, not a tab left open. */
   gallery_image_failed: { event_id: string; surface: 'grid' | 'lightbox' }
   /** The guest-to-host loop, and the only growth mechanism in the product. */
   create_own_album_clicked: { event_id: string | null }

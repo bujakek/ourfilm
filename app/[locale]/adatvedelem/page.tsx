@@ -70,7 +70,7 @@ const sections: LegalSection[] = [
   {
     title: 'Ki láthatja a képeket',
     body: [
-      'Az eseménylink hosszú, véletlen azonosítót tartalmaz, az oldal nincs keresőbe indexelve, a fájlok pedig nem nyilvános tárhelyen vannak. A linket ugyanakkor bárki továbbadhatja, ezért csak azokkal oszd meg, akiknek hozzáférést szeretnél adni.',
+      'Az eseménylink hosszú, véletlen azonosítót tartalmaz, az oldal nincs keresőbe indexelve, és azt, hogy mely képek jelennek meg, a szerver dönti el. Maguk a képfájlok kitalálhatatlan, nem listázható címen érhetők el, amely nem jár le: aki egy kép pontos címét megkapja, később is megnyithatja. A linket ugyanakkor bárki továbbadhatja, ezért csak azokkal oszd meg, akiknek hozzáférést szeretnél adni.',
       'A házigazda minden képet elér, letölthet és elrejthet. A vendégek akkor láthatják a felfedett képeket, ha a házigazda ezt engedélyezte. Az OurFilm közreműködője csak üzemeltetés, biztonsági vizsgálat vagy bejelentés kezelése érdekében férhet hozzá, a szükséges mértékben.',
       'Képeket nem értékesítünk, hirdetőknek nem adunk át, és a szolgáltatás nyújtásán túl nem használunk fel.',
     ],
@@ -78,7 +78,7 @@ const sections: LegalSection[] = [
   {
     title: 'Szolgáltatók és adattovábbítás',
     body: [
-      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és privát fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési és jogi visszaigazoló e-mailek), valamint fizetésnél ${PAYMENT_PROCESSOR.name} és ${PAYMENT_PROCESSOR.merchantOfRecord}.`,
+      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési és jogi visszaigazoló e-mailek), valamint fizetésnél ${PAYMENT_PROCESSOR.name} és ${PAYMENT_PROCESSOR.merchantOfRecord}.`,
       `A Link Merchant of Recordként kezeli a fizetést, az alkalmazandó közvetett adót, a vásárlói számlát vagy bizonylatot, a visszatérítést, a fizetési vitát, a csalásmegelőzést és a tranzakciós ügyfélszolgálatot. Ezekhez a célokhoz a vásárlótól közvetlenül is gyűjt adatot. A Link tranzakciós támogatása itt érhető el: ${PAYMENT_PROCESSOR.supportUrl}.`,
       'A Supabase projekt jelenlegi régiója Zürich, Svájc. Svájc az EGT-n kívüli ország, amelyre az Európai Bizottság megfelelőségi határozata vonatkozik.',
       'A PostHog projektadatokat Frankfurtban, Németországban tárolja. A PostHog, Inc. és egyes alfeldolgozói az Egyesült Államokban vagy más EGT-n kívüli országban támogatási, biztonsági vagy hálózati feladatok miatt kezelhetnek adatot. A Vercel, a Stripe/Link és egyes további szolgáltatók szintén kezelhetnek adatot az EGT-n kívül. Ilyen továbbításnál az érintett szolgáltató EU–USA adatvédelmi kerettagságára, európai bizottsági megfelelőségi határozatra vagy általános szerződési feltételekre támaszkodunk. A Stripe és a Link saját adatkezelésére a Checkout felületén elérhető adatvédelmi tájékoztatójuk vonatkozik.',
@@ -115,7 +115,7 @@ const sections: LegalSection[] = [
   {
     title: 'Biztonság és incidensek',
     body: [
-      'A kapcsolat HTTPS-t használ, a képek privát tárhelyre kerülnek, a hozzáférést pedig szerveroldali ellenőrzések és adatbázis-jogosultságok korlátozzák. A nyers vendégmunkamenet-azonosító httpOnly sütiben marad; az adatbázisban ennek csak a lenyomata található.',
+      'A kapcsolat HTTPS-t használ, azt, hogy mely képek jelennek meg, szerveroldali ellenőrzések és adatbázis-jogosultságok döntik el, a képfájlok pedig kitalálhatatlan, nem listázható címen tárolódnak. A nyers vendégmunkamenet-azonosító httpOnly sütiben marad; az adatbázisban ennek csak a lenyomata található.',
       'Adatvédelmi incidens esetén felmérjük a kockázatot, dokumentáljuk az esetet, és ha a GDPR alapján szükséges, a tudomásszerzést követően indokolatlan késedelem nélkül, lehetőség szerint 72 órán belül értesítjük a NAIH-ot. Magas kockázat esetén az érintetteket is tájékoztatjuk.',
     ],
   },
@@ -154,8 +154,8 @@ const englishSections: LegalSection[] = [
   {
     title: 'Access and sharing',
     body: [
-      'Event links contain a long random identifier and photos are stored privately, but anyone can forward a link. The host can access, download and hide every photo. Guests see revealed photos only where the host permits it. Authorised personnel access content only where needed for operations, security or a report.',
-      `We use Supabase for database and private file storage, Vercel for hosting and cookie-free analytics, PostHog, Inc. for cookie-free product analytics and error diagnostics, ${EMAIL_PROVIDER} for login and legal emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. PostHog project data is stored in Frankfurt, Germany. PostHog, Inc. and some of its subprocessors may perform support, security or network processing outside the EEA. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
+      'Event links contain a long random identifier, event pages are not indexed, and which photos are shown is decided server-side. Photo files sit at unguessable, unlistable addresses that do not expire, so anyone who obtains a photo’s exact address can open it later. Anyone can forward a link. The host can access, download and hide every photo. Guests see revealed photos only where the host permits it. Authorised personnel access content only where needed for operations, security or a report.',
+      `We use Supabase for database and file storage, Vercel for hosting and cookie-free analytics, PostHog, Inc. for cookie-free product analytics and error diagnostics, ${EMAIL_PROVIDER} for login and legal emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. PostHog project data is stored in Frankfurt, Germany. PostHog, Inc. and some of its subprocessors may perform support, security or network processing outside the EEA. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
     ],
   },
   {
@@ -182,7 +182,7 @@ const englishSections: LegalSection[] = [
   {
     title: 'Security, children and changes',
     body: [
-      'We use HTTPS, private storage, server-side authorisation and database access controls. Raw guest session identifiers remain in httpOnly cookies and only hashes are stored in the database. We assess and document personal-data incidents and notify authorities or affected people where the GDPR requires it.',
+      'We use HTTPS, server-side authorisation and database access controls to decide which photos are shown; photo files are stored at unguessable, unlistable addresses. Raw guest session identifiers remain in httpOnly cookies and only hashes are stored in the database. We assess and document personal-data incidents and notify authorities or affected people where the GDPR requires it.',
       'Hosts must be adults. Photos may include children; hosts and photographers should take particular care, and a parent or guardian may request that a photo be hidden or removed. Material changes are published here with a new update date and, where appropriate, notified to existing hosts.',
     ],
   },

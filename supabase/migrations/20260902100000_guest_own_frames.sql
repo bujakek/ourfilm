@@ -20,8 +20,13 @@
 --      up *from* the hash and never taken as an argument — a client-supplied
 --      participant id would turn this into a way to read anyone's roll, and a
 --      slug identifies an event, not a person.
---   2. **`thumb_path` only.** A strip cell is 52px. There is no reason for this
---      endpoint to be able to hand out the 4096px master, so it cannot.
+--   2. **`thumb_path` only.** A strip cell is 52px, so the thumb is all the
+--      screen needs and all this endpoint returns. Since the bucket went
+--      public (`20260908120000`) that is a scoping choice, not a guarantee:
+--      the three renders share a path stem, so a guest can edit `_thumb` out
+--      of a URL returned here and fetch their own 3200px master before the
+--      album develops. It is their own frame — the reveal withholds the
+--      *group's* photos, and nothing here reaches anyone else's.
 --   3. **`service_role` only**, like every other read keyed on a session token.
 --      `revoke … from public` does not achieve that — Supabase grants execute
 --      to `anon` and `authenticated` directly — so both are revoked by name.

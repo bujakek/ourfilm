@@ -198,12 +198,7 @@ export async function getOwnedEventsWithPreviews(): Promise<
   )
 }
 
-/**
- * One row of the admin list, with its preview thumbnails signed.
- *
- * The list is the one host screen that renders many events at once, so the
- * signing happens in a single batch across all of them rather than per event.
- */
+/** One row of the admin list, with its preview thumbnails resolved to URLs. */
 export type EventListItem = Omit<EventWithPreview, 'previews'> & {
   previewUrls: string[]
 }
@@ -224,14 +219,10 @@ export function captureIsOpen(event: {
 export async function getEventListItems(): Promise<EventListItem[]> {
   const events = await getOwnedEventsWithPreviews()
 
-  const { signPhotoUrls } = await import('./photo-urls')
-  const signed = await signPhotoUrls(events.flatMap((e) => e.previews))
+  const { publicPhotoUrl } = await import('./photo-urls')
 
   return events.map(({ previews, ...event }) => ({
     ...event,
-    previewUrls: previews.flatMap((path) => {
-      const url = signed.get(path)
-      return url ? [url] : []
-    }),
+    previewUrls: previews.map(publicPhotoUrl),
   }))
 }
