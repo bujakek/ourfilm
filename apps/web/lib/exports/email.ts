@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Locale } from '../i18n'
 import { SITE_URL } from '../site'
 import type { Database } from '../supabase/database.types'
+import { renderEmailLayout } from '../email/layout'
 import { reportServerEvent, reportServerIssue } from '../telemetry-server'
 import type { AlbumExportRow } from './jobs'
 
@@ -36,39 +37,65 @@ export function renderExportReadyEmail(input: {
   eventName: string
   url: string
   photoCount: number
+  byteSize?: number | null
+  missingCount?: number
 }): { subject: string; html: string; text: string } {
   const { eventName, url, photoCount } = input
   const hu = input.locale === 'hu'
   const subject = hu
     ? `Elkészült az album: ${eventName}`
     : `Your album is ready: ${eventName}`
-  const lines = hu
-    ? [
-        `Elkészült az album a(z) ${eventName} eseményhez — ${photoCount} kép, egy ZIP-fájlban.`,
-        `Letöltés innen: ${url}`,
-        'A letöltés 48 óráig érhető el. Utána újra elkészítjük, ha kéred — ugyanezen az oldalon.',
-      ]
-    : [
-        `The album for ${eventName} is ready — ${photoCount} photos in one ZIP.`,
-        `Download it here: ${url}`,
-        'The download is available for 48 hours. After that we prepare it again on request, on the same page.',
-      ]
-  const text = lines.join('\n\n') + '\n\n— OurFilm\n'
-  const html =
-    `<!doctype html><html lang="${input.locale}"><body style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#111;line-height:1.5">` +
-    `<p>${escapeHtml(lines[0])}</p>` +
-    `<p><a href="${escapeHtml(url)}" style="display:inline-block;padding:10px 16px;background:#111;color:#fff;border-radius:8px;text-decoration:none">${hu ? 'Album letöltése' : 'Download the album'}</a></p>` +
-    `<p style="color:#555;font-size:14px">${escapeHtml(lines[2])}</p>` +
-    `<p style="color:#555;font-size:14px">— OurFilm</p></body></html>`
+  const size = formatBytes(input.byteSize ?? null, input.locale)
+  const figures = [
+    { label: hu ? 'Kép' : 'Photos', value: String(photoCount) },
+    ...(size ? [{ label: hu ? 'Méret' : 'Size', value: size }] : []),
+    {
+      label: hu ? 'Elérhető' : 'Available',
+      value: hu ? '48 óráig' : '48 hours',
+    },
+  ]
+  const missing =
+    input.missingCount && input.missingCount > 0
+      ? hu
+        ? `${input.missingCount} képet nem sikerült beletenni; a ZIP-ben egy HIANYZO-KEPEK.txt sorolja fel őket.`
+        : `${input.missingCount} photo(s) could not be included; HIANYZO-KEPEK.txt inside the ZIP lists them.`
+      : null
+
+  const { html, text } = renderEmailLayout({
+    locale: input.locale,
+    preheader: hu
+      ? `${photoCount} kép egy ZIP-fájlban, 48 óráig letölthető.`
+      : `${photoCount} photos in one ZIP, available for 48 hours.`,
+    eyebrow: hu ? 'Album' : 'Album',
+    heading: eventName,
+    intro: [
+      hu
+        ? 'Elkészült az album. Minden kép egyetlen ZIP-fájlban, a felvétel idejével a fájlnevekben és a képekben.'
+        : 'The album is ready. Every photo in one ZIP, with the capture time in the filenames and in the files themselves.',
+    ],
+    figures,
+    button: { label: hu ? 'Album letöltése' : 'Download the album', url },
+    underButton: hu
+      ? 'A gomb az eseményed oldalára visz; a letöltés onnan indul.'
+      : 'The button opens your event page; the download starts there.',
+    note:
+      missing ??
+      (hu
+        ? 'A letöltés 48 óráig érhető el. Utána ugyanezen az oldalon újra elkészítjük, ha kéred.'
+        : 'The download is available for 48 hours. After that we prepare it again on request, on the same page.'),
+    footer: hu
+      ? 'Ezt a levelet azért kaptad, mert a házigazdaként albumot kértél az eseményedhez.'
+      : 'You received this because, as the host, you asked for the album of your event.',
+  })
   return { subject, html, text }
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+function formatBytes(bytes: number | null, locale: Locale): string | null {
+  if (!bytes) return null
+  const gb = bytes / 1024 ** 3
+  if (gb >= 1)
+    return `${gb.toFixed(1).replace('.', locale === 'hu' ? ',' : '.')} GB`
+  return `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`
 }
 
 /**
@@ -111,6 +138,8 @@ export async function sendExportReadyEmail(
       eventName: event.event_name,
       url,
       photoCount: row.photo_count,
+      byteSize: row.byte_size,
+      missingCount: row.missing_count,
     })
 
     const response = await fetch('https://api.resend.com/emails', {
