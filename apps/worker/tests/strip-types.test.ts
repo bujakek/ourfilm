@@ -23,6 +23,11 @@ describe('strip-only mode', () => {
         process.execPath,
         [
           '--experimental-strip-types',
+          // The loader's verdict is the test, not its advice: without this
+          // the ExperimentalWarning arrives on one line on some Node 22
+          // releases and two on others, and asserting an empty stderr
+          // becomes a test of the release rather than of the source.
+          '--no-warnings',
           '--input-type=module',
           '-e',
           `await import(${JSON.stringify(new URL(file, `file://${src}`).href)})`,
@@ -36,9 +41,7 @@ describe('strip-only mode', () => {
           },
         },
       )
-      expect(result.stderr.replace(/ExperimentalWarning[^\n]*\n?/g, '')).toBe(
-        '',
-      )
+      expect(result.stderr).toBe('')
       expect(result.status).toBe(0)
     })
   }
