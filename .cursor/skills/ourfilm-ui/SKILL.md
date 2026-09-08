@@ -5,11 +5,11 @@ description: OurFilm's dark glassmorphism design system and Hungarian UI copy co
 
 # OurFilm UI
 
-Dark glassmorphism on near-black. Tailwind CSS v4 with **CSS-based config** — all tokens live in `app/globals.css` under `@theme`. There is no `tailwind.config.js`; never create one.
+Dark glassmorphism on near-black. Tailwind CSS v4 with **CSS-based config** — all tokens live in `apps/web/app/globals.css` under `@theme`. There is no `tailwind.config.js`; never create one.
 
 ## Non-negotiables
 
-- **Never introduce a new color.** Use the tokens below. If a design needs a color that isn't there, add it as a CSS variable in `app/globals.css` and reference it via a token.
+- **Never introduce a new color.** Use the tokens below. If a design needs a color that isn't there, add it as a CSS variable in `apps/web/app/globals.css` and reference it via a token.
 - **Never use raw hex in components.** `text-accent`, not `text-[#c3b6ff]`. (Decorative glow blobs in `background-glow.tsx` are the one existing exception.)
 - **Dark only.** `color-scheme: dark` is set globally; there is no light mode and no theme toggle.
 - **Mobile-first.** Guests arrive on phones. Design at 390px, then add `sm:` / `lg:`.
@@ -32,7 +32,7 @@ Radii are large and soft: `rounded-2xl` (1rem) for controls, `rounded-3xl` for c
 
 ## Surface utilities
 
-Defined in `app/globals.css` — compose them with Tailwind:
+Defined in `apps/web/app/globals.css` — compose them with Tailwind:
 
 - `.glass` — standard liquid-glass surface (blur 20px, white 6%→2% gradient, inset highlight). Default for cards, inputs, pills, badges.
 - `.glass-strong` — heavier blur and brighter edge. For the one hero element on a screen, or a container wrapping other glass.
@@ -81,7 +81,7 @@ Every full-width section follows this rhythm. Copy it:
 
 ## Motion
 
-- **`<Reveal>`** (`components/site/reveal.tsx`) — IntersectionObserver fade-up, fires once. Stagger grids with `delay={i * 90}`. Accepts `as` for semantic tags (`article`, `li`, `header`).
+- **`<Reveal>`** (`apps/web/components/site/reveal.tsx`) — IntersectionObserver fade-up, fires once. Stagger grids with `delay={i * 90}`. Accepts `as` for semantic tags (`article`, `li`, `header`).
 - Ambient animations: `animate-float-slow`, `animate-float-slower`, `animate-glow-drift`. Offset duplicates with `[animation-delay:-6s]`.
 - Transitions use the `cubic-bezier(0.16, 1, 0.3, 1)` ease already baked into the glass utilities. Hover lifts are `-translate-y-*` or `scale-[1.02]` — subtle only.
 - `prefers-reduced-motion` is handled globally in `globals.css`. Don't add per-component guards.

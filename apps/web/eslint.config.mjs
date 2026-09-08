@@ -3,16 +3,10 @@ import nextTypescript from 'eslint-config-next/typescript'
 
 const config = [
   {
-    // `.agents/` and `.claude/` hold vendored Claude Code skill scripts, not
-    // project source. Linting them buys nothing and drowns real findings.
-    ignores: [
-      '.next/**',
-      'node_modules/**',
-      'next-env.d.ts',
-      '.agents/**',
-      '.claude/**',
-      'supabase/**',
-    ],
+    // Only build output is excluded. The vendored skill directories and
+    // `supabase/` that used to be listed here live at the repository root now,
+    // outside this package, so `eslint .` never reaches them.
+    ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts'],
   },
   ...nextCoreWebVitals,
   ...nextTypescript,

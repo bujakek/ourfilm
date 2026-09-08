@@ -49,13 +49,40 @@ key — need a real Postgres and a real PostgREST, and a local stack is both.
 
 It used to run against the linked project, and that is now refused twice over.
 `scripts/test-db.mjs` reads the credentials from `supabase status` and never
-falls back to anything, and `tests/db/local-only.ts` aborts on a non-loopback
+falls back to anything, and `apps/web/tests/db/local-only.ts` aborts on a non-loopback
 URL before a client is constructed — so running vitest directly cannot reach
 production either. The suite writes throwaway users, events, participants and
 photos and cleans up in a `finally`, which an interrupt or a thrown fixture
 skips; against production those rows would stay.
 
-Never use npm or yarn — this project is **pnpm**. Never re-add `typescript.ignoreBuildErrors` to `next.config.mjs`; it was removed deliberately so type errors actually fail the build.
+Never use npm or yarn — this project is **pnpm**. Never re-add `typescript.ignoreBuildErrors` to `apps/web/next.config.mjs`; it was removed deliberately so type errors actually fail the build.
+
+## Repository layout
+
+The repository is a pnpm workspace, and the root is **not** the Next app.
+
+```
+apps/web/        the Next.js app — app/, components/, lib/, content/, public/,
+                 tests/, its configs, and the operator scripts that import lib/
+supabase/        migrations, config.toml, email templates — infrastructure both
+                 the web app and the Phase 2 export worker depend on
+scripts/         test-db.mjs and check-supabase-types.mjs, which drive the
+                 Supabase CLI and so live beside supabase/
+packages/        empty until the export worker needs a shared module
+```
+
+Every command in this document runs from the **root**: `pnpm verify`,
+`pnpm test`, `pnpm seed`, `pnpm grant`, `pnpm takedown` and the rest forward
+to `apps/web` with `--filter web`, and `pnpm supabase`, `pnpm test:db`,
+`pnpm types:gen` and `pnpm format` run at the root because what they touch is
+at the root. `apps/web/.env.local` is where the app's environment lives —
+Next reads it from the app directory, and the operator scripts run from there
+— so there is no `.env.local` at the root. On Vercel the project's **Root
+Directory** is `apps/web`; `apps/web/vercel.json` is what pins `fra1`.
+
+Import paths inside `apps/web` are unchanged: `@/*` resolves from the package,
+so `@/lib/...` still means `apps/web/lib/...`. File paths in this document are
+written from the repository root.
 
 ## Skills — load these instead of re-deriving conventions
 
@@ -72,14 +99,14 @@ Project skills live in `.cursor/skills/`. Read the relevant one _before_ writing
 - **Next.js 16** (App Router, Turbopack), **React 19**, TypeScript strict
 - **pnpm**; hosted on **Vercel**
 - **Supabase** — Postgres + Storage + Auth, installed and connected (`@supabase/supabase-js`, `@supabase/ssr`). The CLI is a devDependency: `pnpm supabase …`
-- **Tailwind CSS v4** — CSS-based config via `@theme` in `app/globals.css`. There is **no `tailwind.config.js`**; don't create one
-- **shadcn/ui** (`components.json`, style `base-nova`) on `@base-ui/react`; `lucide-react` icons
+- **Tailwind CSS v4** — CSS-based config via `@theme` in `apps/web/app/globals.css`. There is **no `tailwind.config.js`**; don't create one
+- **shadcn/ui** (`apps/web/components.json`, style `base-nova`) on `@base-ui/react`; `lucide-react` icons
 - **qrcode.react** for QR generation
-- ESLint (flat config, `eslint.config.mjs`) + Prettier (`.prettierrc.json`, no semicolons, single quotes, Tailwind class sorting)
+- ESLint (flat config, `apps/web/eslint.config.mjs`) + Prettier (`.prettierrc.json`, no semicolons, single quotes, Tailwind class sorting)
 
 ### Local env
 
-`.env.local` is gitignored and **must never be committed**. It is maintained **by hand**. Supabase needs three keys:
+`apps/web/.env.local` is gitignored and **must never be committed**. It is maintained **by hand**. Supabase needs three keys:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=       # Supabase dashboard → Project Settings → API Keys
@@ -109,7 +136,7 @@ STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
 
 **The Stripe account exists and test mode is wired up locally.** All four
-are filled in in `.env.local`, so `stripeIsConfigured()` is true and the admin
+are filled in in `apps/web/.env.local`, so `stripeIsConfigured()` is true and the admin
 billing card offers checkout. Nothing is set on Vercel yet, so payments are
 still off in every deployed environment — `stripeIsConfigured()` is what keeps
 that UI honest.
@@ -150,8 +177,8 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   it describes a product that no longer exists. Read it for the decisions that
   still hold (slug shape, region, ownership scoping, self-serve delete) and
   ignore the phase list.
-- **Bilingual marketing site** — `app/[locale]/page.tsx` composes the disposable
-  camera story from `components/site/*`: hero, benefits, how-it-works,
+- **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the disposable
+  camera story from `apps/web/components/site/*`: hero, benefits, how-it-works,
   qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
   camera story for `/en` and `/hu`, with `/` redirecting to English.
 - **The homepage and `/hu/arak` describe the disposable-camera product.** The
@@ -183,11 +210,11 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   account. It creates a camera that is open now, reveals instantly, and has five
   participants with photos — every screen reachable without editing a timestamp.
 
-- **Roles are live; Stripe is live in test mode only.** `.env.local` has all
+- **Roles are live; Stripe is live in test mode only.** `apps/web/.env.local` has all
   three `STRIPE_*` keys, so a host can run a full test checkout on a dev
   machine. No `STRIPE_*` variable is set on Vercel, so every deployed
   environment still says payment is not switched on. The comment in
-  `lib/stripe/env.ts` claiming there is no Stripe account is stale. See Billing.
+  `apps/web/lib/stripe/env.ts` claiming there is no Stripe account is stale. See Billing.
 
 - **Production auth email is localized by a signed Send Email Hook.** Both
   `signInWithOtp` callers put `lang=en|hu` in `emailRedirectTo` and user
@@ -198,8 +225,8 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   locale and must not replace the production hook. Deployment details are in
   `supabase/templates/README.md`.
 
-- `lib/slug.ts` holds the canonical `slugify()` — the host area and the QR preview must both use it so printed QR codes never disagree.
-- `vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
+- `apps/web/lib/slug.ts` holds the canonical `slugify()` — the host area and the QR preview must both use it so printed QR codes never disagree.
+- `apps/web/vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
   (Zurich) and Vercel's default is `iad1` (Washington DC), so every query on
   the guest path was crossing the Atlantic twice. Frankfurt is the closest
   Vercel region. If the Supabase project ever moves, move this with it —
@@ -207,7 +234,7 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
 
 ## `redirect()` from a Server Action rejects on the client (settled)
 
-`app/auth/callback/callback-exchange.tsx` calls `completeMagicLink` and used to
+`apps/web/app/auth/callback/callback-exchange.tsx` calls `completeMagicLink` and used to
 treat any rejection as a transport failure, sending the browser to
 `/host/login?error=link`. But `redirect()` reports itself **by throwing**, and a
 Server Action re-throws that on the client — so the success path arrived in the
@@ -221,9 +248,9 @@ a link carried a `next`: the destination was silently discarded.
 
 ## The guest gate is in the pages, not the layout (settled — learned the hard way)
 
-`readParticipantTokenHash()` (`lib/participants.ts`) reads the httpOnly cookie,
+`readParticipantTokenHash()` (`apps/web/lib/participants.ts`) reads the httpOnly cookie,
 and **each guest page checks it and returns or redirects before fetching
-anything**. Do not move this back up into `app/e/[slug]/layout.tsx`, however
+anything**. Do not move this back up into `apps/web/app/e/[slug]/layout.tsx`, however
 tidier that looks:
 
 - Next renders the child segment and hands the layout the **result**. A layout
@@ -240,7 +267,7 @@ cookie is set) rather than from a client effect. An effect keyed on
 object on every render — so the success path would depend on render timing
 rather than on the action having succeeded.
 
-**`app/e/[slug]` has no `loading.tsx`, deliberately.** With one present, the
+**`apps/web/app/e/[slug]` has no `loading.tsx`, deliberately.** With one present, the
 Suspense boundary around the join screen never completed on the client: the
 server-rendered form stayed in the DOM unhydrated, so the submit button was
 permanently disabled while typing still showed text. Verified by A/B — remove the
@@ -260,8 +287,8 @@ Tapping the shutter hands the tab to the OS camera, and iOS reclaims a
 backgrounded Safari whenever it likes. There is no retake, so a photo that
 lived only in memory was a lost moment.
 
-The camera file is written to IndexedDB (`lib/upload-store.ts`) the moment the
-shutter fires, and deleted once `commit_shot` confirms. `lib/upload-queue.ts`
+The camera file is written to IndexedDB (`apps/web/lib/upload-store.ts`) the moment the
+shutter fires, and deleted once `commit_shot` confirms. `apps/web/lib/upload-queue.ts`
 drains one shot at a time, in capture order, and replays whatever a killed tab
 left behind. Persistence swallows: private mode is the old in-memory behaviour.
 
@@ -293,7 +320,7 @@ and the bytes are dropped. `ended` and `no_shots` drop the rest of the queue;
 other refusals wait and retry.
 
 **The attempt budget is only ever spent on an answer from the server**, and
-`lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten
+`apps/web/lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten
 seconds is forty seconds — a marquee, a lift, a walk to the car park — so
 charging for requests that never left the phone deleted the photo outright.
 A connection failure, a teardown (`stop()` runs on unmount) and a refusal about
@@ -303,13 +330,13 @@ would retry for a day. Mind the trap: `uploadToSignedUrl` returns a
 `StorageUnknownError` with the real `TypeError` one level down in
 `originalError`, so the obvious `name === 'TypeError'` check is false for every
 genuine failure — and getting it wrong throws nothing and logs nothing, which
-is how it shipped. Both halves are pinned in `tests/unit/upload-failure.test.ts`
+is how it shipped. Both halves are pinned in `apps/web/tests/unit/upload-failure.test.ts`
 and in the queue suite; sabotaging either direction turns them red.
 
 ## The create flow is four full-screen questions (settled)
 
 `/host/events/new` asks four things, one per screen, in a shared shell
-(`components/host/onboarding/*`): the name, when the event ends, when the
+(`apps/web/components/host/onboarding/*`): the name, when the event ends, when the
 photos appear, and — sharing the last screen — how many guests, how long a roll
 is, and who may look. Modelled closely on Once's onboarding: full-bleed dark
 screens, one question each, a back arrow top-left, progress dots and the CTA
@@ -333,7 +360,7 @@ does it need. Neither of the other two depends on the first being answered.
   (`browserTimeZone()`) and stored with the event, so every later screen still
   formats in the event's own zone. The zone reaches the client one render late,
   through `useSyncExternalStore` rather than an effect — see
-  `components/host/onboarding/use-browser-time-zone.ts`.
+  `apps/web/components/host/onboarding/use-browser-time-zone.ts`.
 - **There are two reveal choices:** immediately, or when the event ends. The
   database still understands its legacy `custom` mode, but neither onboarding
   nor settings exposes or accepts it.
@@ -344,7 +371,7 @@ does it need. Neither of the other two depends on the first being answered.
   picking **Korlátlan** on the last screen only changes where the host lands —
   Stripe Checkout instead of their new event — and an abandoned checkout leaves
   an ordinary free event, which is what the ledger's `pending` row already
-  describes. `FREE_PARTICIPANT_LIMIT` in `lib/onboarding.ts` mirrors the
+  describes. `FREE_PARTICIPANT_LIMIT` in `apps/web/lib/onboarding.ts` mirrors the
   database function so the screen can name the limit before the row exists.
 - **Onboarding can start a checkout, and the guest cap still cannot.** The paid
   tier is offered to the _host_, at the one moment they are thinking about how
@@ -352,8 +379,8 @@ does it need. Neither of the other two depends on the first being answered.
   checkout — that rule is about who is holding the phone, not about where the
   button lives. When `stripeIsConfigured()` is false the paid tile is disabled
   and reads "Hamarosan" rather than a price, the same honesty
-  `components/host/billing-card.tsx` keeps.
-- **`createEventCheckoutUrl` (`lib/stripe/checkout.ts`) is shared** by the
+  `apps/web/components/host/billing-card.tsx` keeps.
+- **`createEventCheckoutUrl` (`apps/web/lib/stripe/checkout.ts`) is shared** by the
   billing card and the create action. Session metadata, the success and cancel
   URLs and the `pending` ledger row all live in one place, because every one of
   them is silently wrong when two copies drift.
@@ -361,11 +388,11 @@ does it need. Neither of the other two depends on the first being answered.
   one. `cover_path` stays nullable and every surface already renders an event
   without a cover; the upload branch in `createEvent` still works and is waiting
   for whatever surfaces the picker next.
-- **`app/host/events/new/page.tsx` must stay synchronous.** `app/host/loading.tsx`
+- **`apps/web/app/host/events/new/page.tsx` must stay synchronous.** `apps/web/app/host/loading.tsx`
   wraps every host segment in a Suspense boundary, and an `async` page here
   suspends into it — after which the boundary never completes on the client and
   the whole flow is served as unhydrated markup. Same Next 16.3 failure as the
-  `loading.tsx` note on `app/e/[slug]`, reproduced here by A/B.
+  `loading.tsx` note on `apps/web/app/e/[slug]`, reproduced here by A/B.
 
 ### It is filled in signed out (settled)
 
@@ -373,11 +400,11 @@ Nobody is asked for an account before they have seen what they are signing up
 for. The whole flow is a form; the account is asked for on the last screen, when
 there is finally something to save.
 
-- **`/host/events/new` is in `PUBLIC_ADMIN_PATHS`** (`proxy.ts`), matched
+- **`/host/events/new` is in `PUBLIC_ADMIN_PATHS`** (`apps/web/proxy.ts`), matched
   exactly — never by prefix, because it is one segment away from routes that
   list and mutate real events.
 - **The answers live in `localStorage`** under `ourfilm:event-draft:v1`
-  (`lib/event-draft.ts`), zod-validated on read, expiring after seven days. That
+  (`apps/web/lib/event-draft.ts`), zod-validated on read, expiring after seven days. That
   is the trade the feature is built on: **no anonymous rows in the database, no
   lost answers in the browser.** Nothing in the store is an entitlement — a
   `plan` of `full` there is a wish, and only a paid `purchases` row lifts a cap.
@@ -405,13 +432,13 @@ there is finally something to save.
 Three host-area controls show the result before the server has confirmed it. All
 revert on their own — none carries hand-written rollback code.
 
-- **`components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
+- **`apps/web/components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
   **grid**, not the tile, so the "N rejtve" counter moves with the photo it
   describes. Per-tile state would flip the tile instantly and leave the count a
   round trip behind, which reads as a bug.
-- **`components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
+- **`apps/web/components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
-- **`components/host/shots-card.tsx`** — a five-way choice whose selected value
+- **`apps/web/components/host/shots-card.tsx`** — a five-way choice whose selected value
   is visible at a glance, so showing it immediately cannot mislead.
 
 **The two date cards are deliberately _not_ optimistic.**
@@ -433,7 +460,7 @@ because a client-side counter is a display and the database is the count.
 | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | `/`                                                                                        | 308 to `/hu`. Nothing renders here.                                                        |
 | `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                         |
-| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `content/blog/hu/*.mdx`                                                     |
+| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `apps/web/content/blog/hu/*.mdx`                                            |
 | `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                             |
 | `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft   |
 | `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos |
@@ -443,7 +470,7 @@ because a client-side counter is a display and the database is the count.
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
-with the first, and `proxy.ts` guards the second by the exact path
+with the first, and `apps/web/proxy.ts` guards the second by the exact path
 `/host/:path*`. Putting a locale in front of either would silently break a
 printed code or an auth gate.
 
@@ -451,12 +478,12 @@ printed code or an auth gate.
 keeping: `profiles.role = 'admin'` is a real role — the operator who sees every
 event — so the route was spending that word on the couple whose wedding it is.
 `/host` is the product's own vocabulary and the exact counterpart of the guest
-side's `/e/`. `next.config.mjs` 308s `/admin` and `/admin/:path*` across; safe as
+side's `/e/`. `apps/web/next.config.mjs` 308s `/admin` and `/admin/:path*` across; safe as
 a catch-all in a way a bare one is not, because `/admin` has no siblings to
 swallow. The **role** stays `admin` — only the route moved.
 
 Every pre-prefix URL (`/arak`, `/blog/:slug`, …) 308s to its `/hu` twin from
-`next.config.mjs`. Those redirects are spelled out one by one — a catch-all
+`apps/web/next.config.mjs`. Those redirects are spelled out one by one — a catch-all
 would swallow `/e/` and `/host`.
 
 Plus one machine endpoint: `POST /api/stripe/webhook`, which is the only thing
@@ -467,12 +494,12 @@ The `/e/` prefix is what the landing page already advertises in `qr-preview.tsx`
 
 ## Locales and the blog (settled)
 
-`lib/i18n.ts` holds `locales = ['hu'] as const`, and everything else is derived
+`apps/web/lib/i18n.ts` holds `locales = ['hu'] as const`, and everything else is derived
 from it: URLs, `generateStaticParams`, hreflang, the sitemap, RSS. Nothing else
 enumerates languages.
 
-**Articles are MDX files in `content/blog/<locale>/`.** There is no registry to
-keep in step any more — `lib/blog/posts.ts` reads the directory, validates the
+**Articles are MDX files in `apps/web/content/blog/<locale>/`.** There is no registry to
+keep in step any more — `apps/web/lib/blog/posts.ts` reads the directory, validates the
 frontmatter with zod, and everything downstream follows from that. Frontmatter
 is parsed off disk with `gray-matter` rather than imported out of the MDX,
 because `@types/mdx` cannot type named exports.
@@ -484,7 +511,7 @@ separate so a Hungarian URL reads Hungarian:
 segment in a URL — use `getTranslations(id)`. `related` in frontmatter lists
 **ids** for the same reason.
 
-**`content/blog/AGENTS.md` is the authoring guide** — frontmatter contract,
+**`apps/web/content/blog/AGENTS.md` is the authoring guide** — frontmatter contract,
 heading and link rules, the components available inside an article, Hungarian
 copy conventions, and what the build refuses. It sits next to the articles so
 it loads automatically when one is being written; read it before writing or
@@ -492,7 +519,7 @@ editing a post rather than reconstructing the rules from here.
 
 ### Adding an article
 
-1. Write `content/blog/hu/<slug>.mdx`. The filename **must** equal the `slug`
+1. Write `apps/web/content/blog/hu/<slug>.mdx`. The filename **must** equal the `slug`
    in its frontmatter; the build refuses otherwise.
 2. Frontmatter needs `id`, `locale`, `slug`, `title`, `description`,
    `publishedAt` (`YYYY-MM-DD`). Optional: `updatedAt`, `author`, `image`,
@@ -505,24 +532,24 @@ editing a post rather than reconstructing the rules from here.
 `draft: true` renders in `next dev` and disappears from a production build —
 index, sitemap, RSS, related lists, and the URL itself 404s.
 
-Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`components/blog/mdx-blocks.tsx`)
-with no import line; they are injected through `mdx-components.tsx`. Markdown
+Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`apps/web/components/blog/mdx-blocks.tsx`)
+with no import line; they are injected through `apps/web/mdx-components.tsx`. Markdown
 tables work via `remark-gfm`. **Remark plugins must be named as strings** in
-`next.config.mjs` — Turbopack runs the MDX pipeline in Rust and cannot accept a
+`apps/web/next.config.mjs` — Turbopack runs the MDX pipeline in Rust and cannot accept a
 JS function.
 
 ### Enabling English
 
-1. Add `'en'` to `locales` in `lib/i18n.ts`.
-2. Uncomment the `en` line in `lib/blog/mdx.ts`.
+1. Add `'en'` to `locales` in `apps/web/lib/i18n.ts`.
+2. Uncomment the `en` line in `apps/web/lib/blog/mdx.ts`.
 3. Run `pnpm typecheck`. Every `Record<Locale, …>` of UI strings becomes a type
    error listing exactly what needs translating — that is the checklist, and it
    is the reason those maps are typed that way.
-4. Translate the marketing pages under `app/[locale]/`.
+4. Translate the marketing pages under `apps/web/app/[locale]/`.
 5. **`<html lang>` — done, and this is the shape it left behind.** There is no
-   `app/layout.tsx` any more. Two root layouts render their own
-   `<html>`/`<body>`: `app/[locale]/layout.tsx` for the public site, which sets
-   `lang` from its own segment, and `app/(product)/layout.tsx` for `/e/`,
+   `apps/web/app/layout.tsx` any more. Two root layouts render their own
+   `<html>`/`<body>`: `apps/web/app/[locale]/layout.tsx` for the public site, which sets
+   `lang` from its own segment, and `apps/web/app/(product)/layout.tsx` for `/e/`,
    `/host` and `/auth`, which cannot (no locale segment, and a layout gets
    `params` but never `searchParams`). The product pages mark their own subtree
    with `lang` instead.
@@ -533,12 +560,12 @@ JS function.
      moving those folders did **not** change a printed QR URL. Verify that in
      the build's route table if you move them again.
    - Two root layouts leave no single layout to compose an unmatched-URL 404
-     from, so the global 404 is `app/global-not-found.tsx` behind
+     from, so the global 404 is `apps/web/app/global-not-found.tsx` behind
      `experimental.globalNotFound`. It bypasses layout rendering, so it imports
      `globals.css` and the font class itself and returns a whole document.
-     `app/[locale]/not-found.tsx` and `app/(product)/not-found.tsx` still handle
+     `apps/web/app/[locale]/not-found.tsx` and `apps/web/app/(product)/not-found.tsx` still handle
      `notFound()` inside their own trees.
-   - Shared shell lives in `lib/document.ts` (one font instance, one metadata
+   - Shared shell lives in `apps/web/lib/document.ts` (one font instance, one metadata
      base, one viewport). `<html>`/`<body>` stay literal in each root layout.
 
    The interim fix this replaced was an inline script patching
@@ -546,7 +573,7 @@ JS function.
    server-rendered Hungarian page — all the indexed ones — shipping `lang="en"`.
    Do not reach for it again.
 
-An `en` article already sits in `content/blog/en/` as a worked example. It is
+An `en` article already sits in `apps/web/content/blog/en/` as a worked example. It is
 inert — unread and unvalidated — until step 1.
 
 ## Access model (settled)
@@ -555,7 +582,7 @@ inert — unread and unvalidated — until step 1.
   field, once per device, and it is not friction for its own sake — a roll of
   film has to belong to somebody, and the gallery credits each photo to the
   person who took it. Everything past that is the participant session
-  (`lib/participants.ts`).
+  (`apps/web/lib/participants.ts`).
 - **Host: Supabase Auth magic link.** Only `/host` is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
 - **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/host` to list **every** event once you promote an account.
 - Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Slugs therefore carry a random suffix (`anna-peter-k3f9x7`); `slugify()` stays deterministic for the QR preview, and `generateEventSlug()` is what real events get. Never create an event with a bare `slugify()` result.
@@ -588,7 +615,7 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   while the camera is still running. That rule is a _form_ validation — it lives
   in `setReveal` and `validateEventDraft`, both of which can explain a refusal.
 
-  Both directions of the `datetime-local` conversion live in `lib/format.ts` and
+  Both directions of the `datetime-local` conversion live in `apps/web/lib/format.ts` and
   take the **event's own zone**, never the browser's or the server's — a
   `datetime-local` value carries no zone, and Vercel runs UTC, so resolving one
   there would move every window two hours off what the host typed.
@@ -630,7 +657,7 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 **Guests never read these tables directly.** The anon key is public, so any table `anon` can `select` is a table anyone can list — a permissive read policy on `events` would hand out every album's slug and make the unguessable URL pointless. Guest reads go through `security definer` functions keyed on the slug or event id (`event_by_slug`, `event_photos`); the host area reads the tables directly under ownership policies. Details in the Supabase skill.
 
-- **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `created_at`. One row per account, written by a trigger at signup. Read it through `lib/roles.ts`, never inline.
+- **`profiles`** — `id` (→ `auth.users`), `role` (`user` | `admin`), `created_at`. One row per account, written by a trigger at signup. Read it through `apps/web/lib/roles.ts`, never inline.
 
 - **`purchases`** — `event_id`, `owner_id`, `stripe_checkout_session_id` (unique), `stripe_payment_intent_id`, `stripe_customer_id`, `amount_minor`, `currency`, `status` (`pending` | `paid` | `refunded` | `failed` | `expired`), `created_at`, `paid_at`, `refunded_at`, `failed_at`, `expired_at`. A ledger, not a flag: every terminal Checkout outcome remains explainable, which is why `getEventPurchase()` sorts on `paid_at` before `created_at`.
 
@@ -645,7 +672,7 @@ unguessable uuids in the path — a fair bet for an album with no reveal and an
 untenable one now: a public object URL keeps working forever regardless of what
 the reveal predicate says, so "nobody sees these until the album develops" could
 not have been kept by a URL anyone could hold. Reads are signed server-side in
-`lib/photo-urls.ts` (one batch `createSignedUrls` per grid, 1-hour expiry);
+`apps/web/lib/photo-urls.ts` (one batch `createSignedUrls` per grid, 1-hour expiry);
 guests never construct a photo URL.
 
 **Guests hold no direct write access to Supabase at all.** Both anon insert
@@ -705,11 +732,11 @@ Nothing about the Stripe integration changed in the pivot — only the predicate
 gates. `event_upload_quota` (photos) became `event_participant_quota`
 (participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
 
-Key files: `lib/stripe/*` (`checkout.ts` builds the session for both entry
-points), `lib/billing.ts`, `lib/pricing.ts` (the displayed price, in one place),
-`lib/roles.ts`, `app/api/stripe/webhook/route.ts`,
-`app/host/events/[slug]/billing-actions.ts`,
-`components/host/billing-card.tsx`, `app/host/events/new/step-guests.tsx`.
+Key files: `apps/web/lib/stripe/*` (`checkout.ts` builds the session for both entry
+points), `apps/web/lib/billing.ts`, `apps/web/lib/pricing.ts` (the displayed price, in one place),
+`apps/web/lib/roles.ts`, `apps/web/app/api/stripe/webhook/route.ts`,
+`apps/web/app/host/events/[slug]/billing-actions.ts`,
+`apps/web/components/host/billing-card.tsx`, `apps/web/app/host/events/new/step-guests.tsx`.
 
 **`/hu/arak` and `/en/pricing` mirror this model.** They present one paid event rather than a
 three-tier SaaS table: up to five participants are free, one payment admits
@@ -760,7 +787,7 @@ now, in the order it was built:
 1. Schema reset + `participants` + reveal trigger (`20260824174541`)
 2. Guest RPCs: join, reserve/commit/release, state, gallery (`20260824174542`)
 3. Private bucket (`20260824174543`)
-4. `lib/` domain layer: `camera.ts`, `participants.ts`, `capture.ts`,
+4. `apps/web/lib/` domain layer: `camera.ts`, `participants.ts`, `capture.ts`,
    `photo-urls.ts`, `event-copy.ts`
 5. Guest surface: join → camera → gallery
 6. Admin: create flow, dashboard, settings, early reveal
@@ -801,14 +828,14 @@ the Hungarian copy in the same change.
 
 ## Conventions
 
-- `components/site/*` marketing sections · `components/event/*` guest-facing event UI · `components/host/*` host-area UI · `components/ui/*` shadcn primitives
+- `apps/web/components/site/*` marketing sections · `apps/web/components/event/*` guest-facing event UI · `apps/web/components/host/*` host-area UI · `apps/web/components/ui/*` shadcn primitives
 - Files kebab-case; components named exports (`export function EventHeader()`), no default exports except App Router pages/layouts
 - Server Components by default; add `'use client'` only for state, refs, or browser APIs
-- Shared logic in `lib/` (`lib/slug.ts`, `lib/supabase/*`); never duplicate a helper across components
-- The camera's rules live in `lib/camera.ts` as **pure functions taking `now`** —
+- Shared logic in `apps/web/lib/` (`apps/web/lib/slug.ts`, `apps/web/lib/supabase/*`); never duplicate a helper across components
+- The camera's rules live in `apps/web/lib/camera.ts` as **pure functions taking `now`** —
   the server computes them to decide what is allowed and the client to decide
   what to draw, and the two must never disagree. Nothing there reads a clock of
-  its own. Guest-facing Hungarian for event states lives in `lib/event-copy.ts`,
+  its own. Guest-facing Hungarian for event states lives in `apps/web/lib/event-copy.ts`,
   so the join state, camera action and photo section cannot describe the same
   event differently.
 - Import alias `@/*` from the repo root
