@@ -127,10 +127,16 @@ Run `pnpm test:db` against a **local** stack only.
    does, and that is currently the only reason Hungarian checkout succeeds
    against an account with no ToS URL. Verified by A/B against the live API.
 
-   Set it anyway, for the reason that actually matters to a buyer: with a URL
-   configured, the consent checkbox links to the ÁSZF. Without one it renders
-   our sentence alone, so a Hungarian consumer is accepting terms the page
-   never shows them.
+   The reason to set it anyway used to be that the consent checkbox otherwise
+   had nothing to link to. That is now handled in the request: Stripe renders
+   Markdown in `custom_text`, so the message carries
+   `[ÁSZF-et](<origin>/hu/aszf)` and the checkbox links to the terms either
+   way — verified against the live API, 200 with the message round-tripping
+   verbatim, 213 of the 1200 characters allowed.
+
+   Still worth setting, for the surfaces `custom_text` does not reach: the
+   legal-policies dialog Checkout shows from its footer, and the privacy
+   policy link beside it.
 
 2. In **Settings → Payment methods**, keep Cards enabled and confirm Apple Pay
    for HUF. Hosted Checkout surfaces Apple Pay itself; do not hard-code payment

@@ -240,8 +240,11 @@ describe('Stripe Checkout creation', () => {
     // unless the account has a ToS URL in its public business details or the
     // request carries its own acceptance message. Without this, every
     // Hungarian checkout 400s.
+    // Load-bearing twice over: without `custom_text` Stripe refuses the
+    // Session outright, and without the Markdown link inside it the checkbox
+    // names the ÁSZF with no way to open it.
     expect(params.custom_text?.terms_of_service_acceptance?.message).toContain(
-      'ÁSZF',
+      '[ÁSZF-et](http://localhost:3000/hu/aszf)',
     )
     // Alanyi adómentes: there is no VAT for Stripe to calculate, and the
     // document that satisfies Hungarian law is the Billingo invoice.

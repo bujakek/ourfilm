@@ -114,8 +114,14 @@ export async function createEventCheckoutUrl({
           // consent to your terms of service unless a URL is set".
           custom_text: {
             terms_of_service_acceptance: {
-              message:
-                'Elfogadom az ÁSZF-et, kérem a szolgáltatás azonnali, a 14 napos elállási időn belüli megkezdését, és tudomásul veszem, hogy a teljesítés megkezdésével elveszítem az elállási jogomat.',
+              // The Markdown link is the point, not decoration. Stripe renders
+              // `[text](url)` in this field, and without it the checkbox
+              // states our sentence with nothing to open — a Hungarian
+              // consumer agreeing to terms the page gives them no way to read.
+              // The dashboard's own ToS URL would normally supply that link;
+              // supplying `custom_text` replaces it, so the link has to come
+              // back in here.
+              message: `Elfogadom az [ÁSZF-et](${origin}/hu/aszf), kérem a szolgáltatás azonnali, a 14 napos elállási időn belüli megkezdését, és tudomásul veszem, hogy a teljesítés megkezdésével elveszítem az elállási jogomat.`,
             },
           },
           // Deliberately no `automatic_tax` and no `invoice_creation`: the
