@@ -89,17 +89,20 @@ function PreviewStrip({ event }: { event: EventListItem }) {
 }
 
 /**
- * Everything the old four paragraphs said, on one line.
+ * What tells one card from the next, and nothing else.
  *
- * Mono because every clause is a count, a duration or an address — the one
- * voice that reads as a readout rather than as prose, which is what makes it
- * skimmable down a column of cards.
+ * It used to carry the photo count, the guest count, the roll length and the
+ * slug as well — four readouts a row, down a column of them. None was
+ * something a host does anything about from this screen: the counts are the
+ * event page's figure row, the roll length is a setting, and the address is on
+ * the QR sheet where it can be scanned rather than spelled out in caps. What
+ * is left is the two facts that separate one card from another at a glance —
+ * whether it is still running, and whether the gallery is closed to guests.
  */
 function metadataParts(event: EventListItem, en: boolean): string[] {
-  const open = captureIsOpen(event)
   const parts: string[] = []
 
-  if (!open) {
+  if (!captureIsOpen(event)) {
     parts.push(
       `${en ? 'CLOSED' : 'LEZÁRT'} ${formatEventDay(
         event.capture_end_at,
@@ -108,17 +111,9 @@ function metadataParts(event: EventListItem, en: boolean): string[] {
       ).toUpperCase()}`,
     )
   }
-  if (event.photoCount > 0) {
-    parts.push(`${event.photoCount} ${en ? 'PHOTOS' : 'KÉP'}`)
-  }
-  parts.push(`${event.participantCount} ${en ? 'GUESTS' : 'VENDÉG'}`)
-  parts.push(
-    `${event.shots_per_participant} ${en ? 'EACH' : 'FEJENKÉNT'}`.toUpperCase(),
-  )
   if (!event.guests_can_view) {
     parts.push(en ? 'ONLY YOU SEE IT' : 'CSAK TE LÁTOD')
   }
-  parts.push(`/E/${event.slug.toUpperCase()}`)
   return parts
 }
 
@@ -134,6 +129,7 @@ function EventRow({
 }) {
   const en = locale === 'en'
   const open = captureIsOpen(event)
+  const meta = metadataParts(event, en)
 
   return (
     <li>
@@ -173,8 +169,12 @@ function EventRow({
                     )}
                   </span>
                 ) : null}
-                {open ? ' · ' : ''}
-                {metadataParts(event, en).join(' · ')}
+                {/* The line can now be empty — a running event whose gallery
+                    guests can see has nothing further to say — so the
+                    separator waits on there being something after it rather
+                    than on the event being open. */}
+                {open && meta.length > 0 ? ' · ' : ''}
+                {meta.join(' · ')}
               </p>
             </div>
 
