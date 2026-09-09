@@ -3,7 +3,7 @@
 import type { GalleryTile } from '@/lib/photos'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Lightbox } from './lightbox'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
@@ -21,6 +21,16 @@ export function PhotoGrid({
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const reduceMotion = useReducedMotion()
+
+  /** Where each tile is, so a photo grows out of the one that was tapped and
+   *  falls back into it. Measured on demand — see the host grid, which keeps
+   *  the same map for the same reason. */
+  const tiles = useRef(new Map<string, HTMLElement>())
+  const originOf = useCallback(
+    (photoId: string) =>
+      tiles.current.get(photoId)?.getBoundingClientRect() ?? null,
+    [],
+  )
 
   // The reveal pass — the whole album arriving at once because the gallery has
   // just opened — is a first paint, and only a first paint gets a stagger.
@@ -50,6 +60,10 @@ export function PhotoGrid({
             }
           >
             <motion.button
+              ref={(el) => {
+                if (el) tiles.current.set(photo.id, el)
+                else tiles.current.delete(photo.id)
+              }}
               type="button"
               onClick={() => {
                 setOpenIndex(i)
@@ -87,6 +101,7 @@ export function PhotoGrid({
             index={openIndex}
             onClose={() => setOpenIndex(null)}
             onNavigate={setOpenIndex}
+            originOf={originOf}
           />
         ) : null}
       </AnimatePresence>
