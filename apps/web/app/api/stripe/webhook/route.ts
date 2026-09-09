@@ -308,7 +308,6 @@ async function settleRecordedPurchase(
       : null
 
   const snapshot = direct && billing?.success ? billing.data : null
-  const consented = session.consent?.terms_of_service === 'accepted'
 
   const { error } = await db
     .from('purchases')
@@ -344,10 +343,11 @@ async function settleRecordedPurchase(
               purchase.terms_accepted_at ??
               session.metadata?.terms_accepted_at ??
               paidAt,
-            // The same checkbox wording carries the early-performance request,
-            // so it is the same moment.
+            // Read from the metadata rather than from `session.consent`,
+            // because the acceptance happens on our own page: the checkout
+            // action refuses to run without it, and the same wording carries
+            // the early-performance request — one tick, one moment.
             early_performance_consent_at:
-              consented &&
               session.metadata?.early_performance_requested === 'true'
                 ? (purchase.early_performance_consent_at ??
                   session.metadata?.terms_accepted_at ??

@@ -8,9 +8,9 @@ import { eventPriceLabel } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useActionState, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
 
 const INITIAL: CheckoutState = { error: null }
 
@@ -166,27 +166,7 @@ export function BillingCard({
               required
               className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
             />
-            <span>
-              {en ? 'I accept the ' : 'Elfogadom az '}
-              <Link
-                href={en ? '/en/terms' : '/hu/aszf'}
-                target="_blank"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                {en ? 'Terms' : 'ÁSZF-et'}
-              </Link>
-              {en
-                ? ', and ask OurFilm to begin before the 14-day cancellation period ends. I understand I may owe the proportion already supplied. I have read the '
-                : ', és kifejezetten kérem, hogy az OurFilm a 14 napos elállási/felmondási időszak vége előtt kezdje meg a szolgáltatást. Tudomásul veszem, hogy felmondás esetén a megszűnésig arányosan teljesített szolgáltatás díját meg kell fizetnem, valamint az '}
-              <Link
-                href={en ? '/en/privacy' : '/hu/adatvedelem'}
-                target="_blank"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                {en ? 'Privacy Notice' : 'adatkezelési tájékoztatót'}
-              </Link>
-              .
-            </span>
+            <PaidTermsAcceptance locale={locale} />
           </label>
           <Button
             type="submit"

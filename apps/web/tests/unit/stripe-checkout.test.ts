@@ -233,16 +233,12 @@ describe('Stripe Checkout creation', () => {
     expect(params.managed_payments).toBeUndefined()
     expect(params.billing_address_collection).toBe('required')
     expect(params.customer_creation).toBe('always')
-    expect(params.consent_collection).toEqual({
-      terms_of_service: 'required',
-    })
-    // Not decoration: Stripe refuses `consent_collection.terms_of_service`
-    // unless the account has a ToS URL in its public business details or the
-    // request carries its own acceptance message. Without this, every
-    // Hungarian checkout 400s.
-    expect(params.custom_text?.terms_of_service_acceptance?.message).toContain(
-      'ÁSZF',
-    )
+    // No second terms box. The declaration is accepted on our own page —
+    // `billing-actions` refuses to run without it — and asking again here
+    // would gate the submit, wallet buttons included, which is most of what
+    // leaving Managed Payments was for.
+    expect(params.consent_collection).toBeUndefined()
+    expect(params.custom_text).toBeUndefined()
     // Alanyi adómentes: there is no VAT for Stripe to calculate, and the
     // document that satisfies Hungarian law is the Billingo invoice.
     expect(params.automatic_tax).toBeUndefined()

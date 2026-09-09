@@ -561,23 +561,53 @@ describe('Stripe webhook', () => {
     expect((await POST(request())).status).toBe(200)
   })
 
-  it('still invoices a sale that arrives without accepted terms', async () => {
+  it('takes the declaration from our own page, not from Stripe', async () => {
     const { db, updates } = database({ purchase: directPurchase() })
     mocks.createAdminClient.mockReturnValue(db)
     mocks.constructEventAsync.mockResolvedValue(
+      // Stripe collects no consent on the direct path: the host accepted the
+      // terms on our billing card before the Session existed, and
+      // `billing-actions` refuses to run without it. `session.consent` is
+      // therefore always null here and must not be treated as a refusal.
       event('checkout.session.completed', directSession({ consent: null })),
     )
 
     expect((await POST(request())).status).toBe(200)
     const write = updates.find((w) => w.table === 'purchases')
-    // The invoice is owed under Hungarian law whatever the checkbox did, so
-    // the missing consent is recorded rather than used to withhold it.
     expect(write?.values).toMatchObject({
       status: 'paid',
       invoice_status: 'pending',
-      early_performance_consent_at: null,
+      // Carried in metadata by the same tick, stamped by
+      // `reserve_event_checkout` rather than by the browser.
+      early_performance_consent_at: '2026-09-01T12:00:00.000Z',
+      terms_version: '2026-08-31-mor-hu',
     })
     expect(mocks.ensureBillingoInvoice).toHaveBeenCalled()
+  })
+
+  it('records no early-performance consent when none was requested', async () => {
+    const { db, updates } = database({ purchase: directPurchase() })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        directSession({
+          metadata: {
+            ...(directSession().metadata as Record<string, string>),
+            early_performance_requested: 'false',
+          },
+        }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    const write = updates.find((w) => w.table === 'purchases')
+    // Still paid and still invoiced — the invoice is owed either way — but
+    // nothing claims a declaration the host did not make.
+    expect(write?.values).toMatchObject({
+      status: 'paid',
+      early_performance_consent_at: null,
+    })
   })
 
   it('parks a direct sale whose billing address is not Hungarian', async () => {
