@@ -97,7 +97,6 @@ export function Lightbox<Photo extends ViewablePhoto>({
   const touchStartX = useRef<number | null>(null)
   const reduceMotion = useReducedMotion()
   const [surface, animate] = useAnimate<HTMLDivElement>()
-  const backdrop = useRef<HTMLDivElement>(null)
   const closing = useRef(false)
   const photo = photos[index]
 
@@ -136,6 +135,16 @@ export function Lightbox<Photo extends ViewablePhoto>({
    * mount, so swiping to the next photo would fly it in from *its* thumbnail
    * too. Opening and closing are the only two moments that should morph, and
    * measuring the boxes ourselves is what keeps it to those two.
+   *
+   * **The photo morphs; the ground does not fade.** iOS fades it, and having
+   * that here would mean replacing `::backdrop` with an element Motion can
+   * animate. That was tried and broke the screen twice. The pseudo-element is
+   * the browser's own full-viewport layer, painted between the page and the
+   * dialog and impossible to mis-stack; a div has to win a stacking contest
+   * against a parent that animates opacity, and when it loses the viewer's
+   * chrome draws straight onto the grid with the page showing through. If the
+   * fade is worth having it is a CSS transition on `::backdrop` with
+   * `@starting-style` in `globals.css`, not an element in here.
    */
   useLayoutEffect(() => {
     const from = originOf?.(photo.id)
@@ -151,9 +160,6 @@ export function Lightbox<Photo extends ViewablePhoto>({
       { x: [x, 0], y: [y, 0], scale: [scale, 1], opacity: [0.7, 1] },
       T.expand,
     )
-    if (backdrop.current) {
-      void animate(backdrop.current, { opacity: [0, 1] }, T.settle)
-    }
     // Once, on open. Navigating between photos is a cross-fade, not a morph.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -177,12 +183,7 @@ export function Lightbox<Photo extends ViewablePhoto>({
     const box = el?.getBoundingClientRect()
     if (to && el && box && box.width > 0 && !reduceMotion) {
       const { x, y, scale } = morphFrom(to, box)
-      await Promise.all([
-        animate(el, { x, y, scale, opacity: 0.7 }, T.expand),
-        backdrop.current
-          ? animate(backdrop.current, { opacity: 0 }, T.settle)
-          : Promise.resolve(),
-      ])
+      await animate(el, { x, y, scale, opacity: 0.7 }, T.expand)
     }
     onClose()
   }, [animate, onClose, originOf, photo.id, reduceMotion, surface])
@@ -225,7 +226,7 @@ export function Lightbox<Photo extends ViewablePhoto>({
     <dialog
       ref={dialogRef}
       aria-label={locale === 'en' ? 'Photo viewer' : 'Fotó nagyban'}
-      className="max-h-none max-w-none bg-transparent"
+      className="max-h-none max-w-none bg-transparent backdrop:bg-black/90 backdrop:backdrop-blur-sm"
       onClose={onClose}
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0]?.clientX ?? null
@@ -247,23 +248,7 @@ export function Lightbox<Photo extends ViewablePhoto>({
         transition={reduceMotion ? still : T.settle}
         className="fixed inset-0 flex flex-col"
       >
-        {/* The ground, as an element rather than `::backdrop`. A pseudo-element
-            appears the instant `showModal()` is called and nothing can animate
-            it, so the page used to vanish a beat before the photo arrived.
-
-            **No negative z-index.** This element's parent animates opacity, so
-            it is a stacking context, and `-z-10` inside one paints *behind the
-            parent's own background* — which there isn't one of. The ground fell
-            through the transparent dialog and the viewer's chrome drew straight
-            onto the grid. Everything below is `relative` instead, which is what
-            puts in-flow content above an absolutely positioned sibling. */}
-        <div
-          ref={backdrop}
-          aria-hidden="true"
-          className="absolute inset-0 bg-black/90 backdrop-blur-sm"
-        />
-
-        <div className="relative flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-3">
           <p className="text-sm text-white/70">
             {index + 1} / {photos.length}
           </p>
@@ -313,9 +298,9 @@ export function Lightbox<Photo extends ViewablePhoto>({
           </AnimatePresence>
         </div>
 
-        {actions ? <div className="relative px-4 pt-2">{actions}</div> : null}
+        {actions ? <div className="px-4 pt-2">{actions}</div> : null}
 
-        <div className="relative flex items-center justify-between gap-4 px-4 py-4">
+        <div className="flex items-center justify-between gap-4 px-4 py-4">
           <motion.button
             type="button"
             onClick={() => go(-1)}
