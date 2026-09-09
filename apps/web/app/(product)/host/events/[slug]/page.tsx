@@ -109,10 +109,10 @@ export default async function AdminEventPage({ params }: Props) {
       >
         <Link
           href={`/host?lang=${locale}`}
-          className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.1em] text-foreground/45 transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-2 text-xs font-medium text-foreground/55 transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" aria-hidden="true" />
-          {en ? 'YOUR EVENTS' : 'ESEMÉNYEID'}
+          {en ? 'Your events' : 'Eseményeid'}
         </Link>
         <div className="flex items-center gap-2">
           <Link href={`/e/${event.slug}?lang=${locale}`} className={pillClass}>
@@ -151,7 +151,7 @@ export default async function AdminEventPage({ params }: Props) {
         <div className="mt-6 grid grid-cols-3 border-y border-border">
           <Figure
             value={photos.length}
-            label={en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'}
+            label={en ? 'Photos taken' : 'Kép készült'}
           />
           {quota ? (
             <Figure
@@ -160,11 +160,11 @@ export default async function AdminEventPage({ params }: Props) {
               label={
                 overQuota
                   ? en
-                    ? 'GUEST CAP FULL'
-                    : 'KERET BETELT'
+                    ? 'Guest cap full'
+                    : 'Keret betelt'
                   : en
-                    ? 'GUESTS'
-                    : 'VENDÉG'
+                    ? 'Guests'
+                    : 'Vendég'
               }
               alarming={overQuota}
               divided
@@ -172,7 +172,7 @@ export default async function AdminEventPage({ params }: Props) {
           ) : null}
           <Figure
             value={event.shots_per_participant}
-            label={en ? 'SHOTS EACH' : 'KÉP FEJENKÉNT'}
+            label={en ? 'Shots each' : 'Kép fejenként'}
             divided
           />
         </div>
@@ -239,25 +239,25 @@ function CapturePill({
   const en = locale === 'en'
   if (state === 'open') {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-accent/35 px-3 py-1.5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-accent">
+      <span className="inline-flex items-center gap-2 rounded-full border border-accent/35 px-3 py-1.5 text-xs font-medium text-accent">
         <span
           aria-hidden="true"
           className="size-[5px] rounded-full bg-accent"
         />
-        {en ? 'CAMERA OPEN' : 'A KAMERA NYITVA'} ·{' '}
+        {en ? 'Camera open' : 'A kamera nyitva'} ·{' '}
         {shortTimeRemaining(new Date(captureEndAt), now, locale)}
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center rounded-full border border-border px-3 py-1.5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-foreground/45">
+    <span className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground/55">
       {state === 'before'
         ? en
-          ? 'NOT OPEN YET'
-          : 'MÉG NEM NYÍLT MEG'
+          ? 'Not open yet'
+          : 'Még nem nyílt meg'
         : en
-          ? 'SHOOTING ENDED'
-          : 'VÉGET ÉRT A FOTÓZÁS'}
+          ? 'Shooting ended'
+          : 'Véget ért a fotózás'}
     </span>
   )
 }
@@ -268,6 +268,12 @@ function CapturePill({
  * It rolls, and nothing else on the page responds — no toast, no highlighted
  * row. A figure that changes while the host is looking elsewhere should be
  * correct when he looks back, not something that demanded he look now.
+ *
+ * The numeral is Martian Mono and its label is not, which is the whole of the
+ * v2 type rule on this page: the mono counts, and anything read as words is
+ * Manrope in sentence case. The label used to be 9px of tracked-out caps,
+ * putting a second voice directly above an album whose tile captions had
+ * already moved to the first one.
  */
 function Figure({
   value,
@@ -294,8 +300,8 @@ function Figure({
         {of === null ? null : <span>/{of}</span>}
       </p>
       <p
-        className={`mt-1.5 font-mono text-[9px] font-medium tracking-[0.16em] ${
-          alarming ? 'text-destructive' : 'text-foreground/45'
+        className={`mt-1.5 text-xs leading-[1.35] font-medium ${
+          alarming ? 'text-destructive' : 'text-foreground/55'
         }`}
       >
         {label}
