@@ -34,7 +34,12 @@ import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 function database({
   reservationError = null,
   insertError = null,
-}: { reservationError?: unknown; insertError?: unknown } = {}) {
+  superseded = [],
+}: {
+  reservationError?: unknown
+  insertError?: unknown
+  superseded?: { stripe_checkout_session_id: string }[]
+} = {}) {
   const reservation = {
     attempt_id: '52f89c12-f4a7-463b-98d7-7fe57450a89c',
     expires_at: new Date(Date.now() + 45 * 60 * 1_000).toISOString(),
@@ -59,6 +64,15 @@ function database({
           insert(values: Record<string, unknown>) {
             inserts.push(values)
             return Promise.resolve({ error: insertError })
+          },
+          // The lookup for Sessions this one supersedes.
+          select() {
+            const builder = {
+              eq: () => builder,
+              neq: () => builder,
+              limit: async () => ({ data: superseded, error: null }),
+            }
+            return builder
           },
         }
       },
@@ -280,6 +294,21 @@ describe('Stripe Checkout creation', () => {
       'checkout.stripe.com',
     )
     expect(mocks.expireSession).not.toHaveBeenCalled()
+  })
+
+  it('expires the Session a rotated attempt superseded', async () => {
+    const db = database({
+      superseded: [{ stripe_checkout_session_id: 'cs_previous' }],
+    })
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_current'))
+
+    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+
+    // Rotation leaves the old attempt's Session alive until its own expiry.
+    // Two payable Sessions for one event means one album charged — and on the
+    // direct path invoiced — twice, which is worth going out of the way for.
+    expect(mocks.expireSession).toHaveBeenCalledWith('cs_previous')
   })
 
   it('refuses a Price that returns the wrong currency', async () => {
