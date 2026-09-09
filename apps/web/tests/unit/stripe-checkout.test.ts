@@ -258,6 +258,22 @@ describe('Stripe Checkout creation', () => {
     })
   })
 
+  it('asks an English event for no terms box at all', async () => {
+    const db = database()
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('en'))
+
+    await createEventCheckoutUrl(checkout)
+
+    // Link is the merchant of record there: it presents its own terms and
+    // issues the document, so there is no box of ours and therefore no
+    // sentence to translate. `settlementFor` naming `hu` is what keeps that
+    // true — without it a third locale would inherit the Hungarian one.
+    const [params] = mocks.createSession.mock.calls[0]
+    expect(params.consent_collection).toBeUndefined()
+    expect(params.custom_text).toBeUndefined()
+  })
+
   it('keeps an English event on Managed Payments and asks for no address', async () => {
     const db = database()
     mocks.createSupabaseClient.mockResolvedValue(db.client)

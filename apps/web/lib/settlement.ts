@@ -49,6 +49,9 @@ export function huDirectSalesEnabled(): boolean {
  * perfectly well, and Link keeps the tax and documentation burden.
  */
 export function settlementFor(locale: Locale): Settlement {
-  if (locale === 'en') return 'managed'
+  // Named rather than "anything that is not English". A third locale would
+  // otherwise inherit the Hungarian arrangement — an AAM invoice, a NAV
+  // report and a Hungarian consent sentence — by saying nothing at all.
+  if (locale !== 'hu') return 'managed'
   return huDirectSalesEnabled() ? 'direct' : 'managed'
 }

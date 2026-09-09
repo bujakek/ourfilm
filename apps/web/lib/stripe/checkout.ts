@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { requestOrigin } from '@/lib/request-origin'
 import { createClient } from '@/lib/supabase/server'
 import { LEGAL_VERSION } from '@/lib/company'
-import type { Locale } from '@/lib/i18n'
+import { localePath, type Locale } from '@/lib/i18n'
 import { settlementFor } from '@/lib/settlement'
 
 import { getStripe } from './client'
@@ -114,14 +114,20 @@ export async function createEventCheckoutUrl({
           // consent to your terms of service unless a URL is set".
           custom_text: {
             terms_of_service_acceptance: {
+              // Hungarian only, and deliberately not a per-locale map. This
+              // branch is unreachable for any other locale — `settlementFor`
+              // names `hu` — because on the English path Link is the merchant
+              // of record, presents its own terms and issues the document, so
+              // there is no box of ours to put a sentence beside.
+              //
               // The Markdown link is the point, not decoration. Stripe renders
-              // `[text](url)` in this field, and without it the checkbox
-              // states our sentence with nothing to open — a Hungarian
-              // consumer agreeing to terms the page gives them no way to read.
-              // The dashboard's own ToS URL would normally supply that link;
-              // supplying `custom_text` replaces it, so the link has to come
-              // back in here.
-              message: `Elfogadom az [ÁSZF-et](${origin}/hu/aszf), kérem a szolgáltatás azonnali, a 14 napos elállási időn belüli megkezdését, és tudomásul veszem, hogy a teljesítés megkezdésével elveszítem az elállási jogomat.`,
+              // `[text](url)` here, and supplying `custom_text` *replaces* the
+              // account's Terms of service URL — which is the only reason a
+              // Session with required consent can be created without one. So
+              // without a link in here the checkbox names the ÁSZF and gives
+              // the buyer no way to open it, which in a consumer contract is
+              // the one thing the box exists to prevent.
+              message: `Elfogadom az [ÁSZF-et](${origin}${localePath('hu', '/aszf')}), kérem a szolgáltatás azonnali, a 14 napos elállási időn belüli megkezdését, és tudomásul veszem, hogy a teljesítés megkezdésével elveszítem az elállási jogomat.`,
             },
           },
           // Deliberately no `automatic_tax` and no `invoice_creation`: the
