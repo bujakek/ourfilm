@@ -160,6 +160,14 @@ export async function deleteEvent(id: string) {
       .remove(objects.map((o) => `${id}/${o.name}`))
   }
 
+  // Purchases before the event, because they no longer go with it. Since the
+  // invoicing migration `purchases.event_id` is `on delete set null` rather
+  // than a cascade — an accounting record has to outlive the album — so a
+  // suite that only deleted the event would leave a growing pile of orphaned
+  // purchase rows behind, and the partial unique index on
+  // `billingo_document_id` would start failing runs against each other.
+  await db.from('purchases').delete().eq('event_id', id)
+
   // Cascades participants and photos.
   await db.from('events').delete().eq('id', id)
 }

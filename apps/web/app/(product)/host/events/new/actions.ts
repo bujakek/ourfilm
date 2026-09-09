@@ -13,7 +13,7 @@ import { type Locale, resolveLocale } from '@/lib/i18n'
 import { generateEventSlug } from '@/lib/slug'
 import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
-import { stripeIsConfigured } from '@/lib/stripe/env'
+import { checkoutBlockedReason } from '@/lib/checkout-readiness'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 
@@ -343,14 +343,17 @@ export async function createEventFromDraft(
     // payments not switched on, or try again — better than a silent landing on
     // the QR code would.
     destination = `/host/events/${slug}/settings?lang=${locale}`
-    if (!stripeIsConfigured()) {
-      // The host picked the paid tier on a deployment with no Stripe keys.
+    // A Hungarian event is a direct sale that OurFilm has to invoice, so it
+    // also needs Billingo; an English one settles through Link and does not.
+    const notReady = checkoutBlockedReason(locale)
+    if (notReady) {
+      // The host picked the paid tier on a deployment that cannot complete it.
       // The tile reads "Hamarosan" there, so this should be rare — and if it
       // is not rare in production, that is the incident.
       await reportServerEvent('checkout_blocked', {
         event_id: eventId,
         source: 'onboarding',
-        reason: 'stripe_not_configured',
+        reason: notReady,
       })
     } else {
       try {

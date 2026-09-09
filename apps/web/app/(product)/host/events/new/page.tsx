@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 import { resolveLocale } from '@/lib/i18n'
 import { eventNameSuggestions } from '@/lib/onboarding'
-import { stripeIsConfigured } from '@/lib/stripe/env'
+import { checkoutIsConfigured } from '@/lib/checkout-readiness'
 import { NewEventForm } from './new-event-form'
 
 // Both the suggested deadline and the earliest selectable day are computed from
@@ -72,9 +72,18 @@ export default function NewEventPage() {
       nowIso={now.toISOString()}
       defaultEndIso={end.toISOString()}
       suggestions={eventNameSuggestions(null)}
-      // Reads three environment variables — no await, so the segment still does
+      // Reads environment variables only — no await, so the segment still does
       // not suspend. See the note above.
-      paymentsEnabled={stripeIsConfigured()}
+      //
+      // Both locales, because the flow resolves its own from `?lang` on the
+      // client and the two are sold under different arrangements: a Hungarian
+      // event is a direct sale OurFilm has to invoice through Billingo, an
+      // English one settles through Link. A deployment can be able to take one
+      // and not the other, and the tile must say so honestly.
+      paymentsEnabled={{
+        en: checkoutIsConfigured('en'),
+        hu: checkoutIsConfigured('hu'),
+      }}
       // Minted here rather than in a state initializer: it is rendered into the
       // draft, and `crypto.randomUUID()` on both sides of hydration would give
       // two different values. The page is `force-dynamic`, so every visit gets

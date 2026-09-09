@@ -22,7 +22,7 @@ import { localeTag } from '@/lib/i18n'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
 import { planNote } from '@/lib/plan-copy'
-import { stripeIsConfigured } from '@/lib/stripe/env'
+import { checkoutIsConfigured } from '@/lib/checkout-readiness'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -251,7 +251,7 @@ async function EventBilling({
       participantCount={quota.participantCount}
       unlimited={quota.unlimited}
       planNote={planNote(quota.planSource, locale, receipt || null)}
-      stripeReady={stripeIsConfigured()}
+      stripeReady={checkoutIsConfigured(locale)}
       checkout={checkout}
     />
   )

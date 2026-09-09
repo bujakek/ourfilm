@@ -142,6 +142,22 @@ STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
 
+Hungarian events are sold directly rather than through Managed Payments, so
+OurFilm issues their invoice. Three more server-only variables, and without all
+three `checkoutIsConfigured('hu')` is false and Hungarian checkout says payment
+is not switched on — English checkout is deliberately unaffected:
+
+```bash
+BILLINGO_API_KEY=               # v3 "Olvasás, írás" key; a test-profile key is what test mode means
+BILLINGO_BLOCK_ID=              # numeric, from GET /document-blocks on the same profile
+BILLINGO_BANK_ACCOUNT_ID=       # numeric, from GET /bank-accounts on the same profile
+BILLINGO_API_BASE_URL=          # optional; defaults to https://api.billingo.hu/v3
+```
+
+There is no separate Billingo sandbox host — the same base URL with a
+test-profile key is test mode. The ids must come from the same profile as the
+key, or document creation fails on a validation error that names neither.
+
 The prepared album export (Phase 2 of `docs/public-cdn-and-export-worker.md`)
 adds three, all server-only:
 
@@ -192,9 +208,11 @@ not switched on — `stripeIsConfigured()` is what keeps that UI honest.
 when PostHog shows `server_error` on `/api/stripe/webhook`: it names the exact
 event Stripe is retrying, and Stripe retries a failed live delivery for three
 days before disabling the endpoint. A host deleting an event mid-checkout used
-to be one such cause (the cascade takes the pending `purchases` row, and the
-upsert then fails on the foreign key); the handler now acknowledges expired
-and failed sessions for a deleted event and keeps a 500 only for paid ones.
+to be one such cause (the cascade took the pending `purchases` row, and the
+upsert then failed on the foreign key). Both halves of that are gone: the
+foreign keys are `on delete set null` since the invoicing migration, so the row
+survives and is updated in place, and the handler only falls back to the old
+insert — and to the `OrphanedPaymentError` 500 — when no row exists at all.
 
 **`vercel env pull` does not work on this project — don't reach for it.** The Vercel–Supabase integration created all 16 of its variables as _Sensitive_, which on Vercel means write-only: the value cannot be read back by the CLI, the API or the dashboard, and a pull returns the literal string `[SENSITIVE]` for every one. This is a property of the Sensitive flag, not of the environment scope, so re-scoping them to Development does not help either. Copy the three values from the Supabase dashboard instead.
 
@@ -394,6 +412,10 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `album_export_email_failed` | …or refused it; the sweep retries up to five times                            |
 | `album_export_sweep`        | One run of the cron-driven sweep. No run for an hour is the alert             |
 | `auth_email_sent`           | The mail was accepted, in the language the hook actually rendered             |
+| `invoice_issued`            | A Hungarian invoice exists in Billingo and was emailed to the buyer           |
+| `invoice_failed`            | …or was not. `blocked` is the Billingo document quota, which needs a human    |
+| `invoice_cancelled`         | A refunded purchase's invoice was cancelled with a storno document            |
+| `invoice_sweep`             | One run of the invoice retry sweep. No run for an hour is the alert           |
 
 Three of those pairs are read as gaps rather than as counts. A
 `checkout_started` with no `checkout_settled` is an abandoned Stripe page; an
@@ -1045,19 +1067,73 @@ null` — the grant's own `reason`, not a flat `'grant'`, because an Early
   re-cap a live album.
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
-- **Invoicing is still on the never-start list.** A Hungarian company selling to
-  consumers must issue an invoice and report it to NAV Online Számla, and Stripe
-  does not do that for you. Flag it before the first real forint.
+- **Hungarian events are sold directly; English ones through Managed
+  Payments.** `settlementFor()` in `apps/web/lib/stripe/checkout.ts` is the one
+  place that decides, keyed on the same `events.locale` that picks the Price.
+  `locale: 'en'` keeps `managed_payments: { enabled: true }` — Link, LLC is
+  merchant of record and issues the document. `locale: 'hu'` is an ordinary
+  Stripe charge with **OurFilm as seller of record**, because Managed Payments
+  does not currently do Apple Pay on HUF and a phone-first product cannot give
+  up one-tap payment. The stored `purchases.settlement` (`managed` | `direct`)
+  is what every later reader consults; deriving it from the currency would be
+  a guess.
+- **Invoicing is built, for the direct path only.** A Hungarian sale is
+  invoiced through Billingo's REST API v3 (no npm package; `X-API-KEY` against
+  `https://api.billingo.hu/v3`), which also does the NAV Online Számla report.
+  The sale is **alanyi adómentes**: the line carries `vat: 'AAM'`, the
+  12 900 Ft is the gross and the whole of it, and `/hu/aszf` and `/hu/arak` say
+  so. Crossing the exemption threshold changes `lib/billingo/client.ts`,
+  `DIRECT_SALE.vatStatus` and that copy in one commit — ask the accountant
+  first. A Managed Payments purchase is **never** invoiced here; Link already
+  issued that document, and `purchases_managed_not_invoiced_check` enforces it.
+- **An issued Hungarian invoice cannot be withdrawn, only cancelled**, so
+  issuing twice is worse than issuing late. Three guards, and all three are
+  load-bearing: `purchases.id` is minted at checkout and sent as Billingo's
+  `vendor_id`; every attempt probes `GET /documents/vendor/{id}` before
+  creating anything, because a timed-out `POST /documents` may still have
+  worked; and `claim_purchase_invoice` holds a five-minute lease so the webhook
+  and the sweep cannot both proceed. The storno path has no vendor probe —
+  Billingo will issue a second storno happily — so
+  `claim_purchase_invoice_cancellation` is the only thing stopping two refund
+  deliveries producing two cancellations.
+- **`purchases.id` is the `reserve_event_checkout` attempt id, not a fresh
+  uuid.** Concurrent callers share one Stripe idempotency key, and Stripe
+  refuses a key replayed with different parameters — so a `randomUUID()` in the
+  metadata would break every second tab.
+- **Billingo never fails the webhook.** `ensureBillingoInvoice` and
+  `cancelBillingoInvoice` return a status instead of throwing, the way
+  `sendExportReadyEmail` does. A 500 there would leave `processed_at` null and
+  have Stripe re-run the _payment_ handler for three days over an invoicing
+  outage. `/api/invoices/sweep`, on a five-minute `pg_cron` job, owns the
+  retry, backing off to an hour and never giving up — an invoice silently
+  dropped is worse than an alert that keeps firing.
+- **`checkoutIsConfigured(locale)` (`apps/web/lib/checkout-readiness.ts`) is the
+  gate, and it is locale-aware on purpose.** `hu` needs Stripe _and_ Billingo;
+  `en` needs only Stripe. ANDing the two would switch off English checkout on
+  every preview and dev machine with no Billingo keys.
+- **The purchase now outlives the album.** `purchases.event_id` and `owner_id`
+  are `on delete set null` rather than cascading, because an accounting record
+  has to survive a deleted event or account and the billing snapshot on the row
+  is self-contained. Every Session handler therefore looks the row up by
+  session id first and updates it in place; `sessionIdentity` is only reached
+  when no row exists.
 
 Nothing about the Stripe integration changed in the pivot — only the predicate it
 gates. `event_upload_quota` (photos) became `event_participant_quota`
 (participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
 
 Key files: `apps/web/lib/stripe/*` (`checkout.ts` builds the session for both entry
-points), `apps/web/lib/billing.ts`, `apps/web/lib/pricing.ts` (the displayed price, in one place),
+points and both settlements), `apps/web/lib/billing.ts`, `apps/web/lib/pricing.ts`
+(the displayed price, in one place), `apps/web/lib/checkout-readiness.ts`,
 `apps/web/lib/roles.ts`, `apps/web/app/api/stripe/webhook/route.ts`,
 `apps/web/app/host/events/[slug]/billing-actions.ts`,
 `apps/web/components/host/billing-card.tsx`, `apps/web/app/host/events/new/step-guests.tsx`.
+
+Invoicing: `apps/web/lib/billingo/*` (`env.ts`, `client.ts` over the v3 REST API,
+`invoicing.ts` for the state machine), `apps/web/lib/billing-details.ts` (the zod
+snapshot built from the Stripe Session), `apps/web/app/api/invoices/sweep/route.ts`,
+`supabase/migrations/20260910140000_billingo_invoicing.sql`, and the runbook in
+`docs/billingo-hungarian-checkout.md`.
 
 **`/hu/arak` and `/en/pricing` mirror this model.** They present one paid event rather than a
 three-tier SaaS table: up to five participants are free, one payment admits
@@ -1078,7 +1154,7 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 
 - App Clip / native app
 - Photographer or multi-tenant dashboard, per-client branding
-- Token system, revenue share, invoicing (**payments themselves are built**)
+- Token system, revenue share (**payments and Hungarian invoicing are built**)
 - Guest accounts or mandatory registration
 - **Film filters / Original-Vintage-B&W selector.** Deferred deliberately, not
   forgotten — a later phase.
@@ -1095,8 +1171,12 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 - Long-running requests on Vercel. The reveal is computed at request time
   precisely so no function has to wait. The one job that cannot fit a
   function — zipping a whole wedding — runs on the Railway worker in
-  `apps/worker`, and its housekeeping is two `pg_cron` jobs; nothing else
-  may grow a worker or a schedule without the same argument.
+  `apps/worker`, and its housekeeping is two `pg_cron` jobs. There is now a
+  third, `invoices-sweep-http`, and it had to make the same argument: Stripe
+  stops retrying a webhook after three days, a Billingo 402 cannot be cleared
+  by retrying inside the hour, and a host who paid without receiving an
+  invoice is a legal problem rather than a degraded feature. Nothing else may
+  grow a worker or a schedule without an argument of that weight.
 
 **Reversed by the pivot.** Per-guest shot scarcity, delayed reveal and a
 capture-window were all on this list before, and the Once review had explicitly

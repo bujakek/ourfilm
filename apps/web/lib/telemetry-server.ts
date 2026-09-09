@@ -47,6 +47,7 @@ export type ServerEventProperties = {
       | 'no_slug'
       | 'terms_not_accepted'
       | 'stripe_not_configured'
+      | 'billingo_not_configured'
       | 'signed_out'
       | 'not_found'
       | 'already_unlimited'
@@ -158,6 +159,35 @@ export type ServerEventProperties = {
    *  failure so "is the Hungarian branch of the hook rendering" has a
    *  positive answer as well as a negative one. */
   auth_email_sent: { locale: 'en' | 'hu'; action: string }
+  /** A Hungarian invoice exists in Billingo and was emailed to the buyer.
+   *  Never the invoice number, the partner id or the buyer's address — those
+   *  are in `purchases`, which is where an auditor should be looking anyway. */
+  invoice_issued: {
+    event_id: string | null
+    attempts: number
+    /** The webhook's own first try, or the sweep coming back for it. */
+    source: 'webhook' | 'sweep'
+  }
+  /** ...or did not. `blocked` is the Billingo document quota, which no retry
+   *  inside the hour can fix; the absence of a matching `invoice_issued` for a
+   *  `checkout_settled` with status `paid` is the alert that matters. */
+  invoice_failed: {
+    event_id: string | null
+    attempts: number
+    source: 'webhook' | 'sweep'
+    status: 'failed' | 'send_failed' | 'blocked'
+    error: string
+  }
+  /** A refunded purchase's invoice was cancelled with a storno document. */
+  invoice_cancelled: { event_id: string | null; source: 'webhook' | 'sweep' }
+  /** One run of the invoice sweep. Same contract as `album_export_sweep`:
+   *  pg_cron never reads the response, so no run for an hour is the alert. */
+  invoice_sweep: {
+    considered: number
+    issued: number
+    cancelled: number
+    failed: number
+  }
 }
 
 export type ServerEvent = keyof ServerEventProperties

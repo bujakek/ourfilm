@@ -1,6 +1,12 @@
+import { billingDetailsFromStripeSession } from '@/lib/billing-details'
+import {
+  cancelBillingoInvoice,
+  ensureBillingoInvoice,
+} from '@/lib/billingo/invoicing'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripe } from '@/lib/stripe/client'
 import { stripeEnv } from '@/lib/stripe/env'
+import type { Database } from '@/lib/supabase/database.types'
 import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -10,6 +16,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 type AdminClient = ReturnType<typeof createAdminClient>
+type Purchase = Database['public']['Tables']['purchases']['Row']
 
 /** PostgREST's code for a unique-constraint violation. */
 const UNIQUE_VIOLATION = '23505'
@@ -166,9 +173,12 @@ function idOf(
 /**
  * Record a settled checkout, and with it the entitlement that lifts the cap.
  *
- * An upsert rather than an update: the pending row the checkout action writes
- * is best effort, so this has to work whether or not it exists. Keyed on the
- * session id, which is unique and is what makes replaying this event harmless.
+ * Two shapes, because there are two of them. A direct Hungarian sale always
+ * has a ledger row already — the checkout action refuses to hand out a session
+ * without one — so this updates it in place, which is also what lets a
+ * purchase whose event was deleted still be settled and invoiced. A Managed
+ * Payments sale keeps the old upsert: its pending row is best effort, so this
+ * has to work whether or not it exists.
  */
 async function recordPaidSession(
   db: AdminClient,
@@ -179,13 +189,35 @@ async function recordPaidSession(
   // hand out an album for money that has not arrived.
   if (session.payment_status !== 'paid') return
 
+  const { data: existing, error: readError } = await db
+    .from('purchases')
+    .select('*')
+    .eq('stripe_checkout_session_id', session.id)
+    .maybeSingle()
+  if (readError) throw readError
+
+  if (existing) {
+    await settleRecordedPurchase(db, session, existing)
+    return
+  }
+
+  // No ledger row. On the direct path that should be impossible, and it is
+  // worth saying so rather than quietly inventing one: `purchases.id` is
+  // already committed to as Billingo's idempotency key, and a row minted here
+  // would carry a different one.
+  if (session.metadata?.settlement === 'direct') {
+    throw new Error(
+      `Direct session ${session.id} settled with no pending purchase`,
+    )
+  }
+
   const identity = await sessionIdentity(db, session)
   if (identity.kind === 'no_event_id') return
 
-  // Real money for an album that no longer exists. Nothing here can put the
-  // row back, and a silent 2xx would leave a payment with no ledger entry, so
-  // this stays a 500: Stripe keeps retrying and every attempt is reported by
-  // name until somebody refunds it or reconciles it from the Dashboard.
+  // Real money for an album that no longer exists, and no row to attach it to.
+  // A silent 2xx would leave a payment with no ledger entry, so this stays a
+  // 500: Stripe keeps retrying and every attempt is reported by name until
+  // somebody refunds it or reconciles it from the Dashboard.
   if (identity.kind === 'event_deleted') {
     throw new OrphanedPaymentError(session.id, identity.eventId)
   }
@@ -223,6 +255,142 @@ async function recordPaidSession(
 }
 
 /**
+ * Settle a purchase that already has its ledger row, and invoice it if it is
+ * ours to invoice.
+ *
+ * `event_id` and `owner_id` are deliberately never written here. Both are
+ * `on delete set null`, so a host who deleted the album between paying and
+ * this arriving has a row with nulls in them — and rewriting the ids would
+ * fail the foreign key against a row that no longer exists, turning a
+ * recoverable accounting record into three days of Stripe retries.
+ */
+async function settleRecordedPurchase(
+  db: AdminClient,
+  session: Stripe.Checkout.Session,
+  purchase: Purchase,
+) {
+  // A late `completed` must not resurrect a purchase that has been refunded.
+  if (purchase.status === 'refunded') return
+
+  const direct = purchase.settlement === 'direct'
+  const paidAt = purchase.paid_at ?? new Date().toISOString()
+
+  // Stripe is the authority on what was charged, and the ledger's amount was
+  // written by the host's own client at checkout — so the session's number
+  // wins and is what reaches the invoice. A disagreement is still worth
+  // reporting: nothing ordinary produces one.
+  if (
+    session.amount_total !== null &&
+    (purchase.amount_minor !== session.amount_total ||
+      purchase.currency?.toLowerCase() !== session.currency?.toLowerCase())
+  ) {
+    await reportServerIssue(
+      new Error(`Session ${session.id} amount differs from the ledger row`),
+      { operation: 'checkout_amount_mismatch', eventId: purchase.event_id },
+    )
+  }
+
+  const billing = direct ? billingDetailsFromStripeSession(session) : null
+
+  // The only thing that can stop a Hungarian invoice: without a lawful name
+  // and Hungarian address there is no document to issue. Not a payment
+  // failure — the money moved and the album is unlocked either way — so it
+  // parks the row in the retry queue with a reason, where the absence of a
+  // matching `invoice_issued` is the alert.
+  //
+  // Accepted terms are deliberately *not* a gate. `consent_collection` makes
+  // them required, so a payment without them is an anomaly worth recording —
+  // but the invoice is owed under Hungarian law regardless, and withholding
+  // it over a missing checkbox would turn a data oddity into a legal one.
+  const invoiceBlocker =
+    direct && billing?.success === false
+      ? `Session ${session.id} has invalid billing details: ${billing.error}`
+      : null
+
+  const snapshot = direct && billing?.success ? billing.data : null
+  const consented = session.consent?.terms_of_service === 'accepted'
+
+  const { error } = await db
+    .from('purchases')
+    .update({
+      stripe_payment_intent_id: idOf(session.payment_intent),
+      stripe_customer_id: idOf(session.customer),
+      amount_minor: session.amount_total ?? purchase.amount_minor,
+      currency: session.currency ?? purchase.currency,
+      status: 'paid',
+      paid_at: paidAt,
+      failed_at: null,
+      expired_at: null,
+      ...(snapshot
+        ? {
+            billing_type: snapshot.type,
+            billing_name: snapshot.name,
+            billing_email: snapshot.email,
+            billing_country_code: snapshot.countryCode,
+            billing_post_code: snapshot.postCode,
+            billing_city: snapshot.city,
+            billing_address: snapshot.address,
+            billing_tax_number: snapshot.taxNumber,
+          }
+        : {}),
+      ...(direct
+        ? {
+            // Recorded as the Session reported it rather than compared against
+            // the current constant: this is an audit trail, and gating on it
+            // would refuse every in-flight session the moment the terms are
+            // updated.
+            terms_version: session.metadata?.legal_version ?? null,
+            terms_accepted_at:
+              purchase.terms_accepted_at ??
+              session.metadata?.terms_accepted_at ??
+              paidAt,
+            // The same checkbox wording carries the early-performance request,
+            // so it is the same moment.
+            early_performance_consent_at:
+              consented &&
+              session.metadata?.early_performance_requested === 'true'
+                ? (purchase.early_performance_consent_at ??
+                  session.metadata?.terms_accepted_at ??
+                  paidAt)
+                : purchase.early_performance_consent_at,
+            invoice_status: invoiceBlocker
+              ? 'failed'
+              : purchase.invoice_status === 'not_started'
+                ? 'pending'
+                : purchase.invoice_status,
+            ...(invoiceBlocker
+              ? {
+                  invoice_last_error: invoiceBlocker,
+                  invoice_next_attempt_at: new Date().toISOString(),
+                }
+              : {}),
+          }
+        : {}),
+    })
+    .eq('id', purchase.id)
+
+  if (error) throw error
+
+  await reportServerEvent('checkout_settled', {
+    event_id: purchase.event_id,
+    status: 'paid',
+    amount_minor: session.amount_total,
+    currency: session.currency,
+    // The album was deleted between paying and Stripe reporting it. The money
+    // and the obligation to invoice it both survive that.
+    event_deleted: purchase.event_id === null,
+  })
+
+  if (!direct || invoiceBlocker) return
+
+  // Never allowed to fail the webhook. The payment is recorded; an invoice
+  // that could not be issued is the sweep's problem, and 500ing here would
+  // leave `processed_at` null and re-run the payment handler for three days
+  // over a Billingo outage.
+  await ensureBillingoInvoice(db, purchase.id, 'webhook')
+}
+
+/**
  * Keep failed and abandoned attempts in the ledger without granting access.
  *
  * These are terminal states for one Checkout Session, not for the event. A host
@@ -234,13 +402,52 @@ async function recordTerminalSession(
   session: Stripe.Checkout.Session,
   status: 'failed' | 'expired',
 ) {
+  const terminalAt = new Date().toISOString()
+
+  // The ledger row usually exists, and since it now outlives the event it can
+  // be updated even for a deleted album. Updating in place also keeps
+  // `purchases.id` — the value already promised to Billingo as an idempotency
+  // key — rather than replacing it.
+  const { data: existing, error: readError } = await db
+    .from('purchases')
+    .select('id, event_id')
+    .eq('stripe_checkout_session_id', session.id)
+    .maybeSingle()
+  if (readError) throw readError
+
+  if (existing) {
+    const { error } = await db
+      .from('purchases')
+      .update({
+        stripe_payment_intent_id: idOf(session.payment_intent),
+        stripe_customer_id: idOf(session.customer),
+        status,
+        failed_at: status === 'failed' ? terminalAt : null,
+        expired_at: status === 'expired' ? terminalAt : null,
+      })
+      .eq('id', existing.id)
+      // A session that failed or expired must never overwrite a paid or
+      // refunded row. Stripe can deliver `expired` after a late `completed`.
+      .eq('status', 'pending')
+
+    if (error) throw error
+
+    await reportServerEvent('checkout_settled', {
+      event_id: existing.event_id,
+      status,
+      amount_minor: session.amount_total,
+      currency: session.currency,
+      event_deleted: existing.event_id === null,
+    })
+    return
+  }
+
   const identity = await sessionIdentity(db, session)
   if (identity.kind === 'no_event_id') return
 
-  // The host deleted the event after starting to pay, and the cascade took
-  // the pending row with it. No money moved, so there is nothing to keep: the
-  // upsert would only fail on the foreign key, and a 500 here has Stripe
-  // retrying for three days something no retry can fix.
+  // No row and no event: there is nothing to keep and nothing to attach it to.
+  // No money moved, so the upsert would only fail on the foreign key, and a
+  // 500 here has Stripe retrying for three days something no retry can fix.
   if (identity.kind === 'event_deleted') {
     console.warn(
       `Checkout session ${session.id} ${status} for deleted event ${identity.eventId}`,
@@ -255,7 +462,6 @@ async function recordTerminalSession(
     return
   }
 
-  const terminalAt = new Date().toISOString()
   const { error } = await db.from('purchases').upsert(
     {
       event_id: identity.eventId,
@@ -291,13 +497,14 @@ type SessionIdentity =
 /**
  * Resolve the application identifiers shared by every Session handler.
  *
- * The event row is always read, even though the session metadata carries the
- * owner: `purchases.event_id` and `owner_id` are cascading foreign keys, so a
- * host who deletes their event between starting a checkout and Stripe
- * reporting on it leaves an upsert that can never succeed. Trusting the
- * metadata alone is how an expired session was retried for a day with only
- * `UnknownError` to show for it. Each handler decides what a missing event
- * means for its own outcome.
+ * Only reached when no ledger row exists for the session — every handler
+ * prefers the row, which since the invoicing migration outlives both the event
+ * and the account. Here the event row is still read rather than trusting the
+ * metadata: `purchases.event_id` and `owner_id` are foreign keys, and an
+ * *insert* naming a deleted event can never succeed however the delete
+ * behaves. Trusting the metadata alone is how an expired session was retried
+ * for a day with only `UnknownError` to show for it. Each handler decides what
+ * a missing event means for its own outcome.
  */
 async function sessionIdentity(
   db: AdminClient,
@@ -331,6 +538,10 @@ async function sessionIdentity(
  * Only on a *full* refund. A partial refund — a goodwill gesture, a price
  * adjustment — still leaves the album paid for, and revoking it would mean a
  * host who was given 2 000 Ft back loses a wedding album.
+ *
+ * A direct sale also has an issued Hungarian invoice behind it, and an issued
+ * invoice is never deleted: it is cancelled with a storno document, which is
+ * what `cancelBillingoInvoice` goes and creates.
  */
 async function recordRefund(db: AdminClient, charge: Stripe.Charge) {
   if (charge.amount_refunded < charge.amount) return
@@ -338,27 +549,57 @@ async function recordRefund(db: AdminClient, charge: Stripe.Charge) {
   const paymentIntentId = idOf(charge.payment_intent)
   if (!paymentIntentId) return
 
-  const { data: refunded, error } = await db
+  const { data: matched, error: readError } = await db
     .from('purchases')
-    .update({
-      status: 'refunded',
-      refunded_at: new Date().toISOString(),
-    })
+    .select('id, event_id, settlement, invoice_status')
     .eq('stripe_payment_intent_id', paymentIntentId)
-    .select('event_id')
+  if (readError) throw readError
 
-  if (error) throw error
+  // No match is an ordinary outcome for a charge this product never sold.
+  if (!matched || matched.length === 0) return
 
-  // A refund is a revoked entitlement, so it is worth one report per album it
-  // took back — and none at all when the payment intent matched nothing,
-  // which is an ordinary outcome for a charge this product never sold.
-  for (const row of refunded ?? []) {
+  const refundedAt = new Date().toISOString()
+
+  for (const row of matched) {
+    // A direct sale with a document behind it joins the cancellation queue.
+    // One that never got as far as an invoice is simply done — there is
+    // nothing to storno, and `claim_purchase_invoice` only claims paid rows,
+    // so the refund takes it out of the issuing queue in the same move.
+    const nextInvoiceStatus =
+      row.settlement !== 'direct'
+        ? row.invoice_status
+        : row.invoice_status === 'cancelled' ||
+            row.invoice_status === 'not_started'
+          ? row.invoice_status
+          : 'cancellation_pending'
+
+    const { error } = await db
+      .from('purchases')
+      .update({
+        status: 'refunded',
+        refunded_at: refundedAt,
+        invoice_status: nextInvoiceStatus,
+        ...(nextInvoiceStatus === 'cancellation_pending'
+          ? { invoice_next_attempt_at: refundedAt, invoicing_started_at: null }
+          : {}),
+      })
+      .eq('id', row.id)
+
+    if (error) throw error
+
+    // A refund is a revoked entitlement, so it is worth one report per album
+    // it took back.
     await reportServerEvent('checkout_settled', {
       event_id: row.event_id,
       status: 'refunded',
       amount_minor: charge.amount_refunded,
       currency: charge.currency,
-      event_deleted: false,
+      event_deleted: row.event_id === null,
     })
+
+    if (nextInvoiceStatus === 'cancellation_pending') {
+      // Never throws, for the same reason the issuing call does not.
+      await cancelBillingoInvoice(db, row.id, 'webhook')
+    }
   }
 }
