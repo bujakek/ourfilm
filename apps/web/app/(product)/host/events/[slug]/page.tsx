@@ -11,9 +11,8 @@ import { QuotaBanner } from '@/components/host/quota-banner'
 import { Odometer } from '@/components/ui/odometer'
 import { getEventQuota } from '@/lib/billing'
 import { captureWindowState } from '@/lib/camera'
-import { revealSummary, shortTimeRemaining } from '@/lib/event-copy'
+import { shortTimeRemaining } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
-import { formatDeadline } from '@/lib/format'
 import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
@@ -217,30 +216,6 @@ export default async function AdminEventPage({ params }: Props) {
             exportNote={exportNote(photos.length, locale)}
           />
         </section>
-
-        {/* Four values read once. They do not need a 56px disclosure; they need
-          to be legible and out of the way. */}
-        <div className="print-hidden mt-8 flex flex-wrap border-t border-border pt-4 font-mono text-[11px] tracking-[0.06em] text-foreground/45">
-          <ConfigCell>
-            {en ? 'ENDS' : 'VÉGE'} ·{' '}
-            {formatDeadline(event.capture_end_at, event.time_zone, locale)}
-          </ConfigCell>
-          <ConfigCell divided>
-            {en ? 'DEVELOPING' : 'ELŐHÍVÁS'} ·{' '}
-            {revealSummary(event.reveal_mode, locale)}
-          </ConfigCell>
-          <ConfigCell divided>
-            {en ? 'GALLERY' : 'GALÉRIA'} ·{' '}
-            {event.guests_can_view
-              ? en
-                ? 'GUESTS CAN SEE IT'
-                : 'VENDÉGEK LÁTJÁK'
-              : en
-                ? 'ONLY YOU'
-                : 'CSAK TE'}
-          </ConfigCell>
-          <ConfigCell divided>/E/{event.slug.toUpperCase()}</ConfigCell>
-        </div>
       </HostBlock>
     </main>
   )
@@ -326,21 +301,5 @@ function Figure({
         {label}
       </p>
     </div>
-  )
-}
-
-function ConfigCell({
-  children,
-  divided = false,
-}: {
-  children: React.ReactNode
-  divided?: boolean
-}) {
-  return (
-    <span
-      className={`py-1 ${divided ? 'border-l border-border px-5' : 'pr-5'}`}
-    >
-      {children}
-    </span>
   )
 }
