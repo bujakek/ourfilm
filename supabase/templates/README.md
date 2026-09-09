@@ -6,9 +6,15 @@ Production auth email is rendered by the signed Supabase **Send Email Hook** at
 language through Resend.
 
 `magic-link.html` and `confirm-signup.html` are English-only local-development
-fallbacks used by `supabase start` and visible in Inbucket at
+fallbacks used by `supabase start` and visible in Mailpit at
 http://127.0.0.1:54324. Static Supabase templates cannot select a locale; do not
 push them to production in place of the hook.
+
+They are **generated, not hand-written**: `pnpm --filter web templates:render`
+renders them from `lib/auth-email.ts` with Supabase's `{{ .ConfirmationURL }}`
+where the link goes, so the local fallback and the production hook cannot
+drift apart. Every mail the product sends shares `lib/email/layout.ts`; change
+that, re-run the script, commit the result.
 
 ## Production setup
 

@@ -1,32 +1,70 @@
 'use client'
 
-import type { GalleryTile } from '@/lib/photos'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, type ReactNode } from 'react'
 import type { Locale } from '@/lib/i18n'
 import { T } from '@/lib/motion'
+import { useScrollLock } from '@/lib/use-scroll-lock'
 import { track } from '@/lib/telemetry'
 
 const SWIPE_THRESHOLD = 50
 
-export function Lightbox({
+/**
+ * What the viewer actually reads off a photo.
+ *
+ * Deliberately not `GalleryTile` or `ModerationTile`: the guest's album and the
+ * host's moderation grid carry different things and both open the same viewer,
+ * and the shared piece is the navigation — the dialog, the swipe threshold, the
+ * arrow keys, the exit — not the row. Structural, so either fits and neither
+ * has to know about the other.
+ */
+export type ViewablePhoto = {
+  id: string
+  viewUrl: string
+  uploaderName: string | null
+}
+
+/**
+ * One photo, full-screen, with the album either side of it.
+ *
+ * The host opens the same viewer as the guest and gets a footer of controls in
+ * it: `actions` is where save, hide and delete live, and it is the only reason
+ * this component knows there is more than one caller. A guest passes nothing
+ * and sees exactly what they saw before.
+ */
+export function Lightbox<Photo extends ViewablePhoto>({
   photos,
   eventId,
   index,
   onClose,
   onNavigate,
   locale = 'hu',
+  actions,
+  dimmed = false,
+  caption: captionOverride,
 }: {
-  photos: GalleryTile[]
+  photos: Photo[]
   /** Telemetry only. */
   eventId: string
   index: number
   onClose: () => void
   onNavigate: (next: number) => void
   locale?: Locale
+  /** Rendered above the nav row. The host's moderation controls; nothing for
+   *  a guest. */
+  actions?: ReactNode
+  /** Withheld from the album, drawn the way the grid draws it — so a host
+   *  cannot mistake which frame they are looking at. */
+  dimmed?: boolean
+  /** Replaces the credit line under the photo. The host's version carries a
+   *  time and the hidden state, which a guest has no use for. */
+  caption?: string
 }) {
+  // Mounted only while open — `AnimatePresence` removes it on close — so the
+  // page is held for exactly as long as a photo is over it.
+  useScrollLock(true)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const touchStartX = useRef<number | null>(null)
   const photo = photos[index]
@@ -63,13 +101,14 @@ export function Lightbox({
 
   if (!photo) return null
 
-  const caption = photo.uploaderName
+  const credit = photo.uploaderName
     ? locale === 'en'
       ? `Photo by ${photo.uploaderName}`
       : `${photo.uploaderName} fotója`
     : locale === 'en'
       ? 'Photo'
       : 'Fotó'
+  const caption = captionOverride ?? credit
 
   return (
     <dialog
@@ -122,7 +161,7 @@ export function Lightbox({
             >
               <Image
                 src={photo.viewUrl}
-                alt={caption}
+                alt={credit}
                 fill
                 sizes="100vw"
                 unoptimized
@@ -136,12 +175,16 @@ export function Lightbox({
                     surface: 'lightbox',
                   })
                 }
-                className="object-contain"
+                className={`object-contain transition-opacity ${
+                  dimmed ? 'opacity-50 grayscale' : ''
+                }`}
                 priority
               />
             </motion.div>
           </AnimatePresence>
         </div>
+
+        {actions ? <div className="px-4 pt-2">{actions}</div> : null}
 
         <div className="flex items-center justify-between gap-4 px-4 py-4">
           <motion.button

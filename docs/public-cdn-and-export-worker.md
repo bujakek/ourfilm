@@ -1,6 +1,6 @@
 # Public photo CDN, and moving album export off Vercel
 
-**Status:** Phase 1 merged and live; Phase 1.5 built on `feat-apps-web`, awaiting the Vercel Root Directory change; Phase 2 not started · **Written:** 2026-09-07 · **Validated
+**Status:** Phases 1 and 1.5 merged; Phase 2 built on `feat-export-worker` and proven end to end on the local stack — browser path, schema and RPCs, the six endpoints, the worker, the album-ready mail, the pg_cron sweep and the host UI. Not yet done: the manual setup in §2.9, the stress test at real size, the cutover (`OURFILM_EXPORT_WORKER=true`) and removing the old route · **Written:** 2026-09-07 · **Validated
 against the repo and revised:** 2026-09-08 (line references are as of commit
 `d28f2bc`)
 
@@ -92,7 +92,19 @@ What that costs, and what to do about it:
   this is a property of the system rather than of the UI. Adjust that sentence;
   leave the marketing copy alone.
 
-### D2 — permanent per-photo delete. **Deferred to a follow-up.**
+### D2 — permanent per-photo delete. **Done (September 2026).**
+
+Shipped as a tombstone rather than a row delete, which is the one shape the
+deferral had not considered: `participant_shots_used` counts photo rows, so
+removing one refunds the guest's frame. `20260910120000_photo_soft_delete.sql`
+adds `deleted_at`; the host's viewer offers it behind an inline confirm; the
+operator script it grew out of is unchanged. CLAUDE.md's "never hard-delete"
+rule therefore still stands, and now means something stronger than it did.
+
+The original note is kept below, because its reasoning is what the follow-up
+was built against.
+
+### D2, as originally written
 
 `setPhotoHidden` writes `hidden_at` and nothing else
 (`apps/web/app/(product)/host/events/[slug]/actions.ts:117`), and the only product code
@@ -548,7 +560,7 @@ Stripe webhook's known live failure was a host deleting an event mid-checkout:
 the cascade took the pending row and the upsert died on the foreign key. An
 export job is the same shape, and the simplest correct answer is to refuse the
 delete while an export is in flight — a host deleting a wedding is deliberate
-and rare, and "az album éppen készül" is an honest thing to tell them. Three
+and rare, and "Még készül az album" is an honest thing to tell them. Three
 parts, and the first is the one that bites:
 
 - **Bound the gate by the lease.** Refuse deletion when a job is
@@ -661,7 +673,7 @@ with a few seconds of scattered milliseconds.
   function open continuously, and on Hobby's included allowance that is the
   wrong trade. A 60-second short poll is 1,440 invocations a day at ~50ms each:
   about a minute of compute daily. An export starting up to a minute late is
-  invisible; the host is already reading "Album készítése…".
+  invisible; the host is already reading "Készül az album…".
 - Back off to 5 minutes after an hour with no work, and reset on the first job.
 
 **The `claim` payload has a hard 4.5 MB ceiling** — Vercel returns
@@ -712,8 +724,8 @@ hours, after which we prepare it again.
 **This overrides CLAUDE.md's MVP scope list**, which currently files "Email
 notifications and lifecycle email" under _Not building_. Amend that entry in the
 same change, and see the documentation list at the end — the privacy policy
-enumerates Resend as sending "belépési és jogi visszaigazoló e-mailek" / "login
-and legal emails", which an export-ready mail makes untrue.
+enumerates Resend as sending "belépési linkek, jogi visszaigazolások és az album
+elkészültéről szóló értesítések" / "login, legal and album-ready emails".
 
 ## 2.5 Host UI
 
@@ -722,12 +734,12 @@ One button, two behaviours, decided by the count the page already shows.
 **Up to 20 photos: the browser makes the ZIP.** `Album letöltése` fetches the
 manifest, streams each master through the EXIF splice into client-zip, and
 hands the result to the browser as a download. A second or two, no queue, no
-email. The state while it runs is `Letöltés… 7 / 12`, and a failure is
-`Nem sikerült letölteni az albumot. Újra`.
+email. The state while it runs is `Album összeállítása… 7 / 12`, and a failure
+is `A letöltés nem sikerült. Próbáld újra`.
 
 **Above 20: the worker makes it.** Four states — `Album letöltése` ·
-`Album készítése… 487 kép` · `Album letöltése · 487 kép · 1,9 GB` ·
-`Nem sikerült elkészíteni az albumot. Újra`. Poll a lightweight route handler
+`Készül az album… 487 kép` · `Album letöltése · 487 kép · 1,9 GB` ·
+`Az album nem készült el. Próbáld újra`. Poll a lightweight route handler
 every 3–5s while that screen is open; no Realtime for this. The host page is
 `force-dynamic` and authenticated — poll the handler, not a page re-render.
 With the email in place, polling only has to cover the host who stays on the
@@ -884,6 +896,19 @@ endpoints — and every URL it touches is either a public photo URL or an upload
 it was handed a token for. It cannot write anywhere it was not given
 permission for, and it cannot read a photo it was not given.
 
+**A fetched body is only as alive as its `Response`.** The first real export
+shipped 21 zero-byte photos out of 48, with `missing_count` 0 and no error
+anywhere. Node's fetch registers every `Response` in a FinalizationRegistry
+that cancels the body if the object is collected while the body is unread
+(undici, `lib/web/fetch/response.js`); the fetch-ahead window holds several
+unread bodies for seconds while a multi-megabyte entry streams, which is when
+a collection runs, and the worker had kept only `response.body`. Two rules
+came out of it, both pinned by `apps/worker/tests/fetch-ahead-gc.test.ts`:
+hold the `Response` until the entry is written, and count the bytes of every
+entry against `content-length` — a short entry fails the job with a retry,
+never ships. The archive is derived data; a corrupt one is worse than a late
+one.
+
 **Disk is now a correctness concern.** Three rules, all cheap, all invisible
 when missed until the disk is full:
 
@@ -904,16 +929,16 @@ when missed until the disk is full:
   Pro at the time of writing); confirm it on the plan actually in use and set
   the floor from that, not from this document.
 
-> **Prove the upload once, and commit the script.** A known-length TUS upload
-> of a multi-gigabyte file with the signed-token variant, from Node, against
-> the local stack and then the linked project. This is the documented path, so
-> it is a confirmation rather than a gate — but the earlier single-PUT and
-> multipart experiments were never committed and this document is their only
-> record, and the same must not happen again. Two things to read off the same
-> run: whether `x-signature` must accompany every `PATCH` or only the creation
-> (`tus-js-client`'s `onBeforeRequest` handles either), and the token's
-> lifetime — a signed upload URL for photos expires after two hours, so if an
-> export can outlive it, `heartbeat` returns a fresh one.
+> **Proven, and the script is committed:** `apps/worker/scripts/tus-probe.ts`
+> (`pnpm --filter worker probe:tus --mb 40`). Against the local stack on
+> 2026-09-08 a 40MB file went up over seven 6MB `PATCH` requests carrying
+> nothing but `apikey` and the `x-signature` token, in under a second, and the
+> stored size matched. `tests/db/storage.test.ts` pins the same handshake at
+> 64KB so it runs in CI. Still to read off a run against the linked project
+> at real size: the token's lifetime — a signed upload URL for photos expires
+> after two hours, so if an export can outlive it, `heartbeat` returns a fresh
+> one — and whether the hosted edge treats the chunks any differently. The
+> probe sends the signature on every request; nothing was tried without it.
 
 Two size limits, both set deliberately. `event-exports` gets a
 `file_size_limit` sized for whole weddings (`event-photos` is capped at 15MB).
@@ -974,7 +999,8 @@ undownloadable either.** Today's route ships 486 of 487 and reports
 `failed`" turns one permanently-gone master into a wedding that can never be
 downloaded at all. Distinguish transient from permanent; retry transient
 (~30s → 2m → 10m, then `failed`); and when a master is genuinely gone, offer the
-host the short archive with an explicit "1 kép nem került bele" rather than a
+host the short archive with an explicit "Egy képet nem sikerült az albumba tenni"
+rather than a
 dead end. Losing one photo is bad. Losing the album because of one photo is
 worse.
 
@@ -1037,19 +1063,20 @@ much as a correctness one.
 
 ## 2.9 Manual setup
 
-| Where    | What                                                                                                                 |
-| -------- | -------------------------------------------------------------------------------------------------------------------- |
-| Supabase | create **private** `event-exports` bucket, with a `file_size_limit` sized for a whole wedding                        |
-| Supabase | raise the **project-wide** upload limit (Project Settings → Storage); it caps every bucket, and the default is small |
-| Supabase | enable `pg_cron` and `pg_net` (Database → Extensions; the migration also does `create extension if not exists`)      |
-| Supabase | put `EXPORT_WORKER_SECRET` in Vault as `export_worker_secret`; the cron job reads it from `vault.decrypted_secrets`  |
-| Railway  | create a service pointing at `apps/worker` in this repo                                                              |
-| Railway  | region: `europe-west4` (Amsterdam), closest to Supabase `eu-central-2` (Zurich)                                      |
-| Railway  | watch paths `apps/worker/**` so web-only pushes do not rebuild it                                                    |
-| Railway  | a plan with ephemeral disk for one wedding ZIP plus headroom (100GB on Pro at the time of writing — confirm)         |
-| Railway  | env vars, start command, restart policy                                                                              |
-| Railway  | no public domain required — the worker makes outbound calls only                                                     |
-| Vercel   | add an Ignored Build Step so worker-only pushes do not rebuild the web app                                           |
+| Where    | What                                                                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase | create **private** `event-exports` bucket, with a `file_size_limit` sized for a whole wedding                                                                                                     |
+| Supabase | raise the **project-wide** upload limit (Project Settings → Storage); it caps every bucket, and the default is small                                                                              |
+| Supabase | enable `pg_cron` and `pg_net` (Database → Extensions; the migration also does `create extension if not exists`)                                                                                   |
+| Supabase | put `EXPORT_WORKER_SECRET` in Vault as `export_worker_secret` and the site origin as `ourfilm_api_url`; the cron job reads both from `vault.decrypted_secrets` and posts nothing until both exist |
+| Vercel   | set `EXPORT_WORKER_SECRET`; leave `OURFILM_EXPORT_WORKER` unset until the worker is live, then `true` — that is the cutover                                                                       |
+| Railway  | create a service pointing at `apps/worker` in this repo                                                                                                                                           |
+| Railway  | region: `europe-west4` (Amsterdam), closest to Supabase `eu-central-2` (Zurich)                                                                                                                   |
+| Railway  | watch paths `apps/worker/**` so web-only pushes do not rebuild it                                                                                                                                 |
+| Railway  | a plan with ephemeral disk for one wedding ZIP plus headroom (100GB on Pro at the time of writing — confirm)                                                                                      |
+| Railway  | env vars, start command, restart policy                                                                                                                                                           |
+| Railway  | no public domain required — the worker makes outbound calls only                                                                                                                                  |
+| Vercel   | add an Ignored Build Step so worker-only pushes do not rebuild the web app                                                                                                                        |
 
 Vercel holds the credentials it already had; the worker holds almost nothing.
 
@@ -1061,6 +1088,7 @@ EXPORT_WORKER_SECRET=            # shared with the worker and the cron job; auth
 # Railway
 OURFILM_API_URL=                 # https://ourfilm.app
 EXPORT_WORKER_SECRET=            # the same value
+VERCEL_PROTECTION_BYPASS=        # only while OURFILM_API_URL is a preview deployment
 EXPORT_TMP_DIR=                  # where archives are built; swept on boot
 EXPORT_DISK_FLOOR_BYTES=         # do not claim a job with less free space than this
 
@@ -1166,9 +1194,8 @@ Phase 2:
   lifecycle email" under _Not building_: transactional export-ready mail is in
   scope, lifecycle and marketing mail is not. Add `album_export_email_sent` to
   the server telemetry table.
-- the privacy policy, both locales — it enumerates Resend as sending "belépési és
-  jogi visszaigazoló e-mailek" / "login and legal emails", which an
-  export-ready mail makes untrue.
+- the privacy policy, both locales — it must enumerate Resend's login, legal
+  and album-ready messages.
 - the `RESEND_API_KEY` comment in `CLAUDE.md`'s Local env block (`:102`, "auth
   and legal request emails"). `apps/web/.env.local` itself has no `RESEND_API_KEY` line
   to update.

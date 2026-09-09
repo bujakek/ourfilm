@@ -30,7 +30,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.13.0
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -41,6 +41,9 @@ jobs:
 
       - name: Run verification suite
         run: pnpm verify
+
+      - name: Typecheck and test the export worker and the shared package
+        run: pnpm verify:worker
 
   database:
     name: Migrations, generated types, and DB tests
@@ -57,7 +60,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.13.0
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies

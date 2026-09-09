@@ -2,6 +2,10 @@ import createMDX from '@next/mdx'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // The shared package ships TypeScript source, not a build: it is one module
+  // (the EXIF splice and the export contract) that the web app, the host's
+  // browser and the export worker all import as-is.
+  transpilePackages: ['@ourfilm/shared'],
   experimental: {
     // The app has two root layouts — `app/[locale]` and `app/(product)` — so
     // `<html lang>` can be correct on both halves. That leaves no single

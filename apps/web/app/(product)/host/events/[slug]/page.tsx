@@ -5,17 +5,18 @@ import { notFound } from 'next/navigation'
 
 import { HostBlock } from '@/components/host/host-block'
 import { ModerationGrid } from '@/components/host/moderation-grid'
-import { QrCard } from '@/components/host/qr-card'
+import { exportAnswer, exportNote } from '@/lib/exports/answer'
+import { HostCamera } from '@/components/host/host-camera'
 import { QuotaBanner } from '@/components/host/quota-banner'
 import { Odometer } from '@/components/ui/odometer'
 import { getEventQuota } from '@/lib/billing'
 import { captureWindowState } from '@/lib/camera'
-import { revealSummary, shortTimeRemaining } from '@/lib/event-copy'
+import { shortTimeRemaining } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
-import { formatDeadline } from '@/lib/format'
 import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
+import { reportServerIssue } from '@/lib/telemetry-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,7 +60,29 @@ export default async function AdminEventPage({ params }: Props) {
     }),
     getAllEventPhotos(event.id),
   ])
-  const tiles = await toModerationTiles(photos)
+  const tiles = toModerationTiles(photos, event.time_zone)
+  // What the Album button should say before anyone taps it: a host coming
+  // back to a prepared archive, or to one still being built, sees that state
+  // rendered rather than a generic button they have to tap to find out.
+  //
+  // Best effort, never fatal: the album is the page, and the export's state
+  // is a line on a button. If reading it throws — the migration not yet on
+  // this database, Storage refusing to sign — the button starts blank and
+  // finds out on tap, and the failure is reported rather than shown as a
+  // whole-page error.
+  const initialExport =
+    photos.length > 0
+      ? await exportAnswer(event, photos).catch(async (e) => {
+          await reportServerIssue(e, {
+            operation: 'album_export_status',
+            eventId: event.id,
+            route: '/host/events/[slug]',
+            routeType: 'page',
+            method: 'GET',
+          })
+          return null
+        })
+      : null
   const url = eventUrl(event.slug, locale)
   const now = new Date()
   const windowState = captureWindowState({
@@ -86,10 +109,10 @@ export default async function AdminEventPage({ params }: Props) {
       >
         <Link
           href={`/host?lang=${locale}`}
-          className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.1em] text-foreground/45 transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-2 text-xs font-medium text-foreground/55 transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" aria-hidden="true" />
-          {en ? 'YOUR EVENTS' : 'ESEMÉNYEID'}
+          {en ? 'Your events' : 'Eseményeid'}
         </Link>
         <div className="flex items-center gap-2">
           <Link href={`/e/${event.slug}?lang=${locale}`} className={pillClass}>
@@ -106,114 +129,93 @@ export default async function AdminEventPage({ params }: Props) {
         </div>
       </HostBlock>
 
-      <div className="mt-6 grid gap-7 sm:grid-cols-[1fr_260px] sm:items-start">
-        <HostBlock index={1} className="min-w-0">
-          <CapturePill
-            state={windowState}
-            captureEndAt={event.capture_end_at}
-            now={now}
-            locale={locale}
-          />
+      <HostBlock index={1} className="mt-6 min-w-0">
+        <CapturePill
+          state={windowState}
+          captureEndAt={event.capture_end_at}
+          now={now}
+          locale={locale}
+        />
 
-          <h1 className="mt-4 font-display text-[40px] leading-none tracking-[-0.012em] text-balance sm:text-[52px]">
-            {event.event_name}
-          </h1>
+        <h1 className="mt-4 font-display text-[40px] leading-none tracking-[-0.012em] text-balance sm:text-[52px]">
+          {event.event_name}
+        </h1>
 
-          {/* Three figures on one ruled row, replacing the three-row `<dl>`.
+        {/* Three figures on one ruled row, replacing the three-row `<dl>`.
               Each is a number a host actually watches, and each was previously
               a sentence weighted exactly like the other two. */}
-          {/* A grid rather than a wrapping row: with `flex-wrap` the third
+        {/* A grid rather than a wrapping row: with `flex-wrap` the third
               figure dropped to a second line still carrying its left divider,
               which reads as a broken table. Three columns share the width and
               a long label wraps inside its own cell instead. */}
-          <div className="mt-6 grid grid-cols-3 border-y border-border">
+        <div className="mt-6 grid grid-cols-3 border-y border-border">
+          <Figure
+            value={photos.length}
+            label={en ? 'Photos taken' : 'Kép készült'}
+          />
+          {quota ? (
             <Figure
-              value={photos.length}
-              label={en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'}
-            />
-            {quota ? (
-              <Figure
-                value={quota.participantCount}
-                of={quota.unlimited ? null : quota.participantLimit}
-                label={
-                  overQuota
-                    ? en
-                      ? 'GUEST CAP FULL'
-                      : 'KERET BETELT'
-                    : en
-                      ? 'GUESTS'
-                      : 'VENDÉG'
-                }
-                alarming={overQuota}
-                divided
-              />
-            ) : null}
-            <Figure
-              value={event.shots_per_participant}
-              label={en ? 'SHOTS EACH' : 'KÉP FEJENKÉNT'}
+              value={quota.participantCount}
+              of={quota.unlimited ? null : quota.participantLimit}
+              label={
+                overQuota
+                  ? en
+                    ? 'Guest cap full'
+                    : 'Betelt a keret'
+                  : en
+                    ? 'Guests'
+                    : 'Vendég'
+              }
+              alarming={overQuota}
               divided
             />
-          </div>
-
-          {quota && !quota.unlimited ? (
-            <QuotaBanner
-              slug={event.slug}
-              eventId={event.id}
-              quota={quota}
-              locale={locale}
-            />
           ) : null}
-        </HostBlock>
+          <Figure
+            value={event.shots_per_participant}
+            label={en ? 'Shots each' : 'Kép vendégenként'}
+            divided
+          />
+        </div>
 
-        {/* 260px of paper answering the one question a host has at a venue. */}
-        <HostBlock index={2} className="sm:sticky sm:top-7">
-          <QrCard
-            name={event.event_name}
-            url={url}
+        {/* The host's own roll, in the guest's own shape. Directly under
+              the figures because those are what it changes: a photo taken
+              here lands in the grid below and moves "KÉP KÉSZÜLT" above. */}
+        <HostCamera
+          slug={event.slug}
+          eventId={event.id}
+          eventName={event.event_name}
+          eventUrl={url}
+          shots={event.shots_per_participant}
+          canCapture={windowState === 'open'}
+          locale={locale}
+        />
+
+        {quota && !quota.unlimited ? (
+          <QuotaBanner
+            slug={event.slug}
             eventId={event.id}
-            shots={event.shots_per_participant}
+            quota={quota}
             locale={locale}
           />
-        </HostBlock>
-      </div>
+        ) : null}
+      </HostBlock>
 
-      <HostBlock index={3}>
+      <HostBlock index={2}>
         <section className="print-hidden mt-9 border-t border-border pt-5">
           <ModerationGrid
             photos={tiles}
             slug={event.slug}
             eventId={event.id}
             locale={locale}
+            timeZone={event.time_zone}
             title={en ? 'Photos' : 'Elkészült képek'}
-            albumHref={
+            exportEndpoint={
               photos.length > 0 ? `/host/events/${event.slug}/export` : null
             }
+            exportInitial={initialExport}
+            exportNote={exportNote(photos.length, locale)}
           />
         </section>
-
-        {/* Four values read once. They do not need a 56px disclosure; they need
-          to be legible and out of the way. */}
-        <div className="print-hidden mt-8 flex flex-wrap border-t border-border pt-4 font-mono text-[11px] tracking-[0.06em] text-foreground/45">
-          <ConfigCell>
-            {en ? 'ENDS' : 'VÉGE'} ·{' '}
-            {formatDeadline(event.capture_end_at, event.time_zone, locale)}
-          </ConfigCell>
-          <ConfigCell divided>
-            {en ? 'DEVELOPING' : 'ELŐHÍVÁS'} ·{' '}
-            {revealSummary(event.reveal_mode, locale)}
-          </ConfigCell>
-          <ConfigCell divided>
-            {en ? 'GALLERY' : 'GALÉRIA'} ·{' '}
-            {event.guests_can_view
-              ? en
-                ? 'GUESTS CAN SEE IT'
-                : 'VENDÉGEK LÁTJÁK'
-              : en
-                ? 'ONLY YOU'
-                : 'CSAK TE'}
-          </ConfigCell>
-          <ConfigCell divided>/E/{event.slug.toUpperCase()}</ConfigCell>
-        </div>
       </HostBlock>
     </main>
   )
@@ -237,25 +239,25 @@ function CapturePill({
   const en = locale === 'en'
   if (state === 'open') {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-accent/35 px-3 py-1.5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-accent">
+      <span className="inline-flex items-center gap-2 rounded-full border border-accent/35 px-3 py-1.5 text-xs font-medium text-accent">
         <span
           aria-hidden="true"
           className="size-[5px] rounded-full bg-accent"
         />
-        {en ? 'CAMERA OPEN' : 'A KAMERA NYITVA'} ·{' '}
+        {en ? 'Camera open' : 'Lehet fotózni'} ·{' '}
         {shortTimeRemaining(new Date(captureEndAt), now, locale)}
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center rounded-full border border-border px-3 py-1.5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-foreground/45">
+    <span className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground/55">
       {state === 'before'
         ? en
-          ? 'NOT OPEN YET'
-          : 'MÉG NEM NYÍLT MEG'
+          ? 'Not open yet'
+          : 'Még nem lehet fotózni'
         : en
-          ? 'SHOOTING ENDED'
-          : 'VÉGET ÉRT A FOTÓZÁS'}
+          ? 'Shooting ended'
+          : 'Véget ért a fotózás'}
     </span>
   )
 }
@@ -266,6 +268,12 @@ function CapturePill({
  * It rolls, and nothing else on the page responds — no toast, no highlighted
  * row. A figure that changes while the host is looking elsewhere should be
  * correct when he looks back, not something that demanded he look now.
+ *
+ * The numeral is Martian Mono and its label is not, which is the whole of the
+ * v2 type rule on this page: the mono counts, and anything read as words is
+ * Manrope in sentence case. The label used to be 9px of tracked-out caps,
+ * putting a second voice directly above an album whose tile captions had
+ * already moved to the first one.
  */
 function Figure({
   value,
@@ -292,28 +300,12 @@ function Figure({
         {of === null ? null : <span>/{of}</span>}
       </p>
       <p
-        className={`mt-1.5 font-mono text-[9px] font-medium tracking-[0.16em] ${
-          alarming ? 'text-destructive' : 'text-foreground/45'
+        className={`mt-1.5 text-xs leading-[1.35] font-medium ${
+          alarming ? 'text-destructive' : 'text-foreground/55'
         }`}
       >
         {label}
       </p>
     </div>
-  )
-}
-
-function ConfigCell({
-  children,
-  divided = false,
-}: {
-  children: React.ReactNode
-  divided?: boolean
-}) {
-  return (
-    <span
-      className={`py-1 ${divided ? 'border-l border-border px-5' : 'pr-5'}`}
-    >
-      {children}
-    </span>
   )
 }

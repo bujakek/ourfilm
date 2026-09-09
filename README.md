@@ -53,6 +53,10 @@ AUTH_EMAIL_FROM=                # optional; defaults to OurFilm <noreply@ourfilm
 # Emergency upload controls
 OURFILM_UPLOADS_DISABLED=false
 OURFILM_EVENT_STORAGE_LIMIT_BYTES=
+
+# Prepared album export (apps/worker)
+OURFILM_EXPORT_WORKER=false     # true queues albums over 20 photos for the worker
+EXPORT_WORKER_SECRET=           # shared with the worker and the pg_cron sweep
 ```
 
 `OURFILM_UPLOADS_DISABLED=true` pauses new photo reservations globally without

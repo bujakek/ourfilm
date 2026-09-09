@@ -1,6 +1,19 @@
 export const PHOTO_BUCKET = 'event-photos'
 
 /**
+ * Where finished album archives land. Private, unlike the photo bucket: a ZIP
+ * of a whole wedding is the one object whose address must not be a permanent
+ * public URL. See `20260909100000_event_exports_bucket.sql`.
+ */
+export const EXPORT_BUCKET = 'event-exports'
+
+/** One archive per export, in the event's folder so a deleted event's
+ *  leftovers are findable by folder alone. */
+export function exportStoragePath(eventId: string, exportId: string) {
+  return `${eventId}/${exportId}/ourfilm.zip`
+}
+
+/**
  * The one place the storage layout is defined.
  *
  * Every RLS policy on `storage.objects` reads the event id out of the first

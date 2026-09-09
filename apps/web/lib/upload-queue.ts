@@ -144,13 +144,29 @@ export type UploadQueue = {
 
 export function createUploadQueue({
   eventId,
+  scope,
   deps,
   handlers,
 }: {
   eventId: string
+  /**
+   * What separates two rolls on one device and one event.
+   *
+   * The store partitions by event, which is right while there is one camera
+   * per event per device. There are now two — a host shoots from
+   * `/host/events/<slug>` on their own roll — and a host who had also joined
+   * their own event as a guest would otherwise have each page resume the
+   * other's stored shots and upload them under the wrong participant. The
+   * guest camera passes nothing; the host passes `host`.
+   *
+   * It only ever reaches the store's partition key. `event_id` in telemetry
+   * stays the bare uuid — see `storedEventId` in `lib/upload-store.ts`.
+   */
+  scope?: string
   deps: UploadQueueDeps
   handlers: UploadQueueHandlers
 }): UploadQueue {
+  const partition = scope ? `${eventId}#${scope}` : eventId
   const clock = deps.now ?? (() => Date.now())
   const readable = deps.readable ?? isReadable
   const limits = deps.timeouts ?? REQUEST_TIMEOUTS_MS
@@ -192,7 +208,7 @@ export function createUploadQueue({
     const item: QueueItem = {
       shot: {
         id,
-        eventId,
+        eventId: partition,
         // Raw for now. `settle` replaces it with the master in a moment.
         blob: file,
         compressed: false,
@@ -337,7 +353,7 @@ export function createUploadQueue({
         notify(() => handlers.onDropped(shot.id, 'exhausted'))
       }
 
-      for (const stored of await deps.store.listByEvent(eventId)) {
+      for (const stored of await deps.store.listByEvent(partition)) {
         if (claimed.has(stored.id)) continue
         // A stale handle reports its full size and fails only when read, and
         // retrying a read that cannot succeed just spends the budget in front

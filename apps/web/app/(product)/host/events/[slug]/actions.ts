@@ -12,6 +12,7 @@ import {
 import { eventLocalToIso } from '@/lib/format'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { PHOTO_BUCKET } from '@/lib/storage'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import {
   reportServerEvent,
@@ -73,6 +74,15 @@ async function refusedPhoto(error: unknown) {
   return error
 }
 
+async function refusedDelete(error: unknown) {
+  await reportServerIssue(error, {
+    operation: 'photo_deleted',
+    route: '/host/events/[slug]',
+    routeType: 'action',
+  })
+  return error
+}
+
 /** One event for all five controls, so "what do hosts adjust, and when" is a
  *  single breakdown rather than five series to line up by hand. */
 function changed(
@@ -124,9 +134,116 @@ export async function setPhotoHidden(
   if (error) throw await refusedPhoto(error)
   if (!data || data.length === 0) {
     throw await refusedPhoto(
-      new Error('A kép nem módosult — lehet, hogy nincs jogosultságod.'),
+      new Error('A kép nem módosult. Lehet, hogy nincs jogosultságod.'),
     )
   }
+
+  revalidatePath(`/host/events/${slug}`)
+  revalidatePath(`/e/${slug}`)
+}
+
+/**
+ * Delete one photo for good — and keep its row.
+ *
+ * The row surviving is the whole shape, not a shortcut.
+ * `participant_shots_used` counts photo rows, so a `delete from photos` would
+ * hand the guest their frame back: the host would have found a way to give out
+ * extra film, and "no preview, no retakes" would stop being true for anybody
+ * whose photo was tidied away. What goes is the three storage objects; what
+ * stays is a tombstone carrying `deleted_at` and `hidden_at`.
+ *
+ * That is also exactly what `scripts/takedown-photo.ts` has done since the
+ * bucket went public, which is the point — this is the host-facing face of the
+ * operator's lever, not a second mechanism beside it.
+ *
+ * **Objects first, row second**, the ordering `deleteEvent` keeps and for the
+ * same reason: the row is the only record of which objects belong to the
+ * photo, so marking it deleted first would orphan three files in the bucket
+ * with nothing left pointing at them.
+ *
+ * Runs on the host's own session. Ownership is RLS — the update affecting zero
+ * rows *is* the refusal — and there is no explicit owner check anywhere in this
+ * file, deliberately.
+ */
+export async function deletePhoto(slug: string, photoId: string) {
+  const supabase = await createClient()
+
+  const { data: photo, error: readError } = await supabase
+    .from('photos')
+    .select('id, event_id, storage_path, thumb_path, view_path, hidden_at')
+    .eq('id', photoId)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (readError) throw await refusedDelete(readError)
+  if (!photo) throw await refusedDelete(new Error('Nincs ilyen kép.'))
+
+  // The last photo stays. An album with nothing in it is not a state the rest
+  // of the product has an answer for — the export refuses, the gallery says
+  // there is nothing yet — and a host who wants that wants to delete the
+  // event, which is its own deliberate path.
+  const { count, error: countError } = await supabase
+    .from('photos')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', photo.event_id)
+    .eq('status', 'ready')
+    .is('deleted_at', null)
+  if (countError) throw await refusedDelete(countError)
+  if ((count ?? 0) <= 1) {
+    throw await refusedDelete(
+      new Error('Ez az esemény utolsó képe, ezért nem törölheted.'),
+    )
+  }
+
+  const paths = [photo.storage_path, photo.view_path, photo.thumb_path].filter(
+    (path): path is string => Boolean(path),
+  )
+  const bucket = supabase.storage.from(PHOTO_BUCKET)
+
+  const { data: removed, error: removeError } = await bucket.remove(paths)
+  if (removeError) throw await refusedDelete(removeError)
+  // `remove()` reports what it deleted and silently omits what it could not,
+  // so the count is the only signal a path survived. Throwing here leaves the
+  // row intact, so a retry can still find the stragglers — the same contract
+  // `deleteEvent` keeps.
+  const gone = new Set((removed ?? []).map((object) => object.name))
+  const missed = paths.filter((path) => !gone.has(path))
+  if (missed.length > 0 && (removed ?? []).length > 0) {
+    throw await refusedDelete(
+      new Error('Nem sikerült teljesen törölni a képet. Próbáld újra.'),
+    )
+  }
+
+  // The objects are public and CDN-cached, so the edge can keep answering for
+  // one after it is gone. Best effort, exactly as the takedown script has it:
+  // a project where the purge endpoint is unavailable still gets the removal.
+  for (const path of paths) await bucket.purgeCache(path)
+
+  const { data: updated, error: updateError } = await supabase
+    .from('photos')
+    .update({
+      deleted_at: new Date().toISOString(),
+      // Set only when null. An existing `hidden_at` is when the host moderated
+      // it, and that is a fact about the album worth keeping.
+      ...(photo.hidden_at ? {} : { hidden_at: new Date().toISOString() }),
+    })
+    .eq('id', photoId)
+    .select('id')
+  if (updateError) throw await refusedDelete(updateError)
+  if (!updated || updated.length === 0) {
+    throw await refusedDelete(
+      new Error('A kép nem törlődött. Lehet, hogy nincs jogosultságod.'),
+    )
+  }
+
+  // After the row is written, never beside it: a delete that threw halfway is
+  // not a delete. `hidden_before` is the interesting dimension — it says
+  // whether hosts delete straight from the grid or clean up what they had
+  // already hidden, which is what tells us whether this design held. No photo
+  // id, no participant id, no name.
+  await reportServerEvent('photo_deleted', {
+    event_id: photo.event_id,
+    hidden_before: photo.hidden_at !== null,
+  })
 
   revalidatePath(`/host/events/${slug}`)
   revalidatePath(`/e/${slug}`)
@@ -383,6 +500,24 @@ export async function deleteEvent(slug: string) {
     .maybeSingle()
   if (eventError) throw eventError
   if (!event) throw new Error('Nincs ilyen esemény.')
+
+  // An album being prepared right now holds a lease on this event. Deleting
+  // underneath it would cascade the job away mid-build and leave a ZIP in the
+  // exports bucket with no row to expire it. Refuse while the lease is live
+  // — bounded by the lease itself, so a worker that died cannot block a
+  // deletion for longer than ten minutes. The read needs the service role:
+  // `album_exports` has no policies, by design.
+  const { data: inFlight, error: inFlightError } = await createAdminClient()
+    .from('album_exports')
+    .select('id')
+    .eq('event_id', event.id)
+    .eq('status', 'processing')
+    .gt('locked_until', new Date().toISOString())
+    .limit(1)
+  if (inFlightError) throw inFlightError
+  if (inFlight && inFlight.length > 0) {
+    throw new Error('Még készül az album. Várd meg, és utána próbáld újra.')
+  }
 
   // Collect every path first, remove second. Deleting inside the paging loop
   // would shift the offsets out from under it and skip whole pages.

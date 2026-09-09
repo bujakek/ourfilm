@@ -22,6 +22,7 @@
   --color-brand-dot: var(--brand-dot);
   --color-brand-flash: var(--brand-flash);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-ring: var(--ring);
   --color-paper: var(--paper);
   --color-paper-foreground: var(--paper-foreground);
@@ -117,6 +118,15 @@
      in body text. Muted enough not to glare on a dark screen, red enough to
      read as a refusal. */
   --destructive: #ff8a8a;
+  /* The connection is degraded, and that is not the same news as the film
+     being live. Lilac had been carrying both — a guest with no signal saw the
+     same colour as a guest whose photo had just landed — so the v2 review
+     split them: lilac is receipt and live only, and amber is offline.
+
+     Not `--brand-flash` (#edba62), which is a hair away and already spoken
+     for: the three brand inks are identity, not interface state, and only
+     brand marks may spend them. */
+  --warning: #e8c07a;
   --ring: rgba(195, 182, 255, 0.5);
 
   /* Paper and film: the two materials that are not glass. Values live here
@@ -175,10 +185,12 @@
   }
 
   /* Paper. The material of anything issued or printed: the QR sheet, a guest's
-     stub, the price. It started as one hardcoded gradient inside
-     `components/host/qr-card.tsx`, whose own comment already called it paper —
-     the strongest-designed surface in the product, and it stopped at that one
-     sheet.
+     stub, the price, the shutter. It started as one hardcoded gradient inside
+     the host's printable QR ticket, whose own comment already called it paper
+     — the strongest-designed surface in the product, and it stopped at that
+     one card. The card itself is gone (the code now lives behind the button
+     beside the host's shutter, `components/host/qr-sheet.tsx`); the material
+     outlived it, which is the whole argument for having named it.
 
      Deliberately NOT a filtered surface, and that is the point rather than a
      saving: paper has to look identical on a phone, in a screenshot and out of

@@ -14,13 +14,15 @@
     "takedown": "node --env-file=.env.local --experimental-strip-types scripts/takedown-photo.ts",
     "reset:data": "node --env-file=.env.local --experimental-strip-types scripts/reset-data.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "templates:render": "node --experimental-strip-types scripts/render-auth-templates.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@next/mdx": "^16.3.1",
+    "@ourfilm/shared": "workspace:*",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "@types/mdx": "^2.0.14",

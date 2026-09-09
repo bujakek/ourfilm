@@ -59,6 +59,7 @@ export function FilmStrip({
   total,
   locale,
   pending = [],
+  offline = false,
   entrance,
   className,
 }: {
@@ -69,6 +70,14 @@ export function FilmStrip({
   locale: Locale
   /** Frames claimed but not yet landed, oldest first. Usually none or one. */
   pending?: PendingFrame[]
+  /**
+   * Whether the device has a connection. A developing cell that cannot upload
+   * yet drops to 45% — the only new signal in the offline state, and the one
+   * that separates "still going up" from "waiting for signal" at a glance.
+   * The grayscale-blur underneath is unchanged: it means "not developed", and
+   * that is true either way.
+   */
+  offline?: boolean
   /** How the perforation rows arrive. See the note at the call site. */
   entrance?: Transition
   className?: string
@@ -139,6 +148,7 @@ export function FilmStrip({
               <DevelopingCell
                 key={`frame-${i}`}
                 pending={pending[i - frames.length]}
+                offline={offline}
               />
             ) : (
               <span
@@ -165,11 +175,22 @@ export function FilmStrip({
  * a photograph that finished developing above a pending upload is a lie, and
  * this cell is the only thing telling the guest their shot is safe.
  */
-function DevelopingCell({ pending }: { pending: PendingFrame }) {
+function DevelopingCell({
+  pending,
+  offline,
+}: {
+  pending: PendingFrame
+  offline: boolean
+}) {
   const { previewUrl, progress, confirmed } = pending
 
   return (
-    <span className="relative size-13 shrink-0 snap-start overflow-hidden rounded-xs bg-white/8">
+    <motion.span
+      className="relative size-13 shrink-0 snap-start overflow-hidden rounded-xs bg-white/8"
+      initial={false}
+      animate={{ opacity: offline && !confirmed ? 0.45 : 1 }}
+      transition={T.settle}
+    >
       <motion.span
         className="absolute inset-0 block"
         initial={{ filter: 'grayscale(1) blur(6px)' }}
@@ -197,7 +218,7 @@ function DevelopingCell({ pending }: { pending: PendingFrame }) {
           />
         ) : null}
       </AnimatePresence>
-    </span>
+    </motion.span>
   )
 }
 

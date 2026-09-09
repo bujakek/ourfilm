@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -39,6 +34,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      album_exports: {
+        Row: {
+          attempt_count: number
+          byte_size: number | null
+          completed_at: string | null
+          created_at: string
+          estimated_bytes: number
+          event_id: string
+          expires_at: string | null
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          locked_until: string | null
+          missing_count: number
+          next_attempt_at: string | null
+          notified_at: string | null
+          notify_attempts: number
+          photo_count: number
+          source_hash: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tus_upload_url: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          byte_size?: number | null
+          completed_at?: string | null
+          created_at?: string
+          estimated_bytes?: number
+          event_id: string
+          expires_at?: string | null
+          id?: string
+          last_error_code?: string | null
+          locked_at?: string | null
+          locked_until?: string | null
+          missing_count?: number
+          next_attempt_at?: string | null
+          notified_at?: string | null
+          notify_attempts?: number
+          photo_count: number
+          source_hash: string
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tus_upload_url?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          byte_size?: number | null
+          completed_at?: string | null
+          created_at?: string
+          estimated_bytes?: number
+          event_id?: string
+          expires_at?: string | null
+          id?: string
+          last_error_code?: string | null
+          locked_at?: string | null
+          locked_until?: string | null
+          missing_count?: number
+          next_attempt_at?: string | null
+          notified_at?: string | null
+          notify_attempts?: number
+          photo_count?: number
+          source_hash?: string
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          tus_upload_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "album_exports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       early_couple_applications: {
         Row: {
           agreement_accepted_at: string
@@ -240,6 +315,7 @@ export type Database = {
           joined_at: string
           last_seen_at: string
           session_token_hash: string
+          user_id: string | null
         }
         Insert: {
           display_name: string
@@ -248,6 +324,7 @@ export type Database = {
           joined_at?: string
           last_seen_at?: string
           session_token_hash: string
+          user_id?: string | null
         }
         Update: {
           display_name?: string
@@ -256,6 +333,7 @@ export type Database = {
           joined_at?: string
           last_seen_at?: string
           session_token_hash?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -271,6 +349,7 @@ export type Database = {
         Row: {
           byte_size: number | null
           created_at: string
+          deleted_at: string | null
           event_id: string
           height: number | null
           hidden_at: string | null
@@ -288,6 +367,7 @@ export type Database = {
         Insert: {
           byte_size?: number | null
           created_at?: string
+          deleted_at?: string | null
           event_id: string
           height?: number | null
           hidden_at?: string | null
@@ -305,6 +385,7 @@ export type Database = {
         Update: {
           byte_size?: number | null
           created_at?: string
+          deleted_at?: string | null
           event_id?: string
           height?: number | null
           hidden_at?: string | null
@@ -492,6 +573,78 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      album_export_cron_jobs: {
+        Args: never
+        Returns: {
+          active: boolean
+          jobname: string
+          schedule: string
+        }[]
+      }
+      album_export_status: {
+        Args: { p_event_id: string }
+        Returns: {
+          attempt_count: number
+          byte_size: number | null
+          completed_at: string | null
+          created_at: string
+          estimated_bytes: number
+          event_id: string
+          expires_at: string | null
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          locked_until: string | null
+          missing_count: number
+          next_attempt_at: string | null
+          notified_at: string | null
+          notify_attempts: number
+          photo_count: number
+          source_hash: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tus_upload_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "album_exports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claim_album_export: {
+        Args: { p_lease?: string }
+        Returns: {
+          attempt_count: number
+          byte_size: number | null
+          completed_at: string | null
+          created_at: string
+          estimated_bytes: number
+          event_id: string
+          expires_at: string | null
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          locked_until: string | null
+          missing_count: number
+          next_attempt_at: string | null
+          notified_at: string | null
+          notify_attempts: number
+          photo_count: number
+          source_hash: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tus_upload_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "album_exports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       commit_shot: {
         Args: {
           p_byte_size: number
@@ -505,6 +658,43 @@ export type Database = {
           committed: boolean
           shots_remaining: number
         }[]
+      }
+      complete_album_export: {
+        Args: {
+          p_byte_size: number
+          p_id: string
+          p_missing_count?: number
+          p_storage_path: string
+        }
+        Returns: {
+          attempt_count: number
+          byte_size: number | null
+          completed_at: string | null
+          created_at: string
+          estimated_bytes: number
+          event_id: string
+          expires_at: string | null
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          locked_until: string | null
+          missing_count: number
+          next_attempt_at: string | null
+          notified_at: string | null
+          notify_attempts: number
+          photo_count: number
+          source_hash: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tus_upload_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "album_exports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       consume_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number }
@@ -564,6 +754,38 @@ export type Database = {
       }
       event_plan_source: { Args: { p_event_id: string }; Returns: string }
       event_ready_photo_bytes: { Args: { p_event_id: string }; Returns: number }
+      fail_album_export: {
+        Args: { p_code: string; p_id: string; p_retry: boolean }
+        Returns: {
+          attempt_count: number
+          byte_size: number | null
+          completed_at: string | null
+          created_at: string
+          estimated_bytes: number
+          event_id: string
+          expires_at: string | null
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          locked_until: string | null
+          missing_count: number
+          next_attempt_at: string | null
+          notified_at: string | null
+          notify_attempts: number
+          photo_count: number
+          source_hash: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tus_upload_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "album_exports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       free_participant_limit: { Args: never; Returns: number }
       grant_event_plan: {
         Args: {
@@ -576,6 +798,22 @@ export type Database = {
           already_active: boolean
           grant_id: string
           granted_event_id: string
+        }[]
+      }
+      heartbeat_album_export: {
+        Args: { p_id: string; p_lease?: string; p_tus_upload_url?: string }
+        Returns: boolean
+      }
+      host_participant: {
+        Args: {
+          p_event_id: string
+          p_name: string
+          p_token_hash: string
+          p_user_id: string
+        }
+        Returns: {
+          participant_id: string
+          token_hash: string
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
@@ -625,6 +863,43 @@ export type Database = {
         Args: { p_photo_id: string; p_token_hash: string }
         Returns: undefined
       }
+      request_album_export: {
+        Args: {
+          p_estimated_bytes: number
+          p_event_id: string
+          p_photo_count: number
+          p_source_hash: string
+        }
+        Returns: {
+          attempt_count: number
+          byte_size: number | null
+          completed_at: string | null
+          created_at: string
+          estimated_bytes: number
+          event_id: string
+          expires_at: string | null
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          locked_until: string | null
+          missing_count: number
+          next_attempt_at: string | null
+          notified_at: string | null
+          notify_attempts: number
+          photo_count: number
+          source_hash: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          tus_upload_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "album_exports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reserve_event_checkout: {
         Args: {
           p_event_id: string
@@ -657,6 +932,14 @@ export type Database = {
         Returns: boolean
       }
       shot_reservation_ttl: { Args: never; Returns: string }
+      sweep_album_exports: {
+        Args: never
+        Returns: {
+          expired: number
+          failed: number
+          released: number
+        }[]
+      }
     }
     Enums: {
       app_role: "user" | "admin"
@@ -800,3 +1083,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -40,3 +40,21 @@ export function publicPhotoUrl(path: string): string {
   const encoded = path.split('/').map(encodeURIComponent).join('/')
   return `${url}/storage/v1/object/public/${PHOTO_BUCKET}/${encoded}`
 }
+
+/**
+ * The same object, as a download rather than a page.
+ *
+ * `<a download>` is ignored cross-origin, and Storage is a different origin
+ * from the app — so a plain link to a master opens the JPEG full-screen
+ * instead of saving it. Storage answers `?download=<name>` with a
+ * `Content-Disposition: attachment`, which is what actually makes it a file.
+ * (Same query `supabase-js` builds in `getPublicUrl({ download })`; spelled out
+ * here because the rest of this module builds URLs without a client.)
+ *
+ * Not sufficient on iOS by itself: Safari renders an attachment in a viewer
+ * rather than saving it to Photos, so the host surface hands the bytes to the
+ * share sheet and keeps this as the desktop path.
+ */
+export function publicPhotoDownloadUrl(path: string, filename: string): string {
+  return `${publicPhotoUrl(path)}?download=${encodeURIComponent(filename)}`
+}

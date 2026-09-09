@@ -126,7 +126,7 @@ Abuse and storage emergency controls are server-only:
 ```bash
 OURFILM_UPLOADS_DISABLED=false          # true pauses all new reservations
 OURFILM_EVENT_STORAGE_LIMIT_BYTES=      # optional positive per-event master-byte cap
-RESEND_API_KEY=                         # auth and legal request emails
+RESEND_API_KEY=                         # auth, legal request and album-ready emails
 LEGAL_EMAIL_FROM=                       # optional sender override
 SEND_EMAIL_HOOK_SECRET=                 # Supabase Send Email Hook signature
 AUTH_EMAIL_FROM=                        # optional auth sender override
@@ -141,6 +141,21 @@ STRIPE_WEBHOOK_SECRET=          # whsec_…, from the endpoint or `stripe listen
 STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
+
+The prepared album export (Phase 2 of `docs/public-cdn-and-export-worker.md`)
+adds three, all server-only:
+
+```bash
+OURFILM_EXPORT_WORKER=false     # true routes albums over 20 photos to the worker; false streams them
+EXPORT_WORKER_SECRET=           # shared with the Railway worker and the pg_cron sweep (via Vault)
+SUPABASE_STORAGE_URL=           # optional; the direct storage hostname for the worker's uploads
+```
+
+`OURFILM_EXPORT_WORKER` is the cutover switch: off, a large album streams
+through the function as before; on, it is queued for `apps/worker`. The same
+`EXPORT_WORKER_SECRET` goes on Railway and into Supabase Vault as
+`export_worker_secret`, beside `ourfilm_api_url` — without the two Vault
+secrets the cron's HTTP sweep posts nothing.
 
 **Stripe is live in production and in test mode locally.** All four are
 filled in in `apps/web/.env.local` with test-mode values, so `stripeIsConfigured()` is
@@ -340,18 +355,20 @@ carries the correlation key its own funnel needs: `creation_key` — the draft's
 own random uuid, minted in the browser before any row exists — for the four
 onboarding screens, and `event_id` from the moment there is a row.
 
-| Event                           | Answers                                                                  |
-| ------------------------------- | ------------------------------------------------------------------------ |
-| `onboarding_step_completed`     | Which of the four questions a host stops at. No row exists yet           |
-| `onboarding_plan_chosen`        | Free or unlimited, and whether the paid tile was even offered            |
-| `onboarding_create_attempted`   | The last CTA and what came back; `auth_required` is the email round trip |
-| `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once     |
-| `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost        |
-| `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it          |
-| `quota_upgrade_clicked`         | …and went to the billing card                                            |
-| `photo_moderated`               | How much of an album a host takes out, after the round trip              |
-| `album_export_requested`        | The Album button; the route below says what the stream then did          |
-| `create_own_album_clicked`      | The guest-to-host loop. Nothing mounts that component at the moment      |
+| Event                           | Answers                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `onboarding_step_completed`     | Which of the four questions a host stops at. No row exists yet                 |
+| `onboarding_plan_chosen`        | Free or unlimited, and whether the paid tile was even offered                  |
+| `onboarding_create_attempted`   | The last CTA and what came back; `auth_required` is the email round trip       |
+| `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once           |
+| `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost              |
+| `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it                |
+| `quota_upgrade_clicked`         | …and went to the billing card                                                  |
+| `photo_moderated`               | How much of an album a host takes out, after the round trip                    |
+| `album_export_requested`        | The Album button, and which path the endpoint chose: `browser` or `prepared`   |
+| `album_export_browser_finished` | A small album zipped in the host's browser reached the save dialog             |
+| `album_export_browser_failed`   | …or did not, and at which stage. A blob that fails to save is otherwise silent |
+| `create_own_album_clicked`      | The guest-to-host loop, from the bar under a revealed album's grid             |
 
 **And the server reports what the browser cannot see honestly** — a payment
 Stripe confirmed rather than a browser that reached a success URL, a stream
@@ -360,17 +377,23 @@ is the whole of it, and it is a separate list from the browser's because these
 are separate promises: every property is reduced to a bounded scalar, and
 `event_id` and `creation_key` are refused unless they are uuids.
 
-| Event                   | Answers                                                                   |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `checkout_started`      | A host reached Stripe, and from which of the two entry points             |
-| `checkout_blocked`      | …or was refused first, and why. Six reasons, all of them a sentence read  |
-| `checkout_settled`      | What Stripe reported server to server: paid, failed, expired, refunded    |
-| `event_created`         | The row exists, with the shape the host chose and whether it was a repeat |
-| `event_deleted`         | The one destructive path, with the album's size and age                   |
-| `event_setting_changed` | What hosts adjust on a running camera, and how far they move the end      |
-| `album_export_started`  | A ZIP began streaming                                                     |
-| `album_export_finished` | …and finished. `missing_count` is silent data loss and wants an alert     |
-| `auth_email_sent`       | The mail was accepted, in the language the hook actually rendered         |
+| Event                       | Answers                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `checkout_started`          | A host reached Stripe, and from which of the two entry points                 |
+| `checkout_blocked`          | …or was refused first, and why. Six reasons, all of them a sentence read      |
+| `checkout_settled`          | What Stripe reported server to server: paid, failed, expired, refunded        |
+| `event_created`             | The row exists, with the shape the host chose and whether it was a repeat     |
+| `event_deleted`             | The one destructive path, with the album's size and age                       |
+| `photo_deleted`             | A frame destroyed, and whether it was already hidden when they did it         |
+| `event_setting_changed`     | What hosts adjust on a running camera, and how far they move the end          |
+| `album_export_queued`       | A large album was asked for; a job row exists and nothing is built yet        |
+| `album_export_started`      | An archive began: the stream started, or a worker claimed the job             |
+| `album_export_finished`     | …and finished. `missing_count` is silent data loss and wants an alert         |
+| `album_export_failed`       | A worker gave up on an attempt; `final` is the one the host sees              |
+| `album_export_email_sent`   | Resend accepted the album-ready mail. Its absence after a finish is the alert |
+| `album_export_email_failed` | …or refused it; the sweep retries up to five times                            |
+| `album_export_sweep`        | One run of the cron-driven sweep. No run for an hour is the alert             |
+| `auth_email_sent`           | The mail was accepted, in the language the hook actually rendered             |
 
 Three of those pairs are read as gaps rather than as counts. A
 `checkout_started` with no `checkout_settled` is an abandoned Stripe page; an
@@ -463,9 +486,14 @@ The dashboard is part of the implementation. Before production:
   for Vercel Development, Preview and Production.
 
 `posthog-node` follows Node's security-patched runtime floor: the installed
-version requires Node `^20.20.0` or `>=22.22.0`. Upgrade a local Node 22.18
-installation before the next dependency install even though the current build
-still runs on it; deployed functions must use a supported patched runtime too.
+version requires Node `^20.20.0` or `>=22.22.0`, and the root `package.json`
+declares `engines` to match. CI and the export worker's image run Node 24,
+where TypeScript type stripping is no longer experimental — which is also why
+the worker's tests stopped having to filter Node's warnings. Upgrade a local
+Node 22.18 installation before the next dependency install even though the
+current build still runs on it; deployed functions must use a supported
+patched runtime too, so check the Vercel project's Node setting when this
+changes.
 
 ## The upload queue survives the tab (settled)
 
@@ -635,9 +663,11 @@ Three host-area controls show the result before the server has confirmed it. All
 revert on their own — none carries hand-written rollback code.
 
 - **`apps/web/components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
-  **grid**, not the tile, so the "N rejtve" counter moves with the photo it
-  describes. Per-tile state would flip the tile instantly and leave the count a
-  round trip behind, which reads as a bug.
+  **grid**, not the tile, and takes an action union: a hide flips a row, a
+  delete drops it. One piece of state because it is one — the list — and
+  anything derived from it has to move on the same frame as the tile it
+  describes. Per-tile state would flip the photo instantly and leave everything
+  else a round trip behind, which reads as a bug.
 - **`apps/web/components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
 - **`apps/web/components/host/shots-card.tsx`** — a five-way choice whose selected value
@@ -652,9 +682,19 @@ there is no way to glance at it and notice.
 **Nothing on the guest side is optimistic any more.** The old `recent-uploads`
 store showed a guest their own photo the instant it uploaded, drawn from the
 `blob:` URL still in memory. That is exactly what a reveal model must not do, so
-the store and its tiles are gone. The camera's shot counter is not optimistic
-either: it renders whatever `commit_shot` returned, never a local decrement,
-because a client-side counter is a display and the database is the count.
+the store and its tiles are gone.
+
+**The camera's shot counter is the one qualified exception, and it is not a
+local decrement.** It shows `remaining - outstanding`: the last number
+`commit_shot` returned, less the shots reserved on screen that have not come
+back yet. Nothing is ever added to the server's answer, so the two settle onto
+it as each shot lands and can never cross it. It reads a frame ahead because
+the frame really is gone a frame ahead — `reserve_shot` takes it inside the row
+lock before a byte moves — and the offline marker is what made the old
+behaviour untenable: a guest with no signal sat on "9 left" with three photos
+already spent. The shutter's own label still reads `remaining`, because
+"Mentés…" is exactly the state where the roll is spent and the server has not
+caught up.
 
 ## Routing (settled — QR codes get printed, so this is expensive to change)
 
@@ -669,6 +709,8 @@ because a client-side counter is a display and the database is the count.
 | `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                          |
 | `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                                                                          |
 | `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                                                                      |
+| `/host/events/[slug]/export`                                                               | JSON: what happens to this album. Up to 20 photos, a manifest the browser zips itself; above, where the prepared archive is              |
+| `/host/events/[slug]/export/stream`                                                        | The large-album path for now: the whole ZIP streamed through a function. Retired by the export worker                                    |
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
@@ -823,7 +865,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   there would move every window two hours off what the host typed.
 
 - **`participants`** — `id`, `event_id`, `display_name`, `session_token_hash`,
-  `joined_at`, `last_seen_at`, unique on `(event_id, session_token_hash)`.
+  `user_id` (nullable → `auth.users`), `joined_at`, `last_seen_at`, unique on
+  `(event_id, session_token_hash)` and on `(event_id, user_id)` where present.
 
   A guest's identity is a random 32-byte token in an **httpOnly** cookie; only
   its SHA-256 is stored. `httpOnly` is the load-bearing part — the cookie decides
@@ -835,12 +878,46 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   takes `for update` on the event row before counting, so five parallel joins on
   a free event cannot produce six participants.
 
+  **`user_id` is the host shooting their own event, and nothing else yet.** A
+  photo belongs to a participant, so a host with a camera is one — but they hold
+  no cookie (it is path-scoped to `/e/<slug>`, and a Server Action posts to the
+  path of the page that owns it, so nothing under `/host` receives it). They are
+  recognised by the session they already have: `host_participant` resolves the
+  row from `auth.uid()` after ownership has been checked, and the row's token
+  hash is random and never leaves the server. Deriving that hash from the user id
+  was rejected — the guest path hashes whatever raw token is in the cookie, and
+  `httpOnly` stops JavaScript rather than the person holding the browser, so a
+  derivable hash would let anyone who learned a host's user id become them.
+
+  **Every guest count reads `user_id is null`** —
+  `event_participant_count_capped`, `event_participant_quota`,
+  `owned_events_with_previews` and `getGuestParticipantCount`. The host is not a
+  guest, so a free event still admits five of them after the couple has taken a
+  photo. Revisit all four before that column ever holds anything but the owner.
+
 - **`photos`** — `id`, `event_id`, `participant_id` (**not null** — an
   unattributed photo is one that consumed nobody's shot), `status`
   (`pending | ready`), `idempotency_key` (unique per participant),
-  `storage_path`, `thumb_path`, `view_path`, `hidden_at` (soft delete for
-  moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type`,
-  `taken_at`, `created_at`
+  `storage_path`, `thumb_path`, `view_path`, `hidden_at` (moderation),
+  `deleted_at`, `width`, `height`, `byte_size`, `mime_type`, `taken_at`,
+  `created_at`
+
+  **A photo row is never hard-deleted, and `deleted_at` is why that rule
+  survived getting a host-facing delete button.** `participant_shots_used`
+  counts photo rows, so removing one hands the guest their frame back — a host
+  would have found a way to deal out extra film, and "no preview, no retakes"
+  would stop being true for anybody whose photo was tidied away. So a delete
+  removes the three storage objects, purges them from the CDN, and writes
+  `deleted_at` and `hidden_at`; the row stays, still `ready`, still counted. It
+  is the same thing `pnpm takedown <photo-id>` has done for the operator since
+  the bucket went public.
+
+  Only two readers need the new column, and that is not luck: every
+  guest-facing RPC already gates on `hidden_at is null`, which the delete sets.
+  The moderation grid and the album export read the table directly and
+  deliberately include hidden photos, so `getAllEventPhotos` and
+  `loadExportPhotos` are the two that say `deleted_at is null`. A third reader
+  of `photos` needs the same clause.
 
   **The shot limit is atomic, and this is how.** `reserve_shot` takes
   `for update` on the _participant_ row, checks the window and the count, and
@@ -868,6 +945,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 - **`stripe_checkout_attempts`** — one short-lived reservation per event. The host-only `reserve_event_checkout` RPC atomically returns one attempt id and canonical terms-acceptance timestamp to concurrent callers; that attempt id is the Stripe idempotency key. The table has RLS and no policies, so hosts cannot list or edit reservations directly. After 45 minutes a new request rotates the attempt and creates a fresh Checkout Session.
 
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
+
+- **`album_exports`** — one prepared album archive per row: `event_id` (cascade), `status` (`queued` | `processing` | `ready` | `failed` | `expired`), `source_hash` (over ids, `hidden_at`, `taken_at`, `created_at`, uploader name and zone, so a hide after an export never serves the stale ZIP), `photo_count`, `estimated_bytes`, `byte_size` (what Storage reported, never what the worker said), `storage_path`, `missing_count`, `attempt_count` (four claims is the budget), `next_attempt_at`, `locked_at` / `locked_until` (the lease), `tus_upload_url`, `notified_at` / `notify_attempts`, `last_error_code`, timestamps. One in-flight row per event by partial unique index. RLS on with no policies; every RPC (`request_album_export`, `album_export_status`, `claim_album_export`, `heartbeat_album_export`, `complete_album_export`, `fail_album_export`, `sweep_album_exports`) is service-role only. The host reaches it only through their own page after an ownership check; the worker only through `/api/exports/*` behind `EXPORT_WORKER_SECRET`. `20260909110000` also schedules two `pg_cron` jobs: the SQL sweep every minute and the HTTP sweep every five.
 
 Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it, and `{event_id}/cover-{uuid}.jpg` for the cover (a fresh id per upload, because on a public bucket the URL is the CDN cache key and an overwrite under the same key serves the old bytes for an hour; events from before September 2026 keep a `cover.jpg`). Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
 
@@ -915,7 +994,9 @@ subscription, no per-guest fee. The event's stored locale selects the Stripe
 Price, so a translated label cannot silently choose the other currency.
 
 - **The free tier is a _participant_ cap, not a photo cap:** an event is free for
-  up to **5 distinct participants** (`public.free_participant_limit()`). Every
+  up to **5 distinct guests** (`public.free_participant_limit()`). The host's own
+  participant row is excluded from every count — see `participants` in the data
+  model — so shooting your own wedding does not cost you a guest. Every
   guest gets the host's chosen roll of 5/10/16/24/36 frames either way — what
   paying buys is more guests. Five friends shooting 36 frames each is a
   legitimately free event.
@@ -1004,15 +1085,18 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 - Retake, in-camera preview, or an editor
 - Video, audio guestbook, live slideshow, RSVP
 - Leaderboard, recap, gamification, analytics, referral
-- Email notifications and lifecycle email
+- Lifecycle and marketing email. The one transactional mail beyond auth — the album-ready mail from the export worker — is built and is the exception, not the start of a list
 - **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
   actually writing and maintaining an English site is a separate decision.
 - Realtime gallery updates (Supabase Realtime) — guests refresh
 - **Background upload while the tab is closed.** Not achievable without a
   native shell, and not by a service worker either: iOS Safari has no
   Background Sync. Resuming _in the page_ is built — see The upload queue.
-- Long-running requests, background workers, cron. The reveal is computed at
-  request time precisely so none of these is needed.
+- Long-running requests on Vercel. The reveal is computed at request time
+  precisely so no function has to wait. The one job that cannot fit a
+  function — zipping a whole wedding — runs on the Railway worker in
+  `apps/worker`, and its housekeeping is two `pg_cron` jobs; nothing else
+  may grow a worker or a schedule without the same argument.
 
 **Reversed by the pivot.** Per-guest shot scarcity, delayed reveal and a
 capture-window were all on this list before, and the Once review had explicitly

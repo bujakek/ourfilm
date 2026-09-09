@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "target": "ESNext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "types": ["node"],
+    // Runs under `node --experimental-strip-types`, which needs explicit .ts
+    // extensions on relative imports. Safe with noEmit.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

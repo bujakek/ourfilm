@@ -271,3 +271,22 @@ export async function countParticipants(eventId: string) {
   if (error) throw error
   return count ?? 0
 }
+
+/** The host's own participant row, through the service-role RPC the host
+ *  capture actions use. */
+export async function hostParticipant(
+  eventId: string,
+  userId: string,
+  name: string,
+) {
+  const { data, error } = await serviceClient()
+    .rpc('host_participant', {
+      p_event_id: eventId,
+      p_user_id: userId,
+      p_name: name,
+      p_token_hash: newSession().hash,
+    })
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
