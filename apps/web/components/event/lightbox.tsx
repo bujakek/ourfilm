@@ -142,7 +142,10 @@ export function Lightbox<Photo extends ViewablePhoto>({
     const el = surface.current
     if (!from || !el || reduceMotion) return
 
-    const { x, y, scale } = morphFrom(from, el.getBoundingClientRect())
+    const box = el.getBoundingClientRect()
+    if (box.width === 0) return
+
+    const { x, y, scale } = morphFrom(from, box)
     void animate(
       el,
       { x: [x, 0], y: [y, 0], scale: [scale, 1], opacity: [0.7, 1] },
@@ -171,8 +174,9 @@ export function Lightbox<Photo extends ViewablePhoto>({
 
     const to = originOf?.(photo.id)
     const el = surface.current
-    if (to && el && !reduceMotion) {
-      const { x, y, scale } = morphFrom(to, el.getBoundingClientRect())
+    const box = el?.getBoundingClientRect()
+    if (to && el && box && box.width > 0 && !reduceMotion) {
+      const { x, y, scale } = morphFrom(to, box)
       await Promise.all([
         animate(el, { x, y, scale, opacity: 0.7 }, T.expand),
         backdrop.current
@@ -234,23 +238,32 @@ export function Lightbox<Photo extends ViewablePhoto>({
         if (Math.abs(dx) > SWIPE_THRESHOLD) go(dx > 0 ? -1 : 1)
       }}
     >
+      {/* Opacity only. It used to scale as well, which is now the morph's job
+          — and scaling the whole surface moved the chrome with the photo. */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.985 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={reduceMotion ? still : T.settle}
         className="fixed inset-0 flex flex-col"
       >
         {/* The ground, as an element rather than `::backdrop`. A pseudo-element
             appears the instant `showModal()` is called and nothing can animate
-            it, so the page used to vanish a beat before the photo arrived. */}
+            it, so the page used to vanish a beat before the photo arrived.
+
+            **No negative z-index.** This element's parent animates opacity, so
+            it is a stacking context, and `-z-10` inside one paints *behind the
+            parent's own background* — which there isn't one of. The ground fell
+            through the transparent dialog and the viewer's chrome drew straight
+            onto the grid. Everything below is `relative` instead, which is what
+            puts in-flow content above an absolutely positioned sibling. */}
         <div
           ref={backdrop}
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-black/90 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/90 backdrop-blur-sm"
         />
 
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="relative flex items-center justify-between px-4 py-3">
           <p className="text-sm text-white/70">
             {index + 1} / {photos.length}
           </p>
@@ -300,9 +313,9 @@ export function Lightbox<Photo extends ViewablePhoto>({
           </AnimatePresence>
         </div>
 
-        {actions ? <div className="px-4 pt-2">{actions}</div> : null}
+        {actions ? <div className="relative px-4 pt-2">{actions}</div> : null}
 
-        <div className="flex items-center justify-between gap-4 px-4 py-4">
+        <div className="relative flex items-center justify-between gap-4 px-4 py-4">
           <motion.button
             type="button"
             onClick={() => go(-1)}
