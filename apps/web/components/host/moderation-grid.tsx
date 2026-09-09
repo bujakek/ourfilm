@@ -277,7 +277,12 @@ function HostViewer({
   apply: (action: Action) => void
 }) {
   const en = locale === 'en'
-  const [pending, startTransition] = useTransition()
+  // No `isPending`. Every action here is optimistic — the frame flips, the row
+  // leaves, the viewer moves on — and a control greyed out behind that is
+  // reporting on work the host has already been shown the result of. Worse
+  // after a delete, where `pending` belongs to a photo that is no longer on
+  // screen and would disable the buttons for the one that is.
+  const [, startTransition] = useTransition()
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const photo = photos[index]
@@ -314,16 +319,25 @@ function HostViewer({
   }
 
   function confirmDelete() {
+    // **Outside the transition, on purpose.** These three are the answer to the
+    // tap, and a transition update is held at low priority until the whole
+    // async callback settles — so the confirmation stayed on screen, over the
+    // *next* photo, for as long as the request took. The host had already
+    // decided; the only thing still owed is the round trip.
+    setError(null)
+    setConfirming(false)
+    // Removing shifts the list under the index, so staying put lands on the
+    // next photo — which is what a host clearing a run of bad frames wants.
+    // Only the end of the album has nowhere forward to go, and stepping back
+    // has to happen *before* the row leaves: the grid renders the viewer only
+    // while `items[open]` exists, so removing the last one first would unmount
+    // it mid-delete and it would blink back at the previous photo.
+    if (index >= photos.length - 1 && index > 0) onNavigate(index - 1)
+
     startTransition(async () => {
-      setError(null)
-      setConfirming(false)
-      // Removing shifts the list under the index, so staying put lands on the
-      // next photo — which is what a host clearing a run of bad frames wants.
-      // Only the end of the album has nowhere forward to go, and stepping back
-      // has to happen *before* the row leaves: the grid renders the viewer only
-      // while `items[open]` exists, so removing the last one first would
-      // unmount it mid-delete and it would blink back at the previous photo.
-      if (index >= photos.length - 1 && index > 0) onNavigate(index - 1)
+      // Inside, because this is the one piece React owns: an optimistic value
+      // only holds while its transition is pending, and rolls back by itself
+      // if the action throws.
       apply({ type: 'remove', id: photo.id })
       try {
         await deletePhoto(slug, photo.id)
@@ -357,7 +371,6 @@ function HostViewer({
             <button
               type="button"
               onClick={toggleHidden}
-              disabled={pending}
               className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-white/14 text-[12.5px] font-semibold text-white/85 transition-colors hover:border-white/30 disabled:opacity-60"
             >
               {hidden ? (
@@ -392,7 +405,7 @@ function HostViewer({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              disabled={deleteBlocked || pending}
+              disabled={deleteBlocked}
               aria-label={en ? 'Delete the photo' : 'Kép törlése'}
               className="flex size-11 shrink-0 items-center justify-center rounded-full border border-destructive/35 text-destructive transition-colors hover:border-destructive/70 disabled:border-white/10 disabled:text-white/30"
             >
@@ -447,7 +460,6 @@ function HostViewer({
                 <button
                   type="button"
                   onClick={confirmDelete}
-                  disabled={pending}
                   className="min-h-11 flex-[1.3] rounded-full border border-destructive/70 text-[13px] font-semibold text-destructive disabled:opacity-60"
                 >
                   {en ? 'Yes, delete permanently' : 'Igen, végleg törlöm'}
