@@ -135,6 +135,32 @@ STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
 
+Hungarian events are sold directly rather than through Managed Payments, so
+OurFilm issues their invoice. Three more server-only variables, and without all
+three `checkoutIsConfigured('hu')` is false and Hungarian checkout says payment
+is not switched on — English checkout is deliberately unaffected:
+
+```bash
+BILLINGO_API_KEY=               # v3 "Olvasás, írás" key; a test-profile key is what test mode means
+BILLINGO_BLOCK_ID=              # numeric, from GET /document-blocks on the same profile
+BILLINGO_BANK_ACCOUNT_ID=       # numeric, from GET /bank-accounts on the same profile
+BILLINGO_API_BASE_URL=          # optional; defaults to https://api.billingo.hu/v3
+OURFILM_HU_DIRECT=false         # the cutover: false keeps HU on Managed Payments
+```
+
+`OURFILM_HU_DIRECT` is the switch, the same shape as `OURFILM_EXPORT_WORKER`
+and for the same reason. Off, a Hungarian event settles through Managed
+Payments exactly as it does today and needs no Billingo at all; on, it becomes
+a direct sale OurFilm invoices. `apps/web/lib/settlement.ts` lists what has to
+be true before flipping it — Apple Pay confirmed on HUF on a real device, an
+invoice block whose prefix is fit to print, both Billingo ids on Production,
+and a Terms of service URL on the live Stripe account. Flipping it back is
+safe: `purchases.settlement` records what each sale actually was.
+
+There is no separate Billingo sandbox host — the same base URL with a
+test-profile key is test mode. The ids must come from the same profile as the
+key, or document creation fails on a validation error that names neither.
+
 **The Stripe account exists and test mode is wired up locally.** All four
 are filled in in `apps/web/.env.local`, so `stripeIsConfigured()` is true and the admin
 billing card offers checkout. Nothing is set on Vercel yet, so payments are
@@ -724,19 +750,73 @@ Price, so a translated label cannot silently choose the other currency.
   service role is the only writer of `status = 'paid'`.
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
-- **Invoicing is still on the never-start list.** A Hungarian company selling to
-  consumers must issue an invoice and report it to NAV Online Számla, and Stripe
-  does not do that for you. Flag it before the first real forint.
+- **Hungarian events are sold directly; English ones through Managed
+  Payments.** `settlementFor()` in `apps/web/lib/stripe/checkout.ts` is the one
+  place that decides, keyed on the same `events.locale` that picks the Price.
+  `locale: 'en'` keeps `managed_payments: { enabled: true }` — Link, LLC is
+  merchant of record and issues the document. `locale: 'hu'` is an ordinary
+  Stripe charge with **OurFilm as seller of record**, because Managed Payments
+  does not currently do Apple Pay on HUF and a phone-first product cannot give
+  up one-tap payment. The stored `purchases.settlement` (`managed` | `direct`)
+  is what every later reader consults; deriving it from the currency would be
+  a guess.
+- **Invoicing is built, for the direct path only.** A Hungarian sale is
+  invoiced through Billingo's REST API v3 (no npm package; `X-API-KEY` against
+  `https://api.billingo.hu/v3`), which also does the NAV Online Számla report.
+  The sale is **alanyi adómentes**: the line carries `vat: 'AAM'`, the
+  12 900 Ft is the gross and the whole of it, and `/hu/aszf` and `/hu/arak` say
+  so. Crossing the exemption threshold changes `lib/billingo/client.ts`,
+  `DIRECT_SALE.vatStatus` and that copy in one commit — ask the accountant
+  first. A Managed Payments purchase is **never** invoiced here; Link already
+  issued that document, and `purchases_managed_not_invoiced_check` enforces it.
+- **An issued Hungarian invoice cannot be withdrawn, only cancelled**, so
+  issuing twice is worse than issuing late. Three guards, and all three are
+  load-bearing: `purchases.id` is minted at checkout and sent as Billingo's
+  `vendor_id`; every attempt probes `GET /documents/vendor/{id}` before
+  creating anything, because a timed-out `POST /documents` may still have
+  worked; and `claim_purchase_invoice` holds a five-minute lease so the webhook
+  and the sweep cannot both proceed. The storno path has no vendor probe —
+  Billingo will issue a second storno happily — so
+  `claim_purchase_invoice_cancellation` is the only thing stopping two refund
+  deliveries producing two cancellations.
+- **`purchases.id` is the `reserve_event_checkout` attempt id, not a fresh
+  uuid.** Concurrent callers share one Stripe idempotency key, and Stripe
+  refuses a key replayed with different parameters — so a `randomUUID()` in the
+  metadata would break every second tab.
+- **Billingo never fails the webhook.** `ensureBillingoInvoice` and
+  `cancelBillingoInvoice` return a status instead of throwing, the way
+  `sendExportReadyEmail` does. A 500 there would leave `processed_at` null and
+  have Stripe re-run the _payment_ handler for three days over an invoicing
+  outage. `/api/invoices/sweep`, on a five-minute `pg_cron` job, owns the
+  retry, backing off to an hour and never giving up — an invoice silently
+  dropped is worse than an alert that keeps firing.
+- **`checkoutIsConfigured(locale)` (`apps/web/lib/checkout-readiness.ts`) is the
+  gate, and it is locale-aware on purpose.** `hu` needs Stripe _and_ Billingo;
+  `en` needs only Stripe. ANDing the two would switch off English checkout on
+  every preview and dev machine with no Billingo keys.
+- **The purchase now outlives the album.** `purchases.event_id` and `owner_id`
+  are `on delete set null` rather than cascading, because an accounting record
+  has to survive a deleted event or account and the billing snapshot on the row
+  is self-contained. Every Session handler therefore looks the row up by
+  session id first and updates it in place; `sessionIdentity` is only reached
+  when no row exists.
 
 Nothing about the Stripe integration changed in the pivot — only the predicate it
 gates. `event_upload_quota` (photos) became `event_participant_quota`
 (participants); `event_has_unlimited_uploads` became `event_is_full_plan`.
 
 Key files: `apps/web/lib/stripe/*` (`checkout.ts` builds the session for both entry
-points), `apps/web/lib/billing.ts`, `apps/web/lib/pricing.ts` (the displayed price, in one place),
+points and both settlements), `apps/web/lib/billing.ts`, `apps/web/lib/pricing.ts`
+(the displayed price, in one place), `apps/web/lib/checkout-readiness.ts`,
 `apps/web/lib/roles.ts`, `apps/web/app/api/stripe/webhook/route.ts`,
 `apps/web/app/host/events/[slug]/billing-actions.ts`,
 `apps/web/components/host/billing-card.tsx`, `apps/web/app/host/events/new/step-guests.tsx`.
+
+Invoicing: `apps/web/lib/billingo/*` (`env.ts`, `client.ts` over the v3 REST API,
+`invoicing.ts` for the state machine), `apps/web/lib/billing-details.ts` (the zod
+snapshot built from the Stripe Session), `apps/web/app/api/invoices/sweep/route.ts`,
+`supabase/migrations/20260910140000_billingo_invoicing.sql`, and the runbook in
+`docs/billingo-hungarian-checkout.md`.
 
 **`/hu/arak` and `/en/pricing` mirror this model.** They present one paid event rather than a
 three-tier SaaS table: up to five participants are free, one payment admits
@@ -757,7 +837,7 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 
 - App Clip / native app
 - Photographer or multi-tenant dashboard, per-client branding
-- Token system, revenue share, invoicing (**payments themselves are built**)
+- Token system, revenue share (**payments and Hungarian invoicing are built**)
 - Guest accounts or mandatory registration
 - **Film filters / Original-Vintage-B&W selector.** Deferred deliberately, not
   forgotten — a later phase.

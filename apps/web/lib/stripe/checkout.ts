@@ -4,6 +4,7 @@ import { requestOrigin } from '@/lib/request-origin'
 import { createClient } from '@/lib/supabase/server'
 import { LEGAL_VERSION } from '@/lib/company'
 import type { Locale } from '@/lib/i18n'
+import { settlementFor } from '@/lib/settlement'
 
 import { getStripe } from './client'
 import { stripeEnv } from './env'
@@ -66,15 +67,73 @@ export async function createEventCheckoutUrl({
     attempt.terms_accepted_at,
   ).toISOString()
   const env = stripeEnv()
+  const settlement = settlementFor(locale)
   const eventPriceId = locale === 'en' ? env.eventPriceUsdId : env.eventPriceId
+
+  // `purchases.id`, decided here rather than by the database, because it is
+  // also Billingo's `vendor_id` — the key that lets a timed-out invoice
+  // request be recognised instead of issued twice. It must therefore exist
+  // before Stripe is asked for money.
+  //
+  // The attempt id and not a fresh uuid: concurrent callers share one
+  // idempotency key, and Stripe refuses a key replayed with different
+  // parameters. The attempt id is the one value that is random per attempt and
+  // identical across the callers that race for it.
+  const purchaseId = attempt.attempt_id
+
+  const metadata = {
+    event_id: eventId,
+    owner_id: ownerId,
+    locale,
+    settlement,
+    purchase_id: purchaseId,
+    legal_version: LEGAL_VERSION,
+    terms_accepted_at: canonicalTermsAcceptedAt,
+    early_performance_requested: 'true',
+  }
 
   const session = await getStripe().checkout.sessions.create(
     {
       mode: 'payment',
-      // Link acts as merchant of record: it calculates and remits supported
-      // indirect taxes, issues the customer-facing transaction documents, and
-      // handles payment-level support, refunds, fraud and disputes.
-      managed_payments: { enabled: true },
+      ...(settlement === 'managed'
+        ? {
+            // Link acts as merchant of record: it calculates and remits
+            // supported indirect taxes, issues the customer-facing transaction
+            // documents, and handles payment-level support, refunds, fraud and
+            // disputes.
+            managed_payments: { enabled: true as const },
+          }
+        : {
+            // OurFilm is the seller here, so everything Link was doing becomes
+            // ours. A Hungarian invoice must carry the buyer's name and
+            // address even when the buyer is a private individual, and Stripe
+            // is the only place to ask for them without putting a second form
+            // in front of someone who just paid with one tap.
+            billing_address_collection: 'required' as const,
+            customer_creation: 'always' as const,
+            // The declaration is the seller's own now. Recorded on the Session
+            // so the webhook can refuse to invoice a payment that carries no
+            // accepted terms.
+            consent_collection: { terms_of_service: 'required' as const },
+            // `custom_text` is load-bearing, not decoration. Stripe refuses to
+            // create a Session with `consent_collection.terms_of_service`
+            // unless the account has a Terms of service URL in its public
+            // business details *or* the request supplies its own acceptance
+            // message — verified by A/B against the live API, both on the
+            // pinned version and on the account default. Delete this block
+            // and every Hungarian checkout 400s with "You cannot collect
+            // consent to your terms of service unless a URL is set".
+            custom_text: {
+              terms_of_service_acceptance: {
+                message:
+                  'Elfogadom az ÁSZF-et, kérem a szolgáltatás azonnali, a 14 napos elállási időn belüli megkezdését, és tudomásul veszem, hogy a teljesítés megkezdésével elveszítem az elállási jogomat.',
+              },
+            },
+            // Deliberately no `automatic_tax` and no `invoice_creation`: the
+            // sale is alanyi adómentes, so there is no VAT to calculate, and
+            // the document that satisfies Hungarian law is the Billingo
+            // invoice, not a Stripe receipt.
+          }),
       line_items: [{ price: eventPriceId, quantity: 1 }],
       expires_at: Math.floor(new Date(attempt.expires_at).getTime() / 1_000),
       // Back to the settings page rather than the event page: the billing card
@@ -88,27 +147,11 @@ export async function createEventCheckoutUrl({
       // which is where you will be looking at 2am when a host says they paid and
       // the album is still capped.
       client_reference_id: eventId,
-      metadata: {
-        event_id: eventId,
-        owner_id: ownerId,
-        locale,
-        legal_version: LEGAL_VERSION,
-        terms_accepted_at: canonicalTermsAcceptedAt,
-        early_performance_requested: 'true',
-      },
+      metadata,
       // Copied onto the PaymentIntent as well, because a refund webhook carries a
       // charge rather than a session and would otherwise have no route back to
       // the event.
-      payment_intent_data: {
-        metadata: {
-          event_id: eventId,
-          owner_id: ownerId,
-          locale,
-          legal_version: LEGAL_VERSION,
-          terms_accepted_at: canonicalTermsAcceptedAt,
-          early_performance_requested: 'true',
-        },
-      },
+      payment_intent_data: { metadata },
       customer_email: ownerEmail ?? undefined,
       locale,
     },
@@ -121,23 +164,72 @@ export async function createEventCheckoutUrl({
     throw new Error('Stripe returned a checkout session with no URL')
   }
 
-  // Best effort, and intentionally not part of the happy path's correctness.
-  // The webhook upserts on this session id, so it fills the row in if this
-  // insert never happened; what the row buys us is a record that *someone
-  // started paying*, which is the only trace left when a webhook is
-  // misconfigured and the money is real.
+  // What Stripe says it will charge, which is what will be invoiced. A price
+  // id pointing at the wrong currency is otherwise invisible until a host has
+  // paid and Billingo refuses the document.
+  //
+  // Keyed on the locale rather than the settlement, because the currency
+  // follows the Price and the Price follows the locale. A Hungarian event is
+  // still HUF while the cutover flag is off and it settles as `managed`.
+  const expectedCurrency = locale === 'en' ? 'usd' : 'huf'
+  if (
+    session.amount_total === null ||
+    session.amount_total <= 0 ||
+    session.currency?.toLowerCase() !== expectedCurrency
+  ) {
+    await expireQuietly(session.id)
+    throw new Error(
+      `Stripe returned an invalid ${expectedCurrency.toUpperCase()} checkout amount`,
+    )
+  }
+
   const { error } = await supabase.from('purchases').insert({
+    id: purchaseId,
     event_id: eventId,
     owner_id: ownerId,
     stripe_checkout_session_id: session.id,
+    settlement,
+    // Host-supplied, and therefore not trusted: the webhook compares these
+    // against what Stripe reports before anything is invoiced. What they buy
+    // is a ledger row that says what was asked for, even if no webhook ever
+    // arrives.
+    amount_minor: session.amount_total,
+    currency: session.currency,
     status: 'pending',
   })
+
   // Two concurrent callers receive the same Stripe Session. The first insert
   // records it; the second sees the session-id unique constraint, which is the
   // expected proof that both requests converged rather than a billing failure.
   if (error && error.code !== UNIQUE_VIOLATION) {
+    if (settlement === 'direct') {
+      // Not best effort on this path. The webhook has to have somewhere
+      // durable to put the invoice snapshot, and `purchases.id` is already
+      // committed to as Billingo's idempotency key — so if the row cannot
+      // exist, the session must not either. Better a host who sees an error
+      // than a host who pays and never receives an invoice.
+      await expireQuietly(session.id)
+      throw error
+    }
+    // Managed Payments keeps the old behaviour: Link issues the document, the
+    // webhook upserts on the session id, and the row is a trace rather than a
+    // precondition.
     console.error('Could not record pending purchase', error)
   }
 
   return session.url
+}
+
+/**
+ * Cancel a session we are about to abandon.
+ *
+ * Swallowed on purpose: this only ever runs while another error is being
+ * raised, and losing that error to a cleanup failure would replace a
+ * diagnosable problem with a silent one. An unexpired session left open is
+ * harmless — it expires on its own, and the reservation rotates with it.
+ */
+async function expireQuietly(sessionId: string): Promise<void> {
+  await getStripe()
+    .checkout.sessions.expire(sessionId)
+    .catch(() => null)
 }

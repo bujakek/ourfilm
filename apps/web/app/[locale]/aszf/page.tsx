@@ -10,6 +10,7 @@ import {
   hasRealCompanyDetails,
   HOSTING_PROVIDER,
   LAST_UPDATED,
+  DIRECT_SALE,
   PAYMENT_PROCESSOR,
 } from '@/lib/company'
 import { isLocale } from '@/lib/i18n'
@@ -54,7 +55,7 @@ const sections: LegalSection[] = [
   {
     title: 'Szerződéskötés és a használat feltételei',
     body: [
-      `A házigazda a feltételek elfogadásával és az esemény létrehozásával köt szerződést az OurFilmmel a digitális szolgáltatás használatára. A fizetős esemény feloldására vonatkozó megrendelés a Stripe fizetési oldalán történő fizetéssel válik véglegessé. Az OurFilm nyújtja a digitális szolgáltatást és felel annak működéséért; a vásárlási tranzakcióban ${PAYMENT_PROCESSOR.merchantOfRecord} jár el Merchant of Recordként. A szerződés magyar nyelven jön létre, nem minősül írásba foglalt szerződésnek, és külön nem iktatjuk.`,
+      `A házigazda a feltételek elfogadásával és az esemény létrehozásával köt szerződést az OurFilmmel a digitális szolgáltatás használatára. A fizetős esemény feloldására vonatkozó megrendelés a Stripe fizetési oldalán történő fizetéssel válik véglegessé. A magyar nyelvű eseményeknél az eladó az OurFilm: mi nyújtjuk a digitális szolgáltatást, mi állítjuk ki a számlát, és mi felelünk a megrendelésért. A szerződés magyar nyelven jön létre, nem minősül írásba foglalt szerződésnek, és külön nem iktatjuk.`,
       'A vendég a csatlakozással elfogadja a rá vonatkozó használati szabályokat, és tudomásul veszi az Adatkezelési tájékoztatót. A vendégtől nem kérünk díjat.',
       'A megrendelés előtt a házigazda a böngésző vissza gombjával vagy az OurFilm felületén módosíthatja a megadott adatokat. Az adatbeviteli hibákat a rendszer a létrehozás előtt jelzi.',
     ],
@@ -62,9 +63,10 @@ const sections: LegalSection[] = [
   {
     title: 'Díj és fizetés',
     body: [
-      `Az ingyenes eseményhez legfeljebb 5 külön vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél feloldja a résztvevői korlátot. Nem előfizetés, és nem jelent vendégenkénti díjat. Más ország vagy pénznem esetén a ténylegesen fizetendő, alkalmazandó adót tartalmazó végösszeget a Stripe fizetési oldala mutatja a vásárlás véglegesítése előtt.`,
-      `A fizetést ${PAYMENT_PROCESSOR.merchantOfRecord} Merchant of Recordként, a ${PAYMENT_PROCESSOR.name} (${PAYMENT_PROCESSOR.address}) közreműködésével kezeli. A Checkout ezt „${PAYMENT_PROCESSOR.checkoutLabel}” jelöléssel mutatja. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A Link fizetési feltételei a Stripe Checkout felületén érhetők el.`,
-      'A fizetés után a Link közvetlenül küldi meg a vásárlónak a tranzakciós visszaigazolást és az alkalmazandó számlát vagy bizonylatot. A visszatérítésről és az esetleges jóváírásról szóló bizonylatot szintén a Link állítja ki. Az esemény fizetős feloldását a Stripe sikeres fizetési visszaigazolása alapján aktiváljuk.',
+      `Az ingyenes eseményhez legfeljebb 5 külön vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél feloldja a résztvevői korlátot. Nem előfizetés, és nem jelent vendégenkénti díjat.`,
+      `A szolgáltató ${DIRECT_SALE.vatStatus}, ezért a feltüntetett ${EVENT_PRICE_LABEL} a fizetendő végösszeg: nem tartalmaz áfát, és áfa nem is helyezhető levonásba utána. A számla az „AAM” (alanyi adómentes) jelölést tartalmazza.`,
+      `A fizetést a ${DIRECT_SALE.processorName} (${DIRECT_SALE.processorAddress}) mint fizetési szolgáltató dolgozza fel. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A számlázási névre és címre azért van szükség, mert a magyar számla kötelező tartalmi eleme.`,
+      `A fizetés után a számlát az OurFilm állítja ki elektronikus számlaként, a ${DIRECT_SALE.invoiceProvider} számlázórendszerén keresztül, és a megadott e-mail-címre küldjük meg. A számlaadatokat a NAV Online Számla rendszerébe is továbbítjuk, ahogy azt jogszabály előírja. Az esemény fizetős feloldását a Stripe sikeres fizetési visszaigazolása alapján aktiváljuk.`,
     ],
   },
   {
@@ -75,7 +77,7 @@ const sections: LegalSection[] = [
       'A fizetéskor a fogyasztó kifejezetten kérheti, hogy a szolgáltatás a 14 napos időszak vége előtt megkezdődjön. Ha a fizetős feloldást a nyilatkozat közléséig nem vették igénybe — vagyis az eseményhez nem csatlakozott az ingyenes 5 fős keretet meghaladó vendég —, a teljes díjat visszatérítjük.',
       'Ha a fizetős szolgáltatás használata már megkezdődött, a nyilatkozat közléséig ténylegesen és arányosan teljesített szolgáltatás díja felszámítható. Ennek megállapításakor az esemény használatának körülményeit vizsgáljuk; önmagában egy meghatározott fotószám elérése vagy a képek letöltése, illetve le nem töltése nem automatikus kizáró feltétel.',
       'A 14 napos időszak után nincs általános, indokolás nélküli visszatérítési jog. Ez nem érinti a hibás teljesítésből vagy kötelező fogyasztóvédelmi szabályból eredő jogokat.',
-      `A visszajáró összeget a nyilatkozat közlésétől számított legkésőbb 14 napon belül, az eredeti fizetési móddal, a Stripe/Link rendszerén keresztül térítjük vissza, kivéve, ha a fogyasztó más módhoz kifejezetten hozzájárul. Tranzakciós támogatás és visszatérítési kérelem a Link felületén is indítható: ${PAYMENT_PROCESSOR.supportUrl}. A Link a saját, a kötelező fogyasztói jogokkal összhangban álló szabályai alapján önállóan is jóváhagyhat visszatérítést.`,
+      `A visszajáró összeget a nyilatkozat közlésétől számított legkésőbb 14 napon belül, az eredeti fizetési móddal, a Stripe rendszerén keresztül térítjük vissza, kivéve, ha a fogyasztó más módhoz kifejezetten hozzájárul. Teljes visszatérítés esetén a kiállított számlához sztornó számlát állítunk ki, és azt is megküldjük a megadott e-mail-címre.`,
     ],
   },
   {
@@ -112,7 +114,7 @@ const sections: LegalSection[] = [
     title: 'Panasz és jogorvoslat',
     body: [
       `Panasz a ${CONTACT_EMAIL} címen, postai úton a székhelyen vagy a fenti telefonszámon tehető. Az írásbeli panaszt 30 napon belül érdemben, írásban megválaszoljuk.`,
-      `Fizetéssel, bizonylattal vagy Stripe által kezelt visszatérítéssel kapcsolatos tranzakciós kérdés a Link támogatásánál is jelezhető: ${PAYMENT_PROCESSOR.supportUrl}. A termék működésével és az eseménnyel kapcsolatos panaszért továbbra is az OurFilm felel.`,
+      `A magyar nyelvű eseményeknél a fizetéssel, a számlával és a visszatérítéssel kapcsolatos kérdésekért is az OurFilm felel; ezeket a fenti elérhetőségeken lehet jelezni.`,
       'A fogyasztó a lakóhelye vagy tartózkodási helye szerint illetékes békéltető testülethez fordulhat; az elérhetőségek a bekeltetes.hu oldalon találhatók. A szolgáltató a békéltető testületi eljárásban együttműködik. Fogyasztóvédelmi ügyben a fogyasztóvédelmi hatósághoz, jogvita esetén bírósághoz is lehet fordulni.',
     ],
   },

@@ -63,18 +63,52 @@ export const PAYMENT_PROCESSOR = {
   supportUrl: 'https://support.link.com/topics/sold-through-link',
 } as const
 
+/**
+ * Who issues the Hungarian invoice, and under what VAT status.
+ *
+ * A Hungarian event is **not** a Managed Payments sale. Stripe Managed
+ * Payments does not currently do Apple Pay on HUF, and a QR-code product whose
+ * buyers are holding phones cannot give that up — so Hungarian events are an
+ * ordinary Stripe charge with OurFilm as the seller of record. Everything Link
+ * does on the English path therefore becomes ours here: the invoice, its NAV
+ * Online Számla report, the refund and the transactional support.
+ *
+ * `vatStatus` is **alanyi adómentes**, which is what the `-1-` ÁFA digit of
+ * `COMPANY.taxNumber` says and what `lib/billingo/client.ts` puts on the
+ * invoice line as `vat: 'AAM'`. The price contains no VAT and none of it is
+ * reclaimable, and that has to be stated wherever the price is. If the
+ * exemption threshold is ever crossed, this constant, the Billingo line item
+ * and the copy on `/hu/arak` all change in the same commit.
+ */
+export const DIRECT_SALE = {
+  /** Stripe is a payment processor here, not the seller. */
+  processorName: 'Stripe Payments Europe, Limited',
+  processorAddress:
+    '1 Grand Canal Street Lower, Grand Canal Dock, Dublin, D02 H210, Írország',
+  invoiceProvider: 'Billingo Technologies Zrt.',
+  vatStatus: 'alanyi adómentes',
+  vatStatusEn: 'exempt under the Hungarian small-business VAT scheme',
+} as const
+
 /** Who sends the magic-link emails. Named as a processor in the privacy notice. */
 export const EMAIL_PROVIDER = 'Resend'
 
 /**
  * Version recorded on Stripe Checkout Sessions when a host starts a paid
- * order. Keep this stable until the terms materially change; a display date is
- * not a useful audit trail on its own.
+ * order, and stored on the purchase. Keep this stable until the terms
+ * materially change; a display date is not a useful audit trail on its own.
+ *
+ * Bumped from `2026-08-31-mor-hu` when Hungarian events left Managed
+ * Payments: the seller of record, who issues the invoice and who handles a
+ * refund all changed for a Hungarian buyer, which is as material as it gets.
+ * Nothing *gates* on this value — the webhook records what the Session
+ * reported rather than comparing — so bumping it cannot refuse an in-flight
+ * checkout.
  */
-export const LEGAL_VERSION = '2026-08-31-mor-hu'
+export const LEGAL_VERSION = '2026-09-09-direct-hu'
 
 /** Shown at the foot of the terms and imprint. */
-export const LAST_UPDATED = '2026. augusztus 31.'
+export const LAST_UPDATED = '2026. szeptember 9.'
 
 /** The privacy notice changes independently from the contractual terms. */
 export const PRIVACY_LAST_UPDATED = {

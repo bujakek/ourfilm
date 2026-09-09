@@ -18,6 +18,8 @@ const copy = {
     plan: 'FULL EVENT',
     price: EVENT_PRICE_LABELS.en,
     paymentLine: 'ONE-TIME PAYMENT · UNLIMITED GUESTS',
+    vatNote:
+      'The final price and any applicable tax are shown in Stripe Checkout before you pay, and Link sends the invoice or receipt.',
     body: 'Every guest gets their own roll. Reveal the photos right away or wait until the event ends.',
     create: 'Create your camera',
     helper: 'No app. No guest accounts.',
@@ -52,6 +54,12 @@ const copy = {
     plan: 'TELJES ESEMÉNY',
     price: EVENT_PRICE_LABEL,
     paymentLine: 'EGYSZERI FIZETÉS · KORLÁTLAN SZÁMÚ VENDÉG',
+    // Alanyi adómentes, so the figure above is the whole of it. A host who
+    // reads a price and then meets a different total at checkout is the one
+    // thing a price page must never do — and an áfás vevő has to know before
+    // paying that there is no VAT here to reclaim.
+    vatNote:
+      'Az ár a fizetendő végösszeg. Alanyi adómentes szolgáltatás: áfát nem tartalmaz, és áfa nem helyezhető levonásba utána. A számlát fizetés után e-mailben küldjük.',
     body: 'Minden vendég saját tekercset kap. A képeket pedig azonnal vagy az este végén nézhetitek meg együtt.',
     create: 'Hozzátok létre ingyen',
     helper: 'Nincs app. Nincs vendégregisztráció.',
@@ -129,6 +137,10 @@ export default async function ArakPage({ params }: Props) {
 
                 <p className="paper-muted mt-4 font-mono text-[9.5px] font-medium tracking-[0.16em]">
                   {current.paymentLine}
+                </p>
+
+                <p className="paper-muted mt-3 max-w-md text-[12.5px] leading-relaxed text-pretty">
+                  {current.vatNote}
                 </p>
 
                 <p className="paper-muted mt-5 max-w-md text-[14.5px] leading-relaxed text-pretty">

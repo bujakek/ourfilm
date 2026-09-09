@@ -55,9 +55,11 @@ type Props = {
   defaultEndIso: string
   /** The five ÖTLETEK titles, resolved on the server. */
   suggestions: string[]
-  /** Whether Stripe is switched on here. Deployed environments have no
-   *  `STRIPE_*` variables, so the paid tier is not offered there. */
-  paymentsEnabled: boolean
+  /** Whether a paid event can actually be sold here, per locale. Deployed
+   *  environments have no `STRIPE_*` variables, so the paid tier is not
+   *  offered there; a Hungarian event additionally needs Billingo, because
+   *  OurFilm is the seller and owes the invoice. */
+  paymentsEnabled: Record<Locale, boolean>
   /** Minted server-side so the first render matches on both sides — a
    *  `crypto.randomUUID()` in a state initializer would differ between the
    *  server's HTML and the client's, and this value is rendered into the
@@ -188,6 +190,10 @@ function OnboardingFlow({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [authOpen, setAuthOpen] = useState(false)
+
+  // The flow resolves its own locale from `?lang`, so which of the two
+  // arrangements this event will be sold under is only knowable here.
+  const paymentsAvailable = paymentsEnabled[locale]
 
   const [step, setStep] = useState(Math.min(LAST_STEP, Math.max(0, startStep)))
   const [name, setName] = useState(initial.name)
@@ -418,7 +424,7 @@ function OnboardingFlow({
                 track('onboarding_plan_chosen', {
                   creation_key: initialCreationKey,
                   plan: value,
-                  payments_enabled: paymentsEnabled,
+                  payments_enabled: paymentsAvailable,
                 })
                 // The paid wording also contains the early-performance
                 // request, so changing plan requires a fresh, explicit choice.
@@ -430,7 +436,7 @@ function OnboardingFlow({
               setGuestsCanView,
               legalAccepted,
               setLegalAccepted,
-              paymentsEnabled,
+              paymentsEnabled: paymentsAvailable,
               pending,
             })
 

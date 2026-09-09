@@ -2,6 +2,7 @@
 
 import { getEventQuota } from '@/lib/billing'
 import { getOwnedEventBySlug } from '@/lib/events'
+import { checkoutBlockedReason } from '@/lib/checkout-readiness'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { createClient } from '@/lib/supabase/server'
@@ -94,6 +95,22 @@ export async function startEventCheckout(
       error: en
         ? 'This event is already unlimited.'
         : 'Ez az esemény már korlátlan — nincs mit fizetni.',
+    }
+  }
+
+  // Now that the event has been read, the locale is trustworthy, and with it
+  // which arrangement sells this event. A Hungarian sale is OurFilm's own and
+  // needs Billingo to issue the invoice; an English one settles through Link,
+  // which issues its own document and needs nothing more than Stripe. Offering
+  // a Hungarian host a payment this deployment could take but not invoice
+  // would be the one failure that cannot be fixed after the fact.
+  const notReady = checkoutBlockedReason(event.locale)
+  if (notReady) {
+    await blocked(event.id, notReady)
+    return {
+      error: en
+        ? 'Payments are not configured yet. Contact us and we can help; the album and uploads still work.'
+        : 'A fizetés még nincs beállítva. Szólj nekünk, és elintézzük — addig az album és a feltöltés változatlanul működik.',
     }
   }
 

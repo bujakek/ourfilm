@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
+  expireSession: vi.fn(),
   createSupabaseClient: vi.fn(),
 }))
 
@@ -11,7 +12,9 @@ vi.mock('@/lib/request-origin', () => ({
 
 vi.mock('@/lib/stripe/client', () => ({
   getStripe: () => ({
-    checkout: { sessions: { create: mocks.createSession } },
+    checkout: {
+      sessions: { create: mocks.createSession, expire: mocks.expireSession },
+    },
   }),
 }))
 
@@ -30,7 +33,8 @@ import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 
 function database({
   reservationError = null,
-}: { reservationError?: unknown } = {}) {
+  insertError = null,
+}: { reservationError?: unknown; insertError?: unknown } = {}) {
   const reservation = {
     attempt_id: '52f89c12-f4a7-463b-98d7-7fe57450a89c',
     expires_at: new Date(Date.now() + 45 * 60 * 1_000).toISOString(),
@@ -54,7 +58,7 @@ function database({
         return {
           insert(values: Record<string, unknown>) {
             inserts.push(values)
-            return Promise.resolve({ error: null })
+            return Promise.resolve({ error: insertError })
           },
         }
       },
@@ -74,16 +78,32 @@ const checkout = {
 describe('Stripe Checkout creation', () => {
   beforeEach(() => {
     mocks.createSession.mockReset()
+    mocks.expireSession.mockReset()
+    mocks.expireSession.mockResolvedValue({})
     mocks.createSupabaseClient.mockReset()
+    // Most of these assert the post-cutover behaviour. The flag's own effect
+    // has a test of its own below.
+    vi.stubEnv('OURFILM_HU_DIRECT', 'true')
   })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  /** What Stripe answers with, for the currency the locale implies. */
+  function sessionFor(locale: 'en' | 'hu', id = 'cs_test_ourfilm') {
+    return {
+      id,
+      url: `https://checkout.stripe.com/c/pay/${id}`,
+      amount_total: locale === 'en' ? 3900 : 1290000,
+      currency: locale === 'en' ? 'usd' : 'huf',
+    }
+  }
 
   it('uses the reserved attempt as the Stripe idempotency boundary', async () => {
     const db = database()
     mocks.createSupabaseClient.mockResolvedValue(db.client)
-    mocks.createSession.mockResolvedValue({
-      id: 'cs_test_ourfilm',
-      url: 'https://checkout.stripe.com/c/pay/cs_test_ourfilm',
-    })
+    mocks.createSession.mockResolvedValue(sessionFor('en'))
 
     const first = await createEventCheckoutUrl(checkout)
     const second = await createEventCheckoutUrl({
@@ -108,9 +128,17 @@ describe('Stripe Checkout creation', () => {
     expect(firstParams.locale).toBe('en')
     expect(db.inserts).toHaveLength(2)
     expect(db.inserts[0]).toMatchObject({
+      // The attempt id, not a fresh uuid: it is what makes two concurrent
+      // callers send byte-identical parameters under one idempotency key, and
+      // it becomes Billingo's `vendor_id`.
+      id: db.reservation.attempt_id,
       stripe_checkout_session_id: 'cs_test_ourfilm',
+      settlement: 'managed',
+      amount_minor: 3900,
+      currency: 'usd',
       status: 'pending',
     })
+    expect(firstParams.metadata.purchase_id).toBe(db.reservation.attempt_id)
   })
 
   it('does not call Stripe when the database refuses the reservation', async () => {
@@ -127,10 +155,7 @@ describe('Stripe Checkout creation', () => {
   it('keeps Hungarian events on the HUF Price', async () => {
     const db = database()
     mocks.createSupabaseClient.mockResolvedValue(db.client)
-    mocks.createSession.mockResolvedValue({
-      id: 'cs_test_ourfilm_huf',
-      url: 'https://checkout.stripe.com/c/pay/cs_test_ourfilm_huf',
-    })
+    mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_test_huf'))
 
     await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
 
@@ -141,5 +166,97 @@ describe('Stripe Checkout creation', () => {
       }),
       expect.any(Object),
     )
+  })
+
+  // The two halves of the split, asserted from both sides. Without these a
+  // later tidy-up that collapses the branch back into one session shape is
+  // invisible until a Hungarian host cannot pay with Apple Pay, or an English
+  // one is asked for a Hungarian invoice address.
+  it('sells a Hungarian event directly, and collects what an invoice needs', async () => {
+    const db = database()
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_test_huf'))
+
+    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+
+    const [params] = mocks.createSession.mock.calls[0]
+    expect(params.managed_payments).toBeUndefined()
+    expect(params.billing_address_collection).toBe('required')
+    expect(params.customer_creation).toBe('always')
+    expect(params.consent_collection).toEqual({
+      terms_of_service: 'required',
+    })
+    // Not decoration: Stripe refuses `consent_collection.terms_of_service`
+    // unless the account has a ToS URL in its public business details or the
+    // request carries its own acceptance message. Without this, every
+    // Hungarian checkout 400s.
+    expect(params.custom_text?.terms_of_service_acceptance?.message).toContain(
+      'ÁSZF',
+    )
+    // Alanyi adómentes: there is no VAT for Stripe to calculate, and the
+    // document that satisfies Hungarian law is the Billingo invoice.
+    expect(params.automatic_tax).toBeUndefined()
+    expect(params.invoice_creation).toBeUndefined()
+    expect(params.metadata.settlement).toBe('direct')
+    expect(db.inserts[0]).toMatchObject({
+      settlement: 'direct',
+      amount_minor: 1290000,
+      currency: 'huf',
+    })
+  })
+
+  it('keeps an English event on Managed Payments and asks for no address', async () => {
+    const db = database()
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('en'))
+
+    await createEventCheckoutUrl(checkout)
+
+    const [params] = mocks.createSession.mock.calls[0]
+    // Link is the merchant of record: it issues the document, so OurFilm has
+    // no invoice to raise and no reason to ask for a billing address.
+    expect(params.managed_payments).toEqual({ enabled: true })
+    expect(params.billing_address_collection).toBeUndefined()
+    expect(params.consent_collection).toBeUndefined()
+    expect(params.metadata.settlement).toBe('managed')
+  })
+
+  it('expires the session rather than sell a direct event it cannot invoice', async () => {
+    const db = database({ insertError: new Error('ledger unavailable') })
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_test_huf'))
+
+    // `purchases.id` is already promised to Billingo as its idempotency key,
+    // so a session whose row does not exist must not be handed to a host.
+    await expect(
+      createEventCheckoutUrl({ ...checkout, locale: 'hu' }),
+    ).rejects.toThrow('ledger unavailable')
+    expect(mocks.expireSession).toHaveBeenCalledWith('cs_test_huf')
+  })
+
+  it('still sells a Managed Payments event when the ledger insert fails', async () => {
+    const db = database({ insertError: new Error('ledger unavailable') })
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('en'))
+
+    // Link issues that document; the row is a trace, not a precondition.
+    await expect(createEventCheckoutUrl(checkout)).resolves.toContain(
+      'checkout.stripe.com',
+    )
+    expect(mocks.expireSession).not.toHaveBeenCalled()
+  })
+
+  it('refuses a Price that returns the wrong currency', async () => {
+    const db = database()
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    // A HUF event pointed at the USD Price: invisible until a host has paid
+    // and Billingo refuses to put the amount on a forint invoice.
+    mocks.createSession.mockResolvedValue(sessionFor('en', 'cs_test_wrong'))
+
+    await expect(
+      createEventCheckoutUrl({ ...checkout, locale: 'hu' }),
+    ).rejects.toThrow('HUF')
+    expect(mocks.expireSession).toHaveBeenCalledWith('cs_test_wrong')
+    expect(db.inserts).toHaveLength(0)
   })
 })

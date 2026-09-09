@@ -9,6 +9,7 @@ import {
   REGISTRY,
   hasRealCompanyDetails,
   EMAIL_PROVIDER,
+  DIRECT_SALE,
   PAYMENT_PROCESSOR,
   PRIVACY_LAST_UPDATED,
 } from '@/lib/company'
@@ -78,8 +79,9 @@ const sections: LegalSection[] = [
   {
     title: 'Szolgáltatók és adattovábbítás',
     body: [
-      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési linkek, jogi visszaigazolások és az album elkészültéről szóló értesítések), valamint fizetésnél ${PAYMENT_PROCESSOR.name} és ${PAYMENT_PROCESSOR.merchantOfRecord}.`,
-      `A Link Merchant of Recordként kezeli a fizetést, az alkalmazandó közvetett adót, a vásárlói számlát vagy bizonylatot, a visszatérítést, a fizetési vitát, a csalásmegelőzést és a tranzakciós ügyfélszolgálatot. Ezekhez a célokhoz a vásárlótól közvetlenül is gyűjt adatot. A Link tranzakciós támogatása itt érhető el: ${PAYMENT_PROCESSOR.supportUrl}.`,
+      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési linkek, jogi visszaigazolások és az album elkészültéről szóló értesítések), fizetésnél ${DIRECT_SALE.processorName}, magyar nyelvű esemény számlázásánál pedig ${DIRECT_SALE.invoiceProvider}.`,
+      `Magyar nyelvű eseménynél az eladó az OurFilm. A fizetést a Stripe fizetési szolgáltatóként dolgozza fel; a számlázási nevet, címet és e-mail-címet a Stripe fizetési oldala gyűjti, és azt kizárólag a számla kiállításához használjuk. A számlát a ${DIRECT_SALE.invoiceProvider} rendszerén keresztül állítjuk ki, és a számlaadatokat jogszabályi kötelezettség alapján a NAV Online Számla rendszerébe is továbbítjuk. A számlázási adatokat a számviteli előírások szerinti ideig őrizzük meg, az esemény törlése után is.`,
+      `Angol nyelvű eseménynél a ${PAYMENT_PROCESSOR.merchantOfRecord} jár el Merchant of Recordként: ő kezeli a fizetést, az alkalmazandó közvetett adót, a vásárlói számlát vagy bizonylatot, a visszatérítést, a fizetési vitát, a csalásmegelőzést és a tranzakciós ügyfélszolgálatot, és ezekhez a célokhoz a vásárlótól közvetlenül is gyűjt adatot. A Link tranzakciós támogatása itt érhető el: ${PAYMENT_PROCESSOR.supportUrl}.`,
       'A Supabase projekt jelenlegi régiója Zürich, Svájc. Svájc az EGT-n kívüli ország, amelyre az Európai Bizottság megfelelőségi határozata vonatkozik.',
       'A PostHog projektadatokat Frankfurtban, Németországban tárolja. A PostHog, Inc. és egyes alfeldolgozói az Egyesült Államokban vagy más EGT-n kívüli országban támogatási, biztonsági vagy hálózati feladatok miatt kezelhetnek adatot. A Vercel, a Stripe/Link és egyes további szolgáltatók szintén kezelhetnek adatot az EGT-n kívül. Ilyen továbbításnál az érintett szolgáltató EU–USA adatvédelmi kerettagságára, európai bizottsági megfelelőségi határozatra vagy általános szerződési feltételekre támaszkodunk. A Stripe és a Link saját adatkezelésére a Checkout felületén elérhető adatvédelmi tájékoztatójuk vonatkozik.',
     ],
@@ -155,7 +157,7 @@ const englishSections: LegalSection[] = [
     title: 'Access and sharing',
     body: [
       'Event links contain a long random identifier, event pages are not indexed, and which photos are shown is decided server-side. Photo files sit at unguessable, unlistable addresses that do not expire, so anyone who obtains a photo’s exact address can open it later. Anyone can forward a link. The host can access, download and hide every photo. Guests see revealed photos only where the host permits it. Authorised personnel access content only where needed for operations, security or a report.',
-      `We use Supabase for database and file storage, Vercel for hosting and cookie-free analytics, PostHog, Inc. for cookie-free product analytics and error diagnostics, ${EMAIL_PROVIDER} for login, legal and album-ready emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment. PostHog project data is stored in Frankfurt, Germany. PostHog, Inc. and some of its subprocessors may perform support, security or network processing outside the EEA. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
+      `We use Supabase for database and file storage, Vercel for hosting and cookie-free analytics, PostHog, Inc. for cookie-free product analytics and error diagnostics, ${EMAIL_PROVIDER} for login, legal and album-ready emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment on English events. Hungarian events are sold directly by OurFilm: Stripe processes the payment and ${DIRECT_SALE.invoiceProvider} issues the invoice, which is also reported to the Hungarian tax authority as the law requires. PostHog project data is stored in Frankfurt, Germany. PostHog, Inc. and some of its subprocessors may perform support, security or network processing outside the EEA. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
     ],
   },
   {
