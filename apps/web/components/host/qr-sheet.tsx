@@ -138,7 +138,7 @@ export function QrSheetButton({
           <p className="paper-muted mx-auto max-w-[15rem] text-[13px] leading-relaxed">
             {en
               ? `Scan the QR code and take ${shots} photos — no app or account needed.`
-              : `Olvasd be a QR-kódot, és ${shots} képet készíthetsz — app és regisztráció nélkül.`}
+              : `Olvasd be a QR-kódot, és készíts akár ${shots} képet. Nem kell hozzá app vagy regisztráció.`}
           </p>
 
           {/* Wrapping, not truncating. This is the address a guest types when

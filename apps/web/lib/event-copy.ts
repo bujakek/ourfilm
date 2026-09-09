@@ -252,7 +252,7 @@ export function captureStatus(
 }
 
 /**
- * "Nincs kapcsolat. 3 kép várakozik, nyugodtan fotózz tovább."
+ * "Nincs kapcsolat. 3 kép feltöltésre vár. Nyugodtan fotózhatsz tovább."
  *
  * The line under the shutter while the device is offline with shots still
  * owed. It is not a toast, and that is the whole design: a guest can be out of
@@ -273,10 +273,8 @@ export function offlineQueueNote(
     const waiting = `No connection. ${count} photo${count === 1 ? '' : 's'} waiting`
     return canShoot ? `${waiting} — keep shooting.` : `${waiting} to upload.`
   }
-  const waiting = `Nincs kapcsolat. ${count} kép várakozik`
-  return canShoot
-    ? `${waiting}, nyugodtan fotózz tovább.`
-    : `${waiting} a feltöltésre.`
+  const waiting = `Nincs kapcsolat. ${count} kép feltöltésre vár.`
+  return canShoot ? `${waiting} Nyugodtan fotózhatsz tovább.` : waiting
 }
 
 /**
@@ -324,7 +322,7 @@ export function formatLine(
   // Hungarian takes no plural after a numeral, so only English branches.
   return locale === 'en'
     ? `${participantCount} guest${participantCount === 1 ? '' : 's'} took photos, with no preview and no retakes.`
-    : `${participantCount} vendég fotózott, előnézet és újrapróbálás nélkül.`
+    : `${participantCount} vendég fotózott, előnézet és újrafotózás nélkül.`
 }
 
 /** How the guest's ticket names the reveal rule, in mono caps. The host's own

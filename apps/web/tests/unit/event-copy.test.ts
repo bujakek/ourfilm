@@ -124,11 +124,11 @@ describe('captureStatus', () => {
 describe('offlineQueueNote', () => {
   it('tells the guest to keep shooting only while they still can', () => {
     expect(offlineQueueNote(3, true)).toBe(
-      'Nincs kapcsolat. 3 kép várakozik, nyugodtan fotózz tovább.',
+      'Nincs kapcsolat. 3 kép feltöltésre vár. Nyugodtan fotózhatsz tovább.',
     )
     // No film left, so the invitation would be a lie.
     expect(offlineQueueNote(3, false)).toBe(
-      'Nincs kapcsolat. 3 kép várakozik a feltöltésre.',
+      'Nincs kapcsolat. 3 kép feltöltésre vár.',
     )
   })
 
@@ -139,7 +139,7 @@ describe('offlineQueueNote', () => {
     expect(offlineQueueNote(2, false, 'en')).toBe(
       'No connection. 2 photos waiting to upload.',
     )
-    expect(offlineQueueNote(1, true)).toContain('1 kép várakozik')
+    expect(offlineQueueNote(1, true)).toContain('1 kép feltöltésre vár')
   })
 })
 
@@ -155,7 +155,7 @@ describe('queueClearedNote', () => {
 describe('formatLine', () => {
   it('states the format the product actually is', () => {
     expect(formatLine(7)).toBe(
-      '7 vendég fotózott, előnézet és újrapróbálás nélkül.',
+      '7 vendég fotózott, előnézet és újrafotózás nélkül.',
     )
     expect(formatLine(7, 'en')).toBe(
       '7 guests took photos, with no preview and no retakes.',

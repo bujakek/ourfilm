@@ -53,7 +53,7 @@ export function CreateOwnAlbum({
         <p className="mt-[7px] text-[12.5px] leading-[1.65] text-pretty text-muted-foreground">
           {en
             ? 'You can run a camera like this at your next wedding or party. Your guests join with a QR code, no app and no sign-up.'
-            : 'A következő esküvőre vagy bulira te is indíthatsz ilyen kamerát. A vendégeid QR-kóddal csatlakoznak, app és regisztráció nélkül.'}
+            : 'A következő esküvőre vagy bulira te is indíthatsz egy OurFilm-kamerát. A vendégeid QR-kóddal csatlakoznak, app és regisztráció nélkül.'}
         </p>
 
         {/* The guest-to-host loop, and the only growth mechanism the product
@@ -66,7 +66,7 @@ export function CreateOwnAlbum({
           }
           className="inline-flex min-h-9 items-center text-[12.5px] font-semibold text-foreground underline decoration-foreground/35 underline-offset-[3px]"
         >
-          {en ? 'See how it works' : 'Megnézem, hogyan'}
+          {en ? 'See how it works' : 'Megnézem, hogyan működik'}
         </Link>
       </div>
 

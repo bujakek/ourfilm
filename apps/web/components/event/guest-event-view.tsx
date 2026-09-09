@@ -282,7 +282,7 @@ export function GuestEventView({
    * true, and the line goes back to saying what the product is.
    *
    * The receipt outranks the spent roll because the shutter is already
-   * reading "Elfogyott a tekercs" and the counter is already at zero, so a
+   * reading "Megtelt a tekercs" and the counter is already at zero, so a
    * third telling of that adds nothing — while "did the photos I took with no
    * signal actually go?" has no other answer anywhere on the screen.
    */
@@ -300,9 +300,7 @@ export function GuestEventView({
           }
         : remaining <= 0
           ? {
-              text: en
-                ? 'Your roll is full.'
-                : 'Elfogytak a képeid — a tekercsed megtelt.',
+              text: en ? 'Your roll is full.' : 'Megtelt a tekercsed.',
               tone: 'text-muted-foreground',
             }
           : null
@@ -695,7 +693,7 @@ export function GuestEventView({
           {remaining <= 0
             ? en
               ? 'Roll finished'
-              : 'Elfogyott a tekercs'
+              : 'Megtelt a tekercs'
             : uploading && !canTakePhoto
               ? // The roll is spent but the last frames are still going up.
                 // The only moment this screen says "saving" — while a shot is
@@ -838,7 +836,7 @@ function refusalMessage(refusal: string, locale: Locale): string {
     case 'ended':
       return en ? 'Shooting has ended.' : 'Véget ért a fotózás.'
     case 'no_shots':
-      return en ? 'Your roll is full.' : 'Elfogytak a képeid.'
+      return en ? 'Your roll is full.' : 'Megtelt a tekercsed.'
     case 'no_session':
       return en
         ? 'Your session expired. Refresh the page.'

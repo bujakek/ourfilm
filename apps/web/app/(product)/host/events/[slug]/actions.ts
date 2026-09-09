@@ -134,7 +134,7 @@ export async function setPhotoHidden(
   if (error) throw await refusedPhoto(error)
   if (!data || data.length === 0) {
     throw await refusedPhoto(
-      new Error('A kép nem módosult — lehet, hogy nincs jogosultságod.'),
+      new Error('A kép nem módosult. Lehet, hogy nincs jogosultságod.'),
     )
   }
 
@@ -190,7 +190,7 @@ export async function deletePhoto(slug: string, photoId: string) {
   if (countError) throw await refusedDelete(countError)
   if ((count ?? 0) <= 1) {
     throw await refusedDelete(
-      new Error('Ez az utolsó kép az eseményen, ezért nem törölhető.'),
+      new Error('Ez az esemény utolsó képe, ezért nem törölheted.'),
     )
   }
 
@@ -209,7 +209,7 @@ export async function deletePhoto(slug: string, photoId: string) {
   const missed = paths.filter((path) => !gone.has(path))
   if (missed.length > 0 && (removed ?? []).length > 0) {
     throw await refusedDelete(
-      new Error('Nem sikerült minden fájlt törölni. Próbáld újra.'),
+      new Error('Nem sikerült teljesen törölni a képet. Próbáld újra.'),
     )
   }
 
@@ -231,7 +231,7 @@ export async function deletePhoto(slug: string, photoId: string) {
   if (updateError) throw await refusedDelete(updateError)
   if (!updated || updated.length === 0) {
     throw await refusedDelete(
-      new Error('A kép nem törlődött — lehet, hogy nincs jogosultságod.'),
+      new Error('A kép nem törlődött. Lehet, hogy nincs jogosultságod.'),
     )
   }
 

@@ -219,7 +219,7 @@ export function HostCamera({
             ? ''
             : en
               ? 'The camera is closed.'
-              : 'A kamera lezárult.')}
+              : 'Véget ért a fotózás.')}
       </p>
     </div>
   )
@@ -232,7 +232,7 @@ function refusalMessage(refusal: string, en: boolean): string {
     case 'ended':
       return en ? 'Shooting has ended.' : 'Véget ért a fotózás.'
     case 'no_shots':
-      return en ? 'Your roll is full.' : 'Elfogytak a képeid.'
+      return en ? 'Your roll is full.' : 'Megtelt a tekercsed.'
     case 'uploads_disabled':
     case 'storage_limit':
       return en

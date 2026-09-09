@@ -404,7 +404,7 @@ function HostViewer({
             <p className="mt-2.5 text-[12.5px] leading-[1.5] text-white/55">
               {en
                 ? 'This is the last photo in the event, so it cannot be deleted. You can hide it instead, and guests will no longer see it.'
-                : 'Ez az utolsó kép az eseményen, ezért nem törölhető. Elrejtheted, így a vendégeknél már nem látszik.'}
+                : 'Ez az esemény utolsó képe, ezért nem törölheted. Elrejtheted, így a vendégek nem látják.'}
             </p>
           ) : null}
 
@@ -431,7 +431,7 @@ function HostViewer({
               <p className="mt-1.5 text-[12.5px] leading-[1.6] text-white/55">
                 {en
                   ? 'The photo is permanently removed from storage and will be left out of the film. Hiding can be undone, deleting cannot.'
-                  : 'A kép véglegesen törlődik a tárhelyről, és a közös filmből is kimarad. Elrejteni visszavonható, a törlés nem.'}
+                  : 'A kép végleg eltűnik a tárhelyről és a közös albumból. Az elrejtést visszavonhatod, a törlést nem.'}
               </p>
               <div className="mt-3.5 flex gap-2">
                 {/* Cancel first and focused, as `DangerZone` has it: Enter is
@@ -450,7 +450,7 @@ function HostViewer({
                   disabled={pending}
                   className="min-h-11 flex-[1.3] rounded-full border border-destructive/70 text-[13px] font-semibold text-destructive disabled:opacity-60"
                 >
-                  {en ? 'Yes, delete permanently' : 'Igen, törlöm'}
+                  {en ? 'Yes, delete permanently' : 'Igen, végleg törlöm'}
                 </button>
               </div>
             </div>
