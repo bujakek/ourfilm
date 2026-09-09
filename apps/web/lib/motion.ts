@@ -29,17 +29,6 @@ export const T = {
   develop: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
   /** A surface being dismissed, which should read as faster than its arrival. */
   exit: { duration: 0.16, ease: [0.4, 0, 1, 1] },
-  /**
-   * A photograph growing out of the thumbnail a finger just touched, and
-   * falling back into it.
-   *
-   * A spring, because it is direct manipulation — the photo goes where the tap
-   * went. Softer than `snap`, which is tuned for a 40ms toggle and would make a
-   * full-screen photograph feel flicked rather than opened. It is the one place
-   * the two halves of the rule above meet: a finger, so it springs, but what
-   * travels is film, so it settles rather than snaps.
-   */
-  expand: { type: 'spring', stiffness: 300, damping: 32 },
 } as const satisfies Record<string, Transition>
 
 /**

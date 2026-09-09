@@ -7,13 +7,7 @@ import type { ModerationTile } from '@/lib/photos'
 import { Download, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
-import {
-  useCallback,
-  useOptimistic,
-  useRef,
-  useState,
-  useTransition,
-} from 'react'
+import { useOptimistic, useState, useTransition } from 'react'
 import {
   deletePhoto,
   setPhotoHidden,
@@ -94,22 +88,6 @@ export function ModerationGrid({
   const [open, setOpen] = useState<number | null>(null)
   const reduceMotion = useReducedMotion()
 
-  /**
-   * Where each tile is, for the viewer to grow out of and fall back into.
-   *
-   * Measured on demand rather than stored: a rect taken at mount is wrong by
-   * the time anything scrolls or the grid reflows, and the one moment it has to
-   * be right is the moment it is asked for. A photo that has just been deleted
-   * has no tile left in the map, and `null` is what tells the viewer to close
-   * with a plain fade instead of flying at a gap.
-   */
-  const tiles = useRef(new Map<string, HTMLElement>())
-  const originOf = useCallback(
-    (photoId: string) =>
-      tiles.current.get(photoId)?.getBoundingClientRect() ?? null,
-    [],
-  )
-
   return (
     <>
       {/* No count in here. The page's own figure row above already says how
@@ -146,10 +124,6 @@ export function ModerationGrid({
               locale={locale}
               reduceMotion={reduceMotion}
               onOpen={() => setOpen(index)}
-              register={(el) => {
-                if (el) tiles.current.set(photo.id, el)
-                else tiles.current.delete(photo.id)
-              }}
             />
           ))}
         </ul>
@@ -166,7 +140,6 @@ export function ModerationGrid({
             timeZone={timeZone}
             onNavigate={setOpen}
             onClose={() => setOpen(null)}
-            originOf={originOf}
             apply={apply}
           />
         ) : null}
@@ -188,14 +161,11 @@ function Tile({
   locale,
   reduceMotion,
   onOpen,
-  register,
 }: {
   photo: ModerationTile
   locale: 'en' | 'hu'
   reduceMotion: boolean | null
   onOpen: () => void
-  /** Hands the tile's element up so the viewer can measure it. */
-  register: (el: HTMLElement | null) => void
 }) {
   const en = locale === 'en'
   const [developed, setDeveloped] = useState(false)
@@ -204,7 +174,6 @@ function Tile({
   return (
     <li className="relative">
       <motion.button
-        ref={register}
         type="button"
         onClick={onOpen}
         whileTap={reduceMotion ? undefined : { scale: 0.975 }}
@@ -295,7 +264,6 @@ function HostViewer({
   timeZone,
   onNavigate,
   onClose,
-  originOf,
   apply,
 }: {
   photos: ModerationTile[]
@@ -306,7 +274,6 @@ function HostViewer({
   timeZone: string
   onNavigate: (next: number) => void
   onClose: () => void
-  originOf: (photoId: string) => DOMRect | null
   apply: (action: Action) => void
 }) {
   const en = locale === 'en'
@@ -382,7 +349,6 @@ function HostViewer({
       locale={locale}
       onClose={onClose}
       onNavigate={onNavigate}
-      originOf={originOf}
       dimmed={hidden}
       caption={caption}
       actions={
