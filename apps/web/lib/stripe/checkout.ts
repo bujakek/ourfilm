@@ -100,24 +100,20 @@ export async function createEventCheckoutUrl({
           // in front of someone who just paid with one tap.
           billing_address_collection: 'required' as const,
           customer_creation: 'always' as const,
-          // The declaration is the seller's own now. Recorded on the Session
-          // so the webhook can refuse to invoice a payment that carries no
-          // accepted terms.
-          consent_collection: { terms_of_service: 'required' as const },
-          // `custom_text` is load-bearing, not decoration. Stripe refuses to
-          // create a Session with `consent_collection.terms_of_service`
-          // unless the account has a Terms of service URL in its public
-          // business details *or* the request supplies its own acceptance
-          // message — verified by A/B against the live API, both on the
-          // pinned version and on the account default. Delete this block
-          // and every Hungarian checkout 400s with "You cannot collect
-          // consent to your terms of service unless a URL is set".
-          custom_text: {
-            terms_of_service_acceptance: {
-              message:
-                'Elfogadom az ÁSZF-et, kérem a szolgáltatás azonnali, a 14 napos elállási időn belüli megkezdését, és tudomásul veszem, hogy a teljesítés megkezdésével elveszítem az elállási jogomat.',
-            },
-          },
+          // Deliberately no `consent_collection` and no `custom_text`. The
+          // terms are accepted on our own page before this is ever called —
+          // `billing-actions` refuses the action without `legal_acceptance`,
+          // and `reserve_event_checkout` stamps the canonical
+          // `terms_accepted_at` that reaches `purchases`. That box says more
+          // than Stripe's can: it links the privacy notice as well as the
+          // ÁSZF, and states both the pro-rata liability on cancellation and
+          // the loss of the right once performance completes.
+          //
+          // Asking again here would be a second near-identical tick, and a
+          // required one gates the submit — wallet buttons included. Leaving
+          // Managed Payments to get one-tap Apple Pay on HUF and then putting
+          // a mandatory checkbox in front of that tap would give back most of
+          // what the move was for.
           // Deliberately no `automatic_tax` and no `invoice_creation`: the
           // sale is alanyi adómentes, so there is no VAT to calculate, and
           // the document that satisfies Hungarian law is the Billingo

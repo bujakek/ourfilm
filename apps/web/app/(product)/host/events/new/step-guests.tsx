@@ -4,13 +4,14 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 
 import { AccountNotice } from '@/components/host/onboarding/account-notice'
+import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import { ShotsSelector } from '@/components/host/shots-selector'
 import { SwitchTrack } from '@/components/ui/switch'
 import { DEFAULT_SHOTS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { eventPriceLabel } from '@/lib/pricing'
-import type { Locale } from '@/lib/i18n'
+import { localePath, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
 /**
@@ -232,43 +233,34 @@ function GuestsFields({
         />
         <span>
           {plan === 'full' ? (
-            <>
-              {en ? 'I accept the ' : 'Elfogadom az '}
-              <Link
-                href={en ? '/en/terms' : '/hu/aszf'}
-                target="_blank"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                {en ? 'Terms' : 'ÁSZF-et'}
-              </Link>
-              {en
-                ? ', and expressly ask OurFilm to start the service before the 14-day cancellation period ends. I understand that, if I cancel after service has started, I may have to pay for the proportion already supplied.'
-                : ', és kifejezetten kérem, hogy az OurFilm a 14 napos elállási/felmondási időszak vége előtt kezdje meg a szolgáltatást. Tudomásul veszem, hogy felmondás esetén a megszűnésig arányosan teljesített szolgáltatás díját meg kell fizetnem.'}
-            </>
+            // The paid declaration, shared with the billing card so the two
+            // cannot drift: it is the record that the ÁSZF was accepted and
+            // that performance inside the 14-day period was expressly asked
+            // for, which is the whole point of asking.
+            <PaidTermsAcceptance locale={locale} />
           ) : (
             <>
               {en ? 'I accept the ' : 'Elfogadom az '}
               <Link
-                href={en ? '/en/terms' : '/hu/aszf'}
+                href={localePath(locale, '/aszf')}
                 target="_blank"
                 className="underline underline-offset-2 hover:text-foreground"
               >
                 {en ? 'Terms' : 'ÁSZF-et'}
               </Link>
-              .
+              {en ? '. The ' : '. Az '}
+              <Link
+                href={localePath(locale, '/adatvedelem')}
+                target="_blank"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                {en ? 'Privacy Notice' : 'adatkezelési tájékoztató'}
+              </Link>{' '}
+              {en
+                ? 'explains how personal data is handled.'
+                : 'ismerteti az adatok kezelését.'}
             </>
-          )}{' '}
-          {en ? 'The ' : 'Az '}
-          <Link
-            href={en ? '/en/privacy' : '/hu/adatvedelem'}
-            target="_blank"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            {en ? 'Privacy Notice' : 'adatkezelési tájékoztató'}
-          </Link>{' '}
-          {en
-            ? 'explains how personal data is handled.'
-            : 'ismerteti az adatok kezelését.'}
+          )}
         </span>
       </label>
     </div>

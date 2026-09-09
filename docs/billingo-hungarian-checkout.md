@@ -118,19 +118,19 @@ Run `pnpm test:db` against a **local** stack only.
 
 ### 3. Stripe
 
-1. In **Settings → Business → Public details**, set the Terms of Service URL to
-   `https://ourfilm.app/hu/aszf`.
+1. In **Settings → Business → Public details**, a Terms of Service URL is
+   **not** required, and the direct path sets no `consent_collection` at all.
 
-   Not strictly required to make the API call work — Stripe accepts
-   `consent_collection.terms_of_service` when the request supplies its own
-   `custom_text.terms_of_service_acceptance`, which the direct path always
-   does, and that is currently the only reason Hungarian checkout succeeds
-   against an account with no ToS URL. Verified by A/B against the live API.
+   The host accepts the ÁSZF, the privacy notice and the early-performance
+   declaration on OurFilm's own billing card before the Session exists —
+   `billing-actions` refuses to run without it, and `reserve_event_checkout`
+   stamps the canonical `terms_accepted_at` that reaches `purchases`. That
+   wording says more than Stripe's box can, and asking a second time would
+   gate Stripe's submit, wallet buttons included, which is most of what
+   leaving Managed Payments was for.
 
-   Set it anyway, for the reason that actually matters to a buyer: with a URL
-   configured, the consent checkbox links to the ÁSZF. Without one it renders
-   our sentence alone, so a Hungarian consumer is accepting terms the page
-   never shows them.
+   Setting the URL anyway is still worth it for the legal-policies dialog
+   Checkout offers from its own footer.
 
 2. In **Settings → Payment methods**, keep Cards enabled and confirm Apple Pay
    for HUF. Hosted Checkout surfaces Apple Pay itself; do not hard-code payment
