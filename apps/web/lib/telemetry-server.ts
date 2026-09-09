@@ -139,6 +139,11 @@ export type ServerEventProperties = {
   }
   /** A host changed a running camera. One event with a `setting` rather than
    *  five, so "what do hosts adjust" is one breakdown. */
+  /** A host destroyed one guest's frame. `hidden_before` says whether they
+   *  delete straight from the album or clean up what they had already hidden,
+   *  which is the number that says whether putting delete behind the full-size
+   *  view worked. Never a photo id, a participant id or a name. */
+  photo_deleted: { event_id: string; hidden_before: boolean }
   event_setting_changed: {
     event_id: string
     setting: 'name' | 'capture_end' | 'reveal' | 'shots' | 'guests_can_view'

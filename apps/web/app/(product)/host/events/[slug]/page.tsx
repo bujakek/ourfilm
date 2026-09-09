@@ -61,7 +61,7 @@ export default async function AdminEventPage({ params }: Props) {
     }),
     getAllEventPhotos(event.id),
   ])
-  const tiles = toModerationTiles(photos)
+  const tiles = toModerationTiles(photos, event.time_zone)
   // What the Album button should say before anyone taps it: a host coming
   // back to a prepared archive, or to one still being built, sees that state
   // rendered rather than a generic button they have to tap to find out.
@@ -208,6 +208,7 @@ export default async function AdminEventPage({ params }: Props) {
             slug={event.slug}
             eventId={event.id}
             locale={locale}
+            timeZone={event.time_zone}
             title={en ? 'Photos' : 'Elkészült képek'}
             exportEndpoint={
               photos.length > 0 ? `/host/events/${event.slug}/export` : null

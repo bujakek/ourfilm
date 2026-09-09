@@ -66,6 +66,11 @@ export async function loadExportPhotos(
     .select(HOST_PHOTO_COLUMNS)
     .eq('event_id', eventId)
     .eq('status', 'ready')
+    // A deleted photo's row survives so its frame stays spent, but its three
+    // objects are gone. Without this the worker would chase three 404s and
+    // report the album short by one, which is the number CLAUDE.md wants an
+    // alert on — a false alarm on every event a host has tidied.
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
   if (error) throw error
   return data ?? []

@@ -349,6 +349,7 @@ export type Database = {
         Row: {
           byte_size: number | null
           created_at: string
+          deleted_at: string | null
           event_id: string
           height: number | null
           hidden_at: string | null
@@ -366,6 +367,7 @@ export type Database = {
         Insert: {
           byte_size?: number | null
           created_at?: string
+          deleted_at?: string | null
           event_id: string
           height?: number | null
           hidden_at?: string | null
@@ -383,6 +385,7 @@ export type Database = {
         Update: {
           byte_size?: number | null
           created_at?: string
+          deleted_at?: string | null
           event_id?: string
           height?: number | null
           hidden_at?: string | null

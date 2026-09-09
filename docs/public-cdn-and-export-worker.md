@@ -92,7 +92,19 @@ What that costs, and what to do about it:
   this is a property of the system rather than of the UI. Adjust that sentence;
   leave the marketing copy alone.
 
-### D2 — permanent per-photo delete. **Deferred to a follow-up.**
+### D2 — permanent per-photo delete. **Done (September 2026).**
+
+Shipped as a tombstone rather than a row delete, which is the one shape the
+deferral had not considered: `participant_shots_used` counts photo rows, so
+removing one refunds the guest's frame. `20260910120000_photo_soft_delete.sql`
+adds `deleted_at`; the host's viewer offers it behind an inline confirm; the
+operator script it grew out of is unchanged. CLAUDE.md's "never hard-delete"
+rule therefore still stands, and now means something stronger than it did.
+
+The original note is kept below, because its reasoning is what the follow-up
+was built against.
+
+### D2, as originally written
 
 `setPhotoHidden` writes `hidden_at` and nothing else
 (`apps/web/app/(product)/host/events/[slug]/actions.ts:117`), and the only product code

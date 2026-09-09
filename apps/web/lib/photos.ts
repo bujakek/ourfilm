@@ -2,8 +2,8 @@ import 'server-only'
 
 import { cache } from 'react'
 
-import type { ArchivePhoto } from './archive-naming'
-import { publicPhotoUrl } from './photo-urls'
+import { archiveEntryName, type ArchivePhoto } from './archive-naming'
+import { publicPhotoDownloadUrl, publicPhotoUrl } from './photo-urls'
 import { createClient } from './supabase/server'
 import type { Database } from './supabase/database.types'
 
@@ -41,6 +41,11 @@ export async function getGalleryPhotosBySlug(
   return data ?? []
 }
 
+/** The columns a host-side read needs, shared with the export job's loader so
+ *  the archive built by the worker sees exactly what the host's page saw. */
+export const HOST_PHOTO_COLUMNS =
+  'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, byte_size, participant_id, participants(display_name)'
+
 export type HostPhoto = {
   id: string
   storage_path: string
@@ -66,12 +71,14 @@ export type HostPhoto = {
  *
  * Filters to `ready`. A reserved-but-uncommitted frame has no bytes behind it,
  * so showing it to a host would be a permanently broken tile in their grid.
+ *
+ * And to `deleted_at is null`. A deleted photo keeps its row — that is what
+ * keeps the frame spent, see the column's own comment — but its three storage
+ * objects are gone, so every surface that would render or fetch it has to stop
+ * at the query. This one and `loadExportPhotos` are the only two that read the
+ * table directly; every RPC is already covered by the `hidden_at` a delete
+ * sets.
  */
-/** The columns a host-side read needs, shared with the export job's loader so
- *  the archive built by the worker sees exactly what the host's page saw. */
-export const HOST_PHOTO_COLUMNS =
-  'id, storage_path, thumb_path, view_path, hidden_at, width, height, created_at, taken_at, byte_size, participant_id, participants(display_name)'
-
 export const getAllEventPhotos = cache(
   async (eventId: string): Promise<HostPhoto[]> => {
     const supabase = await createClient()
@@ -80,6 +87,7 @@ export const getAllEventPhotos = cache(
       .select(HOST_PHOTO_COLUMNS)
       .eq('event_id', eventId)
       .eq('status', 'ready')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -157,18 +165,57 @@ export function toGalleryTiles(photos: readonly GalleryPhoto[]): GalleryTile[] {
 export type ModerationTile = {
   id: string
   thumbUrl: string
+  /** The ~1600px render the lightbox shows. */
+  viewUrl: string
+  /** The 3200px master, as an attachment — what Save hands over. The host gets
+   *  the print-ready file, the same one the ZIP would have given them. */
+  downloadUrl: string
+  /** The name that file arrives under, from the archive's own naming rules, so
+   *  one photo saved by hand and the same photo out of the ZIP agree. */
+  downloadName: string
   uploaderName: string | null
+  /** When the shutter fired, for the lightbox's `Anna · 21:47` line. */
+  takenAt: string | null
   hidden_at: string | null
 }
 
-/** The host's whole grid. Synchronous, like `toGalleryTiles`. */
+/**
+ * The host's whole grid. Synchronous, like `toGalleryTiles`: on a public bucket
+ * a URL is string work, so three of them per photo costs nothing.
+ *
+ * `timeZone` is the **event's**, never the server's — Vercel runs UTC, and a
+ * photo taken at 14:32 in Budapest would otherwise be saved as `1232`, which
+ * is the exact trap `lib/archive-naming.ts` documents. It is the same call the
+ * ZIP makes, so a photo saved by hand and the same photo out of the archive
+ * carry the same stamp and the same name.
+ *
+ * The leading number will not match, and that is fine: this list is newest
+ * first while the archive sorts oldest first. What identifies a frame is the
+ * stamp and the name beside it.
+ */
 export function toModerationTiles(
   photos: readonly HostPhoto[],
+  timeZone: string,
 ): ModerationTile[] {
-  return photos.map((photo) => ({
-    id: photo.id,
-    thumbUrl: publicPhotoUrl(photo.thumb_path),
-    uploaderName: photoUploaderName(photo),
-    hidden_at: photo.hidden_at,
-  }))
+  return photos.map((photo, index) => {
+    // `rejtett/` is the archive's folder for a hidden photo, and a folder is
+    // not a filename. One photo saved by hand goes wherever the host's browser
+    // puts it.
+    const name = archiveEntryName(
+      toArchivePhoto(photo),
+      index,
+      timeZone,
+    ).replace(/^rejtett\//, '')
+
+    return {
+      id: photo.id,
+      thumbUrl: publicPhotoUrl(photo.thumb_path),
+      viewUrl: publicPhotoUrl(photo.view_path ?? photo.storage_path),
+      downloadName: name,
+      downloadUrl: publicPhotoDownloadUrl(photo.storage_path, name),
+      uploaderName: photoUploaderName(photo),
+      takenAt: photo.taken_at,
+      hidden_at: photo.hidden_at,
+    }
+  })
 }

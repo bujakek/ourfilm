@@ -384,6 +384,7 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `checkout_settled`          | What Stripe reported server to server: paid, failed, expired, refunded        |
 | `event_created`             | The row exists, with the shape the host chose and whether it was a repeat     |
 | `event_deleted`             | The one destructive path, with the album's size and age                       |
+| `photo_deleted`             | A frame destroyed, and whether it was already hidden when they did it         |
 | `event_setting_changed`     | What hosts adjust on a running camera, and how far they move the end          |
 | `album_export_queued`       | A large album was asked for; a job row exists and nothing is built yet        |
 | `album_export_started`      | An archive began: the stream started, or a worker claimed the job             |
@@ -662,9 +663,11 @@ Three host-area controls show the result before the server has confirmed it. All
 revert on their own — none carries hand-written rollback code.
 
 - **`apps/web/components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
-  **grid**, not the tile, so the "N rejtve" counter moves with the photo it
-  describes. Per-tile state would flip the tile instantly and leave the count a
-  round trip behind, which reads as a bug.
+  **grid**, not the tile, and takes an action union: a hide flips a row, a
+  delete drops it. One piece of state because it is one — the list — and
+  anything derived from it has to move on the same frame as the tile it
+  describes. Per-tile state would flip the photo instantly and leave everything
+  else a round trip behind, which reads as a bug.
 - **`apps/web/components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
 - **`apps/web/components/host/shots-card.tsx`** — a five-way choice whose selected value
@@ -895,9 +898,26 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 - **`photos`** — `id`, `event_id`, `participant_id` (**not null** — an
   unattributed photo is one that consumed nobody's shot), `status`
   (`pending | ready`), `idempotency_key` (unique per participant),
-  `storage_path`, `thumb_path`, `view_path`, `hidden_at` (soft delete for
-  moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type`,
-  `taken_at`, `created_at`
+  `storage_path`, `thumb_path`, `view_path`, `hidden_at` (moderation),
+  `deleted_at`, `width`, `height`, `byte_size`, `mime_type`, `taken_at`,
+  `created_at`
+
+  **A photo row is never hard-deleted, and `deleted_at` is why that rule
+  survived getting a host-facing delete button.** `participant_shots_used`
+  counts photo rows, so removing one hands the guest their frame back — a host
+  would have found a way to deal out extra film, and "no preview, no retakes"
+  would stop being true for anybody whose photo was tidied away. So a delete
+  removes the three storage objects, purges them from the CDN, and writes
+  `deleted_at` and `hidden_at`; the row stays, still `ready`, still counted. It
+  is the same thing `pnpm takedown <photo-id>` has done for the operator since
+  the bucket went public.
+
+  Only two readers need the new column, and that is not luck: every
+  guest-facing RPC already gates on `hidden_at is null`, which the delete sets.
+  The moderation grid and the album export read the table directly and
+  deliberately include hidden photos, so `getAllEventPhotos` and
+  `loadExportPhotos` are the two that say `deleted_at is null`. A third reader
+  of `photos` needs the same clause.
 
   **The shot limit is atomic, and this is how.** `reserve_shot` takes
   `for update` on the _participant_ row, checks the window and the count, and
