@@ -136,6 +136,14 @@ export async function createEventCheckoutUrl({
             // so the webhook can refuse to invoice a payment that carries no
             // accepted terms.
             consent_collection: { terms_of_service: 'required' as const },
+            // `custom_text` is load-bearing, not decoration. Stripe refuses to
+            // create a Session with `consent_collection.terms_of_service`
+            // unless the account has a Terms of service URL in its public
+            // business details *or* the request supplies its own acceptance
+            // message — verified by A/B against the live API, both on the
+            // pinned version and on the account default. Delete this block
+            // and every Hungarian checkout 400s with "You cannot collect
+            // consent to your terms of service unless a URL is set".
             custom_text: {
               terms_of_service_acceptance: {
                 message:
