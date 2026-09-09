@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { T, still } from '@/lib/motion'
+import { useScrollLock } from '@/lib/use-scroll-lock'
 
 /** The dialog is closed by hand, so the timeout has to know the exit curve.
  *  Derived rather than typed out, because two copies of 180 in two files is
@@ -43,6 +44,7 @@ export function Sheet({
   footer?: ReactNode
   closeLabel?: string
 }) {
+  useScrollLock(open)
   const ref = useRef<HTMLDialogElement>(null)
   const closeTimer = useRef<number | null>(null)
   const titleId = useId()

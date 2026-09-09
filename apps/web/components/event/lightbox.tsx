@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useRef, type ReactNode } from 'react'
 import type { Locale } from '@/lib/i18n'
 import { T } from '@/lib/motion'
+import { useScrollLock } from '@/lib/use-scroll-lock'
 import { track } from '@/lib/telemetry'
 
 const SWIPE_THRESHOLD = 50
@@ -61,6 +62,9 @@ export function Lightbox<Photo extends ViewablePhoto>({
    *  time and the hidden state, which a guest has no use for. */
   caption?: string
 }) {
+  // Mounted only while open — `AnimatePresence` removes it on close — so the
+  // page is held for exactly as long as a photo is over it.
+  useScrollLock(true)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const touchStartX = useRef<number | null>(null)
   const photo = photos[index]
