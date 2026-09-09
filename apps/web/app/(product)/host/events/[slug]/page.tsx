@@ -161,7 +161,7 @@ export default async function AdminEventPage({ params }: Props) {
                 overQuota
                   ? en
                     ? 'Guest cap full'
-                    : 'Keret betelt'
+                    : 'Betelt a keret'
                   : en
                     ? 'Guests'
                     : 'Vendég'
@@ -172,7 +172,7 @@ export default async function AdminEventPage({ params }: Props) {
           ) : null}
           <Figure
             value={event.shots_per_participant}
-            label={en ? 'Shots each' : 'Kép fejenként'}
+            label={en ? 'Shots each' : 'Kép vendégenként'}
             divided
           />
         </div>
@@ -244,7 +244,7 @@ function CapturePill({
           aria-hidden="true"
           className="size-[5px] rounded-full bg-accent"
         />
-        {en ? 'Camera open' : 'A kamera nyitva'} ·{' '}
+        {en ? 'Camera open' : 'Lehet fotózni'} ·{' '}
         {shortTimeRemaining(new Date(captureEndAt), now, locale)}
       </span>
     )
@@ -254,7 +254,7 @@ function CapturePill({
       {state === 'before'
         ? en
           ? 'Not open yet'
-          : 'Még nem nyílt meg'
+          : 'Még nem lehet fotózni'
         : en
           ? 'Shooting ended'
           : 'Véget ért a fotózás'}
