@@ -104,8 +104,8 @@ export function InviteButton({
         onClick={invite}
         aria-label={en ? 'Share invite link' : 'Meghívólink megosztása'}
         className={cn(
-          'flex size-[58px] shrink-0 items-center justify-center rounded-xl border border-white/15 transition-colors hover:border-white/30',
-          copied ? 'text-accent' : 'text-foreground/75',
+          'flex size-[58px] shrink-0 items-center justify-center rounded-lg border border-white/15 transition-colors hover:border-white/30',
+          copied ? 'text-accent' : 'text-foreground/60',
         )}
       >
         {copied ? (

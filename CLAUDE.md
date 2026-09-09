@@ -368,7 +368,7 @@ onboarding screens, and `event_id` from the moment there is a row.
 | `album_export_requested`        | The Album button, and which path the endpoint chose: `browser` or `prepared`   |
 | `album_export_browser_finished` | A small album zipped in the host's browser reached the save dialog             |
 | `album_export_browser_failed`   | …or did not, and at which stage. A blob that fails to save is otherwise silent |
-| `create_own_album_clicked`      | The guest-to-host loop. Nothing mounts that component at the moment            |
+| `create_own_album_clicked`      | The guest-to-host loop, from the bar under a revealed album's grid             |
 
 **And the server reports what the browser cannot see honestly** — a payment
 Stripe confirmed rather than a browser that reached a success URL, a stream
@@ -679,9 +679,19 @@ there is no way to glance at it and notice.
 **Nothing on the guest side is optimistic any more.** The old `recent-uploads`
 store showed a guest their own photo the instant it uploaded, drawn from the
 `blob:` URL still in memory. That is exactly what a reveal model must not do, so
-the store and its tiles are gone. The camera's shot counter is not optimistic
-either: it renders whatever `commit_shot` returned, never a local decrement,
-because a client-side counter is a display and the database is the count.
+the store and its tiles are gone.
+
+**The camera's shot counter is the one qualified exception, and it is not a
+local decrement.** It shows `remaining - outstanding`: the last number
+`commit_shot` returned, less the shots reserved on screen that have not come
+back yet. Nothing is ever added to the server's answer, so the two settle onto
+it as each shot lands and can never cross it. It reads a frame ahead because
+the frame really is gone a frame ahead — `reserve_shot` takes it inside the row
+lock before a byte moves — and the offline marker is what made the old
+behaviour untenable: a guest with no signal sat on "9 left" with three photos
+already spent. The shutter's own label still reads `remaining`, because
+"Mentés…" is exactly the state where the roll is spent and the server has not
+caught up.
 
 ## Routing (settled — QR codes get printed, so this is expensive to change)
 
@@ -852,7 +862,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   there would move every window two hours off what the host typed.
 
 - **`participants`** — `id`, `event_id`, `display_name`, `session_token_hash`,
-  `joined_at`, `last_seen_at`, unique on `(event_id, session_token_hash)`.
+  `user_id` (nullable → `auth.users`), `joined_at`, `last_seen_at`, unique on
+  `(event_id, session_token_hash)` and on `(event_id, user_id)` where present.
 
   A guest's identity is a random 32-byte token in an **httpOnly** cookie; only
   its SHA-256 is stored. `httpOnly` is the load-bearing part — the cookie decides
@@ -863,6 +874,23 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   RLS on, **no anon policies at all**. Joining goes through `join_event`, which
   takes `for update` on the event row before counting, so five parallel joins on
   a free event cannot produce six participants.
+
+  **`user_id` is the host shooting their own event, and nothing else yet.** A
+  photo belongs to a participant, so a host with a camera is one — but they hold
+  no cookie (it is path-scoped to `/e/<slug>`, and a Server Action posts to the
+  path of the page that owns it, so nothing under `/host` receives it). They are
+  recognised by the session they already have: `host_participant` resolves the
+  row from `auth.uid()` after ownership has been checked, and the row's token
+  hash is random and never leaves the server. Deriving that hash from the user id
+  was rejected — the guest path hashes whatever raw token is in the cookie, and
+  `httpOnly` stops JavaScript rather than the person holding the browser, so a
+  derivable hash would let anyone who learned a host's user id become them.
+
+  **Every guest count reads `user_id is null`** —
+  `event_participant_count_capped`, `event_participant_quota`,
+  `owned_events_with_previews` and `getGuestParticipantCount`. The host is not a
+  guest, so a free event still admits five of them after the couple has taken a
+  photo. Revisit all four before that column ever holds anything but the owner.
 
 - **`photos`** — `id`, `event_id`, `participant_id` (**not null** — an
   unattributed photo is one that consumed nobody's shot), `status`
@@ -946,7 +974,9 @@ subscription, no per-guest fee. The event's stored locale selects the Stripe
 Price, so a translated label cannot silently choose the other currency.
 
 - **The free tier is a _participant_ cap, not a photo cap:** an event is free for
-  up to **5 distinct participants** (`public.free_participant_limit()`). Every
+  up to **5 distinct guests** (`public.free_participant_limit()`). The host's own
+  participant row is excluded from every count — see `participants` in the data
+  model — so shooting your own wedding does not cost you a guest. Every
   guest gets the host's chosen roll of 5/10/16/24/36 frames either way — what
   paying buys is more guests. Five friends shooting 36 frames each is a
   legitimately free event.

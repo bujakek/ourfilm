@@ -315,6 +315,7 @@ export type Database = {
           joined_at: string
           last_seen_at: string
           session_token_hash: string
+          user_id: string | null
         }
         Insert: {
           display_name: string
@@ -323,6 +324,7 @@ export type Database = {
           joined_at?: string
           last_seen_at?: string
           session_token_hash: string
+          user_id?: string | null
         }
         Update: {
           display_name?: string
@@ -331,6 +333,7 @@ export type Database = {
           joined_at?: string
           last_seen_at?: string
           session_token_hash?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -797,6 +800,18 @@ export type Database = {
       heartbeat_album_export: {
         Args: { p_id: string; p_lease?: string; p_tus_upload_url?: string }
         Returns: boolean
+      }
+      host_participant: {
+        Args: {
+          p_event_id: string
+          p_name: string
+          p_token_hash: string
+          p_user_id: string
+        }
+        Returns: {
+          participant_id: string
+          token_hash: string
+        }[]
       }
       is_admin: { Args: never; Returns: boolean }
       join_event: {

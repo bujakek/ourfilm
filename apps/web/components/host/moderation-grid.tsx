@@ -3,7 +3,6 @@
 import { AlbumDownload } from '@/components/host/album-download'
 import type { ExportResponse } from '@/lib/album-export'
 import type { ModerationTile } from '@/lib/photos'
-import { cn } from '@/lib/utils'
 import { Eye, EyeOff } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
@@ -22,23 +21,18 @@ import { track } from '@/lib/telemetry'
  */
 const OPTIMISTIC_HIDDEN = 'optimistic'
 
-type Filter = 'all' | 'hidden'
-
 function Tile({
   photo,
   slug,
   eventId,
   onToggle,
   locale,
-  filteredOut,
 }: {
   photo: ModerationTile
   slug: string
   eventId: string
   onToggle: (photoId: string) => void
   locale: 'en' | 'hu'
-  /** Hidden by the filter, not by the host. Still mounted — see the grid. */
-  filteredOut: boolean
 }) {
   const en = locale === 'en'
   const [pending, startTransition] = useTransition()
@@ -48,7 +42,7 @@ function Tile({
   const hidden = photo.hidden_at !== null
 
   return (
-    <li className={cn('relative', filteredOut && 'hidden')}>
+    <li className="relative">
       {/* Hiding and restoring is a cross-fade on `settle` — no scale, no
           bounce, and the tile never leaves the grid. Hiding is a reversible
           state, not an event to celebrate.
@@ -204,9 +198,10 @@ export function ModerationGrid({
   exportNote?: string | null
 }) {
   const en = locale === 'en'
-  // Held for the whole grid rather than per tile so the "N rejtve" counter
-  // moves with the tile it describes. Per-tile state would flip the photo
-  // instantly and leave the count a round trip behind, which reads as a bug.
+  // Held for the whole grid rather than per tile. It reads as one piece of
+  // state because it is one: a tile flipping is a change to the list, and the
+  // moment anything else is derived from that list — a count, a filter, a
+  // removed row — per-tile state would leave it a round trip behind.
   const [items, toggle] = useOptimistic(photos, (state, photoId: string) =>
     state.map((p) =>
       p.id === photoId
@@ -214,84 +209,23 @@ export function ModerationGrid({
         : p,
     ),
   )
-  const [filter, setFilter] = useState<Filter>('all')
-
-  const reduceMotion = useReducedMotion()
-  const hiddenCount = items.filter((p) => p.hidden_at !== null).length
-
   return (
     <>
-      {/* The counts live in here rather than on the page, because they are read
-          off the same optimistic state the tiles are — a server-rendered count
-          beside an optimistic grid is a count that lags every tap. */}
+      {/* No count in here. The page's own figure row above already says how
+          many photos the event has, and two counts of the same thing on one
+          screen is one of them being wrong at some point. */}
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
         <h2 className="font-display text-[26px] leading-none">{title}</h2>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {items.length > 0 ? (
-            <p className="font-mono text-[10px] tracking-[0.1em] text-foreground/45">
-              {items.length} {en ? 'PHOTOS' : 'KÉP'}
-              {hiddenCount > 0
-                ? ` · ${hiddenCount} ${en ? 'HIDDEN' : 'REJTVE'}`
-                : ''}
-            </p>
-          ) : null}
-
-          {/* Moderation stops being a scavenger hunt: with forty photos and one
-              hidden, finding the hidden one meant scrolling for a dimmed tile. */}
-          {hiddenCount > 0 ? (
-            <div
-              role="group"
-              aria-label={en ? 'Filter photos' : 'Képek szűrése'}
-              className="flex overflow-hidden rounded-full border border-white/14"
-            >
-              {/* One indicator sliding between two cells, never two elements
-                  each animating their own background. Same pattern as the
-                  roll-length and reveal selectors, and the rule from here on. */}
-              {(['all', 'hidden'] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={filter === value}
-                  onClick={() => setFilter(value)}
-                  className={`relative px-3.5 py-1.5 text-[11px] font-medium transition-colors ${
-                    filter === value
-                      ? 'text-foreground'
-                      : 'text-foreground/60 hover:text-foreground'
-                  }`}
-                >
-                  {filter === value ? (
-                    <motion.span
-                      layoutId="moderation-filter"
-                      aria-hidden="true"
-                      className="absolute inset-0 bg-white/10"
-                      transition={reduceMotion ? still : T.snap}
-                    />
-                  ) : null}
-                  <span className="relative">
-                    {value === 'all'
-                      ? en
-                        ? 'All'
-                        : 'Mind'
-                      : en
-                        ? 'Hidden'
-                        : 'Rejtett'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          {exportEndpoint ? (
-            <AlbumDownload
-              endpoint={exportEndpoint}
-              eventId={eventId}
-              photoCount={items.length}
-              locale={locale}
-              initial={exportInitial}
-            />
-          ) : null}
-        </div>
+        {exportEndpoint ? (
+          <AlbumDownload
+            endpoint={exportEndpoint}
+            eventId={eventId}
+            photoCount={items.length}
+            locale={locale}
+            initial={exportInitial}
+          />
+        ) : null}
       </div>
 
       {exportNote ? (
@@ -303,10 +237,6 @@ export function ModerationGrid({
           {en ? 'No photos yet.' : 'Még nem érkezett kép.'}
         </p>
       ) : (
-        // Filtering hides tiles rather than unmounting them, so switching to
-        // Rejtett does not make a two-item list develop itself in again.
-        // Entrance animations belong to first paint; replaying them on a
-        // filter makes a filter feel like a page load.
         <ul className="mt-4.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {items.map((photo) => (
             <Tile
@@ -316,7 +246,6 @@ export function ModerationGrid({
               eventId={eventId}
               onToggle={toggle}
               locale={locale}
-              filteredOut={filter === 'hidden' && photo.hidden_at === null}
             />
           ))}
         </ul>

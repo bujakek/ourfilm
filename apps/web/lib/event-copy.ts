@@ -153,21 +153,64 @@ export function shortTimeRemaining(
   locale: Locale = 'hu',
 ): string {
   const en = locale === 'en'
-  const totalMinutes = Math.max(
-    0,
-    Math.ceil((captureEndAt.getTime() - now.getTime()) / 60_000),
-  )
-
-  const days = Math.floor(totalMinutes / (24 * 60))
-  const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
-  const minutes = totalMinutes % 60
-
+  const { days, hours, minutes } = timeRemaining(captureEndAt, now)
   const [d, h, m] = en ? ['D', 'H', 'M'] : ['N', 'Ó', 'P']
 
   if (days > 0) return hours > 0 ? `${days}${d} ${hours}${h}` : `${days}${d}`
   if (hours > 0)
     return minutes > 0 ? `${hours}${h} ${minutes}${m}` : `${hours}${h}`
   return `${minutes}${m}`
+}
+
+/**
+ * `6 óra 20 perc` — the same number, spelled out.
+ *
+ * The guest's status row is a sentence in the body face now, not a mono
+ * readout, and `6Ó 20P` inside one reads as a serial number. Both spellings
+ * come off `timeRemaining` so the two can never round differently: a host
+ * seeing `2N 4Ó` and a guest seeing `2 nap 4 óra` are being told the same
+ * thing about the same event.
+ */
+export function longTimeRemaining(
+  captureEndAt: Date,
+  now: Date,
+  locale: Locale = 'hu',
+): string {
+  const en = locale === 'en'
+  const { days, hours, minutes } = timeRemaining(captureEndAt, now)
+  // Hungarian takes no plural after a numeral; English does.
+  const unit = (value: number, hu: string, one: string) =>
+    en ? `${value} ${one}${value === 1 ? '' : 's'}` : `${value} ${hu}`
+
+  const d = unit(days, 'nap', 'day')
+  const h = unit(hours, 'óra', 'hour')
+  const m = unit(minutes, 'perc', 'minute')
+
+  if (days > 0) return hours > 0 ? `${d} ${h}` : d
+  if (hours > 0) return minutes > 0 ? `${h} ${m}` : h
+  return m
+}
+
+/**
+ * How much of the capture window is left, as whole units, floored to two.
+ *
+ * Rounded **up** to the minute so a window with thirty seconds in it says
+ * "1 perc" rather than "0 perc" — a guest told there is no time left stops
+ * shooting, and there is still time left.
+ */
+function timeRemaining(
+  captureEndAt: Date,
+  now: Date,
+): { days: number; hours: number; minutes: number } {
+  const totalMinutes = Math.max(
+    0,
+    Math.ceil((captureEndAt.getTime() - now.getTime()) / 60_000),
+  )
+  return {
+    days: Math.floor(totalMinutes / (24 * 60)),
+    hours: Math.floor((totalMinutes % (24 * 60)) / 60),
+    minutes: totalMinutes % 60,
+  }
 }
 
 export type CaptureStatus = {
@@ -177,10 +220,16 @@ export type CaptureStatus = {
 }
 
 /**
- * The status row's right-hand pill: a dot and four to nine mono characters.
+ * The status row's right-hand end: a dot and a short phrase.
  *
- * Uppercase because it is set in Martian Mono at 9.5px, where the point is that
- * it reads as a readout rather than as a sentence.
+ * Sentence case in the body face, approved in the v2 review. It was tracked-out
+ * mono caps — `NYITVA · 6Ó 20P` — which reads as a readout, and the row now has
+ * to carry a second state that is not a readout at all: no connection. Two
+ * states in two registers would have looked like two different kinds of thing.
+ *
+ * It says nothing about the connection. That is the caller's to add, because
+ * the network is a browser fact and this module only knows the window — see
+ * `lib/use-online.ts`.
  */
 export function captureStatus(
   timing: EventTiming,
@@ -189,19 +238,67 @@ export function captureStatus(
   const en = locale === 'en'
   switch (captureWindowState(timing)) {
     case 'before':
-      return { live: false, label: en ? 'NOT OPEN YET' : 'MÉG ZÁRVA' }
+      return { live: false, label: en ? 'Not open yet' : 'Még zárva' }
     case 'after':
-      return { live: false, label: en ? 'CLOSED' : 'LEZÁRULT' }
-    default:
+      return { live: false, label: en ? 'Closed' : 'Lezárult' }
+    default: {
+      const left = longTimeRemaining(timing.captureEndAt, timing.now, locale)
       return {
         live: true,
-        label: `${en ? 'LIVE' : 'NYITVA'} · ${shortTimeRemaining(
-          timing.captureEndAt,
-          timing.now,
-          locale,
-        )}`,
+        label: en ? `Open for another ${left}` : `Nyitva, még ${left}`,
       }
+    }
   }
+}
+
+/**
+ * "Nincs kapcsolat. 3 kép várakozik, nyugodtan fotózz tovább."
+ *
+ * The line under the shutter while the device is offline with shots still
+ * owed. It is not a toast, and that is the whole design: a guest can be out of
+ * signal for an entire wedding, so the sentence saying their photos are safe
+ * has to stay on the screen the whole time rather than appear and leave.
+ *
+ * The last clause goes when there is no film left, because "keep shooting" is
+ * then untrue. Nothing here promises delivery — `lib/upload-queue.ts` owns
+ * that, and it has its own budget — only that the shots taken are still in
+ * hand.
+ */
+export function offlineQueueNote(
+  count: number,
+  canShoot: boolean,
+  locale: Locale = 'hu',
+): string {
+  if (locale === 'en') {
+    const waiting = `No connection. ${count} photo${count === 1 ? '' : 's'} waiting`
+    return canShoot ? `${waiting} — keep shooting.` : `${waiting} to upload.`
+  }
+  const waiting = `Nincs kapcsolat. ${count} kép várakozik`
+  return canShoot
+    ? `${waiting}, nyugodtan fotózz tovább.`
+    : `${waiting} a feltöltésre.`
+}
+
+/**
+ * "Mind a 3 kép feltöltve." — the one success sentence on the guest screen.
+ *
+ * It is deliberately narrow. A shot landing already announces itself three
+ * times over (the frame develops, the progress fills, the counter rolls down),
+ * and a line of text under all that was the fourth telling of the same news —
+ * which is why this screen has had no success case at all. What earns one is
+ * the *end of an outage*: the guest was told photos were waiting, and nobody
+ * should have to infer from an absence that they went.
+ *
+ * So it names only shots taken while there was no connection, and it clears
+ * the moment the next one is taken.
+ */
+export function queueClearedNote(count: number, locale: Locale = 'hu'): string {
+  if (locale === 'en') {
+    return count === 1
+      ? 'Your photo uploaded.'
+      : `All ${count} photos uploaded.`
+  }
+  return count === 1 ? 'A kép feltöltve.' : `Mind a ${count} kép feltöltve.`
 }
 
 /**
@@ -213,18 +310,21 @@ export function captureStatus(
  * along because it is the third value the deleted `<dl>` carried and it belongs
  * next to the other two facts about the format rather than in a list of its
  * own.
+ *
+ * It is a sentence in the body face, not three clauses in tracked-out mono
+ * caps. Approved in the v2 design review: the mono is for what the camera
+ * counts, and this line is the one thing on the screen that is neither a
+ * number nor a label — it is the product explaining itself to somebody who
+ * has just been handed a camera with no undo.
  */
 export function formatLine(
   participantCount: number,
   locale: Locale = 'hu',
 ): string {
-  const en = locale === 'en'
-  const guests = en
-    ? `${participantCount} ${participantCount === 1 ? 'GUEST' : 'GUESTS'}`
-    : `${participantCount} VENDÉG`
-  return en
-    ? `${guests} · NO PREVIEW · NO RETAKES`
-    : `${guests} · NINCS ELŐNÉZET · NINCS ÚJRAPRÓBÁLÁS`
+  // Hungarian takes no plural after a numeral, so only English branches.
+  return locale === 'en'
+    ? `${participantCount} guest${participantCount === 1 ? '' : 's'} took photos, with no preview and no retakes.`
+    : `${participantCount} vendég fotózott, előnézet és újrapróbálás nélkül.`
 }
 
 /** How the guest's ticket names the reveal rule, in mono caps. The host's own

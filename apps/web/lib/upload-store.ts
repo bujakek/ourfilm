@@ -146,6 +146,19 @@ const captureEvents = new Map<string, string>()
 type StoreStage =
   'missing' | 'open' | 'open_timeout' | 'blocked' | 'put' | 'list' | 'remove'
 
+/**
+ * The event a stored row belongs to, out of the key it is partitioned by.
+ *
+ * `lib/upload-queue.ts` may append a `#scope` — `#host` today — so two rolls
+ * on one device and one event do not resume each other. The partition is a
+ * store detail; `event_id` in telemetry has to stay the bare uuid, or the one
+ * question this reporting exists to answer ("did anyone at this wedding lose a
+ * photo") stops being a single filter.
+ */
+export function storedEventId(partition?: string): string | null {
+  return partition?.split('#')[0] || null
+}
+
 function warnOnce(stage: StoreStage, error: unknown, eventId?: string) {
   if (warned) return
   warned = true
@@ -156,7 +169,7 @@ function warnOnce(stage: StoreStage, error: unknown, eventId?: string) {
   track(
     'upload_store_unavailable',
     {
-      event_id: eventId ?? null,
+      event_id: storedEventId(eventId),
       stage,
       error: failureClass(error),
     },

@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   captureStatus,
   formatLine,
+  longTimeRemaining,
+  offlineQueueNote,
   ownRollNote,
+  queueClearedNote,
   revealSummary,
   shortTimeRemaining,
 } from '@/lib/event-copy'
@@ -64,37 +67,107 @@ describe('shortTimeRemaining', () => {
   })
 })
 
+describe('longTimeRemaining', () => {
+  const end = (ms: number) => new Date(now.getTime() + ms)
+
+  it('spells out the same two units the short form abbreviates', () => {
+    expect(longTimeRemaining(end(6 * HOUR + 20 * MINUTE), now)).toBe(
+      '6 óra 20 perc',
+    )
+    expect(longTimeRemaining(end(6 * HOUR + 20 * MINUTE), now, 'en')).toBe(
+      '6 hours 20 minutes',
+    )
+  })
+
+  it('drops the smaller unit once there are days, like the short form', () => {
+    expect(longTimeRemaining(end(2 * DAY + 4 * HOUR + 30 * MINUTE), now)).toBe(
+      '2 nap 4 óra',
+    )
+  })
+
+  it('takes no Hungarian plural after a numeral, and an English one', () => {
+    expect(longTimeRemaining(end(HOUR + MINUTE), now)).toBe('1 óra 1 perc')
+    expect(longTimeRemaining(end(HOUR + MINUTE), now, 'en')).toBe(
+      '1 hour 1 minute',
+    )
+  })
+
+  it('rounds up, so a window still open never reads as zero', () => {
+    expect(longTimeRemaining(end(30_000), now)).toBe('1 perc')
+  })
+})
+
 describe('captureStatus', () => {
   it('is live only while the window is open', () => {
     expect(captureStatus(timing(-HOUR, 6 * HOUR + 20 * MINUTE))).toEqual({
       live: true,
-      label: 'NYITVA · 6Ó 20P',
+      label: 'Nyitva, még 6 óra 20 perc',
     })
-    expect(captureStatus(timing(-HOUR, 6 * HOUR), 'en').label).toBe('LIVE · 6H')
+    expect(captureStatus(timing(-HOUR, 6 * HOUR), 'en').label).toBe(
+      'Open for another 6 hours',
+    )
   })
 
   it('is not live before the camera opens or after it closes', () => {
     // `live` is what the lilac dot is bound to, and lilac now means exactly one
-    // thing: the film is running.
+    // thing: the film is running. Amber is the connection, and this function
+    // knows nothing about it.
     expect(captureStatus(timing(HOUR, 5 * HOUR)).live).toBe(false)
     expect(captureStatus(timing(-5 * HOUR, -HOUR)).live).toBe(false)
-    expect(captureStatus(timing(-5 * HOUR, -HOUR)).label).toBe('LEZÁRULT')
+    expect(captureStatus(timing(-5 * HOUR, -HOUR)).label).toBe('Lezárult')
     expect(captureStatus(timing(HOUR, 5 * HOUR), 'en').label).toBe(
-      'NOT OPEN YET',
+      'Not open yet',
     )
+  })
+})
+
+describe('offlineQueueNote', () => {
+  it('tells the guest to keep shooting only while they still can', () => {
+    expect(offlineQueueNote(3, true)).toBe(
+      'Nincs kapcsolat. 3 kép várakozik, nyugodtan fotózz tovább.',
+    )
+    // No film left, so the invitation would be a lie.
+    expect(offlineQueueNote(3, false)).toBe(
+      'Nincs kapcsolat. 3 kép várakozik a feltöltésre.',
+    )
+  })
+
+  it('takes an English plural and no Hungarian one', () => {
+    expect(offlineQueueNote(1, true, 'en')).toBe(
+      'No connection. 1 photo waiting — keep shooting.',
+    )
+    expect(offlineQueueNote(2, false, 'en')).toBe(
+      'No connection. 2 photos waiting to upload.',
+    )
+    expect(offlineQueueNote(1, true)).toContain('1 kép várakozik')
+  })
+})
+
+describe('queueClearedNote', () => {
+  it('does not say "mind a 1 kép"', () => {
+    expect(queueClearedNote(1)).toBe('A kép feltöltve.')
+    expect(queueClearedNote(3)).toBe('Mind a 3 kép feltöltve.')
+    expect(queueClearedNote(1, 'en')).toBe('Your photo uploaded.')
+    expect(queueClearedNote(3, 'en')).toBe('All 3 photos uploaded.')
   })
 })
 
 describe('formatLine', () => {
   it('states the format the product actually is', () => {
-    expect(formatLine(7)).toBe('7 VENDÉG · NINCS ELŐNÉZET · NINCS ÚJRAPRÓBÁLÁS')
-    expect(formatLine(7, 'en')).toBe('7 GUESTS · NO PREVIEW · NO RETAKES')
+    expect(formatLine(7)).toBe(
+      '7 vendég fotózott, előnézet és újrapróbálás nélkül.',
+    )
+    expect(formatLine(7, 'en')).toBe(
+      '7 guests took photos, with no preview and no retakes.',
+    )
   })
 
   it('keeps English singular honest', () => {
-    expect(formatLine(1, 'en')).toBe('1 GUEST · NO PREVIEW · NO RETAKES')
+    expect(formatLine(1, 'en')).toBe(
+      '1 guest took photos, with no preview and no retakes.',
+    )
     // Hungarian takes no plural after a numeral.
-    expect(formatLine(1)).toContain('1 VENDÉG ·')
+    expect(formatLine(1)).toContain('1 vendég ')
   })
 })
 

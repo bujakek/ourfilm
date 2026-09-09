@@ -6,6 +6,7 @@ import {
   createUser,
   deleteEvent,
   deleteUser,
+  hostParticipant,
   joinEvent,
   makeAdmin,
   markPaid,
@@ -79,6 +80,70 @@ describe('joining', () => {
     try {
       await expect(joinEvent(event.slug, '   ', newSession())).rejects.toThrow()
       expect(await countParticipants(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+})
+
+/**
+ * The host shoots on their own event, and is not a guest.
+ *
+ * Two properties, and the second is the one the whole `user_id` column exists
+ * for: a free event admits five *guests* whether or not the couple picked up a
+ * camera themselves. Get it wrong and the sixth person through the door is
+ * turned away because the bride took a photo, with nothing on either screen
+ * explaining why.
+ */
+describe('the host as a participant', () => {
+  it('returns the same row and the same token hash on every call', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      const first = await hostParticipant(event.id, host.id, 'anna')
+      const second = await hostParticipant(event.id, host.id, 'anna')
+
+      expect(first?.participant_id).toBe(second?.participant_id)
+      // A rotating hash would strand a `commit_shot` issued against the
+      // previous one — the upload is a separate request from the reservation.
+      expect(first?.token_hash).toBe(second?.token_hash)
+      expect(await countParticipants(event.id)).toBe(1)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('does not spend a guest slot on a free event', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      await hostParticipant(event.id, host.id, 'anna')
+
+      for (let i = 0; i < 5; i++) {
+        const result = await joinEvent(event.slug, `Vendég ${i}`, newSession())
+        expect(result?.cap_reached).toBe(false)
+      }
+
+      const sixth = await joinEvent(event.slug, 'Hatodik', newSession())
+      expect(sixth?.cap_reached).toBe(true)
+      // Six rows: five guests and the host, who is not one of them.
+      expect(await countParticipants(event.id)).toBe(6)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('is left out of the number the host is shown', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      await hostParticipant(event.id, host.id, 'anna')
+      await joinEvent(event.slug, 'Réka', newSession())
+
+      const { data, error } = await serviceClient()
+        .rpc('event_participant_quota', { p_event_id: event.id })
+        .maybeSingle()
+      if (error) throw error
+      // One guest, not two. "2 / 5 vendég" on an event with one guest is the
+      // host being billed for their own attendance.
+      expect(data?.participant_count).toBe(1)
     } finally {
       await deleteEvent(event.id)
     }

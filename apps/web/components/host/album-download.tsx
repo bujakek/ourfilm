@@ -191,16 +191,40 @@ export function AlbumDownload({
 
   return (
     <>
+      {/* The width is pinned, and that is the whole point of the short label.
+          This pill sits in a `flex-wrap` header beside the title and the
+          count, and the label used to run from `Album` to
+          `A letöltés nem sikerült. Próbáld újra` — five characters to
+          thirty-seven. The row broke to two lines partway through a zip and
+          came back when it finished, so watching an album build made the
+          heading jump. A control that reports its own progress by growing is
+          a control that moves the page.
+
+          The sentence is not lost: it is the button's accessible name, so a
+          screen reader still hears `Album letöltése · 487 kép · 1,9 GB` where
+          the pill shows `1,9 GB`. */}
       <button
         type="button"
         onClick={run}
         disabled={disabled}
         aria-busy={disabled}
-        className="inline-flex items-center gap-2 rounded-full border border-white/14 px-3.5 py-1.5 text-[11px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground disabled:cursor-progress disabled:opacity-70"
+        aria-label={label}
+        className="inline-flex min-w-28 items-center justify-center gap-2 rounded-full border border-white/14 px-3.5 py-1.5 text-[11px] font-medium text-foreground/80 tabular-nums transition-colors hover:border-white/30 hover:text-foreground disabled:cursor-progress disabled:opacity-70"
       >
         <Download className="size-3.5" aria-hidden="true" />
-        <span aria-live="polite">{label}</span>
+        {/* Hidden from assistive tech because `aria-label` above already says
+            it, at greater length. */}
+        <span aria-hidden="true">{shortLabelFor(phase, en)}</span>
       </button>
+
+      {/* Announced, but only when it settles. The old live region was on the
+          label itself, so a screen reader read every tick of `2 / 7`; what a
+          host actually needs to hear is that the album is ready, or that it
+          failed. */}
+      <span aria-live="polite" className="sr-only">
+        {phase.kind === 'ready' || phase.kind === 'failed' ? label : ''}
+      </span>
+
       <a ref={anchor} hidden aria-hidden="true" href="#" download />
     </>
   )
@@ -234,6 +258,43 @@ function fromResponse(answer: ExportResponse | null | undefined): Phase {
   }
 }
 
+/**
+ * What the pill shows: the number, and as few words as fit beside it.
+ *
+ * Every state has to render at roughly one width — see the note at the call
+ * site — so this keeps whichever part of `labelFor` is actually news. During a
+ * zip that is the fraction; when an archive is ready it is the size, because a
+ * host on mobile data should know before tapping two gigabytes. The photo
+ * count is already displayed two elements to the left, and a missing photo
+ * deserves a sentence rather than a fragment on a button.
+ *
+ * In the three states the button can actually be clicked — at rest, ready and
+ * failed — this string also appears inside the matching `labelFor`, which is
+ * the accessible name. That is what keeps "click Album" working for voice
+ * control: the visible text has to be part of the name. The two busy states do
+ * not match as tidily, and do not need to: the button is `disabled` in both,
+ * so there is nothing there to activate by voice.
+ */
+function shortLabelFor(phase: Phase, en: boolean): string {
+  switch (phase.kind) {
+    case 'zipping':
+      return `${phase.done} / ${phase.total}`
+    case 'asking':
+    case 'preparing':
+      return en ? 'Preparing…' : 'Készül…'
+    case 'ready':
+      return (
+        formatBytes(phase.prepared.byteSize, en) || (en ? 'Download' : 'Album')
+      )
+    case 'failed':
+      return en ? 'Retry' : 'Újra'
+    default:
+      return 'Album'
+  }
+}
+
+/** The full sentence, which is now the button's accessible name rather than
+ *  its visible text. */
 function labelFor(phase: Phase, en: boolean): string {
   switch (phase.kind) {
     case 'zipping':
@@ -241,7 +302,7 @@ function labelFor(phase: Phase, en: boolean): string {
         ? `Downloading… ${phase.done} / ${phase.total}`
         : `Album összeállítása… ${phase.done} / ${phase.total}`
     case 'asking':
-      return en ? 'Preparing…' : 'Egy pillanat…'
+      return en ? 'Preparing the album…' : 'Készül az album…'
     case 'preparing':
       return en
         ? `Preparing the album… ${phase.prepared.photoCount} photos`

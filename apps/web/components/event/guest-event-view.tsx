@@ -3,7 +3,7 @@
 import type { Frame } from '@/lib/frames'
 import type { GalleryTile } from '@/lib/photos'
 import { Camera } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRef } from 'react'
@@ -13,7 +13,13 @@ import {
   releaseShotAction,
   reserveShotAction,
 } from '@/app/(product)/e/[slug]/actions'
-import { captureStatus, formatLine, ownRollNote } from '@/lib/event-copy'
+import {
+  captureStatus,
+  formatLine,
+  offlineQueueNote,
+  ownRollNote,
+  queueClearedNote,
+} from '@/lib/event-copy'
 import { compressForStorage, isHeic, prepareStoredShot } from '@/lib/image'
 import { track } from '@/lib/telemetry'
 import {
@@ -26,9 +32,11 @@ import { uploadStore } from '@/lib/upload-store'
 import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import { useEntrance } from '@/lib/use-entrance'
+import { useOnline } from '@/lib/use-online'
 import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
+import { CreateOwnAlbum } from './create-own-album'
 import { FilmStrip } from './film-strip'
 import { InviteButton } from './invite-button'
 import { PhotoGrid } from './photo-grid'
@@ -144,6 +152,16 @@ export function GuestEventView({
   const [now, setNow] = useState(initialNow)
   const [handedOff, setHandedOff] = useState(false)
   const [captures, setCaptures] = useState<Capture[]>([])
+  const online = useOnline()
+  /**
+   * How many shots were taken with no connection and have not been accounted
+   * for yet. It is what the receipt line names once the queue drains, and the
+   * only reason this screen keeps a success case at all — see
+   * `queueClearedNote`. Counted at the shutter rather than watched in an
+   * effect: the two moments that change it are a shutter press and a shot
+   * being given up on, and both are already handlers.
+   */
+  const [offlineBacklog, setOfflineBacklog] = useState(0)
 
   // Once per session, not once per mount. This page is left and re-entered on
   // every single shot — see `lib/use-entrance.ts`.
@@ -236,12 +254,58 @@ export function GuestEventView({
   const outstanding = captures.filter((c) => !c.confirmed).length
   const canTakePhoto = captureIsOpen && remaining - outstanding > 0
   const uploading = outstanding > 0
+  /**
+   * What the big number says: frames left after the ones already spent.
+   *
+   * The frame goes at the shutter, not at the upload — `reserve_shot` takes it
+   * inside the row lock before a byte moves — and a guest offline for an hour
+   * reading "9 left" with three photos already in the bag is being told
+   * something false. This is still not a local decrement: `remaining` is
+   * whatever `commit_shot` last returned and `outstanding` is what has not
+   * come back yet, so the two settle onto the server's number as each shot
+   * lands and never cross it. The shutter's own label stays on `remaining`,
+   * because "Mentés…" is precisely the state where the roll is spent and the
+   * server has not caught up.
+   */
+  const framesLeft = Math.max(0, remaining - outstanding)
 
   // Derived rather than cleared in an effect: once `router.refresh()` has
   // brought a capture's own photo down, the strip renders the real frame and
   // that cell stops being shown. `captures` is appended in capture order and
   // never re-sorted, so the survivors stay in order without sorting.
   const developing = captures.filter((c) => isDeveloping(c, frameIds))
+
+  /**
+   * What takes over the line under the shutter, in order of what a guest
+   * needs most: a failure, then an outage, then the receipt for an outage
+   * that has ended, and only last a spent roll. `null` when none of those is
+   * true, and the line goes back to saying what the product is.
+   *
+   * The receipt outranks the spent roll because the shutter is already
+   * reading "Elfogyott a tekercs" and the counter is already at zero, so a
+   * third telling of that adds nothing — while "did the photos I took with no
+   * signal actually go?" has no other answer anywhere on the screen.
+   */
+  const statusLine: { text: string; tone: string } | null = flash
+    ? { text: flash, tone: 'text-destructive' }
+    : !online && outstanding > 0
+      ? {
+          text: offlineQueueNote(outstanding, canTakePhoto, locale),
+          tone: 'text-foreground/62',
+        }
+      : online && outstanding === 0 && offlineBacklog > 0
+        ? {
+            text: queueClearedNote(offlineBacklog, locale),
+            tone: 'text-accent',
+          }
+        : remaining <= 0
+          ? {
+              text: en
+                ? 'Your roll is full.'
+                : 'Elfogytak a képeid — a tekercsed megtelt.',
+              tone: 'text-muted-foreground',
+            }
+          : null
 
   const status = captureStatus(
     {
@@ -367,6 +431,10 @@ export function GuestEventView({
         },
         onDropped(id, reason) {
           setCaptures((current) => current.filter((c) => c.id !== id))
+          // A shot nobody is waiting for any more must not be counted in a
+          // receipt claiming it went up. Over-subtracting only hides the
+          // receipt, which is the safe direction to be wrong in.
+          setOfflineBacklog((n) => Math.max(0, n - 1))
           if (reason === 'refused') return
           setFlash(
             en
@@ -466,10 +534,17 @@ export function GuestEventView({
         heic: isHeic(file),
       })
       setFlash(null)
+      if (!online) {
+        setOfflineBacklog((n) => n + 1)
+      } else if (outstanding === 0) {
+        // Back on a connection with nothing owed: the last outage is over and
+        // its receipt has been read. This shot starts a new story.
+        setOfflineBacklog(0)
+      }
       claimCell(id, file)
       queueRef.current?.enqueue(id, file, now)
     },
-    [claimCell, eventId, remaining, outstanding],
+    [claimCell, eventId, online, remaining, outstanding],
   )
 
   return (
@@ -484,18 +559,29 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(0)}
-        className="flex items-center justify-between"
+        className="flex items-center justify-between gap-3"
       >
-        <span className="font-mono text-[9.5px] font-medium tracking-[0.18em] text-foreground/40">
-          OURFILM
+        <span className="text-xs font-semibold tracking-[0.02em] text-foreground/55">
+          OurFilm
         </span>
+        {/* Two facts in one row, and they are not the same kind of fact: the
+            window is the event's, the connection is this phone's. Amber says
+            the second one is gone, and it wins — a guest with no signal does
+            not need to be told how long the camera stays open. Lilac is left
+            meaning only that the film is running. */}
         <span
-          className={`inline-flex items-center gap-1.5 font-mono text-[9.5px] font-medium tracking-[0.14em] ${
-            status.live ? 'text-accent' : 'text-foreground/40'
+          className={`inline-flex items-center gap-[7px] text-xs font-medium transition-colors ${
+            !online
+              ? 'text-warning'
+              : status.live
+                ? 'text-accent'
+                : 'text-foreground/55'
           }`}
         >
-          {status.live ? <LiveDot /> : null}
-          {status.label}
+          {/* Amber never breathes. The pulse means the film is running, and
+              on this row that would be answering a different question. */}
+          {!online || status.live ? <LiveDot pulse={online} /> : null}
+          {online ? status.label : en ? 'No connection' : 'Nincs kapcsolat'}
         </span>
       </motion.div>
 
@@ -503,7 +589,7 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(1)}
-        className="mt-3 font-display text-[36px] leading-[1.02] tracking-[-0.005em] text-balance"
+        className="mt-3.5 font-display text-[34px] leading-[1.02] tracking-[-0.005em] text-balance"
       >
         {eventName}
       </motion.h1>
@@ -512,34 +598,34 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(2)}
-        className="mt-6 flex items-end gap-3"
+        className="mt-5.5 flex items-end gap-2.5"
       >
         {/* The number is the subject of the screen, and it is the same rolling
-            number the create flow and the host console use. It is still not
-            optimistic: this renders whatever `commit_shot` returned, because a
-            client-side decrement is a display and the database is the count. */}
+            number the create flow and the host console use. What it shows is
+            `framesLeft` — see the note there for why that is not the same as a
+            client-side decrement. */}
         <span aria-live="polite" className="flex items-end">
           <Odometer
-            value={remaining}
+            value={framesLeft}
             dir="down"
-            className="font-mono text-[66px] leading-[0.82] font-medium tracking-[-0.06em]"
+            className="font-mono text-[62px] leading-[0.82] font-medium tracking-[-0.06em] tabular-nums"
           />
         </span>
-        <span className="pb-1.5 font-mono text-[20px] tracking-[-0.03em] text-foreground/35">
+        <span className="pb-1.5 font-mono text-[19px] tracking-[-0.03em] text-foreground/35">
           /{shotsPerParticipant}
         </span>
-        <span className="ml-auto pb-2 text-right font-mono text-[9.5px] leading-[1.5] font-medium tracking-[0.14em] text-foreground/50">
+        <span className="ml-auto pb-2 text-right text-xs leading-[1.45] font-medium text-foreground/55">
           {en ? (
             <>
-              FRAMES
+              frames
               <br />
-              REMAINING
+              remaining
             </>
           ) : (
             <>
-              MARADT
+              maradt
               <br />
-              KÉPKOCKA
+              képkocka
             </>
           )}
         </span>
@@ -560,6 +646,7 @@ export function GuestEventView({
           total={shotsPerParticipant}
           locale={locale}
           pending={developing}
+          offline={!online}
           entrance={stage(6, T.advance)}
         />
       </motion.div>
@@ -568,7 +655,7 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(4)}
-        className="mt-5.5 flex items-center gap-3.5"
+        className="mt-5.5 flex items-center gap-3"
       >
         {/* The shutter dims because a boolean says the screen has been handed
             to the OS camera — never because an animation was left mid-flight.
@@ -598,9 +685,13 @@ export function GuestEventView({
             canTakePhoto && !reduceMotion ? { scale: 0.972 } : undefined
           }
           transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
-          className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-xl text-[15px] font-semibold disabled:pointer-events-none"
+          className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-lg text-[15px] font-semibold disabled:pointer-events-none"
         >
-          <Camera className="size-5" strokeWidth={1.8} aria-hidden="true" />
+          <Camera
+            className="size-[19px]"
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
           {remaining <= 0
             ? en
               ? 'Roll finished'
@@ -642,46 +733,34 @@ export function GuestEventView({
         />
       </motion.div>
 
-      <AnimatePresence initial={false} mode="wait">
-        {flash ? (
-          <motion.p
-            key={flash}
-            role="alert"
-            aria-live="polite"
-            initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-            transition={reduceMotion ? still : T.settle}
-            className="mt-3 text-center text-sm text-destructive"
-          >
-            {flash}
-          </motion.p>
-        ) : remaining <= 0 ? (
-          <motion.p
-            key="out-of-shots"
-            aria-live="polite"
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduceMotion ? still : T.settle}
-            className="mt-3 text-center text-sm font-medium text-muted-foreground"
-          >
-            {en
-              ? 'Your roll is full.'
-              : 'Elfogytak a képeid — a tekercsed megtelt.'}
-          </motion.p>
-        ) : null}
-      </AnimatePresence>
+      {/* One line under the shutter, and it is one line on purpose.
 
-      {/* The format, said out loud. The guest count moved here from the deleted
-          `<dl>`; the other two clauses are the thing the whole product is and
-          had never appeared on the screen holding the camera. */}
+          It says what the product is — the guest count, no preview, no retakes
+          — until something more urgent needs the space, and then it says that
+          instead: a failed upload, an outage, the receipt when the outage
+          ends. Two stacked lines was the first attempt and it read as a wall;
+          these are the same slot in the design's own mocks, the format line on
+          the album screen and the connection line on the camera screen.
+
+          The height is reserved in every state, which is what stops the strip
+          and the counter jumping each time the wifi comes and goes. It used to
+          be a pair of animated messages that entered and left, and that shape
+          cannot carry an outage that lasts the whole wedding — nor the rule
+          that a guest tapping the shutter repeatedly must not see motion each
+          time. The entrance below fires once, on first paint; after that the
+          only transition here is the colour. */}
       <motion.p
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(4)}
-        className="mt-3 text-center font-mono text-[10px] tracking-[0.06em] text-foreground/35"
+        aria-live={flash ? 'assertive' : 'polite'}
+        className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
+          statusLine
+            ? `text-[13px] leading-[1.45] ${statusLine.tone}`
+            : 'text-xs leading-[1.55] text-foreground/45'
+        }`}
       >
-        {formatLine(participantCount, locale)}
+        {statusLine ? statusLine.text : formatLine(participantCount, locale)}
       </motion.p>
 
       <motion.div
@@ -695,8 +774,10 @@ export function GuestEventView({
             {en ? 'Shared photos' : 'Közös képek'}
           </h2>
           {gallery.open && photos.length > 0 ? (
-            <p className="font-mono text-[10px] tracking-[0.1em] text-foreground/40">
-              {en ? `${photos.length} PHOTOS` : `${photos.length} KÉP`}
+            <p className="text-xs font-medium text-muted-foreground tabular-nums">
+              {en
+                ? `${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}`
+                : `${photos.length} kép`}
             </p>
           ) : null}
         </div>
@@ -727,6 +808,10 @@ export function GuestEventView({
         ) : (
           <div className="mt-4">
             <PhotoGrid photos={photos} eventId={eventId} locale={locale} />
+            {/* Below the grid, never above it: a guest who has just watched
+                the album develop is the only audience this bar has, and it
+                has to come after the thing it is trading on. */}
+            <CreateOwnAlbum eventId={eventId} locale={locale} />
           </div>
         )}
       </motion.div>
