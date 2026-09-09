@@ -128,17 +128,53 @@ describe('Stripe Checkout creation', () => {
     expect(firstParams.locale).toBe('en')
     expect(db.inserts).toHaveLength(2)
     expect(db.inserts[0]).toMatchObject({
-      // The attempt id, not a fresh uuid: it is what makes two concurrent
-      // callers send byte-identical parameters under one idempotency key, and
-      // it becomes Billingo's `vendor_id`.
-      id: db.reservation.attempt_id,
       stripe_checkout_session_id: 'cs_test_ourfilm',
       settlement: 'managed',
       amount_minor: 3900,
       currency: 'usd',
       status: 'pending',
     })
-    expect(firstParams.metadata.purchase_id).toBe(db.reservation.attempt_id)
+    // Derived, never random: two concurrent callers share one idempotency key
+    // and so must send byte-identical parameters. It also becomes Billingo's
+    // `vendor_id`.
+    expect(db.inserts[0].id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    )
+    expect(db.inserts[1].id).toBe(db.inserts[0].id)
+    expect(firstParams.metadata.purchase_id).toBe(db.inserts[0].id)
+  })
+
+  it('gives a changed request its own idempotency key and purchase id', async () => {
+    // The live outage this exists for. A reservation is held for 45 minutes,
+    // so a host who pressed pay before `OURFILM_HU_DIRECT` was flipped and
+    // again after sent one key with two different requests, and Stripe
+    // refused: "Keys for idempotent requests can only be used with the same
+    // parameters they were first used with." Any deploy that adds a session
+    // parameter mid-attempt does the same thing.
+    const before = database()
+    mocks.createSupabaseClient.mockResolvedValue(before.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_before'))
+    vi.stubEnv('OURFILM_HU_DIRECT', 'false')
+    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+
+    const after = database()
+    mocks.createSupabaseClient.mockResolvedValue(after.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_after'))
+    vi.stubEnv('OURFILM_HU_DIRECT', 'true')
+    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+
+    const [, firstOptions] = mocks.createSession.mock.calls[0]
+    const [, secondOptions] = mocks.createSession.mock.calls[1]
+
+    // Same event, same attempt — and that is exactly why the key must carry
+    // more than those two.
+    expect(firstOptions.idempotencyKey).toContain(before.reservation.attempt_id)
+    expect(secondOptions.idempotencyKey).toContain(after.reservation.attempt_id)
+    expect(firstOptions.idempotencyKey).not.toBe(secondOptions.idempotencyKey)
+
+    // And a distinct purchase id, because the row the first request wrote is
+    // still there and the host's client has no update policy to repair it.
+    expect(before.inserts[0].id).not.toBe(after.inserts[0].id)
   })
 
   it('does not call Stripe when the database refuses the reservation', async () => {
