@@ -84,6 +84,10 @@ describe('the export-ready mail', () => {
       expect(mail.text).not.toContain('487')
       expect(mail.html).not.toContain('GB')
       expect(mail.html).toContain('Anna &amp; Bence')
+      if (locale === 'hu') {
+        expect(mail.text).not.toContain('—')
+        expect(mail.html).toContain('Már letöltheted az albumot.')
+      }
     }
   })
 })

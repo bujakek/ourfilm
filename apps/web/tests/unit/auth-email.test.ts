@@ -70,9 +70,10 @@ describe('auth email rendering', () => {
       confirmationUrl,
     })
 
-    expect(email.subject).toBe('Erősítsd meg az e-mail-címed — OurFilm')
+    expect(email.subject).toBe('OurFilm: erősítsd meg az e-mail-címed')
     expect(email.html).toContain('<html lang="hu">')
     expect(email.html).toContain('Fiók létrehozása')
+    expect(email.text).not.toContain('—')
     expect(email.html).not.toContain('Create account')
     expect(email.html).not.toContain('One more step')
   })

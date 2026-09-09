@@ -118,5 +118,5 @@ export function exportNote(
   if (photoCount <= BROWSER_EXPORT_MAX_PHOTOS) return null
   return locale === 'en'
     ? 'Up to 20 photos the album downloads at once. Larger albums are prepared, and we email you when they are ready to download.'
-    : 'Legfeljebb 20 képig az album azonnal letöltődik. Nagyobb albumot előkészítünk, és e-mailben szólunk, amikor letölthető.'
+    : 'Ha az albumban legfeljebb 20 kép van, rögtön letöltheted. Több képnél e-mailben szólunk, amint elkészült a ZIP-fájl.'
 }

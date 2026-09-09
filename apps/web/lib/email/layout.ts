@@ -167,7 +167,8 @@ export function renderEmailLayout(input: EmailLayoutInput): {
     ? [input.figures.map((f) => `${f.label}: ${f.value}`).join(' · '), '']
     : []
   const text = [
-    `OurFilm — ${input.heading}`,
+    'OurFilm',
+    input.heading,
     '',
     ...input.intro,
     '',

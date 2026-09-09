@@ -43,7 +43,7 @@ export function renderExportReadyEmail(input: {
   const { eventName, url } = input
   const hu = input.locale === 'hu'
   const subject = hu
-    ? `Elkészült az album: ${eventName}`
+    ? `Elkészült az albumod: ${eventName}`
     : `Your album is ready: ${eventName}`
 
   // No figures, no sizes, no filenames. A host reading this on their phone
@@ -53,8 +53,8 @@ export function renderExportReadyEmail(input: {
     input.missingCount && input.missingCount > 0
       ? hu
         ? input.missingCount === 1
-          ? 'Egy kép nem került bele az albumba; a letöltött mappában egy rövid jegyzet mutatja, melyik.'
-          : `${input.missingCount} kép nem került bele az albumba; a letöltött mappában egy rövid jegyzet mutatja, melyek.`
+          ? 'Egy képet nem sikerült az albumba tenni. A ZIP-fájlban lévő jegyzetből kiderül, melyik maradt ki.'
+          : `${input.missingCount} képet nem sikerült az albumba tenni. A ZIP-fájlban lévő jegyzet felsorolja a kimaradt képeket.`
         : input.missingCount === 1
           ? 'One photo could not be included; a short note in the downloaded folder says which.'
           : `${input.missingCount} photos could not be included; a short note in the downloaded folder says which.`
@@ -63,23 +63,23 @@ export function renderExportReadyEmail(input: {
   const { html, text } = renderEmailLayout({
     locale: input.locale,
     preheader: hu
-      ? 'Az album készen áll a letöltésre.'
+      ? 'Már letöltheted az albumot.'
       : 'Your album is ready to download.',
     eyebrow: hu ? 'Album' : 'Album',
     heading: eventName,
     intro: [
       hu
-        ? 'Elkészült az album. Az eseményed oldaláról egy gombnyomással letöltheted.'
+        ? 'Elkészült az albumod. Az esemény oldalán már le is töltheted.'
         : 'The album is ready. Open your event page and download it with one tap.',
     ],
     button: { label: hu ? 'Album letöltése' : 'Download the album', url },
     note:
       missing ??
       (hu
-        ? 'A letöltés 48 óráig érhető el. Utána ugyanezen az oldalon újra elkészítjük, ha kéred.'
+        ? 'A ZIP-fájl 48 órán át tölthető le. Ha lejár, az esemény oldalán újra kérheted.'
         : 'The download is available for 48 hours. After that we prepare it again on request, on the same page.'),
     footer: hu
-      ? 'Ezt a levelet azért kaptad, mert házigazdaként albumot kértél az eseményedhez.'
+      ? 'Azért kaptad ezt a levelet, mert az esemény házigazdájaként albumot kértél.'
       : 'You received this because, as the host, you asked for the album of your event.',
   })
   return { subject, html, text }

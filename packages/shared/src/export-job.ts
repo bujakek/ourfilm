@@ -70,7 +70,7 @@ export const MISSING_PHOTOS_ENTRY = 'HIANYZO-KEPEK.txt'
  */
 export function missingPhotosNote(names: readonly string[]): string {
   return (
-    'Ezeket a képeket nem sikerült letölteni a tárhelyről:\n\n' +
+    'Az alábbi képeket nem sikerült az albumba tenni:\n\n' +
     names.join('\n') +
     '\n'
   )

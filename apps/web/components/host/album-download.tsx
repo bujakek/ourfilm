@@ -26,7 +26,7 @@ import { useEffect, useRef, useState } from 'react'
  * A large album is prepared elsewhere. While the worker is switched off that
  * is the streaming route, and the button navigates to it. With the worker on,
  * one tap asks for an archive and the button then polls until it is ready,
- * showing `Album készítése… 487 kép`; the host may also just leave — the
+ * showing `Készül az album… 487 kép`; the host may also just leave — the
  * email says when it is done — and come back to a `ready` button that carries
  * a fresh signed URL each time the page asks.
  *
@@ -239,13 +239,13 @@ function labelFor(phase: Phase, en: boolean): string {
     case 'zipping':
       return en
         ? `Downloading… ${phase.done} / ${phase.total}`
-        : `Letöltés… ${phase.done} / ${phase.total}`
+        : `Album összeállítása… ${phase.done} / ${phase.total}`
     case 'asking':
-      return en ? 'Preparing…' : 'Előkészítés…'
+      return en ? 'Preparing…' : 'Egy pillanat…'
     case 'preparing':
       return en
         ? `Preparing the album… ${phase.prepared.photoCount} photos`
-        : `Album készítése… ${phase.prepared.photoCount} kép`
+        : `Készül az album… ${phase.prepared.photoCount} kép`
     case 'ready': {
       const size = formatBytes(phase.prepared.byteSize, en)
       const short =
@@ -262,10 +262,10 @@ function labelFor(phase: Phase, en: boolean): string {
       return phase.where === 'browser'
         ? en
           ? 'Could not download the album. Retry'
-          : 'Nem sikerült letölteni az albumot. Újra'
+          : 'A letöltés nem sikerült. Próbáld újra'
         : en
           ? 'Could not prepare the album. Retry'
-          : 'Nem sikerült elkészíteni az albumot. Újra'
+          : 'Az album nem készült el. Próbáld újra'
     default:
       return 'Album'
   }

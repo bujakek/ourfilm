@@ -43,7 +43,7 @@ export async function GET(
   const { slug } = await params
 
   const event = await getOwnedEventBySlug(slug)
-  if (!event) return new NextResponse('Nincs ilyen esemény', { status: 404 })
+  if (!event) return new NextResponse('Nincs ilyen esemény.', { status: 404 })
 
   let photos
   try {
@@ -58,13 +58,13 @@ export async function GET(
       routeType: 'route',
       method: 'GET',
     })
-    return new NextResponse('Nem sikerült előkészíteni a letöltést', {
+    return new NextResponse('Nem sikerült előkészíteni a letöltést.', {
       status: 500,
     })
   }
 
   if (photos.length === 0) {
-    return new NextResponse('Ehhez az eseményhez még nincs kép', {
+    return new NextResponse('Ehhez az eseményhez még nincs kép.', {
       status: 404,
     })
   }

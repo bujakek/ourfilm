@@ -548,7 +548,7 @@ Stripe webhook's known live failure was a host deleting an event mid-checkout:
 the cascade took the pending row and the upsert died on the foreign key. An
 export job is the same shape, and the simplest correct answer is to refuse the
 delete while an export is in flight — a host deleting a wedding is deliberate
-and rare, and "az album éppen készül" is an honest thing to tell them. Three
+and rare, and "Még készül az album" is an honest thing to tell them. Three
 parts, and the first is the one that bites:
 
 - **Bound the gate by the lease.** Refuse deletion when a job is
@@ -661,7 +661,7 @@ with a few seconds of scattered milliseconds.
   function open continuously, and on Hobby's included allowance that is the
   wrong trade. A 60-second short poll is 1,440 invocations a day at ~50ms each:
   about a minute of compute daily. An export starting up to a minute late is
-  invisible; the host is already reading "Album készítése…".
+  invisible; the host is already reading "Készül az album…".
 - Back off to 5 minutes after an hour with no work, and reset on the first job.
 
 **The `claim` payload has a hard 4.5 MB ceiling** — Vercel returns
@@ -712,8 +712,8 @@ hours, after which we prepare it again.
 **This overrides CLAUDE.md's MVP scope list**, which currently files "Email
 notifications and lifecycle email" under _Not building_. Amend that entry in the
 same change, and see the documentation list at the end — the privacy policy
-enumerates Resend as sending "belépési és jogi visszaigazoló e-mailek" / "login
-and legal emails", which an export-ready mail makes untrue.
+enumerates Resend as sending "belépési linkek, jogi visszaigazolások és az album
+elkészültéről szóló értesítések" / "login, legal and album-ready emails".
 
 ## 2.5 Host UI
 
@@ -722,12 +722,12 @@ One button, two behaviours, decided by the count the page already shows.
 **Up to 20 photos: the browser makes the ZIP.** `Album letöltése` fetches the
 manifest, streams each master through the EXIF splice into client-zip, and
 hands the result to the browser as a download. A second or two, no queue, no
-email. The state while it runs is `Letöltés… 7 / 12`, and a failure is
-`Nem sikerült letölteni az albumot. Újra`.
+email. The state while it runs is `Album összeállítása… 7 / 12`, and a failure
+is `A letöltés nem sikerült. Próbáld újra`.
 
 **Above 20: the worker makes it.** Four states — `Album letöltése` ·
-`Album készítése… 487 kép` · `Album letöltése · 487 kép · 1,9 GB` ·
-`Nem sikerült elkészíteni az albumot. Újra`. Poll a lightweight route handler
+`Készül az album… 487 kép` · `Album letöltése · 487 kép · 1,9 GB` ·
+`Az album nem készült el. Próbáld újra`. Poll a lightweight route handler
 every 3–5s while that screen is open; no Realtime for this. The host page is
 `force-dynamic` and authenticated — poll the handler, not a page re-render.
 With the email in place, polling only has to cover the host who stays on the
@@ -987,7 +987,8 @@ undownloadable either.** Today's route ships 486 of 487 and reports
 `failed`" turns one permanently-gone master into a wedding that can never be
 downloaded at all. Distinguish transient from permanent; retry transient
 (~30s → 2m → 10m, then `failed`); and when a master is genuinely gone, offer the
-host the short archive with an explicit "1 kép nem került bele" rather than a
+host the short archive with an explicit "Egy képet nem sikerült az albumba tenni"
+rather than a
 dead end. Losing one photo is bad. Losing the album because of one photo is
 worse.
 
@@ -1181,9 +1182,8 @@ Phase 2:
   lifecycle email" under _Not building_: transactional export-ready mail is in
   scope, lifecycle and marketing mail is not. Add `album_export_email_sent` to
   the server telemetry table.
-- the privacy policy, both locales — it enumerates Resend as sending "belépési és
-  jogi visszaigazoló e-mailek" / "login and legal emails", which an
-  export-ready mail makes untrue.
+- the privacy policy, both locales — it must enumerate Resend's login, legal
+  and album-ready messages.
 - the `RESEND_API_KEY` comment in `CLAUDE.md`'s Local env block (`:102`, "auth
   and legal request emails"). `apps/web/.env.local` itself has no `RESEND_API_KEY` line
   to update.

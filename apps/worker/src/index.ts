@@ -11,7 +11,7 @@ import { runJob } from './run-job.ts'
  * open for the whole wait, and on the Hobby plan's allowance that is the
  * wrong trade; a request a minute is about a minute of compute a day, and an
  * export starting up to a minute late is invisible — the host is already
- * reading "Album készítése…". After an hour with nothing to do the interval
+ * reading "Készül az album…". After an hour with nothing to do the interval
  * stretches to the idle backoff, and snaps back on the first job.
  *
  * One job at a time. The disk floor and the fetch concurrency are sized for

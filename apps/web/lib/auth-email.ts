@@ -161,17 +161,17 @@ function copyFor(
       }
     : {
         signup: {
-          subject: 'Erősítsd meg az e-mail-címed — OurFilm',
+          subject: 'OurFilm: erősítsd meg az e-mail-címed',
           eyebrow: 'FIÓK LÉTREHOZÁSA',
           heading: 'Már csak egy lépés',
           intro:
-            'Erősítsd meg az e-mail-címed; létrehozzuk a fiókod és beléptetünk. Jelszóra nincs szükség.',
+            'Erősítsd meg az e-mail-címed, mi pedig létrehozzuk a fiókod és beléptetünk. Jelszóra sem lesz szükséged.',
           button: 'Fiók létrehozása',
         },
         magiclink: {
-          subject: 'Belépési linked az OurFilmhez',
+          subject: 'Belépési link az OurFilmhez',
           eyebrow: 'BELÉPÉS',
-          heading: 'Itt a belépési linked',
+          heading: 'Itt a belépési link',
           intro:
             'Az alábbi gombbal megnyithatod az eseményeidet. Jelszóra nincs szükség.',
           button: 'Belépés',
@@ -187,21 +187,21 @@ function copyFor(
           subject: 'Meghívást kaptál az OurFilmhez',
           eyebrow: 'MEGHÍVÁS',
           heading: 'Csatlakozz az OurFilmhez',
-          intro: 'Fogadd el a meghívást a fiókod beállításának befejezéséhez.',
+          intro: 'Fogadd el a meghívást, és fejezd be a fiókod beállítását.',
           button: 'Meghívás elfogadása',
         },
         email_change: {
-          subject: 'Erősítsd meg az új e-mail-címed — OurFilm',
+          subject: 'OurFilm: erősítsd meg az új e-mail-címed',
           eyebrow: 'E-MAIL-CÍM MÓDOSÍTÁSA',
           heading: 'Erősítsd meg az új e-mail-címed',
           intro: 'Az alábbi gombbal erősítheted meg ezt az e-mail-címet.',
           button: 'E-mail-cím megerősítése',
         },
         reauthentication: {
-          subject: 'Erősítsd meg, hogy te vagy — OurFilm',
+          subject: 'OurFilm: erősítsd meg, hogy te vagy',
           eyebrow: 'BIZTONSÁGI ELLENŐRZÉS',
           heading: 'Erősítsd meg, hogy te vagy',
-          intro: 'A biztonságos linkkel folytathatod a műveletet.',
+          intro: 'Az alábbi biztonságos linkkel folytathatod.',
           button: 'Folytatás',
         },
       }
@@ -217,7 +217,7 @@ function copyFor(
     deviceNote: sameBrowser
       ? en
         ? 'Open it in the same browser where you created your event. Your unfinished event is saved there.'
-        : 'Ugyanabban a böngészőben nyisd meg, ahol létrehoztad az eseményt. A félkész eseményed ott van elmentve.'
+        : 'Ugyanabban a böngészőben nyisd meg, ahol elkezdted az esemény létrehozását. Csak ott tudod folytatni.'
       : en
         ? 'For your security, do not forward this email.'
         : 'A biztonságod érdekében ne továbbítsd ezt a levelet.',

@@ -400,9 +400,7 @@ export async function deleteEvent(slug: string) {
     .limit(1)
   if (inFlightError) throw inFlightError
   if (inFlight && inFlight.length > 0) {
-    throw new Error(
-      'Az album éppen készül. Várd meg, amíg elkészül, és próbáld újra.',
-    )
+    throw new Error('Még készül az album. Várd meg, és utána próbáld újra.')
   }
 
   // Collect every path first, remove second. Deleting inside the paging loop
