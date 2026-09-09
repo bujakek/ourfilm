@@ -212,6 +212,40 @@ describe('invoice columns are the webhook’s alone', () => {
     }
   })
 
+  it('still accepts the insert the pre-Billingo code writes', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      // Exactly what `createEventCheckoutUrl` on `main` writes today: no id,
+      // no settlement, no amount. The migration lands before the code that
+      // fills those in, so for the length of that window every checkout in
+      // production is this shape — and the rewritten insert policy has to keep
+      // accepting it. If this ever goes red, applying the migration ahead of
+      // the deploy stops being safe.
+      const { error } = await userClient(host.accessToken)
+        .from('purchases')
+        .insert({
+          event_id: event.id,
+          owner_id: host.id,
+          stripe_checkout_session_id: `cs_test_${randomUUID()}`,
+          status: 'pending',
+        })
+      expect(error).toBeNull()
+
+      // And it defaults to the arrangement that code actually uses: it still
+      // sends `managed_payments`, so 'managed' is the truthful default rather
+      // than a convenient one.
+      const { data: row } = await serviceClient()
+        .from('purchases')
+        .select('settlement, invoice_status')
+        .eq('event_id', event.id)
+        .single()
+      expect(row?.settlement).toBe('managed')
+      expect(row?.invoice_status).toBe('not_started')
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
   it('refuses a host updating an issued invoice', async () => {
     const event = await createEvent({ ownerId: host.id })
     try {
