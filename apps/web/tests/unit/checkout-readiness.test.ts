@@ -54,6 +54,35 @@ describe('checkout readiness', () => {
     expect(checkoutBlockedReason('en')).toBe('stripe_not_configured')
   })
 
+  it('refuses a live Stripe key anywhere but production', () => {
+    vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_realmoney')
+    vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_x')
+    vi.stubEnv('STRIPE_PRICE_EVENT', 'price_huf')
+    vi.stubEnv('STRIPE_PRICE_EVENT_USD', 'price_usd')
+    billingoConfigured()
+
+    // A live key scoped to "Production and Preview" makes every preview URL
+    // able to charge a real card — and Stripe delivers webhooks to the
+    // production URL, so that charge is never reported back: money moves with
+    // no paid row, no unlocked album and no invoice.
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    expect(checkoutIsConfigured('hu')).toBe(false)
+    expect(checkoutIsConfigured('en')).toBe(false)
+    expect(checkoutBlockedReason('en')).toBe('stripe_not_configured')
+
+    vi.stubEnv('VERCEL_ENV', 'production')
+    expect(checkoutIsConfigured('en')).toBe(true)
+  })
+
+  it('leaves a test key alone in every environment', () => {
+    stripeConfigured()
+    billingoConfigured()
+    for (const where of ['preview', 'development', 'production']) {
+      vi.stubEnv('VERCEL_ENV', where)
+      expect(checkoutIsConfigured('hu')).toBe(true)
+    }
+  })
+
   it('does not take English checkout down with Hungarian invoicing', () => {
     stripeConfigured()
 

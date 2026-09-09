@@ -29,6 +29,28 @@ const KEYS = {
   eventPriceUsdId: 'STRIPE_PRICE_EVENT_USD',
 } as const
 
+/**
+ * A live secret key is only ever legitimate on Vercel Production.
+ *
+ * Nothing else in the product distinguishes a deployment from a preview —
+ * `stripeIsConfigured()` asks whether the keys are present, not where it is
+ * running — so a live key scoped to "Production and Preview" makes every
+ * preview URL of every branch able to charge a real card. Worse than it
+ * sounds: Stripe's webhook endpoint points at ourfilm.app, so a preview
+ * charge is never reported back, and the money moves with no `paid` row, no
+ * album unlocked and no invoice issued.
+ *
+ * Refused only when `VERCEL_ENV` positively says this is not production. An
+ * unset `VERCEL_ENV` (a local machine, CI) is left alone deliberately: the
+ * failure mode of guessing wrong in that direction is production silently
+ * unable to take money, which is far worse than the case this prevents.
+ */
+function liveKeyOutsideProduction(secretKey: string | undefined): boolean {
+  if (!secretKey?.startsWith('sk_live_')) return false
+  const vercelEnv = process.env.VERCEL_ENV
+  return Boolean(vercelEnv) && vercelEnv !== 'production'
+}
+
 function read(): Partial<StripeEnv> {
   return {
     secretKey: process.env[KEYS.secretKey],
@@ -47,6 +69,7 @@ function read(): Partial<StripeEnv> {
  */
 export function stripeIsConfigured(): boolean {
   const env = read()
+  if (liveKeyOutsideProduction(env.secretKey)) return false
   return Boolean(
     env.secretKey &&
     env.webhookSecret &&
@@ -60,6 +83,16 @@ export function stripeEnv(): StripeEnv {
   const missing = (Object.keys(KEYS) as (keyof StripeEnv)[])
     .filter((key) => !env[key])
     .map((key) => KEYS[key])
+
+  if (liveKeyOutsideProduction(env.secretKey)) {
+    throw new Error(
+      `Refusing a live STRIPE_SECRET_KEY on VERCEL_ENV=${process.env.VERCEL_ENV}. ` +
+        'Scope the live key to Production only and give Preview a sk_test_ ' +
+        'key: Stripe delivers webhooks to the production URL, so a charge ' +
+        'taken from a preview is never reported back and leaves money moved ' +
+        'with no paid purchase, no unlocked album and no invoice.',
+    )
+  }
 
   if (missing.length > 0) {
     throw new Error(

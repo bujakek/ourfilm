@@ -26,8 +26,13 @@ const KEYS = {
 } as const
 
 function positiveInteger(value: string | undefined): number | null {
-  if (!value || !/^\d+$/.test(value)) return null
-  const parsed = Number(value)
+  // Trimmed before the test, because these are pasted into a Vercel field by
+  // hand. A trailing newline would fail `^\d+$` and switch Hungarian checkout
+  // off with no symptom but "payment is not switched on" — an hour of looking
+  // in the wrong place.
+  const trimmed = value?.trim()
+  if (!trimmed || !/^\d+$/.test(trimmed)) return null
+  const parsed = Number(trimmed)
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
 }
 

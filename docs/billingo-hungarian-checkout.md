@@ -135,6 +135,27 @@ Run `pnpm test:db` against a **local** stack only.
 4. **List before you create** any Price. A duplicate 12 900 Ft product/price
    pair was created here by accident once already.
 
+### 3b. Vercel environment variables
+
+Three `BILLINGO_*` variables, server-only, and they decide whether Hungarian
+checkout exists at all. Without them `checkoutIsConfigured('hu')` is false and
+the billing card says payment is not switched on — English checkout is
+unaffected, which is the whole point of the split in
+`lib/checkout-readiness.ts`.
+
+**Scope the Stripe secrets per environment, not "Production and Preview".**
+A live `STRIPE_SECRET_KEY` shared with Preview lets every preview URL of every
+branch charge a real card, and because Stripe delivers webhooks to
+`ourfilm.app` that charge is never reported back: the money moves with no
+`paid` row, no unlocked album and no invoice. `stripeIsConfigured()` now
+refuses a `sk_live_` key whenever `VERCEL_ENV` says anything but `production`,
+so the failure is a switched-off checkout rather than an untraceable payment —
+but the variable should still be split. Give Preview `sk_test_` keys, the
+matching test-mode Price ids, and the Billingo **test-profile** key.
+
+Vercel requires a redeploy after adding variables; an existing preview keeps
+the environment it was built with.
+
 ### 4. Vault
 
 The sweep's cron job reads its target and secret from Vault, so it posts
