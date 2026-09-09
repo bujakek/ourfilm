@@ -60,6 +60,54 @@ describe('Stripe checkout attempt reservation', () => {
     }
   }, 60_000)
 
+  it('rotates once the reservation is too short to be a session expiry', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    const hostDb = userClient(host.accessToken)
+    const reserve = () =>
+      hostDb
+        .rpc('reserve_event_checkout', {
+          p_event_id: event.id,
+          p_terms_accepted_at: new Date().toISOString(),
+          p_ttl_seconds: 2700,
+        })
+        .single()
+
+    try {
+      const first = await reserve()
+      if (first.error) throw first.error
+
+      // Comfortably more than Stripe's 30-minute floor left: the attempt is
+      // still usable as a Session expiry, so it must be reused.
+      await serviceClient()
+        .from('stripe_checkout_attempts')
+        .update({
+          expires_at: new Date(Date.now() + 40 * 60_000).toISOString(),
+        })
+        .eq('event_id', event.id)
+      const kept = await reserve()
+      if (kept.error) throw kept.error
+      expect(kept.data.attempt_id).toBe(first.data.attempt_id)
+
+      // Under the floor. Reusing this would send Stripe an expiry it refuses —
+      // "must be at least 30 minutes from Checkout Session creation" — so the
+      // attempt has to rotate even though it has not expired.
+      await serviceClient()
+        .from('stripe_checkout_attempts')
+        .update({
+          expires_at: new Date(Date.now() + 20 * 60_000).toISOString(),
+        })
+        .eq('event_id', event.id)
+      const rotated = await reserve()
+      if (rotated.error) throw rotated.error
+      expect(rotated.data.attempt_id).not.toBe(first.data.attempt_id)
+      expect(
+        new Date(rotated.data.expires_at).getTime() - Date.now(),
+      ).toBeGreaterThan(30 * 60_000)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
   it('rotates the attempt only after its reservation expires', async () => {
     const event = await createEvent({ ownerId: host.id })
     const hostDb = userClient(host.accessToken)

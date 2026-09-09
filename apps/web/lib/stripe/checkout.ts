@@ -240,6 +240,26 @@ export async function createEventCheckoutUrl({
     console.error('Could not record pending purchase', error)
   }
 
+  // Rotation can leave the previous attempt's Session payable — it dies at its
+  // own expiry, not at the new one's. Two payable Sessions for one event is
+  // the one bug in a payments system worth going out of the way to prevent:
+  // the host is charged twice, and on the direct path invoiced twice, for one
+  // album. Last intent wins.
+  const { data: superseded } = await supabase
+    .from('purchases')
+    .select('stripe_checkout_session_id')
+    .eq('event_id', eventId)
+    .eq('status', 'pending')
+    .neq('id', purchaseId)
+    .limit(5)
+
+  for (const row of superseded ?? []) {
+    // Swallowed: Stripe refuses to expire a Session that has already completed
+    // or expired, and neither is a reason to fail the checkout in front of a
+    // host. A completed one is about to arrive as a webhook anyway.
+    await expireQuietly(row.stripe_checkout_session_id)
+  }
+
   return session.url
 }
 

@@ -685,6 +685,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      checkout_attempt_rotate_before: { Args: never; Returns: string }
       claim_album_export: {
         Args: { p_lease?: string }
         Returns: {
