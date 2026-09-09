@@ -13,6 +13,14 @@ Two arrangements sell the same product, and which one applies is decided by
 | Billing address        | not collected                         | `billing_address_collection: 'required'`   |
 | `purchases.settlement` | `managed`                             | `direct`                                   |
 
+**`OURFILM_HU_DIRECT` is the cutover.** Off — the default, and how this ships
+— the Hungarian column above reads exactly like the English one apart from the
+Price: Managed Payments, Link as merchant of record, no invoice. Everything in
+this document describes the state after it is flipped. What has to be true
+first is listed in `apps/web/lib/settlement.ts`, and the honest short version is
+that Apple Pay on HUF has to be confirmed on a real device, because without it
+the change buys invoicing, NAV reporting and chargeback liability for nothing.
+
 **Why the split exists.** Stripe Managed Payments does not currently do Apple
 Pay on HUF, and it works on USD. A QR-code product whose buyers are holding
 phones at a wedding cannot give up one-tap payment, so Hungarian events left

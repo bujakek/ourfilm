@@ -16,6 +16,11 @@ function stripeConfigured() {
   vi.stubEnv('STRIPE_PRICE_EVENT_USD', 'price_usd')
 }
 
+/** The cutover: Hungarian events only become direct sales when this is on. */
+function huDirect(on: boolean) {
+  vi.stubEnv('OURFILM_HU_DIRECT', on ? 'true' : 'false')
+}
+
 function billingoConfigured() {
   vi.stubEnv('BILLINGO_API_KEY', 'test-key')
   vi.stubEnv('BILLINGO_BLOCK_ID', '12')
@@ -25,6 +30,7 @@ function billingoConfigured() {
 describe('checkout readiness', () => {
   it('needs nothing but Stripe to sell an English event', () => {
     stripeConfigured()
+    huDirect(true)
 
     // Link is the merchant of record there and issues the document, so a
     // deployment with no Billingo keys is a correctly configured one.
@@ -34,6 +40,7 @@ describe('checkout readiness', () => {
 
   it('needs Billingo as well to sell a Hungarian event', () => {
     stripeConfigured()
+    huDirect(true)
 
     // A Hungarian sale is OurFilm's own: the invoice and its NAV report are
     // ours to produce, and there is no way to make that right after the fact.
@@ -47,6 +54,7 @@ describe('checkout readiness', () => {
 
   it('reports the missing payment processor before the missing invoicer', () => {
     billingoConfigured()
+    huDirect(true)
 
     // Without Stripe nothing works in either locale, and naming Billingo
     // first would send somebody to fix the wrong dashboard.
@@ -55,6 +63,7 @@ describe('checkout readiness', () => {
   })
 
   it('refuses a live Stripe key anywhere but production', () => {
+    huDirect(true)
     vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_realmoney')
     vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_x')
     vi.stubEnv('STRIPE_PRICE_EVENT', 'price_huf')
@@ -77,6 +86,7 @@ describe('checkout readiness', () => {
   it('leaves a test key alone in every environment', () => {
     stripeConfigured()
     billingoConfigured()
+    huDirect(true)
     for (const where of ['preview', 'development', 'production']) {
       vi.stubEnv('VERCEL_ENV', where)
       expect(checkoutIsConfigured('hu')).toBe(true)
@@ -85,10 +95,30 @@ describe('checkout readiness', () => {
 
   it('does not take English checkout down with Hungarian invoicing', () => {
     stripeConfigured()
+    huDirect(true)
 
     // The regression this file exists for: ANDing the two flags would switch
     // off every preview and dev machine that has no Billingo keys.
     expect(checkoutIsConfigured('en')).toBe(true)
     expect(checkoutIsConfigured('hu')).toBe(false)
+  })
+
+  it('asks for no Billingo while the cutover flag is off', () => {
+    stripeConfigured()
+    huDirect(false)
+
+    // The state this merges in: Hungarian events still settle through Managed
+    // Payments, Link issues the document, and demanding an invoicing provider
+    // for a sale we do not invoice would switch off a checkout that works.
+    expect(checkoutIsConfigured('hu')).toBe(true)
+    expect(checkoutBlockedReason('hu')).toBeNull()
+  })
+
+  it('starts asking for Billingo the moment the flag is flipped', () => {
+    stripeConfigured()
+    huDirect(true)
+
+    expect(checkoutIsConfigured('hu')).toBe(false)
+    expect(checkoutBlockedReason('hu')).toBe('billingo_not_configured')
   })
 })

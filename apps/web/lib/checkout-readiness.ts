@@ -2,6 +2,7 @@ import 'server-only'
 
 import { billingoIsConfigured } from '@/lib/billingo/env'
 import type { Locale } from '@/lib/i18n'
+import { settlementFor } from '@/lib/settlement'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 
 /**
@@ -20,7 +21,11 @@ import { stripeIsConfigured } from '@/lib/stripe/env'
  */
 export function checkoutIsConfigured(locale: Locale): boolean {
   if (!stripeIsConfigured()) return false
-  return locale === 'hu' ? billingoIsConfigured() : true
+  // Billingo is required only where OurFilm is actually the seller. While the
+  // cutover flag is off a Hungarian event still settles through Managed
+  // Payments, and demanding an invoicing provider for a sale Link documents
+  // would switch off a checkout that works.
+  return settlementFor(locale) === 'direct' ? billingoIsConfigured() : true
 }
 
 /**
@@ -33,7 +38,7 @@ export function checkoutBlockedReason(
   locale: Locale,
 ): 'stripe_not_configured' | 'billingo_not_configured' | null {
   if (!stripeIsConfigured()) return 'stripe_not_configured'
-  if (locale === 'hu' && !billingoIsConfigured()) {
+  if (settlementFor(locale) === 'direct' && !billingoIsConfigured()) {
     return 'billingo_not_configured'
   }
   return null

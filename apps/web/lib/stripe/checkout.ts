@@ -4,6 +4,7 @@ import { requestOrigin } from '@/lib/request-origin'
 import { createClient } from '@/lib/supabase/server'
 import { LEGAL_VERSION } from '@/lib/company'
 import type { Locale } from '@/lib/i18n'
+import { settlementFor } from '@/lib/settlement'
 
 import { getStripe } from './client'
 import { stripeEnv } from './env'
@@ -13,28 +14,6 @@ const CHECKOUT_ATTEMPT_TTL_SECONDS = 45 * 60
 
 /** PostgREST's code for a unique-constraint violation. */
 const UNIQUE_VIOLATION = '23505'
-
-/**
- * Which arrangement sells this event, and therefore who issues the document.
- *
- * `managed` is Stripe Managed Payments: Link, LLC is the merchant of record,
- * remits the indirect taxes and issues the customer-facing document. `direct`
- * is an ordinary Stripe charge with OurFilm as the seller, which is what makes
- * a Hungarian invoice — and NAV reporting — our own obligation.
- *
- * The split is not a preference. Managed Payments does not currently do Apple
- * Pay on HUF, and a QR-code product whose buyers are on phones cannot give up
- * the one-tap payment. English events keep Managed Payments, where Apple Pay
- * on USD works and Link keeps the tax and documentation burden.
- *
- * Keyed on the same locale that picks the Price, so the currency and the legal
- * arrangement can never disagree about which sale this is.
- */
-export type Settlement = 'managed' | 'direct'
-
-export function settlementFor(locale: Locale): Settlement {
-  return locale === 'en' ? 'managed' : 'direct'
-}
 
 /**
  * Creates one Checkout Session for one event and returns the URL to send the
@@ -188,7 +167,11 @@ export async function createEventCheckoutUrl({
   // What Stripe says it will charge, which is what will be invoiced. A price
   // id pointing at the wrong currency is otherwise invisible until a host has
   // paid and Billingo refuses the document.
-  const expectedCurrency = settlement === 'direct' ? 'huf' : 'usd'
+  //
+  // Keyed on the locale rather than the settlement, because the currency
+  // follows the Price and the Price follows the locale. A Hungarian event is
+  // still HUF while the cutover flag is off and it settles as `managed`.
+  const expectedCurrency = locale === 'en' ? 'usd' : 'huf'
   if (
     session.amount_total === null ||
     session.amount_total <= 0 ||

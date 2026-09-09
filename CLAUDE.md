@@ -152,7 +152,17 @@ BILLINGO_API_KEY=               # v3 "Olvasás, írás" key; a test-profile key 
 BILLINGO_BLOCK_ID=              # numeric, from GET /document-blocks on the same profile
 BILLINGO_BANK_ACCOUNT_ID=       # numeric, from GET /bank-accounts on the same profile
 BILLINGO_API_BASE_URL=          # optional; defaults to https://api.billingo.hu/v3
+OURFILM_HU_DIRECT=false         # the cutover: false keeps HU on Managed Payments
 ```
+
+`OURFILM_HU_DIRECT` is the switch, the same shape as `OURFILM_EXPORT_WORKER`
+and for the same reason. Off, a Hungarian event settles through Managed
+Payments exactly as it does today and needs no Billingo at all; on, it becomes
+a direct sale OurFilm invoices. `apps/web/lib/settlement.ts` lists what has to
+be true before flipping it — Apple Pay confirmed on HUF on a real device, an
+invoice block whose prefix is fit to print, both Billingo ids on Production,
+and a Terms of service URL on the live Stripe account. Flipping it back is
+safe: `purchases.settlement` records what each sale actually was.
 
 There is no separate Billingo sandbox host — the same base URL with a
 test-profile key is test mode. The ids must come from the same profile as the
@@ -1068,8 +1078,10 @@ null` — the grant's own `reason`, not a flat `'grant'`, because an Early
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
 - **Hungarian events are sold directly; English ones through Managed
-  Payments.** `settlementFor()` in `apps/web/lib/stripe/checkout.ts` is the one
-  place that decides, keyed on the same `events.locale` that picks the Price.
+  Payments.** `settlementFor()` in `apps/web/lib/settlement.ts` is the one
+  place that decides, keyed on the same `events.locale` that picks the Price,
+  and gated by `OURFILM_HU_DIRECT` — off, a Hungarian event stays on Managed
+  Payments and nothing is invoiced.
   `locale: 'en'` keeps `managed_payments: { enabled: true }` — Link, LLC is
   merchant of record and issues the document. `locale: 'hu'` is an ordinary
   Stripe charge with **OurFilm as seller of record**, because Managed Payments

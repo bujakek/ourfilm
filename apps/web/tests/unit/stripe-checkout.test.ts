@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
@@ -81,6 +81,13 @@ describe('Stripe Checkout creation', () => {
     mocks.expireSession.mockReset()
     mocks.expireSession.mockResolvedValue({})
     mocks.createSupabaseClient.mockReset()
+    // Most of these assert the post-cutover behaviour. The flag's own effect
+    // has a test of its own below.
+    vi.stubEnv('OURFILM_HU_DIRECT', 'true')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   /** What Stripe answers with, for the currency the locale implies. */
