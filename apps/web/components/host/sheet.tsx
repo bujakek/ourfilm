@@ -19,6 +19,7 @@ export function Sheet({
   icon,
   busy = false,
   children,
+  footer,
   closeLabel,
 }: {
   open: boolean
@@ -28,6 +29,18 @@ export function Sheet({
   icon?: ReactNode
   busy?: boolean
   children: ReactNode
+  /**
+   * Actions that must stay reachable however tall the body gets.
+   *
+   * Rendered outside the scroll area and pinned to the bottom of the panel. A
+   * sheet whose content is a fixed size does not need this and should not use
+   * it — but the QR sheet's card is a whole printed ticket, and on a 390×844
+   * phone with Safari's chrome it ran past the panel and took both buttons
+   * with it. The report was "buttons are not visible without scroll", which is
+   * the only kind of overflow that matters: the thing the sheet was opened for
+   * has to be on screen when it opens.
+   */
+  footer?: ReactNode
   closeLabel?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -97,9 +110,18 @@ export function Sheet({
                 : { opacity: 0, y: 28, scale: 0.985 }
           }
           transition={reduceMotion ? still : panelVisible ? T.snap : T.exit}
-          className="glass-overlay pointer-events-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-t-2xl sm:rounded-2xl"
+          className="glass-overlay pointer-events-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-t-2xl sm:rounded-2xl"
         >
-          <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
+          {/* The body scrolls, not the panel, so a footer can sit outside it.
+              With no footer the padding is exactly what it was before this
+              existed. */}
+          <div
+            className={`min-h-0 flex-1 overflow-y-auto p-6 ${
+              footer
+                ? 'pb-0'
+                : 'pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6'
+            }`}
+          >
             <div className="flex items-start gap-4">
               <div className="min-w-0 flex-1">
                 {icon ? <div className="mb-3">{icon}</div> : null}
@@ -133,6 +155,12 @@ export function Sheet({
 
             <div className="mt-5">{children}</div>
           </div>
+
+          {footer ? (
+            <div className="shrink-0 px-6 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-6">
+              {footer}
+            </div>
+          ) : null}
         </motion.div>
       </div>
     </dialog>

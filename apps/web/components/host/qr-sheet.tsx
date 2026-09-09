@@ -79,16 +79,48 @@ export function QrSheetButton({
         onClose={() => setOpen(false)}
         closeLabel={en ? 'Close QR code' : 'QR-kód bezárása'}
         title={en ? 'QR code' : 'QR-kód'}
+        // Pinned, not scrolled past. The card below is a whole printed ticket
+        // and on a small phone it fills the panel on its own.
+        footer={
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => downloadQrCanvas(canvas.current, name)}
+              className="hover:border-strong flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold transition-colors"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              {en ? 'Save QR code' : 'QR-kód mentése'}
+            </button>
+            <button
+              type="button"
+              onClick={share}
+              className="hover:border-strong flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold transition-colors"
+            >
+              {copied ? (
+                <Check className="size-4" aria-hidden="true" />
+              ) : (
+                <Share2 className="size-4" aria-hidden="true" />
+              )}
+              {copied
+                ? en
+                  ? 'Link copied'
+                  : 'Link kimásolva'
+                : en
+                  ? 'Share link'
+                  : 'Link megosztása'}
+            </button>
+          </div>
+        }
       >
-        <div className="paper rounded-2xl p-8 text-center">
-          <p className="font-display text-[28px] leading-[1.1] text-balance">
+        <div className="paper rounded-2xl p-6 text-center">
+          <p className="font-display text-[24px] leading-[1.1] text-balance">
             {name}
           </p>
           <p className="paper-muted mt-1.5 font-mono text-[9px] font-medium tracking-[0.22em]">
             {en ? 'DISPOSABLE CAMERA' : 'ELDOBHATÓ KAMERA'}
           </p>
 
-          <div className="my-7 flex justify-center">
+          <div className="my-5 flex justify-center">
             <div className="rounded-sm bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
               <QRCodeCanvas
                 ref={canvas}
@@ -98,12 +130,12 @@ export function QrSheetButton({
                 bgColor="#ffffff"
                 fgColor="#050505"
                 marginSize={4}
-                style={{ height: 200, width: 200 }}
+                style={{ height: 176, width: 176 }}
               />
             </div>
           </div>
 
-          <p className="paper-muted mx-auto max-w-[15rem] text-sm leading-relaxed">
+          <p className="paper-muted mx-auto max-w-[15rem] text-[13px] leading-relaxed">
             {en
               ? `Scan the QR code and take ${shots} photos — no app or account needed.`
               : `Olvasd be a QR-kódot, és ${shots} képet készíthetsz — app és regisztráció nélkül.`}
@@ -112,40 +144,11 @@ export function QrSheetButton({
           {/* Wrapping, not truncating. This is the address a guest types when
               the camera will not scan, so an ellipsis in the middle of it
               defeats the one job the code has. */}
-          <div className="paper-rule mt-6 border-t pt-4">
+          <div className="paper-rule mt-4 border-t pt-3">
             <p className="paper-muted font-mono text-[10px] leading-snug break-all">
               {url.replace('https://', '')}
             </p>
           </div>
-        </div>
-
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => downloadQrCanvas(canvas.current, name)}
-            className="hover:border-strong flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold transition-colors"
-          >
-            <Download className="size-4" aria-hidden="true" />
-            {en ? 'Save QR code' : 'QR-kód mentése'}
-          </button>
-          <button
-            type="button"
-            onClick={share}
-            className="hover:border-strong flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold transition-colors"
-          >
-            {copied ? (
-              <Check className="size-4" aria-hidden="true" />
-            ) : (
-              <Share2 className="size-4" aria-hidden="true" />
-            )}
-            {copied
-              ? en
-                ? 'Link copied'
-                : 'Link kimásolva'
-              : en
-                ? 'Share link'
-                : 'Link megosztása'}
-          </button>
         </div>
       </Sheet>
     </>
