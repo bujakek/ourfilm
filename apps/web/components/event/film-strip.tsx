@@ -1,5 +1,12 @@
 'use client'
 
+import {
+  CloudUpload,
+  ShieldCheck,
+  Smartphone,
+  TriangleAlert,
+  WifiOff,
+} from 'lucide-react'
 import { AnimatePresence, motion, type Transition } from 'motion/react'
 import Image from 'next/image'
 import { useEffect, useRef } from 'react'
@@ -46,12 +53,33 @@ const PERFS_PER_FRAME = 4
  * full blur and resolves as the bytes land, so the development *is* the
  * progress indicator.
  */
+/**
+ * Where a shot has got to, from the shutter to the album.
+ *
+ * Owned here because this is the only thing that draws it. `saving` and
+ * `stored` are about this phone; `uploading` and `confirmed` are about the
+ * server; `memory_only` is the one that matters most — IndexedDB refused, so
+ * the tab is the photo's only home and closing it loses the picture.
+ */
+export type CaptureReceiptState =
+  | 'saving'
+  | 'stored'
+  | 'uploading'
+  | 'waiting'
+  | 'confirmed'
+  | 'memory_only'
+  | 'lost'
+
 export type PendingFrame = {
   previewUrl: string
   /** 0–1, the fraction of the shot's bytes that have reached Storage. */
   progress: number
   /** True only once `commit_shot` has returned. */
   confirmed: boolean
+  /** Where this shot has got to, drawn as a mark over the frame itself. */
+  receipt: CaptureReceiptState
+  /** Whether IndexedDB has acknowledged a copy that outlives this tab. */
+  durable: boolean
 }
 
 export function FilmStrip({
@@ -119,6 +147,15 @@ export function FilmStrip({
           : `${total} képkockából ${exposed} elhasználva.`}
       </p>
 
+      {/* The marks over the frames are the sighted half of this; the strip
+          itself is `aria-hidden`, so without a line here a screen-reader user
+          would be the only person on the page not told that a photo is at
+          risk. Announced politely: it changes while a guest is shooting, and
+          interrupting them mid-shutter is not the point. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {pendingSummary(pending, offline, locale)}
+      </p>
+
       <div
         ref={scroller}
         aria-hidden="true"
@@ -172,9 +209,16 @@ export function FilmStrip({
  *
  * It never reaches clear on its own. The blur bottoms out short of zero while
  * the request is still open and only snaps clear on the server's 200 — because
- * a photograph that finished developing above a pending upload is a lie. The
- * receipt below names the exact storage state; this cell remains its visual
- * counterpart.
+ * a photograph that finished developing above a pending upload is a lie.
+ *
+ * The state rides **on the frame** rather than beside it. A row of labelled
+ * chips under the strip could say more, but it could not say it about *this*
+ * photo: a guest who has shot three in a row reads the chips and still has to
+ * work out which is which. An icon over the picture has no such problem, and
+ * needs no words in either language. It is also the reason the mark disappears
+ * on `confirmed` — a photo that is in the album is just a photograph, and
+ * anything left on top of it would be the fourth thing on this screen saying
+ * so.
  */
 function DevelopingCell({
   pending,
@@ -183,7 +227,13 @@ function DevelopingCell({
   pending: PendingFrame
   offline: boolean
 }) {
-  const { previewUrl, progress, confirmed } = pending
+  const { previewUrl, progress, confirmed, receipt, durable } = pending
+  // Losing signal outranks whatever the upload last reported: the bytes are
+  // not moving, and if they are safe on the phone that is the one reassuring
+  // thing left to say.
+  const state: CaptureReceiptState =
+    offline && !confirmed && receipt !== 'lost' ? 'waiting' : receipt
+  const mark = receiptMark(state, durable)
 
   return (
     <motion.span
@@ -209,6 +259,25 @@ function DevelopingCell({
       </motion.span>
 
       <AnimatePresence>
+        {mark ? (
+          <motion.span
+            key={mark.key}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={T.settle}
+            className="absolute inset-0 flex items-center justify-center bg-black/35"
+          >
+            <mark.Icon
+              className={`size-4 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] ${mark.tone}`}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmed ? (
           <motion.span
             initial={{ opacity: 0, scale: 1.14 }}
@@ -221,6 +290,72 @@ function DevelopingCell({
       </AnimatePresence>
     </motion.span>
   )
+}
+
+/**
+ * The same news the marks carry, in a sentence.
+ *
+ * Only the two states a guest could act on are named. "Uploading" is not one
+ * of them — it resolves by itself and saying so on every frame would bury the
+ * one line that matters, which is that a photo is being held by this page
+ * alone.
+ */
+function pendingSummary(
+  pending: PendingFrame[],
+  offline: boolean,
+  locale: Locale,
+): string {
+  const en = locale === 'en'
+  const live = pending.filter((p) => !p.confirmed && p.receipt !== 'lost')
+  const held = live.filter((p) => !p.durable).length
+  const waiting = offline ? live.filter((p) => p.durable).length : 0
+
+  if (held > 0) {
+    return en
+      ? `${held} ${held === 1 ? 'photo is' : 'photos are'} held by this page only. Keep it open until they upload.`
+      : `${held} kép csak ezen az oldalon van meg. Tartsd nyitva, amíg fel nem töltődnek.`
+  }
+  if (waiting > 0) {
+    return en
+      ? `${waiting} ${waiting === 1 ? 'photo is' : 'photos are'} saved on this phone and waiting for signal.`
+      : `${waiting} kép el van mentve a telefonon, és kapcsolatra vár.`
+  }
+  return ''
+}
+
+/**
+ * The one icon that goes over a developing frame, or null for none.
+ *
+ * Null is the whole point of the `confirmed` case: the mark is there to answer
+ * "is this photo safe", and once it is in the album the answer is the picture.
+ *
+ * `waiting` splits on `durable` because the two are opposite instructions. A
+ * shot already in IndexedDB is merely waiting for signal and the guest may put
+ * the phone away; one that is not is being held by this tab alone, and closing
+ * the page loses it.
+ */
+function receiptMark(
+  state: CaptureReceiptState,
+  durable: boolean,
+): { key: string; tone: string; Icon: typeof CloudUpload } | null {
+  switch (state) {
+    case 'confirmed':
+      return null
+    case 'saving':
+      return { key: 'saving', tone: 'text-white/85', Icon: Smartphone }
+    case 'stored':
+      return { key: 'stored', tone: 'text-white/85', Icon: ShieldCheck }
+    case 'uploading':
+      return { key: 'uploading', tone: 'text-accent', Icon: CloudUpload }
+    case 'waiting':
+      return durable
+        ? { key: 'waiting', tone: 'text-warning', Icon: WifiOff }
+        : { key: 'held', tone: 'text-warning', Icon: TriangleAlert }
+    case 'memory_only':
+      return { key: 'held', tone: 'text-warning', Icon: TriangleAlert }
+    case 'lost':
+      return { key: 'lost', tone: 'text-destructive', Icon: TriangleAlert }
+  }
 }
 
 function Perforations({

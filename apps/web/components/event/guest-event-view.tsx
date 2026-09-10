@@ -2,15 +2,7 @@
 
 import type { Frame } from '@/lib/frames'
 import type { GalleryTile } from '@/lib/photos'
-import {
-  Camera,
-  Check,
-  CloudUpload,
-  ShieldCheck,
-  Smartphone,
-  TriangleAlert,
-  WifiOff,
-} from 'lucide-react'
+import { Camera } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -45,7 +37,7 @@ import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
 import { CreateOwnAlbum } from './create-own-album'
-import { FilmStrip } from './film-strip'
+import { type CaptureReceiptState, FilmStrip } from './film-strip'
 import { InviteButton } from './invite-button'
 import { PhotoGrid } from './photo-grid'
 
@@ -57,20 +49,11 @@ const SLOW_PREPARATION_MS = 5_000
 /**
  * What the screen says when something goes wrong.
  *
- * The global line carries only conditions that affect the whole camera. Each
- * shot now has its own persistent receipt beside the film strip; a single
- * flash cannot answer which of several captures is safe.
+ * The global line carries only conditions that affect the whole camera. Which
+ * of several captures is safe is not one of those — a single line cannot say
+ * it about three photos at once, so each frame wears its own mark instead.
  */
 type Flash = string | null
-
-type CaptureReceiptState =
-  | 'saving'
-  | 'stored'
-  | 'uploading'
-  | 'waiting'
-  | 'confirmed'
-  | 'memory_only'
-  | 'lost'
 
 /**
  * A shot in flight, from the shutter to the server's 200. There can be
@@ -92,8 +75,6 @@ type Capture = {
   /** Null until `reserve_shot` has granted the frame. */
   photoId: string | null
   previewUrl: string | null
-  /** The shutter time, retained so every receipt remains identifiable. */
-  capturedAt: number
   progress: number
   confirmed: boolean
   /** Whether IndexedDB has acknowledged at least one complete local copy. */
@@ -295,10 +276,18 @@ export function GuestEventView({
   // brought a capture's own photo down, the strip renders the real frame and
   // that cell stops being shown. `captures` is appended in capture order and
   // never re-sorted, so the survivors stay in order without sorting.
-  const developing = captures.filter(
-    (c): c is Capture & { previewUrl: string } =>
-      c.previewUrl !== null && isDeveloping(c, frameIds),
-  )
+  const developing = captures
+    .filter(
+      (c): c is Capture & { previewUrl: string } =>
+        c.previewUrl !== null && isDeveloping(c, frameIds),
+    )
+    .map((c) => ({
+      previewUrl: c.previewUrl,
+      progress: c.progress,
+      confirmed: c.confirmed,
+      receipt: c.receipt,
+      durable: c.durable,
+    }))
 
   /**
    * What takes over the line under the shutter, in order of what a guest
@@ -353,12 +342,7 @@ export function GuestEventView({
    * receipt, so a reload does not make its state mysterious.
    */
   const claimCell = useCallback(
-    (
-      id: string,
-      source: Blob,
-      capturedAt: number,
-      receipt: CaptureReceiptState = 'saving',
-    ) => {
+    (id: string, source: Blob, receipt: CaptureReceiptState = 'saving') => {
       setCaptures((current) => {
         if (current.some((c) => c.id === id)) return current
         return [
@@ -367,7 +351,6 @@ export function GuestEventView({
             id,
             photoId: null,
             previewUrl: URL.createObjectURL(source),
-            capturedAt,
             progress: 0,
             confirmed: false,
             durable: receipt === 'stored',
@@ -563,7 +546,6 @@ export function GuestEventView({
             },
             { urgent: true },
           )
-          const capturedAt = Date.now() - ageMs
           setCaptures((current) => {
             if (current.some((c) => c.id === id)) return current
             return [
@@ -572,7 +554,6 @@ export function GuestEventView({
                 id,
                 photoId: null,
                 previewUrl: null,
-                capturedAt,
                 progress: 0,
                 confirmed: false,
                 durable: false,
@@ -589,7 +570,7 @@ export function GuestEventView({
             capture_id: id,
             age_ms: Date.now() - capturedAt,
           })
-          claimCell(id, blob, capturedAt, 'stored')
+          claimCell(id, blob, 'stored')
         },
       },
     }))
@@ -649,7 +630,7 @@ export function GuestEventView({
         // its receipt has been read. This shot starts a new story.
         setOfflineBacklog(0)
       }
-      claimCell(id, file, now)
+      claimCell(id, file)
       queueRef.current?.enqueue(id, file, now)
     },
     [claimCell, eventId, online, remaining, outstanding],
@@ -757,7 +738,6 @@ export function GuestEventView({
           offline={!online}
           entrance={stage(6, T.advance)}
         />
-        <CaptureReceipts captures={captures} online={online} locale={locale} />
       </motion.div>
 
       <motion.div
@@ -986,124 +966,4 @@ function discardedMessage(reason: string, locale: Locale): string {
         ? 'A saved photo could not reach the album. Its frame is available again within 10 minutes.'
         : 'Egy mentett kép nem jutott el az albumba. A képkocka legfeljebb 10 percen belül újra elérhető.'
   }
-}
-
-function CaptureReceipts({
-  captures,
-  online,
-  locale,
-}: {
-  captures: Capture[]
-  online: boolean
-  locale: Locale
-}) {
-  const scroller = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const element = scroller.current
-    if (!element) return
-    element.scrollLeft = element.scrollWidth
-  }, [captures.length])
-
-  if (captures.length === 0) return null
-
-  return (
-    <div
-      ref={scroller}
-      aria-label={locale === 'en' ? 'Photo receipts' : 'Képek állapota'}
-      aria-live="polite"
-      className="mt-2.5 flex [scrollbar-width:none] gap-2 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden"
-    >
-      {captures.map((capture) => (
-        <CaptureReceipt
-          key={capture.id}
-          capture={capture}
-          online={online}
-          locale={locale}
-        />
-      ))}
-    </div>
-  )
-}
-
-function CaptureReceipt({
-  capture,
-  online,
-  locale,
-}: {
-  capture: Capture
-  online: boolean
-  locale: Locale
-}) {
-  const en = locale === 'en'
-  const time = new Intl.DateTimeFormat(localeTag[locale], {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(capture.capturedAt)
-  const waitingOffline = !online && isOutstanding(capture) && capture.durable
-  const state = waitingOffline ? 'waiting' : capture.receipt
-  const details: Record<
-    CaptureReceiptState,
-    { label: string; tone: string; Icon: typeof Check }
-  > = {
-    saving: {
-      label: en ? 'Saving on this phone…' : 'Mentés erre a telefonra…',
-      tone: 'text-foreground/62',
-      Icon: Smartphone,
-    },
-    stored: {
-      label: en ? 'Saved on this phone' : 'Elmentve ezen a telefonon',
-      tone: 'text-foreground/72',
-      Icon: ShieldCheck,
-    },
-    uploading: {
-      label: en ? 'Uploading to the album…' : 'Feltöltés az albumba…',
-      tone: 'text-accent',
-      Icon: CloudUpload,
-    },
-    waiting: capture.durable
-      ? {
-          label: en ? 'Saved, waiting for signal' : 'Elmentve, kapcsolatra vár',
-          tone: 'text-warning',
-          Icon: WifiOff,
-        }
-      : {
-          label: en ? 'Keep this page open' : 'Tartsd nyitva ezt az oldalt',
-          tone: 'text-warning',
-          Icon: TriangleAlert,
-        },
-    confirmed: {
-      label: en ? 'In the album' : 'Az albumban',
-      tone: 'text-accent',
-      Icon: Check,
-    },
-    memory_only: {
-      label: en ? 'Keep this page open' : 'Tartsd nyitva ezt az oldalt',
-      tone: 'text-warning',
-      Icon: TriangleAlert,
-    },
-    lost: {
-      label: en ? 'Did not reach the album' : 'Nem került az albumba',
-      tone: 'text-destructive',
-      Icon: TriangleAlert,
-    },
-  }
-  const { label, tone, Icon } = details[state]
-
-  return (
-    <div className="flex min-w-max items-center gap-2 rounded-full border border-border bg-card/55 px-2.5 py-1.5 text-[11px] leading-none">
-      <Icon
-        className={`size-3.5 ${tone}`}
-        strokeWidth={1.9}
-        aria-hidden="true"
-      />
-      <span className={`font-medium ${tone}`}>{label}</span>
-      <time
-        className="font-mono text-foreground/35"
-        dateTime={new Date(capture.capturedAt).toISOString()}
-      >
-        {time}
-      </time>
-    </div>
-  )
 }
