@@ -121,11 +121,17 @@ export async function createEventCheckoutUrl({
         }),
     line_items: [{ price: eventPriceId, quantity: 1 }],
     expires_at: Math.floor(new Date(attempt.expires_at).getTime() / 1_000),
-    // Back to the settings page rather than the event page: the billing card
-    // that explains the outcome lives there. That holds for a host arriving
-    // straight from onboarding too — the sentence they need after paying is
-    // "this album is unlimited", not the QR code.
-    success_url: `${origin}/host/events/${slug}/settings?checkout=success`,
+    // Two different destinations, because the two outcomes are different
+    // sentences. A payment gets its own screen: the only thing a host needs to
+    // read is "this album is unlimited" — not the QR code, and not a settings
+    // form with six cards and a delete button around the one line that
+    // changed. That screen re-reads the plan itself, so this URL is a place to
+    // land and never evidence of anything.
+    //
+    // A cancellation goes back where the decision was made. Nothing happened,
+    // so there is nothing to announce, and the billing card is both the
+    // explanation and the way to try again.
+    success_url: `${origin}/host/events/${slug}/checkout/success`,
     cancel_url: `${origin}/host/events/${slug}/settings?checkout=cancelled`,
     // Both, and not by accident. `metadata` is what the webhook reads;
     // `client_reference_id` is what shows up in the Stripe dashboard's search,

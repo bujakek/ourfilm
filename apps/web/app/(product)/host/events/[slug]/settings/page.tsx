@@ -53,8 +53,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * The event page is what a host opens mid-party — the QR code, the photos, the
  * download. Visibility, billing and deletion are decisions made once, and
  * sitting them next to the QR card made the one screen that has to work in a
- * dim room at 1am the busiest in the product. Stripe sends the host back here
- * too, so the receipt lands next to the card that explains it.
+ * dim room at 1am the busiest in the product. A cancelled checkout comes back
+ * here, where the decision was made; a paid one gets its own screen at
+ * `checkout/success` and links back to this card for the receipt.
  *
  * Each card carries its own heading, so this page deliberately has no section
  * headings of its own — a second title above every card would only repeat it.
@@ -80,9 +81,15 @@ export default async function AdminEventSettingsPage({
     captureEndAt: new Date(event.capture_end_at),
   })
 
-  // Only the two values Stripe is sent back with are honoured. Anything else
-  // in the query string is somebody typing, and a "payment succeeded" banner
-  // is not something a URL should be able to conjure.
+  // Only these two values are honoured. Anything else in the query string is
+  // somebody typing, and a "payment succeeded" banner is not something a URL
+  // should be able to conjure — which is why even `success` only makes the
+  // card re-read the plan rather than assert anything.
+  //
+  // Stripe now returns a paid host to `checkout/success` instead, but a
+  // Checkout Session already open when that changed still carries the old
+  // `success_url`. Sessions live 45 minutes, so this branch is what keeps an
+  // in-flight payment from landing on a page that has forgotten about it.
   const { checkout } = await searchParams
   const checkoutState =
     checkout === 'success' || checkout === 'cancelled' ? checkout : null

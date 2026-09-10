@@ -7,16 +7,12 @@ import {
 import { eventPriceLabel } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
+import { useSettlePolling } from '@/components/host/use-settle-polling'
 
 const INITIAL: CheckoutState = { error: null }
-
-/** How long to keep re-checking after Stripe sends the host back. */
-const SETTLE_POLL_MS = 2000
-const SETTLE_POLL_TRIES = 6
 
 export type BillingCardProps = {
   locale: 'en' | 'hu'
@@ -58,11 +54,8 @@ export function BillingCard({
   const en = locale === 'en'
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
 
-  // Stripe redirects the host back the instant checkout finishes, which is
-  // often before the webhook that records it has landed. Without this the
-  // first thing a host sees after paying is their album still saying it is
-  // capped, so the page re-reads itself for a few seconds rather than making
-  // them wonder whether the money went anywhere.
+  // Stripe's redirect lands before the webhook does; `useSettlePolling` says
+  // why that gap is polled rather than waited out.
   const settling = checkout === 'success' && !unlimited
   useSettlePolling(settling)
 
@@ -212,27 +205,4 @@ export function BillingCard({
       ) : null}
     </div>
   )
-}
-
-/**
- * Re-render the page every couple of seconds while a payment settles, then
- * stop.
- *
- * Bounded on purpose. An unbounded poll would keep a tab hitting the server
- * forever when a webhook is misconfigured — which is exactly the situation
- * where nobody is watching — and the host is better served by the page going
- * quiet and them reloading than by a spinner that never resolves.
- */
-function useSettlePolling(active: boolean) {
-  const router = useRouter()
-  const [tries, setTries] = useState(0)
-
-  useEffect(() => {
-    if (!active || tries >= SETTLE_POLL_TRIES) return
-    const timer = setTimeout(() => {
-      setTries((n) => n + 1)
-      router.refresh()
-    }, SETTLE_POLL_MS)
-    return () => clearTimeout(timer)
-  }, [active, tries, router])
 }
