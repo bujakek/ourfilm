@@ -128,6 +128,7 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
     ...overrides,
   }
   const handlers: UploadQueueHandlers = {
+    onStored: vi.fn(),
     onReserved: vi.fn(),
     onProgress: vi.fn(),
     onConfirmed: vi.fn(),
@@ -208,6 +209,7 @@ describe('a shot the guest has just taken', () => {
     await until(() => stored().then((ids) => ids.includes('shot-1')))
 
     expect(await stored()).toEqual(['shot-1'])
+    expect(h.handlers.onStored).toHaveBeenCalledWith('shot-1', true)
     hold.resolve(reserved('photo-1'))
     await q.drain()
     expect(await stored()).toEqual([])

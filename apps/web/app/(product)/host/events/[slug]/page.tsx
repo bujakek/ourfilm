@@ -1,4 +1,10 @@
-import { ArrowLeft, ExternalLink, Settings } from 'lucide-react'
+import {
+  ArrowLeft,
+  CloudUpload,
+  ExternalLink,
+  Settings,
+  TriangleAlert,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -14,7 +20,12 @@ import { captureWindowState } from '@/lib/camera'
 import { shortTimeRemaining } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { localeTag } from '@/lib/i18n'
-import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
+import {
+  getAllEventPhotos,
+  getEventCaptureHealth,
+  toModerationTiles,
+  type EventCaptureHealth,
+} from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
 import { reportServerIssue } from '@/lib/telemetry-server'
 
@@ -53,12 +64,16 @@ export default async function AdminEventPage({ params }: Props) {
   const locale = event.locale
   const en = locale === 'en'
 
-  const [quota, photos] = await Promise.all([
+  const [quota, photos, captureHealth] = await Promise.all([
     getEventQuota(event.id).catch((error) => {
       console.error('Could not read participant quota', error)
       return null
     }),
     getAllEventPhotos(event.id),
+    getEventCaptureHealth(event.id).catch((error) => {
+      console.error('Could not read capture health', error)
+      return null
+    }),
   ])
   const tiles = toModerationTiles(photos, event.time_zone)
   // What the Album button should say before anyone taps it: a host coming
@@ -177,6 +192,11 @@ export default async function AdminEventPage({ params }: Props) {
           />
         </div>
 
+        {captureHealth &&
+        (captureHealth.uploading > 0 || captureHealth.stalled > 0) ? (
+          <CaptureHealthNote health={captureHealth} locale={locale} />
+        ) : null}
+
         {/* The host's own roll, in the guest's own shape. Directly under
               the figures because those are what it changes: a photo taken
               here lands in the grid below and moves "KÉP KÉSZÜLT" above. */}
@@ -218,6 +238,40 @@ export default async function AdminEventPage({ params }: Props) {
         </section>
       </HostBlock>
     </main>
+  )
+}
+
+function CaptureHealthNote({
+  health,
+  locale,
+}: {
+  health: EventCaptureHealth
+  locale: 'en' | 'hu'
+}) {
+  const en = locale === 'en'
+  const hasStalled = health.stalled > 0
+  const Icon = hasStalled ? TriangleAlert : CloudUpload
+  const uploadingText = en
+    ? `${health.uploading} ${health.uploading === 1 ? 'photo is' : 'photos are'} uploading now.`
+    : `${health.uploading} kép feltöltése folyamatban van.`
+  const text = hasStalled
+    ? en
+      ? `${health.stalled} ${health.stalled === 1 ? 'upload is' : 'uploads are'} unusually slow or interrupted. A guest's phone may still retry automatically.${health.uploading > 0 ? ` ${uploadingText}` : ''}`
+      : `${health.stalled} feltöltés szokatlanul lassú vagy megszakadt. A vendég telefonja még automatikusan újrapróbálhatja.${health.uploading > 0 ? ` ${uploadingText}` : ''}`
+    : uploadingText
+
+  return (
+    <div
+      role="status"
+      className={`mt-3.5 flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-xs leading-relaxed ${
+        hasStalled
+          ? 'border-warning/30 bg-warning/7 text-warning'
+          : 'border-accent/25 bg-accent/6 text-foreground/65'
+      }`}
+    >
+      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <p>{text}</p>
+    </div>
   )
 }
 

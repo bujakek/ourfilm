@@ -172,8 +172,9 @@ export function FilmStrip({
  *
  * It never reaches clear on its own. The blur bottoms out short of zero while
  * the request is still open and only snaps clear on the server's 200 — because
- * a photograph that finished developing above a pending upload is a lie, and
- * this cell is the only thing telling the guest their shot is safe.
+ * a photograph that finished developing above a pending upload is a lie. The
+ * receipt below names the exact storage state; this cell remains its visual
+ * counterpart.
  */
 function DevelopingCell({
   pending,
