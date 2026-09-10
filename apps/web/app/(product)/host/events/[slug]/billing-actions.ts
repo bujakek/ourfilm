@@ -59,7 +59,7 @@ export async function startEventCheckout(
     return {
       error: en
         ? 'Payments are not configured yet. Contact us and we can help; the album and uploads still work.'
-        : 'A fizetés még nincs beállítva. Szólj nekünk, és elintézzük — addig az album és a feltöltés változatlanul működik.',
+        : 'A fizetés még nincs beállítva. Írj nekünk, és segítünk. Addig az albumot és a feltöltést is használhatod.',
     }
   }
 
@@ -94,7 +94,7 @@ export async function startEventCheckout(
     return {
       error: en
         ? 'This event is already unlimited.'
-        : 'Ez az esemény már korlátlan — nincs mit fizetni.',
+        : 'Ennél az eseménynél már nincs vendégkorlát, ezért nincs mit kifizetni.',
     }
   }
 
@@ -110,7 +110,7 @@ export async function startEventCheckout(
     return {
       error: en
         ? 'Payments are not configured yet. Contact us and we can help; the album and uploads still work.'
-        : 'A fizetés még nincs beállítva. Szólj nekünk, és elintézzük — addig az album és a feltöltés változatlanul működik.',
+        : 'A fizetés még nincs beállítva. Írj nekünk, és segítünk. Addig az albumot és a feltöltést is használhatod.',
     }
   }
 

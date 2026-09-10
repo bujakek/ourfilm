@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title:
       locale === 'en'
-        ? 'Privacy Notice — OurFilm'
-        : 'Adatkezelési tájékoztató — OurFilm',
+        ? 'Privacy Notice · OurFilm'
+        : 'Adatkezelési tájékoztató · OurFilm',
     description:
       locale === 'en'
         ? 'How OurFilm handles account, event, guest and photo data.'
@@ -55,7 +55,7 @@ const sections: LegalSection[] = [
       'Fotó: a képfájl, a készítés időpontja, a fájl- és képméret, a formátum és a feldolgozáshoz szükséges technikai állapotok. A kamera képe az eszközön jelenik meg; csak az elkészített és feldolgozott JPEG kerül feltöltésre. A feldolgozás eltávolítja az EXIF-adatokat, így a GPS-helyadat nem kerül a feltöltött fájlba.',
       'Fizetés: az OurFilm a Stripe munkamenet- és tranzakcióazonosítóit, az eseményhez kapcsolást, az összeget, pénznemet, fizetési és visszatérítési állapotot kapja meg. A fizetési mód adatait, a számlázási adatokat és a csalásmegelőzéshez szükséges technikai adatokat a Stripe/Link közvetlenül kezeli; bankkártyaszámot az OurFilm nem kap meg.',
       'Early Couple Program jelentkezője: név, a pár neve, ha megadják, e-mail-cím, az esküvő dátuma és helyszíne, becsült vendégszámtartomány, a jelentkezés rövid indoka, a választott nyelv, a jelentkezés és a két beszélgetés állapota, valamint az esetleges kampány forrásadatai. A visszaélések korlátozásához a hálózati cím nyers értéke helyett egy elkülönítetten tárolt, nem visszafejthető HMAC-lenyomatot használunk.',
-      'Használati és hibadiagnosztikai adatok: előre meghatározott műveletek — például a vendégoldal megnyitása, a csatlakozás, a kamera megnyitása, az exponálás, a képfeldolgozás és a feltöltés — eredménye, hibakategóriája, időpontja és időtartama; a hálózati és láthatósági állapot; fájl- és képméret; formátumjelző; hibák technikai osztálya és kódbeli helye; valamint véletlen esemény- és felvételazonosítók. A PostHog ezekhez alapértelmezett technikai adatokat, például a böngésző és az operációs rendszer típusát és verzióját, az eszköztípust, a képernyő- és nézetméretet, valamint maszkolt, lekérdezés nélküli oldalútvonalat kapcsolhat. Nevet, e-mail-címet, eseménynevet, eseménylinket, hibaüzenetet, képfájlt vagy a fénykép tartalmát nem küldjük a PostHognak. A hálózati cím a továbbítás és a sütimentes mérés során technikailag kezelhető, de nem használjuk helymeghatározásra vagy tartós felhasználói azonosításra.',
+      'Használati és hibadiagnosztikai adatok: előre meghatározott műveletek, például a vendégoldal megnyitása, a csatlakozás, a kamera megnyitása, az exponálás, a képfeldolgozás és a feltöltés eredménye, hibakategóriája, időpontja és időtartama; a hálózati és láthatósági állapot; fájl- és képméret; formátumjelző; hibák technikai osztálya és kódbeli helye; valamint véletlen esemény- és felvételazonosítók. A PostHog ezekhez alapértelmezett technikai adatokat, például a böngésző és az operációs rendszer típusát és verzióját, az eszköztípust, a képernyő- és nézetméretet, valamint maszkolt, lekérdezés nélküli oldalútvonalat kapcsolhat. Nevet, e-mail-címet, eseménynevet, eseménylinket, hibaüzenetet, képfájlt vagy a fénykép tartalmát nem küldjük a PostHognak. A hálózati cím a továbbítás és a sütimentes mérés során technikailag kezelhető, de nem használjuk helymeghatározásra vagy tartós felhasználói azonosításra.',
     ],
   },
   {
@@ -80,7 +80,7 @@ const sections: LegalSection[] = [
     title: 'Szolgáltatók és adattovábbítás',
     body: [
       `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési linkek, jogi visszaigazolások és az album elkészültéről szóló értesítések), fizetésnél ${DIRECT_SALE.processorName}, magyar nyelvű esemény számlázásánál pedig ${DIRECT_SALE.invoiceProvider}.`,
-      `Magyar nyelvű eseménynél az eladó az OurFilm. A fizetést a Stripe fizetési szolgáltatóként dolgozza fel; a számlázási nevet, címet és e-mail-címet a Stripe fizetési oldala gyűjti, és azt kizárólag a számla kiállításához használjuk. A számlát a ${DIRECT_SALE.invoiceProvider} rendszerén keresztül állítjuk ki, és a számlaadatokat jogszabályi kötelezettség alapján a NAV Online Számla rendszerébe is továbbítjuk. A számlázási adatokat a számviteli előírások szerinti ideig őrizzük meg, az esemény törlése után is.`,
+      `Magyar nyelvű eseménynél az eladó az OurFilm. A fizetést a Stripe fizetési szolgáltatóként dolgozza fel; a számlázási nevet, címet és e-mail-címet a Stripe fizetési oldala gyűjti össze. Mi ezeket az adatokat kizárólag a számla kiállításához használjuk. A számlát a ${DIRECT_SALE.invoiceProvider} rendszerén keresztül állítjuk ki, és a számlaadatokat jogszabályi kötelezettség alapján a NAV Online Számla rendszerébe is továbbítjuk. A számlázási adatokat a számviteli előírások szerinti ideig őrizzük meg, az esemény törlése után is.`,
       `Angol nyelvű eseménynél a ${PAYMENT_PROCESSOR.merchantOfRecord} jár el Merchant of Recordként: ő kezeli a fizetést, az alkalmazandó közvetett adót, a vásárlói számlát vagy bizonylatot, a visszatérítést, a fizetési vitát, a csalásmegelőzést és a tranzakciós ügyfélszolgálatot, és ezekhez a célokhoz a vásárlótól közvetlenül is gyűjt adatot. A Link tranzakciós támogatása itt érhető el: ${PAYMENT_PROCESSOR.supportUrl}.`,
       'A Supabase projekt jelenlegi régiója Zürich, Svájc. Svájc az EGT-n kívüli ország, amelyre az Európai Bizottság megfelelőségi határozata vonatkozik.',
       'A PostHog projektadatokat Frankfurtban, Németországban tárolja. A PostHog, Inc. és egyes alfeldolgozói az Egyesült Államokban vagy más EGT-n kívüli országban támogatási, biztonsági vagy hálózati feladatok miatt kezelhetnek adatot. A Vercel, a Stripe/Link és egyes további szolgáltatók szintén kezelhetnek adatot az EGT-n kívül. Ilyen továbbításnál az érintett szolgáltató EU–USA adatvédelmi kerettagságára, európai bizottsági megfelelőségi határozatra vagy általános szerződési feltételekre támaszkodunk. A Stripe és a Link saját adatkezelésére a Checkout felületén elérhető adatvédelmi tájékoztatójuk vonatkozik.',
@@ -204,7 +204,7 @@ export default async function AdatvedelemPage({ params }: Props) {
       lead={
         locale === 'en'
           ? 'What we store about hosts, events, guests and photos, and why.'
-          : 'Mit tárolunk az eseményről, a vendégről és a képekről — az új, digitális eldobható fényképezőgép működéséhez igazítva.'
+          : 'Mit tárolunk az eseményről, a vendégről és a képekről az új digitális eldobható fényképezőgép működéséhez.'
       }
     >
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">

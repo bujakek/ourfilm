@@ -49,15 +49,15 @@ export function planNote(
     case 'paid':
       // No receipt means the payment settled but the ledger row is not
       // readable — say nothing rather than assert an amount.
-      return receipt ? `${en ? 'Paid' : 'Kifizetve'} — ${receipt}` : null
+      return receipt ? `${en ? 'Paid' : 'Kifizetve'} · ${receipt}` : null
     case 'early_couple':
       return en
         ? 'Early Couple Program — unlimited guests, with our thanks.'
-        : 'Early Couple Program — korlátlan résztvevő, köszönjük nektek.'
+        : 'Early Couple Program: korlátlan számú vendég. Köszönjük, hogy velünk vagytok!'
     case 'operator':
       return en
         ? 'Unlocked by the OurFilm team — unlimited guests.'
-        : 'Az OurFilm csapata feloldotta — korlátlan résztvevő.'
+        : 'Az OurFilm csapata megszüntette a vendégkorlátot.'
     // An admin-owned event is uncapped because of the account, not the event,
     // and the card already says exactly that.
     case 'admin':

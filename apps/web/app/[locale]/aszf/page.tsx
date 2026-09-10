@@ -22,7 +22,7 @@ import { notFound } from 'next/navigation'
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
   return {
-    title: locale === 'en' ? 'Terms of Service — OurFilm' : 'ÁSZF — OurFilm',
+    title: locale === 'en' ? 'Terms of Service · OurFilm' : 'ÁSZF · OurFilm',
     description:
       locale === 'en'
         ? 'Terms governing the use of OurFilm by hosts and guests.'
@@ -55,7 +55,7 @@ const sections: LegalSection[] = [
   {
     title: 'Szerződéskötés és a használat feltételei',
     body: [
-      `A házigazda a feltételek elfogadásával és az esemény létrehozásával köt szerződést az OurFilmmel a digitális szolgáltatás használatára. A fizetős esemény feloldására vonatkozó megrendelés a Stripe fizetési oldalán történő fizetéssel válik véglegessé. A magyar nyelvű eseményeknél az eladó az OurFilm: mi nyújtjuk a digitális szolgáltatást, mi állítjuk ki a számlát, és mi felelünk a megrendelésért. A szerződés magyar nyelven jön létre, nem minősül írásba foglalt szerződésnek, és külön nem iktatjuk.`,
+      `A házigazda a feltételek elfogadásával és az esemény létrehozásával köt szerződést az OurFilmmel a digitális szolgáltatás használatára. A vendégkorlát megszüntetésére vonatkozó megrendelés a Stripe fizetési oldalán történő fizetéssel válik véglegessé. A magyar nyelvű eseményeknél az eladó az OurFilm: mi nyújtjuk a digitális szolgáltatást, mi állítjuk ki a számlát, és mi felelünk a megrendelésért. A szerződés magyar nyelven jön létre, nem minősül írásba foglalt szerződésnek, és külön nem iktatjuk.`,
       'A vendég a csatlakozással elfogadja a rá vonatkozó használati szabályokat, és tudomásul veszi az Adatkezelési tájékoztatót. A vendégtől nem kérünk díjat.',
       'A megrendelés előtt a házigazda a böngésző vissza gombjával vagy az OurFilm felületén módosíthatja a megadott adatokat. Az adatbeviteli hibákat a rendszer a létrehozás előtt jelzi.',
     ],
@@ -63,18 +63,18 @@ const sections: LegalSection[] = [
   {
     title: 'Díj és fizetés',
     body: [
-      `Az ingyenes eseményhez legfeljebb 5 külön vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél feloldja a résztvevői korlátot. Nem előfizetés, és nem jelent vendégenkénti díjat.`,
-      `A szolgáltató ${DIRECT_SALE.vatStatus}, ezért a feltüntetett ${EVENT_PRICE_LABEL} a fizetendő végösszeg: nem tartalmaz áfát, és áfa nem is helyezhető levonásba utána. A számla az „AAM” (alanyi adómentes) jelölést tartalmazza.`,
-      `A fizetést a ${DIRECT_SALE.processorName} (${DIRECT_SALE.processorAddress}) mint fizetési szolgáltató dolgozza fel. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A számlázási névre és címre azért van szükség, mert a magyar számla kötelező tartalmi eleme.`,
-      `A fizetés után a számlát az OurFilm állítja ki elektronikus számlaként, a ${DIRECT_SALE.invoiceProvider} számlázórendszerén keresztül, és a megadott e-mail-címre küldjük meg. A számlaadatokat a NAV Online Számla rendszerébe is továbbítjuk, ahogy azt jogszabály előírja. Az esemény fizetős feloldását a Stripe sikeres fizetési visszaigazolása alapján aktiváljuk.`,
+      `Az ingyenes eseményhez legfeljebb 5 külön vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél megszünteti a vendégkorlátot. Nem előfizetés, és nem jelent vendégenkénti díjat.`,
+      `A szolgáltató ${DIRECT_SALE.vatStatus}, ezért a feltüntetett ${EVENT_PRICE_LABEL} a fizetendő végösszeg. Az ár nem tartalmaz áfát, így abból áfa nem vonható le. A számla az „AAM” (alanyi adómentes) jelölést tartalmazza.`,
+      `A fizetést a ${DIRECT_SALE.processorName} (${DIRECT_SALE.processorAddress}) fizetési szolgáltatóként dolgozza fel. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A számlázási névre és címre azért van szükség, mert a magyar számla kötelező tartalmi eleme.`,
+      `A fizetés után a számlát az OurFilm állítja ki elektronikus számlaként, a ${DIRECT_SALE.invoiceProvider} számlázórendszerén keresztül, és a megadott e-mail-címre küldjük meg. A számlaadatokat a NAV Online Számla rendszerébe is továbbítjuk, ahogy azt jogszabály előírja. A vendégkorlátot a Stripe sikeres fizetési visszaigazolása után szüntetjük meg.`,
     ],
   },
   {
     title: 'Elállás és felmondás fogyasztóként',
     body: [
-      `A fogyasztó a fizetős szerződés megkötésétől számított 14 napon belül indokolás nélkül gyakorolhatja elállási vagy — a szolgáltatás megkezdése után — felmondási jogát. Az „Elállás a szerződéstől” funkció a magyar oldal láblécéből közvetlenül, bejelentkezés nélkül elérhető. A nyilatkozat a ${CONTACT_EMAIL} címen is közölhető.`,
+      `A fogyasztó a fizetős szerződés megkötésétől számított 14 napon belül indokolás nélkül gyakorolhatja elállási, illetve a szolgáltatás megkezdése után felmondási jogát. Az „Elállás a szerződéstől” funkció a magyar oldal láblécéből közvetlenül, bejelentkezés nélkül elérhető. A nyilatkozat a ${CONTACT_EMAIL} címen is közölhető.`,
       'Az online űrlap kitöltése után az „Elállás megerősítése” gomb küldi el a nyilatkozatot. A beérkezésről haladéktalanul, tartós adathordozón e-mailes elismervényt küldünk, amely tartalmazza a nyilatkozatot, valamint a megküldés dátumát és időpontját.',
-      'A fizetéskor a fogyasztó kifejezetten kérheti, hogy a szolgáltatás a 14 napos időszak vége előtt megkezdődjön. Ha a fizetős feloldást a nyilatkozat közléséig nem vették igénybe — vagyis az eseményhez nem csatlakozott az ingyenes 5 fős keretet meghaladó vendég —, a teljes díjat visszatérítjük.',
+      'A fizetéskor a fogyasztó kifejezetten kérheti, hogy a szolgáltatás a 14 napos időszak vége előtt megkezdődjön. Ha a fizetős szolgáltatást a nyilatkozat közléséig nem vették igénybe, vagyis az eseményhez az ingyenes ötfős kereten felül nem csatlakozott vendég, a teljes díjat visszatérítjük.',
       'Ha a fizetős szolgáltatás használata már megkezdődött, a nyilatkozat közléséig ténylegesen és arányosan teljesített szolgáltatás díja felszámítható. Ennek megállapításakor az esemény használatának körülményeit vizsgáljuk; önmagában egy meghatározott fotószám elérése vagy a képek letöltése, illetve le nem töltése nem automatikus kizáró feltétel.',
       'A 14 napos időszak után nincs általános, indokolás nélküli visszatérítési jog. Ez nem érinti a hibás teljesítésből vagy kötelező fogyasztóvédelmi szabályból eredő jogokat.',
       `A visszajáró összeget a nyilatkozat közlésétől számított legkésőbb 14 napon belül, az eredeti fizetési móddal, a Stripe rendszerén keresztül térítjük vissza, kivéve, ha a fogyasztó más módhoz kifejezetten hozzájárul. Teljes visszatérítés esetén a kiállított számlához sztornó számlát állítunk ki, és azt is megküldjük a megadott e-mail-címre.`,

@@ -74,7 +74,7 @@ export function BillingCard({
               {planNote ??
                 (en
                   ? 'Unlimited guests — this account has no participant cap.'
-                  : 'Korlátlan résztvevő — ehhez a fiókhoz nem tartozik keret.')}
+                  : 'Ehhez a fiókhoz nem tartozik vendégkorlát.')}
             </p>
           </div>
         </div>
@@ -96,7 +96,7 @@ export function BillingCard({
             full ? 'text-destructive' : 'text-muted-foreground',
           )}
         >
-          {participantCount} / {participantLimit} {en ? 'guests' : 'résztvevő'}
+          {participantCount} / {participantLimit} {en ? 'guests' : 'vendég'}
         </p>
       </div>
 
@@ -106,9 +106,7 @@ export function BillingCard({
         aria-valuenow={used}
         aria-valuemin={0}
         aria-valuemax={participantLimit}
-        aria-label={
-          en ? 'Guest allowance used' : 'Felhasznált résztvevői keret'
-        }
+        aria-label={en ? 'Guest allowance used' : 'Csatlakozott vendégek'}
       >
         <div
           className={cn(
@@ -125,10 +123,10 @@ export function BillingCard({
         {full
           ? en
             ? 'The allowance is full. Existing guests can still take photos.'
-            : 'A keret betelt — új vendég egyelőre nem tud csatlakozni. Aki már csatlakozott, változatlanul fotózhat.'
+            : 'Betelt a vendégkeret. Új vendég egyelőre nem tud csatlakozni, aki pedig már csatlakozott, továbbra is fotózhat.'
           : en
             ? `${left} more guests can join before you need to unlock the event.`
-            : `Még ${left} vendég csatlakozhat. Utána új résztvevőt nem tudunk beengedni, amíg fel nem oldod.`}
+            : `Még ${left} vendég csatlakozhat. Ezután csak akkor csatlakozhat új vendég, ha megszünteted a vendégkorlátot.`}
       </p>
 
       {settling ? (
@@ -136,7 +134,7 @@ export function BillingCard({
           <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
           {en
             ? 'Processing the payment — this takes a few seconds.'
-            : 'Feldolgozzuk a fizetést — ez néhány másodperc.'}
+            : 'Feldolgozzuk a fizetést. Ez általában csak néhány másodpercig tart.'}
         </p>
       ) : null}
 
@@ -182,12 +180,12 @@ export function BillingCard({
                 : 'Átirányítás…'
               : en
                 ? `Unlock full event – ${eventPriceLabel(locale)}`
-                : `Teljes esemény feloldása – ${eventPriceLabel(locale)}`}
+                : `Vendégkorlát megszüntetése · ${eventPriceLabel(locale)}`}
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {en
               ? 'Unlimited guests with one payment. Final price appears at checkout.'
-              : 'Korlátlan résztvevő, egyszeri fizetéssel.'}
+              : 'Korlátlan számú vendég, egyszeri fizetéssel.'}
           </p>
         </form>
       ) : (
@@ -196,7 +194,7 @@ export function BillingCard({
         <p className="mt-4 rounded-xl bg-white/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
           {en
             ? 'Payments are not enabled yet. Contact us and we can unlock the event manually.'
-            : 'A fizetés még nincs bekapcsolva. Amíg nincs, írj nekünk, és feloldjuk neked kézzel.'}
+            : 'A fizetés még nincs beállítva. Addig is használhatod az albumot, segítségért pedig írj nekünk.'}
         </p>
       )}
 
