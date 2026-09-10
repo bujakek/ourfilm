@@ -48,7 +48,6 @@ type Props = {
  * browser, and only while there is a webhook to wait for.
  */
 export function CheckoutSuccess({ locale, slug, outcome, shots, note }: Props) {
-  const en = locale === 'en'
   const copy = outcomeCopy(outcome, locale, shots)
 
   return (
@@ -98,13 +97,6 @@ export function CheckoutSuccess({ locale, slug, outcome, shots, note }: Props) {
         >
           {copy.cta}
         </Link>
-
-        <Link
-          href={`/host/events/${slug}/settings?lang=${locale}#billing`}
-          className="min-h-11 py-3 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-        >
-          {en ? 'Billing details' : 'Számlázási részletek'}
-        </Link>
       </div>
 
       {outcome === 'settling' ? <CheckoutSettlePoller /> : null}
@@ -132,10 +124,10 @@ function outcomeCopy(outcome: CheckoutOutcome, locale: Locale, shots: number) {
     return {
       icon: '🎉',
       iconLabel: en ? 'party popper' : 'konfetti',
-      headline: en ? 'Event unlocked!' : 'Az esemény feloldva!',
+      headline: en ? 'Event unlocked!' : 'Nincs több vendégkorlát!',
       body: en
         ? `Everyone you invite can join now — and each of them still gets their own roll of ${shots}.`
-        : `Mostantól bárki csatlakozhat, akit meghívsz — és mindenki a saját ${shots} kockás tekercsét kapja.`,
+        : `Mostantól bárki csatlakozhat, akit meghívsz. Minden vendég továbbra is ${shots} képet készíthet.`,
       cta: en ? 'Back to your event' : 'Vissza az eseményhez',
     }
   }
@@ -150,15 +142,15 @@ function outcomeCopy(outcome: CheckoutOutcome, locale: Locale, shots: number) {
           : 'Mindjárt kész…'
         : en
           ? 'Not confirmed yet'
-          : 'Még nincs visszaigazolva',
+          : 'A fizetés még nincs visszaigazolva',
     body:
       outcome === 'settling'
         ? en
           ? 'We are confirming the payment. This usually takes a few seconds, and the page updates on its own.'
-          : 'Épp visszaigazoljuk a fizetést. Ez általában néhány másodperc, az oldal magától frissül.'
+          : 'Még várjuk a fizetés visszaigazolását. Ez általában csak néhány másodpercig tart. Az oldal magától frissül.'
         : en
           ? 'If you were charged, the event unlocks by itself within a few minutes. Nothing is lost either way.'
-          : 'Ha megtörtént a terhelés, az esemény pár percen belül magától feloldódik. Semmi nem vész el.',
+          : 'Ha levonták az összeget, a vendégkorlát néhány percen belül automatikusan megszűnik. Nem kell újra fizetned.',
     cta: en ? 'Back to your event' : 'Vissza az eseményhez',
   }
 }
