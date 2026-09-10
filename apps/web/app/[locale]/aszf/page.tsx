@@ -63,7 +63,7 @@ const sections: LegalSection[] = [
   {
     title: 'Díj és fizetés',
     body: [
-      `Az ingyenes eseményhez legfeljebb 5 külön vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél megszünteti a vendégkorlátot. Nem előfizetés, és nem jelent vendégenkénti díjat.`,
+      `Az ingyenes eseményhez legfeljebb 5 vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél megszünteti a vendégkorlátot. Nem előfizetés, és nem jelent vendégenkénti díjat.`,
       `A szolgáltató ${DIRECT_SALE.vatStatus}, ezért a feltüntetett ${EVENT_PRICE_LABEL} a fizetendő végösszeg. Az ár nem tartalmaz áfát, így abból áfa nem vonható le. A számla az „AAM” (alanyi adómentes) jelölést tartalmazza.`,
       `A fizetést a ${DIRECT_SALE.processorName} (${DIRECT_SALE.processorAddress}) fizetési szolgáltatóként dolgozza fel. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A számlázási névre és címre azért van szükség, mert a magyar számla kötelező tartalmi eleme.`,
       `A fizetés után a számlát az OurFilm állítja ki elektronikus számlaként, a ${DIRECT_SALE.invoiceProvider} számlázórendszerén keresztül, és a megadott e-mail-címre küldjük meg. A számlaadatokat a NAV Online Számla rendszerébe is továbbítjuk, ahogy azt jogszabály előírja. A vendégkorlátot a Stripe sikeres fizetési visszaigazolása után szüntetjük meg.`,

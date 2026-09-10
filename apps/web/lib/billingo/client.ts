@@ -166,7 +166,7 @@ export async function createInvoice(input: {
       paid: false,
       items: [
         {
-          name: 'OurFilm teljes eseménycsomag',
+          name: 'OurFilm teljes esemény',
           unit_price: input.grossHuf,
           unit_price_type: 'gross',
           quantity: 1,

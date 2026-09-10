@@ -59,7 +59,7 @@ const copy = {
     // thing a price page must never do — and an áfás vevő has to know before
     // paying that there is no VAT here to reclaim.
     vatNote:
-      'Az ár a fizetendő végösszeg. A szolgáltató alanyi adómentes, ezért az ár nem tartalmaz áfát, és áfa nem vonható le belőle. A számlát fizetés után e-mailben küldjük.',
+      'A feltüntetett ár a fizetendő végösszeg. A szolgáltató alanyi adómentes, ezért az összeg nem tartalmaz áfát, és áfa nem vonható le belőle. A számlát fizetés után e-mailben küldjük.',
     body: 'Minden vendég saját tekercset kap. A képeket pedig azonnal vagy az este végén nézhetitek meg együtt.',
     create: 'Hozzátok létre ingyen',
     helper: 'Nincs app. Nincs vendégregisztráció.',
