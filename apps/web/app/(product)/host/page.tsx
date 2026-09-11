@@ -2,7 +2,7 @@ import { EventList } from '@/components/host/event-list'
 import { EventListSkeleton } from '@/components/host/skeletons'
 import { captureIsOpen, getEventListItems } from '@/lib/events'
 import { localeTag, resolveLocale } from '@/lib/i18n'
-import { CalendarPlus, LogOut, Plus } from 'lucide-react'
+import { CalendarPlus, Plus, UserRound } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -43,21 +43,20 @@ export default async function AdminPage({
     >
       {/* The name of the page on a rule, with the two things a host does from
           here beside it. `Új kamera` is `.paper` because it is the one action
-          that makes something; signing out is an outline because it is not. */}
+          that makes something; account settings is an outline because it is
+          navigation. Sign-out lives on that account screen now. */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4.5">
         <h1 className="font-display text-[40px] leading-none tracking-[-0.01em]">
           {en ? 'Your events' : 'Eseményeid'}
         </h1>
         <div className="flex items-center gap-2.5">
-          <form action={`/auth/signout?lang=${locale}`} method="post">
-            <button
-              type="submit"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/14 px-4 text-[12px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground"
-            >
-              <LogOut className="size-3.5" aria-hidden="true" />
-              {en ? 'Sign out' : 'Kilépés'}
-            </button>
-          </form>
+          <Link
+            href={`/host/account?lang=${locale}`}
+            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/14 px-4 text-[12px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground"
+          >
+            <UserRound className="size-3.5" aria-hidden="true" />
+            {en ? 'Account' : 'Fiók'}
+          </Link>
           <Link
             href={`/host/events/new?lang=${locale}`}
             className="paper btn-shine inline-flex min-h-10 items-center gap-2 rounded-full px-4.5 text-[12.5px] font-semibold"

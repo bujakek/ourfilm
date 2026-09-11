@@ -32,3 +32,6 @@ export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '')
  * `AUTH_EMAIL_FROM`), which is a sender, not somewhere anyone reads.
  */
 export const CONTACT_EMAIL = 'support@ourfilm.app'
+
+/** The public OurFilm profile linked from the host account screen. */
+export const INSTAGRAM_URL = 'https://www.instagram.com/ourfilm.app/'
