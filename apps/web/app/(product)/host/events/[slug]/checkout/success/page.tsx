@@ -12,6 +12,7 @@ import {
 import { getOwnedEventBySlug } from '@/lib/events'
 import { formatMoment } from '@/lib/format'
 import { planNote } from '@/lib/plan-copy'
+import { reportServerEvent } from '@/lib/telemetry-server'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
@@ -88,6 +89,18 @@ export default async function CheckoutSuccessPage({ params }: Props) {
           .filter(Boolean)
           .join(' · ')
       : ''
+
+  // Reported from here rather than from the browser, for the reason the whole
+  // server list exists: this screen often navigates on within a few seconds,
+  // and PostHog loads on idle. It is also the only place that knows what the
+  // host was *told* — `checkout_settled` knows what Stripe said, which is a
+  // different fact and cannot distinguish a webhook that landed before the
+  // host finished reading from one that landed after they gave up.
+  await reportServerEvent('checkout_confirmation_viewed', {
+    event_id: event.id,
+    outcome,
+    plan_source: quota?.planSource ?? null,
+  })
 
   return (
     <CheckoutSuccess
