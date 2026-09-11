@@ -17,16 +17,16 @@ export async function updateHostDisplayName(name: string): Promise<void> {
   } = await supabase.auth.getUser()
   if (!user) throw new Error('A munkamenet lejárt. Jelentkezz be újra.')
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({ display_name: displayName })
-    .eq('id', user.id)
-    .select('id')
+  // Through the RPC rather than a PATCH on `profiles`, because the table has
+  // no self-update policy and must not get one: RLS filters rows, not columns,
+  // so a policy permitting this would permit `role = 'admin'` in the same
+  // request. The function writes `auth.uid()` and cannot be asked for another
+  // row. See `20260911061351_add_host_display_name.sql`.
+  const { error } = await supabase.rpc('set_host_display_name', {
+    p_name: displayName,
+  })
 
   if (error) throw error
-  if (!data || data.length === 0) {
-    throw new Error('A név nem módosult. Próbáld újra.')
-  }
 
   // The database trigger also rewrites every existing host participant row,
   // so gallery credits change without touching individual photo records.
