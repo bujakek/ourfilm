@@ -11,12 +11,12 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { SiInstagram } from 'react-icons/si'
+import { SiInstagram, SiTiktok } from 'react-icons/si'
 
 import { AccountNameForm } from '@/components/host/account-name-form'
 import { getCurrentHostProfile } from '@/lib/host-profile'
 import { localePath, localeTag, resolveLocale } from '@/lib/i18n'
-import { CONTACT_EMAIL, INSTAGRAM_URL, SITE_URL } from '@/lib/site'
+import { CONTACT_EMAIL, INSTAGRAM_URL, SITE_URL, TIKTOK_URL } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,14 +50,12 @@ function SettingsLink({
   icon,
   children,
   affordance,
-  external = false,
   destructive = false,
 }: {
   href: string
   icon: ReactNode
   children: ReactNode
   affordance: 'external' | 'chevron'
-  external?: boolean
   destructive?: boolean
 }) {
   const className = `flex min-h-18 items-center gap-4 border-b border-border px-1 text-base transition-colors last:border-b-0 ${
@@ -88,8 +86,11 @@ function SettingsLink({
   return (
     <Link
       href={href}
-      target={external ? '_blank' : undefined}
-      rel={external ? 'noreferrer' : undefined}
+      // One prop decides the mark and the tab together. A row that shows the
+      // outbound arrow and then replaces the page is the arrow lying, and the
+      // two drifted apart the moment they were separate props.
+      target={affordance === 'external' ? '_blank' : undefined}
+      rel={affordance === 'external' ? 'noopener noreferrer' : undefined}
       className={className}
     >
       {icon}
@@ -184,7 +185,6 @@ export default async function AccountPage({
         >
           <SettingsLink
             href={INSTAGRAM_URL}
-            external
             affordance="external"
             icon={
               <SiInstagram
@@ -196,8 +196,19 @@ export default async function AccountPage({
             Instagram
           </SettingsLink>
           <SettingsLink
+            href={TIKTOK_URL}
+            affordance="external"
+            icon={
+              <SiTiktok
+                className="size-[19px] text-foreground/75"
+                aria-hidden="true"
+              />
+            }
+          >
+            TikTok
+          </SettingsLink>
+          <SettingsLink
             href={homepage}
-            external
             affordance="external"
             icon={
               <Globe
