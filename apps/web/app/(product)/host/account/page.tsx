@@ -1,5 +1,5 @@
 import {
-  ArrowLeft,
+  ChevronLeft,
   ChevronRight,
   ExternalLink,
   Globe2,
@@ -15,6 +15,7 @@ import { SiInstagram } from 'react-icons/si'
 
 import { AccountNameForm } from '@/components/host/account-name-form'
 import { getCurrentHostProfile } from '@/lib/host-profile'
+import { inputSurfaceClassName } from '@/components/ui/input'
 import { localePath, localeTag, resolveLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL, INSTAGRAM_URL, SITE_URL } from '@/lib/site'
 
@@ -113,12 +114,16 @@ export default async function AccountPage({
       className="mx-auto w-full max-w-3xl px-4 pt-7 pb-16 sm:px-6 sm:pt-12"
       lang={localeTag[locale]}
     >
+      {/* A target rather than a sentence. This is the only way off the screen
+          that is not an action, and at the top of a phone it has to be
+          thumb-sized — the word beside it added nothing a chevron in the
+          corner of a settings page does not already say. */}
       <Link
         href={`/host?lang=${locale}`}
-        className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        aria-label={en ? 'Back' : 'Vissza'}
+        className="glass inline-flex size-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="size-5" strokeWidth={1.8} aria-hidden="true" />
-        {en ? 'Back' : 'Vissza'}
+        <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
       </Link>
 
       <h1 className="mt-7 font-display text-[46px] leading-none tracking-[-0.015em] sm:text-[56px]">
@@ -130,7 +135,7 @@ export default async function AccountPage({
           id="profile-heading"
           className="font-mono text-[10px] font-medium tracking-[0.22em] text-foreground/42"
         >
-          {en ? 'PROFILE' : 'PROFIL'}
+          {en ? 'PERSONAL DETAILS' : 'SZEMÉLYES ADATOK'}
         </h2>
         <div className="mt-5">
           {profile.canEditName ? (
@@ -154,13 +159,27 @@ export default async function AccountPage({
           )}
         </div>
 
-        <div className="mt-8 border-b border-border pb-7">
+        {/* Drawn as a field, though nothing here can edit it. It is the same
+            kind of fact as the name directly above — what the account *is* —
+            and a bare line of text under a bordered input read as a caption
+            belonging to the input rather than as its own value. Changing a
+            sign-in address is an auth flow, not a settings row. */}
+        <div className="mt-8">
           <p className="text-sm text-muted-foreground">
             {en ? 'Sign-in email' : 'Belépési e-mail-cím'}
           </p>
-          <p className="mt-1.5 text-base break-all text-foreground">
-            {profile.email}
-          </p>
+          <div
+            className={`mt-2 ${inputSurfaceClassName} text-muted-foreground`}
+          >
+            <Mail
+              className="size-5 shrink-0"
+              strokeWidth={1.7}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1 truncate text-base text-foreground sm:text-sm">
+              {profile.email}
+            </span>
+          </div>
         </div>
       </section>
 
