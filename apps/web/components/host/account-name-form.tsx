@@ -22,7 +22,6 @@ export function AccountNameForm({
   const [savedName, setSavedName] = useState(name)
   const [value, setValue] = useState(name)
   const [pending, startTransition] = useTransition()
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const trimmed = value.trim()
@@ -58,7 +57,6 @@ export function AccountNameForm({
             value={value}
             onChange={(event) => {
               setValue(event.target.value)
-              setSaved(false)
               setError(null)
             }}
             className={`mt-2 ${inputClassName}`}
@@ -83,7 +81,6 @@ export function AccountNameForm({
               await updateHostDisplayName(trimmed)
               setSavedName(trimmed)
               setValue(trimmed)
-              setSaved(true)
             } catch {
               setError(
                 en
@@ -112,10 +109,6 @@ export function AccountNameForm({
           {en
             ? 'Enter at least 2 characters.'
             : 'Adj meg legalább 2 karaktert.'}
-        </p>
-      ) : saved ? (
-        <p role="status" className="mt-2 text-sm text-accent">
-          {en ? 'Saved.' : 'Elmentettük.'}
         </p>
       ) : null}
     </div>
