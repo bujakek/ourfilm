@@ -94,7 +94,7 @@ function SettingsLink({
     >
       {icon}
       <span className="flex-1">{children}</span>
-      {affordance}
+      {trailing}
     </Link>
   )
 }
