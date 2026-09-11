@@ -37,7 +37,7 @@ import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
 import { CreateOwnAlbum } from './create-own-album'
-import { FilmStrip } from './film-strip'
+import { type CaptureReceiptState, FilmStrip } from './film-strip'
 import { InviteButton } from './invite-button'
 import { PhotoGrid } from './photo-grid'
 
@@ -49,11 +49,9 @@ const SLOW_PREPARATION_MS = 5_000
 /**
  * What the screen says when something goes wrong.
  *
- * There is no success case any more. A landed shot already announces itself
- * three times over — the frame develops into the strip, the progress fills,
- * and the counter rolls down — and a line of text under all that was the
- * fourth telling of the same news. Failures still need words, because nothing
- * else on the screen changes when an upload dies.
+ * The global line carries only conditions that affect the whole camera. Which
+ * of several captures is safe is not one of those — a single line cannot say
+ * it about three photos at once, so each frame wears its own mark instead.
  */
 type Flash = string | null
 
@@ -76,9 +74,12 @@ type Capture = {
   id: string
   /** Null until `reserve_shot` has granted the frame. */
   photoId: string | null
-  previewUrl: string
+  previewUrl: string | null
   progress: number
   confirmed: boolean
+  /** Whether IndexedDB has acknowledged at least one complete local copy. */
+  durable: boolean
+  receipt: CaptureReceiptState
 }
 
 /**
@@ -145,6 +146,7 @@ export function GuestEventView({
   // Timing for telemetry, keyed by capture id. Refs, not state: none of it is
   // drawn, and a re-render per timestamp would be a re-render per photo.
   const startedAt = useRef(new Map<string, number>())
+  const reservedCaptures = useRef(new Set<string>())
   const reportedIssues = useRef(new Set<string>())
   const cameraOpenedAt = useRef<number | null>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
@@ -220,7 +222,8 @@ export function GuestEventView({
     const shown = new Set(
       captures
         .filter((c) => isDeveloping(c, frameIds))
-        .map((c) => c.previewUrl),
+        .map((c) => c.previewUrl)
+        .filter((url): url is string => url !== null),
     )
     for (const url of live) {
       if (!shown.has(url)) {
@@ -251,7 +254,7 @@ export function GuestEventView({
   // but the *gate* has to subtract what is still in flight. Without that, a
   // guest on their last frame could press twice and have the second photo
   // refused after it was taken, and there is no retake in this product.
-  const outstanding = captures.filter((c) => !c.confirmed).length
+  const outstanding = captures.filter((c) => isOutstanding(c)).length
   const canTakePhoto = captureIsOpen && remaining - outstanding > 0
   const uploading = outstanding > 0
   /**
@@ -273,7 +276,18 @@ export function GuestEventView({
   // brought a capture's own photo down, the strip renders the real frame and
   // that cell stops being shown. `captures` is appended in capture order and
   // never re-sorted, so the survivors stay in order without sorting.
-  const developing = captures.filter((c) => isDeveloping(c, frameIds))
+  const developing = captures
+    .filter(
+      (c): c is Capture & { previewUrl: string } =>
+        c.previewUrl !== null && isDeveloping(c, frameIds),
+    )
+    .map((c) => ({
+      previewUrl: c.previewUrl,
+      progress: c.progress,
+      confirmed: c.confirmed,
+      receipt: c.receipt,
+      durable: c.durable,
+    }))
 
   /**
    * What takes over the line under the shutter, in order of what a guest
@@ -324,24 +338,29 @@ export function GuestEventView({
    *
    * Shared by the shutter and by resume, because a recovered shot is not a
    * different kind of thing: it is a photo this device took and still owes. It
-   * develops in the strip exactly like a fresh one, which is the whole of the
-   * recovery UI — there is no separate banner and nothing new to translate.
+   * develops in the strip exactly like a fresh one and gets the same durable
+   * receipt, so a reload does not make its state mysterious.
    */
-  const claimCell = useCallback((id: string, source: Blob) => {
-    setCaptures((current) => {
-      if (current.some((c) => c.id === id)) return current
-      return [
-        ...current,
-        {
-          id,
-          photoId: null,
-          previewUrl: URL.createObjectURL(source),
-          progress: 0,
-          confirmed: false,
-        },
-      ]
-    })
-  }, [])
+  const claimCell = useCallback(
+    (id: string, source: Blob, receipt: CaptureReceiptState = 'saving') => {
+      setCaptures((current) => {
+        if (current.some((c) => c.id === id)) return current
+        return [
+          ...current,
+          {
+            id,
+            photoId: null,
+            previewUrl: URL.createObjectURL(source),
+            progress: 0,
+            confirmed: false,
+            durable: receipt === 'stored',
+            receipt,
+          },
+        ]
+      })
+    },
+    [],
+  )
 
   /**
    * The uploader itself, built once on mount and never rebuilt.
@@ -397,14 +416,38 @@ export function GuestEventView({
         store: uploadStore,
       },
       handlers: {
-        onReserved(id, photoId) {
+        onStored(id, durable) {
           setCaptures((current) =>
-            current.map((c) => (c.id === id ? { ...c, photoId } : c)),
+            current.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    durable: c.durable || durable,
+                    receipt: durable ? 'stored' : 'memory_only',
+                  }
+                : c,
+            ),
+          )
+        },
+        onReserved(id, photoId) {
+          reservedCaptures.current.add(id)
+          setCaptures((current) =>
+            current.map((c) =>
+              c.id === id ? { ...c, photoId, receipt: 'uploading' } : c,
+            ),
           )
         },
         onProgress(id, progress) {
           setCaptures((current) =>
-            current.map((c) => (c.id === id ? { ...c, progress } : c)),
+            current.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    progress,
+                    receipt: progress > 0 ? 'uploading' : c.receipt,
+                  }
+                : c,
+            ),
           )
         },
         onConfirmed(id, shotsRemaining) {
@@ -419,25 +462,49 @@ export function GuestEventView({
             // already walked away from the screen.
             elapsed_ms: started === undefined ? null : now - started,
           })
+          reservedCaptures.current.delete(id)
           setRemaining(shotsRemaining)
           setCaptures((current) =>
             current.map((c) =>
-              c.id === id ? { ...c, progress: 1, confirmed: true } : c,
+              c.id === id
+                ? {
+                    ...c,
+                    progress: 1,
+                    confirmed: true,
+                    receipt: 'confirmed',
+                  }
+                : c,
             ),
           )
           router.refresh()
         },
         onDropped(id, reason) {
-          setCaptures((current) => current.filter((c) => c.id !== id))
+          const frameWasReserved = reservedCaptures.current.delete(id)
+          setCaptures((current) =>
+            current.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    previewUrl: null,
+                    progress: 0,
+                    receipt: 'lost',
+                  }
+                : c,
+            ),
+          )
           // A shot nobody is waiting for any more must not be counted in a
           // receipt claiming it went up. Over-subtracting only hides the
           // receipt, which is the safe direction to be wrong in.
           setOfflineBacklog((n) => Math.max(0, n - 1))
           if (reason === 'refused') return
           setFlash(
-            en
-              ? 'The photo did not upload. Please try again.'
-              : 'A kép nem töltődött fel. Próbáld újra.',
+            frameWasReserved
+              ? en
+                ? 'This photo could not be saved. Its frame returns within 10 minutes.'
+                : 'Ezt a képet nem sikerült megőrizni. A képkocka legfeljebb 10 percen belül visszakerül.'
+              : en
+                ? 'This photo could not be saved. No frame was used.'
+                : 'Ezt a képet nem sikerült megőrizni. Nem használtunk el képkockát.',
           )
         },
         onRefusal(refusal) {
@@ -446,6 +513,14 @@ export function GuestEventView({
         },
         onIssue(id, issue) {
           reportIssue(id, issue)
+          if (issue.terminal) return
+          setCaptures((current) =>
+            current.map((c) =>
+              c.id === id && !c.confirmed && c.receipt !== 'lost'
+                ? { ...c, receipt: 'waiting' }
+                : c,
+            ),
+          )
         },
         onPrepared(id, file, outcome) {
           if (!outcome.ok || outcome.ms < SLOW_PREPARATION_MS) return
@@ -471,6 +546,22 @@ export function GuestEventView({
             },
             { urgent: true },
           )
+          setCaptures((current) => {
+            if (current.some((c) => c.id === id)) return current
+            return [
+              ...current,
+              {
+                id,
+                photoId: null,
+                previewUrl: null,
+                progress: 0,
+                confirmed: false,
+                durable: false,
+                receipt: 'lost',
+              },
+            ]
+          })
+          setFlash(discardedMessage(reason, locale))
         },
         onRestored({ id, blob, capturedAt }) {
           startedAt.current.set(id, capturedAt)
@@ -479,7 +570,7 @@ export function GuestEventView({
             capture_id: id,
             age_ms: Date.now() - capturedAt,
           })
-          claimCell(id, blob)
+          claimCell(id, blob, 'stored')
         },
       },
     }))
@@ -825,7 +916,12 @@ export function GuestEventView({
  * its own photo has come down yet — never a comparison of counts.
  */
 function isDeveloping(capture: Capture, frameIds: Set<string>): boolean {
+  if (capture.receipt === 'lost') return false
   return !capture.photoId || !frameIds.has(capture.photoId)
+}
+
+function isOutstanding(capture: Capture): boolean {
+  return capture.receipt !== 'confirmed' && capture.receipt !== 'lost'
 }
 
 function refusalMessage(refusal: string, locale: Locale): string {
@@ -848,7 +944,26 @@ function refusalMessage(refusal: string, locale: Locale): string {
         : 'A feltöltés átmenetileg szünetel. Kérd meg a szervezőt, hogy írjon nekünk.'
     default:
       return en
-        ? 'The photo did not upload. Please try again.'
-        : 'A kép nem töltődött fel. Próbáld újra.'
+        ? 'The upload is waiting. We will retry automatically.'
+        : 'A feltöltés várakozik. Automatikusan újrapróbáljuk.'
+  }
+}
+
+function discardedMessage(reason: string, locale: Locale): string {
+  const en = locale === 'en'
+  switch (reason) {
+    case 'expired':
+      return en
+        ? 'A photo saved on this phone expired before it reached the album. Its frame is available again within 10 minutes.'
+        : 'Egy ezen a telefonon tárolt kép lejárt, mielőtt az albumba került volna. A képkocka legfeljebb 10 percen belül újra elérhető.'
+    case 'empty':
+    case 'unreadable':
+      return en
+        ? 'A saved photo became unreadable and did not reach the album. Its frame is available again within 10 minutes.'
+        : 'Egy mentett kép olvashatatlanná vált, ezért nem került az albumba. A képkocka legfeljebb 10 percen belül újra elérhető.'
+    default:
+      return en
+        ? 'A saved photo could not reach the album. Its frame is available again within 10 minutes.'
+        : 'Egy mentett kép nem jutott el az albumba. A képkocka legfeljebb 10 percen belül újra elérhető.'
   }
 }

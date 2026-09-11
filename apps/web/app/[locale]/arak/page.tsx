@@ -46,7 +46,7 @@ const copy = {
     faq: 'FAQ',
   },
   hu: {
-    title: 'Árak – OurFilm',
+    title: 'Árak · OurFilm',
     description: `Egy teljes esküvői vendégkamera ${EVENT_PRICE_LABEL}-ért, egyszeri fizetéssel. Legfeljebb ${FREE_PARTICIPANT_LIMIT} vendéggel ingyen kipróbálható.`,
     eyebrow: 'ÁRAK',
     heading: 'Egy esküvő. Egy kamera. Egy ár.',
@@ -59,7 +59,7 @@ const copy = {
     // thing a price page must never do — and an áfás vevő has to know before
     // paying that there is no VAT here to reclaim.
     vatNote:
-      'Az ár a fizetendő végösszeg. Alanyi adómentes szolgáltatás: áfát nem tartalmaz, és áfa nem helyezhető levonásba utána. A számlát fizetés után e-mailben küldjük.',
+      'A feltüntetett ár a fizetendő végösszeg. A szolgáltató alanyi adómentes, ezért az összeg nem tartalmaz áfát, és áfa nem vonható le belőle. A számlát fizetés után e-mailben küldjük.',
     body: 'Minden vendég saját tekercset kap. A képeket pedig azonnal vagy az este végén nézhetitek meg együtt.',
     create: 'Hozzátok létre ingyen',
     helper: 'Nincs app. Nincs vendégregisztráció.',
@@ -73,7 +73,7 @@ const copy = {
       ['Album letöltése', 'EGYBEN, ZIP-BEN'],
     ],
     tryHeading: 'Előbb próbáld ki.',
-    tryBody: `Legfeljebb ${FREE_PARTICIPANT_LIMIT} vendéggel teljesen ingyen használhatjátok. Ha többen csatlakoznának, egyetlen fizetéssel megszüntethetitek a vendéglimitet.`,
+    tryBody: `Legfeljebb ${FREE_PARTICIPANT_LIMIT} vendéggel teljesen ingyen használhatjátok. Ha többen csatlakoznának, egyetlen fizetéssel megszüntethetitek a vendégkorlátot.`,
     noCard: 'Bankkártya nélkül',
     question: 'Kérdésed van?',
     contact: 'Írj nekünk',

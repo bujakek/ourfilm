@@ -1,6 +1,8 @@
 import 'server-only'
 
+import { hostDisplayName } from './host-name'
 import { newParticipantSession } from './participants'
+import { reportServerIssue } from './telemetry-server'
 import { createAdminClient } from './supabase/admin'
 import { createClient } from './supabase/server'
 
@@ -30,23 +32,6 @@ export type HostParticipant = {
 }
 
 /**
- * The display name a host's photos are credited to, until accounts carry a
- * real name.
- *
- * The local part only. `display_name` is not internal — it is the lightbox
- * caption every guest reads and it goes into ZIP filenames through
- * `archiveEntryName`, where `[^\p{L}\p{N}]+` collapses the `@` and the dots,
- * so `anna@kovacs.hu` would be stamped on the couple's archive for ever as
- * `anna-kovacs-hu`. The part before the `@` identifies the host without
- * publishing an address anyone can write to, and reads like the name that
- * will eventually replace it.
- */
-export function hostDisplayName(email: string | null | undefined): string {
-  const local = (email ?? '').split('@')[0]?.trim()
-  return local || 'Host'
-}
-
-/**
  * Resolve — and on first use create — the signed-in host's participant row for
  * an event they own.
  *
@@ -65,11 +50,35 @@ export async function hostParticipant(
   } = await supabase.auth.getUser()
   if (!user) return null
 
+  // The same containment as `getCurrentHostProfile`, and it matters more here.
+  // This runs on the shutter: between a deploy and its migration the column is
+  // `42703 undefined_column`, and throwing would have refused the host a frame
+  // at their own event — for a *caption*. The name is the one part of a photo
+  // that can be corrected afterwards, and setting a display name rewrites every
+  // existing credit anyway, so a wrong name for an hour costs nothing and a
+  // refused shot cannot be taken again.
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError) {
+    console.error('Could not read the host display name', profileError)
+    await reportServerIssue(profileError, {
+      operation: 'host_profile_read',
+      eventId,
+      route: '/host/events/[slug]',
+      routeType: 'page',
+      method: 'GET',
+    })
+  }
+
   const { data, error } = await createAdminClient()
     .rpc('host_participant', {
       p_event_id: eventId,
       p_user_id: user.id,
-      p_name: hostDisplayName(user.email),
+      p_name: hostDisplayName(user.email, profile?.display_name),
       // Only used when the row is being created. An existing row hands its own
       // hash back and this is discarded — which is the point: a rotating hash
       // would strand a `commit_shot` issued against the previous one.

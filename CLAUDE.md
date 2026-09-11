@@ -405,27 +405,37 @@ is the whole of it, and it is a separate list from the browser's because these
 are separate promises: every property is reduced to a bounded scalar, and
 `event_id` and `creation_key` are refused unless they are uuids.
 
-| Event                       | Answers                                                                       |
-| --------------------------- | ----------------------------------------------------------------------------- |
-| `checkout_started`          | A host reached Stripe, and from which of the two entry points                 |
-| `checkout_blocked`          | …or was refused first, and why. Six reasons, all of them a sentence read      |
-| `checkout_settled`          | What Stripe reported server to server: paid, failed, expired, refunded        |
-| `event_created`             | The row exists, with the shape the host chose and whether it was a repeat     |
-| `event_deleted`             | The one destructive path, with the album's size and age                       |
-| `photo_deleted`             | A frame destroyed, and whether it was already hidden when they did it         |
-| `event_setting_changed`     | What hosts adjust on a running camera, and how far they move the end          |
-| `album_export_queued`       | A large album was asked for; a job row exists and nothing is built yet        |
-| `album_export_started`      | An archive began: the stream started, or a worker claimed the job             |
-| `album_export_finished`     | …and finished. `missing_count` is silent data loss and wants an alert         |
-| `album_export_failed`       | A worker gave up on an attempt; `final` is the one the host sees              |
-| `album_export_email_sent`   | Resend accepted the album-ready mail. Its absence after a finish is the alert |
-| `album_export_email_failed` | …or refused it; the sweep retries up to five times                            |
-| `album_export_sweep`        | One run of the cron-driven sweep. No run for an hour is the alert             |
-| `auth_email_sent`           | The mail was accepted, in the language the hook actually rendered             |
-| `invoice_issued`            | A Hungarian invoice exists in Billingo and was emailed to the buyer           |
-| `invoice_failed`            | …or was not. `blocked` is the Billingo document quota, which needs a human    |
-| `invoice_cancelled`         | A refunded purchase's invoice was cancelled with a storno document            |
-| `invoice_sweep`             | One run of the invoice retry sweep. No run for an hour is the alert           |
+| Event                          | Answers                                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| `checkout_started`             | A host reached Stripe, and from which of the two entry points                 |
+| `checkout_blocked`             | …or was refused first, and why. Six reasons, all of them a sentence read      |
+| `checkout_settled`             | What Stripe reported server to server: paid, failed, expired, refunded        |
+| `checkout_confirmation_viewed` | What the host was _told_ after paying, and how long the confirmation took     |
+| `event_created`                | The row exists, with the shape the host chose and whether it was a repeat     |
+| `event_deleted`                | The one destructive path, with the album's size and age                       |
+| `photo_deleted`                | A frame destroyed, and whether it was already hidden when they did it         |
+| `event_setting_changed`        | What hosts adjust on a running camera, and how far they move the end          |
+| `album_export_queued`          | A large album was asked for; a job row exists and nothing is built yet        |
+| `album_export_started`         | An archive began: the stream started, or a worker claimed the job             |
+| `album_export_finished`        | …and finished. `missing_count` is silent data loss and wants an alert         |
+| `album_export_failed`          | A worker gave up on an attempt; `final` is the one the host sees              |
+| `album_export_email_sent`      | Resend accepted the album-ready mail. Its absence after a finish is the alert |
+| `album_export_email_failed`    | …or refused it; the sweep retries up to five times                            |
+| `album_export_sweep`           | One run of the cron-driven sweep. No run for an hour is the alert             |
+| `auth_email_sent`              | The mail was accepted, in the language the hook actually rendered             |
+| `invoice_issued`               | A Hungarian invoice exists in Billingo and was emailed to the buyer           |
+| `invoice_failed`               | …or was not. `blocked` is the Billingo document quota, which needs a human    |
+| `invoice_cancelled`            | A refunded purchase's invoice was cancelled with a storno document            |
+| `invoice_sweep`                | One run of the invoice retry sweep. No run for an hour is the alert           |
+
+`checkout_confirmation_viewed` is the one event about the host rather than
+the money, and it exists because `checkout_settled` cannot answer the
+question that generates the support email. A webhook landing two seconds
+after the host gave up is indistinguishable, to Stripe, from one that landed
+while they were still reading. `settling` counted against a later `paid` on
+the same `event_id` is how long confirmation takes from where the host is
+standing; `unconfirmed` is somebody who reached that screen with no payment
+we could find, which is either a typed URL or something wrong.
 
 Three of those pairs are read as gaps rather than as counts. A
 `checkout_started` with no `checkout_settled` is an abandoned Stripe page; an

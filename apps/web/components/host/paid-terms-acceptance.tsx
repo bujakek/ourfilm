@@ -55,7 +55,7 @@ export function PaidTermsAcceptance({ locale }: { locale: Locale }) {
       határidő lejárta előtt kezdje meg a szolgáltatás teljesítését. Tudomásul
       veszem, hogy felmondás esetén a felmondás közléséig arányosan teljesített
       szolgáltatás díját meg kell fizetnem, valamint azt, hogy a szolgáltatás
-      teljes teljesítését követően elveszítem a felmondási jogomat.
+      maradéktalan teljesítését követően elveszítem a felmondási jogomat.
     </span>
   )
 }

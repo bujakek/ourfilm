@@ -62,6 +62,23 @@ export type ServerEventProperties = {
     /** The event was deleted between paying and Stripe reporting it. */
     event_deleted: boolean
   }
+  /**
+   * What the host was actually *told* after paying, which is not the same
+   * question as what Stripe reported.
+   *
+   * `checkout_settled` is the truth about the money and cannot see this:
+   * a webhook that lands two seconds after the host gave up looks identical
+   * to one that landed before they finished reading. `settling` counted
+   * against a later `paid` is how long confirmation takes from where the
+   * host is standing, and `unconfirmed` is somebody who reached this screen
+   * with no payment we could find — a typed URL, or something wrong.
+   */
+  checkout_confirmation_viewed: {
+    event_id: string
+    outcome: 'paid' | 'settling' | 'unconfirmed'
+    /** Why the event is uncapped, when it is. Null while still settling. */
+    plan_source: 'paid' | 'early_couple' | 'operator' | 'admin' | null
+  }
   /** A large album was asked for and a job row now exists. Nothing has been
    *  built yet; `album_export_started` is the worker picking it up. */
   album_export_queued: {

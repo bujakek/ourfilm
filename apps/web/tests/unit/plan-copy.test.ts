@@ -27,9 +27,9 @@ describe('toPlanSource', () => {
 describe('planNote', () => {
   it('shows the receipt for a payment', () => {
     expect(planNote('paid', 'hu', '12 900 Ft · 2026. 09. 01.')).toBe(
-      'Kifizetve — 12 900 Ft · 2026. 09. 01.',
+      'Kifizetve · 12 900 Ft · 2026. 09. 01.',
     )
-    expect(planNote('paid', 'en', '39 USD')).toBe('Paid — 39 USD')
+    expect(planNote('paid', 'en', '39 USD')).toBe('Paid · 39 USD')
   })
 
   it('says nothing rather than asserting an amount it does not have', () => {

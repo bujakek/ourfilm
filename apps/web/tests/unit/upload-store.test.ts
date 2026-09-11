@@ -54,7 +54,7 @@ afterEach(() => {
 describe('keeping a captured shot', () => {
   it('round-trips the bytes and the file identity', async () => {
     const original = shot()
-    await uploadStore.put(original)
+    await expect(uploadStore.put(original)).resolves.toBe(true)
 
     const [read] = await uploadStore.listByEvent(EVENT)
     expect(read.id).toBe(original.id)
@@ -225,7 +225,7 @@ describe('when the browser will not store anything', () => {
     await __resetForTests()
     vi.stubGlobal('indexedDB', undefined)
 
-    await expect(uploadStore.put(shot())).resolves.toBeUndefined()
+    await expect(uploadStore.put(shot())).resolves.toBe(false)
     await expect(uploadStore.listByEvent(EVENT)).resolves.toEqual([])
     await expect(uploadStore.remove('anything')).resolves.toBe(false)
   })

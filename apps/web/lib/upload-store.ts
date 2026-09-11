@@ -127,7 +127,8 @@ function fromRecord(record: StoredRecord): StoredShot {
 }
 
 export type UploadStore = {
-  put(shot: StoredShot): Promise<void>
+  /** True only when the bytes are durably present in IndexedDB. */
+  put(shot: StoredShot): Promise<boolean>
   listByEvent(eventId: string): Promise<StoredShot[]>
   remove(id: string): Promise<boolean>
 }
@@ -224,11 +225,13 @@ export const uploadStore: UploadStore = {
   async put(shot) {
     captureEvents.set(shot.id, shot.eventId)
     const db = await database(shot.eventId)
-    if (!db) return
+    if (!db) return false
     try {
       await db.put(STORE, await toRecord(shot))
+      return true
     } catch (error) {
       warnOnce('put', error, shot.eventId)
+      return false
     }
   },
 

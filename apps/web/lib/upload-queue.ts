@@ -65,6 +65,12 @@ export type UploadQueueDeps = {
 
 export type UploadQueueHandlers = {
   /**
+   * The first local write finished. `durable` is true only when the bytes are
+   * in IndexedDB and will survive a reload; false means this tab is still the
+   * photo's only home.
+   */
+  onStored?(id: string, durable: boolean): void
+  /**
    * The server has granted the frame. Reported so the screen can match its
    * in-flight cell against the real photo when it comes down, rather than
    * against a count — uploads land out of order once one is deferred.
@@ -89,8 +95,8 @@ export type UploadQueueHandlers = {
   /**
    * A stored row was thrown away on resume without ever being tried in this
    * tab. `expired` is the age policy, `exhausted` the attempt budget, `empty` a
-   * zero-byte blob. Each is a photo this device lost; nobody is told on screen,
-   * because there is nothing they could do, but somebody should count them.
+   * zero-byte blob. Each is a photo this device lost, so the screen must say
+   * so even though there is nothing the guest can do to recover it.
    */
   onDiscarded?(id: string, reason: DiscardReason, ageMs: number): void
   /**
@@ -254,7 +260,8 @@ export function createUploadQueue({
       // downstream depends on the handle staying valid either.
       const source = await materialize(file)
       item.shot.blob = source
-      await deps.store.put(item.shot)
+      let durable = await deps.store.put(item.shot)
+      notify(() => handlers.onStored?.(item.shot.id, durable))
       if (stopped) return
 
       const master = await deps.compress(source)
@@ -263,7 +270,11 @@ export function createUploadQueue({
       item.shot.width = master.width
       item.shot.height = master.height
       item.shot.takenAt = master.takenAt?.toISOString() ?? null
-      await deps.store.put(item.shot)
+      const masterDurable = await deps.store.put(item.shot)
+      if (!durable && masterDurable) {
+        durable = true
+        notify(() => handlers.onStored?.(item.shot.id, true))
+      }
       const outcome: PreparedOutcome = {
         ok: true,
         ms: clock() - started,

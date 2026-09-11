@@ -1,4 +1,5 @@
 import { BillingCard } from '@/components/host/billing-card'
+import { BackLink } from '@/components/ui/back-link'
 import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
 import { EventNameCard } from '@/components/host/event-name-card'
@@ -23,9 +24,7 @@ import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
 import { planNote } from '@/lib/plan-copy'
 import { checkoutIsConfigured } from '@/lib/checkout-readiness'
-import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
@@ -53,8 +52,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * The event page is what a host opens mid-party — the QR code, the photos, the
  * download. Visibility, billing and deletion are decisions made once, and
  * sitting them next to the QR card made the one screen that has to work in a
- * dim room at 1am the busiest in the product. Stripe sends the host back here
- * too, so the receipt lands next to the card that explains it.
+ * dim room at 1am the busiest in the product. A cancelled checkout comes back
+ * here, where the decision was made; a paid one gets its own screen at
+ * `checkout/success` and links back to this card for the receipt.
  *
  * Each card carries its own heading, so this page deliberately has no section
  * headings of its own — a second title above every card would only repeat it.
@@ -80,9 +80,15 @@ export default async function AdminEventSettingsPage({
     captureEndAt: new Date(event.capture_end_at),
   })
 
-  // Only the two values Stripe is sent back with are honoured. Anything else
-  // in the query string is somebody typing, and a "payment succeeded" banner
-  // is not something a URL should be able to conjure.
+  // Only these two values are honoured. Anything else in the query string is
+  // somebody typing, and a "payment succeeded" banner is not something a URL
+  // should be able to conjure — which is why even `success` only makes the
+  // card re-read the plan rather than assert anything.
+  //
+  // Stripe now returns a paid host to `checkout/success` instead, but a
+  // Checkout Session already open when that changed still carries the old
+  // `success_url`. Sessions live 45 minutes, so this branch is what keeps an
+  // in-flight payment from landing on a page that has forgotten about it.
   const { checkout } = await searchParams
   const checkoutState =
     checkout === 'success' || checkout === 'cancelled' ? checkout : null
@@ -98,16 +104,17 @@ export default async function AdminEventSettingsPage({
 
   return (
     <main
-      className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16"
+      // The same frame as the event page this sits one tap from: `px-5 sm:px-7`
+      // and `pt-7`, so the back link does not jump when a host moves between
+      // them. It was `px-4 py-10`, which put the arrow 4px to the left and
+      // 12px lower on a phone — small enough to read as the page shifting
+      // rather than as a difference anyone chose.
+      className="mx-auto w-full max-w-lg px-5 pt-7 pb-11 sm:px-7"
       lang={localeTag[locale]}
     >
-      <Link
-        href={`/host/events/${event.slug}?lang=${locale}`}
-        className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
+      <BackLink href={`/host/events/${event.slug}?lang=${locale}`}>
         {event.event_name}
-      </Link>
+      </BackLink>
 
       <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance">
         {en ? 'Settings' : 'Beállítások'}

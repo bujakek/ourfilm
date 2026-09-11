@@ -5,10 +5,10 @@ import {
   occasionCopy,
   occasions,
 } from '@/lib/occasions'
-import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { BackLink } from '@/components/ui/back-link'
 import { buttonVariants } from '@/components/ui/button'
 
 import { CREATE_EVENT_PATH } from '@/lib/routes'
@@ -100,13 +100,9 @@ export default async function OccasionPage({ params }: Props) {
             </p>
           </div>
 
-          <Link
-            href={localePath(locale, '/alkalmak')}
-            className="mt-12 inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
+          <BackLink href={localePath(locale, '/alkalmak')} className="mt-12">
             {locale === 'en' ? 'All occasions' : 'Minden alkalom'}
-          </Link>
+          </BackLink>
         </div>
       </section>
     </PageShell>

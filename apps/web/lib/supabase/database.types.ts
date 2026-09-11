@@ -420,16 +420,19 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          display_name: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
           created_at?: string
+          display_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
           created_at?: string
+          display_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
         }
@@ -1020,6 +1023,7 @@ export type Database = {
         Args: { p_event_slug: string; p_note?: string }
         Returns: boolean
       }
+      set_host_display_name: { Args: { p_name: string }; Returns: string }
       shot_reservation_ttl: { Args: never; Returns: string }
       sweep_album_exports: {
         Args: never
