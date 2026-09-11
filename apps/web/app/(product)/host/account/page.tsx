@@ -1,8 +1,8 @@
 import {
-  ChevronLeft,
+  ArrowLeft,
   ChevronRight,
   ExternalLink,
-  Globe2,
+  Globe,
   LogOut,
   Mail,
   Trash2,
@@ -15,7 +15,6 @@ import { SiInstagram } from 'react-icons/si'
 
 import { AccountNameForm } from '@/components/host/account-name-form'
 import { getCurrentHostProfile } from '@/lib/host-profile'
-import { inputSurfaceClassName } from '@/components/ui/input'
 import { localePath, localeTag, resolveLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL, INSTAGRAM_URL, SITE_URL } from '@/lib/site'
 
@@ -36,16 +35,28 @@ export async function generateMetadata({
   }
 }
 
+/**
+ * One row of the account screen.
+ *
+ * `affordance` is passed rather than inferred, and that is the design talking
+ * rather than an oversight. The trailing mark here belongs to the *section*:
+ * everything under OURFILM is somewhere else to read, and everything under
+ * FIÓKMŰVELETEK is something this account does. `Kapcsolat` is an ordinary page
+ * on this site and still takes the outbound mark, because on that row it reads
+ * as "one of the OurFilm links" rather than as a promise about tab handling.
+ */
 function SettingsLink({
   href,
   icon,
   children,
+  affordance,
   external = false,
   destructive = false,
 }: {
   href: string
   icon: ReactNode
   children: ReactNode
+  affordance: 'external' | 'chevron'
   external?: boolean
   destructive?: boolean
 }) {
@@ -55,13 +66,8 @@ function SettingsLink({
       : 'text-foreground/80 hover:text-foreground'
   }`
 
-  // The trailing mark is a promise about what tapping does. `Kapcsolat` is an
-  // ordinary page on this site, and giving it the same arrow as Instagram told
-  // a host they were about to leave — so only the rows that really do leave
-  // get it, and the rest get the chevron every list row on a phone has.
-  const leaves = external || href.startsWith('mailto:')
-  const Affordance = leaves ? ExternalLink : ChevronRight
-  const affordance = (
+  const Affordance = affordance === 'external' ? ExternalLink : ChevronRight
+  const trailing = (
     <Affordance
       className="size-4 text-muted-foreground"
       strokeWidth={1.8}
@@ -74,7 +80,7 @@ function SettingsLink({
       <a href={href} className={className}>
         {icon}
         <span className="flex-1">{children}</span>
-        {affordance}
+        {trailing}
       </a>
     )
   }
@@ -114,16 +120,12 @@ export default async function AccountPage({
       className="mx-auto w-full max-w-3xl px-4 pt-7 pb-16 sm:px-6 sm:pt-12"
       lang={localeTag[locale]}
     >
-      {/* A target rather than a sentence. This is the only way off the screen
-          that is not an action, and at the top of a phone it has to be
-          thumb-sized — the word beside it added nothing a chevron in the
-          corner of a settings page does not already say. */}
       <Link
         href={`/host?lang=${locale}`}
-        aria-label={en ? 'Back' : 'Vissza'}
-        className="glass inline-flex size-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
+        <ArrowLeft className="size-5" strokeWidth={1.8} aria-hidden="true" />
+        {en ? 'Back' : 'Vissza'}
       </Link>
 
       <h1 className="mt-7 font-display text-[46px] leading-none tracking-[-0.015em] sm:text-[56px]">
@@ -135,7 +137,7 @@ export default async function AccountPage({
           id="profile-heading"
           className="font-mono text-[10px] font-medium tracking-[0.22em] text-foreground/42"
         >
-          {en ? 'PERSONAL DETAILS' : 'SZEMÉLYES ADATOK'}
+          {en ? 'PROFILE' : 'PROFIL'}
         </h2>
         <div className="mt-5">
           {profile.canEditName ? (
@@ -159,27 +161,13 @@ export default async function AccountPage({
           )}
         </div>
 
-        {/* Drawn as a field, though nothing here can edit it. It is the same
-            kind of fact as the name directly above — what the account *is* —
-            and a bare line of text under a bordered input read as a caption
-            belonging to the input rather than as its own value. Changing a
-            sign-in address is an auth flow, not a settings row. */}
-        <div className="mt-8">
+        <div className="mt-8 border-b border-border pb-7">
           <p className="text-sm text-muted-foreground">
             {en ? 'Sign-in email' : 'Belépési e-mail-cím'}
           </p>
-          <div
-            className={`mt-2 ${inputSurfaceClassName} text-muted-foreground`}
-          >
-            <Mail
-              className="size-5 shrink-0"
-              strokeWidth={1.7}
-              aria-hidden="true"
-            />
-            <span className="min-w-0 flex-1 truncate text-base text-foreground sm:text-sm">
-              {profile.email}
-            </span>
-          </div>
+          <p className="mt-1.5 text-base break-all text-foreground">
+            {profile.email}
+          </p>
         </div>
       </section>
 
@@ -197,6 +185,7 @@ export default async function AccountPage({
           <SettingsLink
             href={INSTAGRAM_URL}
             external
+            affordance="external"
             icon={
               <SiInstagram
                 className="size-[19px] text-foreground/75"
@@ -209,8 +198,9 @@ export default async function AccountPage({
           <SettingsLink
             href={homepage}
             external
+            affordance="external"
             icon={
-              <Globe2
+              <Globe
                 className="size-5 text-foreground/75"
                 strokeWidth={1.7}
                 aria-hidden="true"
@@ -221,6 +211,7 @@ export default async function AccountPage({
           </SettingsLink>
           <SettingsLink
             href={localePath(locale, '/kapcsolat')}
+            affordance="external"
             icon={
               <Mail
                 className="size-5 text-foreground/75"
@@ -252,12 +243,20 @@ export default async function AccountPage({
                 strokeWidth={1.7}
                 aria-hidden="true"
               />
-              {en ? 'Sign out' : 'Kijelentkezés'}
+              <span className="flex-1">
+                {en ? 'Sign out' : 'Kijelentkezés'}
+              </span>
+              <ChevronRight
+                className="size-4 text-muted-foreground"
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
             </button>
           </form>
           <SettingsLink
             href={`mailto:${CONTACT_EMAIL}?subject=${deletionSubject}`}
             destructive
+            affordance="chevron"
             icon={
               <Trash2 className="size-5" strokeWidth={1.7} aria-hidden="true" />
             }
