@@ -133,7 +133,25 @@ export default async function AccountPage({
           {en ? 'PROFILE' : 'PROFIL'}
         </h2>
         <div className="mt-5">
-          <AccountNameForm name={profile.displayName} locale={locale} />
+          {profile.canEditName ? (
+            <AccountNameForm name={profile.displayName} locale={locale} />
+          ) : (
+            // The read failed, so the write would too. Show the name that is
+            // actually on the photos rather than a form that cannot save.
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {en ? 'Display name' : 'Megjelenített név'}
+              </p>
+              <p className="mt-1.5 text-base text-foreground">
+                {profile.displayName}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                {en
+                  ? 'Changing the name is briefly unavailable. Your photos are still credited to this name.'
+                  : 'A név módosítása most nem érhető el. A képeidnél továbbra is ez a név jelenik meg.'}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-8 border-b border-border pb-7">

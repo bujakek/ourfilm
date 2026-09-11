@@ -2,6 +2,7 @@ import 'server-only'
 
 import { hostDisplayName } from './host-name'
 import { newParticipantSession } from './participants'
+import { reportServerIssue } from './telemetry-server'
 import { createAdminClient } from './supabase/admin'
 import { createClient } from './supabase/server'
 
@@ -49,12 +50,29 @@ export async function hostParticipant(
   } = await supabase.auth.getUser()
   if (!user) return null
 
+  // The same containment as `getCurrentHostProfile`, and it matters more here.
+  // This runs on the shutter: between a deploy and its migration the column is
+  // `42703 undefined_column`, and throwing would have refused the host a frame
+  // at their own event — for a *caption*. The name is the one part of a photo
+  // that can be corrected afterwards, and setting a display name rewrites every
+  // existing credit anyway, so a wrong name for an hour costs nothing and a
+  // refused shot cannot be taken again.
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('display_name')
     .eq('id', user.id)
     .maybeSingle()
-  if (profileError) throw profileError
+
+  if (profileError) {
+    console.error('Could not read the host display name', profileError)
+    await reportServerIssue(profileError, {
+      operation: 'host_profile_read',
+      eventId,
+      route: '/host/events/[slug]',
+      routeType: 'page',
+      method: 'GET',
+    })
+  }
 
   const { data, error } = await createAdminClient()
     .rpc('host_participant', {
