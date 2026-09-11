@@ -1,4 +1,5 @@
 import { BillingCard } from '@/components/host/billing-card'
+import { BackLink } from '@/components/ui/back-link'
 import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
 import { EventNameCard } from '@/components/host/event-name-card'
@@ -23,9 +24,7 @@ import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
 import { planNote } from '@/lib/plan-copy'
 import { checkoutIsConfigured } from '@/lib/checkout-readiness'
-import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
@@ -105,16 +104,17 @@ export default async function AdminEventSettingsPage({
 
   return (
     <main
-      className="mx-auto w-full max-w-lg px-4 py-10 sm:py-16"
+      // The same frame as the event page this sits one tap from: `px-5 sm:px-7`
+      // and `pt-7`, so the back link does not jump when a host moves between
+      // them. It was `px-4 py-10`, which put the arrow 4px to the left and
+      // 12px lower on a phone — small enough to read as the page shifting
+      // rather than as a difference anyone chose.
+      className="mx-auto w-full max-w-lg px-5 pt-7 pb-11 sm:px-7"
       lang={localeTag[locale]}
     >
-      <Link
-        href={`/host/events/${event.slug}?lang=${locale}`}
-        className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
+      <BackLink href={`/host/events/${event.slug}?lang=${locale}`}>
         {event.event_name}
-      </Link>
+      </BackLink>
 
       <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance">
         {en ? 'Settings' : 'Beállítások'}

@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   CloudUpload,
   ExternalLink,
   Settings,
@@ -28,6 +27,7 @@ import {
 } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
 import { reportServerIssue } from '@/lib/telemetry-server'
+import { BackLink } from '@/components/ui/back-link'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,13 +122,9 @@ export default async function AdminEventPage({ params }: Props) {
         index={0}
         className="print-hidden flex items-center justify-between gap-4"
       >
-        <Link
-          href={`/host?lang=${locale}`}
-          className="inline-flex items-center gap-2 text-xs font-medium text-foreground/55 transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" aria-hidden="true" />
+        <BackLink href={`/host?lang=${locale}`}>
           {en ? 'Your events' : 'Eseményeid'}
-        </Link>
+        </BackLink>
         <div className="flex items-center gap-2">
           <Link href={`/e/${event.slug}?lang=${locale}`} className={pillClass}>
             <ExternalLink className="size-3.5" aria-hidden="true" />

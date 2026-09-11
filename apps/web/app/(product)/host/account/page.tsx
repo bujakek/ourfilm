@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   ChevronRight,
   ExternalLink,
   Globe,
@@ -14,6 +13,7 @@ import type { ReactNode } from 'react'
 import { SiInstagram, SiTiktok } from 'react-icons/si'
 
 import { AccountNameForm } from '@/components/host/account-name-form'
+import { BackLink } from '@/components/ui/back-link'
 import { getCurrentHostProfile } from '@/lib/host-profile'
 import { localePath, localeTag, resolveLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL, INSTAGRAM_URL, SITE_URL, TIKTOK_URL } from '@/lib/site'
@@ -121,13 +121,9 @@ export default async function AccountPage({
       className="mx-auto w-full max-w-3xl px-4 pt-7 pb-16 sm:px-6 sm:pt-12"
       lang={localeTag[locale]}
     >
-      <Link
-        href={`/host?lang=${locale}`}
-        className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-5" strokeWidth={1.8} aria-hidden="true" />
-        {en ? 'Back' : 'Vissza'}
-      </Link>
+      <BackLink href={`/host?lang=${locale}`}>
+        {en ? 'Your events' : 'Eseményeid'}
+      </BackLink>
 
       <h1 className="mt-7 font-display text-[46px] leading-none tracking-[-0.015em] sm:text-[56px]">
         {en ? 'Account settings' : 'Fiókbeállítások'}
