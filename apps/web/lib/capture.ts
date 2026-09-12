@@ -36,6 +36,12 @@ export type ShotRefusal =
 export type ReservedShot = {
   photoId: string
   shotsRemaining: number
+  /**
+   * Set only when this call created the reservation after `capture_end_at`,
+   * which the upload grace alone allows. Null for a reservation made while
+   * the camera was open and for a replay. See `lib/grace-telemetry.ts`.
+   */
+  grace: { lateSeconds: number; claimedLeadSeconds: number | null } | null
   uploads: {
     full: SignedUpload
     view: SignedUpload
@@ -60,10 +66,17 @@ export async function reserveShot({
   eventId,
   tokenHash,
   idempotencyKey,
+  captureStartedAt,
 }: {
   eventId: string
   tokenHash: string
   idempotencyKey: string
+  /**
+   * Client-reported time at which the native camera was opened for this shot.
+   * The database only consults it after `capture_end_at`, inside the bounded
+   * upload grace window; while capture is live, server time remains truth.
+   */
+  captureStartedAt: string
 }): Promise<ReserveResult> {
   const db = createAdminClient()
 
@@ -72,6 +85,7 @@ export async function reserveShot({
       p_event_id: eventId,
       p_token_hash: tokenHash,
       p_idempotency_key: idempotencyKey,
+      p_capture_started_at: captureStartedAt,
     })
     .maybeSingle()
 
@@ -99,6 +113,13 @@ export async function reserveShot({
     shot: {
       photoId: data.photo_id as string,
       shotsRemaining: data.shots_remaining,
+      grace:
+        data.late_seconds === null || data.late_seconds === undefined
+          ? null
+          : {
+              lateSeconds: data.late_seconds,
+              claimedLeadSeconds: data.claimed_lead_seconds ?? null,
+            },
       uploads: { full, view, thumb },
     },
   }
