@@ -348,15 +348,44 @@ describe('the capture window', () => {
         .update({ joined_at: new Date(end.getTime() - 60_000).toISOString() })
         .eq('id', participant?.participant_id as string)
 
-      const result = await reserveShot(
-        event.id,
-        session,
-        randomUUID(),
-        new Date(end.getTime() - 60_000),
-      )
+      const key = randomUUID()
+      const claimed = new Date(end.getTime() - 60_000)
+      const result = await reserveShot(event.id, session, key, claimed)
 
       expect(result?.refusal).toBeNull()
       expect(await countPhotos(event.id)).toBe(1)
+      // What `shot_reserved_in_grace` reports: an hour late, and a device that
+      // says its camera opened a minute before the close.
+      expect(result?.late_seconds).toBeGreaterThanOrEqual(3_599)
+      expect(result?.late_seconds).toBeLessThan(3_700)
+      expect(result?.claimed_lead_seconds).toBe(60)
+
+      // A replay of that reservation is not a second late photo.
+      const replay = await reserveShot(event.id, session, key, claimed)
+      expect(replay?.photo_id).toBe(result?.photo_id)
+      expect(replay?.late_seconds).toBeNull()
+      expect(replay?.claimed_lead_seconds).toBeNull()
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('does not count a reservation made while the camera is open as late', async () => {
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 3600_000),
+      captureEndAt: new Date(Date.now() + 3600_000),
+      revealAt: new Date(Date.now() + 3600_000),
+    })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Időben', session)
+
+      const result = await reserveShot(event.id, session)
+
+      expect(result?.refusal).toBeNull()
+      expect(result?.late_seconds).toBeNull()
+      expect(result?.claimed_lead_seconds).toBeNull()
     } finally {
       await deleteEvent(event.id)
     }

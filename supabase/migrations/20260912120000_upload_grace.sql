@@ -17,9 +17,18 @@
 --    and the request itself arrives within this fixed grace period;
 -- 5. the participant's immutable roll length remains the hard upper bound.
 --
--- Twenty-four hours matches the client queue's maximum age. A forged time can
--- spend an existing participant's remaining frames late, but cannot create a
--- fresh guest roll or keep an event writable indefinitely.
+-- A forged time can spend an existing participant's remaining frames late, but
+-- cannot create a fresh guest roll or keep an event writable indefinitely.
+
+-- Twenty-four hours, and not independently: it is the client queue's
+-- `MAX_AGE_MS` in apps/web/lib/upload-queue.ts, after which the device deletes
+-- a shot it still holds. The server accepts what the device can still send;
+-- shorter refuses photos the phone is retrying, longer accepts nothing more.
+-- Change one, change both.
+--
+-- Whether 24 hours is right is measured, not assumed: every reservation made
+-- through the grace returns `late_seconds`, and the server reports it as
+-- `shot_reserved_in_grace`.
 create or replace function public.shot_upload_grace()
 returns interval
 language sql
@@ -30,6 +39,13 @@ as $$ select interval '24 hours' $$;
 revoke all on function public.shot_upload_grace() from public;
 revoke all on function public.shot_upload_grace() from anon, authenticated;
 
+-- `late_seconds` and `claimed_lead_seconds` are set only on a row this call
+-- inserted after capture_end_at — a reservation the grace made possible. A
+-- replay of an existing reservation, an in-window reservation and every
+-- refusal leave both null, so a count of non-null rows is a count of photos
+-- the grace saved. `claimed_lead_seconds` is how long before the close the
+-- device says the camera was opened: device-supplied, so its tail is where
+-- clock skew or forgery would show.
 create or replace function public.reserve_shot(
   p_event_id          uuid,
   p_token_hash        text,
@@ -37,12 +53,14 @@ create or replace function public.reserve_shot(
   p_capture_started_at timestamptz
 )
 returns table (
-  photo_id         uuid,
-  storage_path     text,
-  view_path        text,
-  thumb_path       text,
-  shots_remaining integer,
-  refusal          text
+  photo_id             uuid,
+  storage_path         text,
+  view_path            text,
+  thumb_path           text,
+  shots_remaining      integer,
+  refusal              text,
+  late_seconds         integer,
+  claimed_lead_seconds integer
 )
 language plpgsql
 volatile
@@ -56,6 +74,8 @@ declare
   v_used        integer;
   v_photo_id    uuid;
   v_prefix      text;
+  v_late        integer;
+  v_lead        integer;
 begin
   select * into v_participant
   from public.participants p
@@ -64,7 +84,7 @@ begin
   for update;
 
   if not found then
-    return query select null::uuid, null::text, null::text, null::text, 0, 'no_session';
+    return query select null::uuid, null::text, null::text, null::text, 0, 'no_session', null::integer, null::integer;
     return;
   end if;
 
@@ -81,12 +101,12 @@ begin
     return query select
       v_existing.id, v_existing.storage_path, v_existing.view_path, v_existing.thumb_path,
       greatest(v_event.shots_per_participant - public.participant_shots_used(v_participant.id), 0),
-      null::text;
+      null::text, null::integer, null::integer;
     return;
   end if;
 
   if now() < v_event.capture_start_at then
-    return query select null::uuid, null::text, null::text, null::text, 0, 'not_started';
+    return query select null::uuid, null::text, null::text, null::text, 0, 'not_started', null::integer, null::integer;
     return;
   end if;
 
@@ -104,15 +124,21 @@ begin
     -- action has already proved event ownership.
     or (v_participant.user_id is null and v_participant.joined_at > v_event.capture_end_at)
   ) then
-    return query select null::uuid, null::text, null::text, null::text, 0, 'ended';
+    return query select null::uuid, null::text, null::text, null::text, 0, 'ended', null::integer, null::integer;
     return;
   end if;
 
   v_used := public.participant_shots_used(v_participant.id);
 
   if v_used >= v_event.shots_per_participant then
-    return query select null::uuid, null::text, null::text, null::text, 0, 'no_shots';
+    return query select null::uuid, null::text, null::text, null::text, 0, 'no_shots', null::integer, null::integer;
     return;
+  end if;
+
+  -- Past this point after the close, the grace is what let the shot in.
+  if now() > v_event.capture_end_at then
+    v_late := floor(extract(epoch from now() - v_event.capture_end_at))::integer;
+    v_lead := floor(extract(epoch from v_event.capture_end_at - p_capture_started_at))::integer;
   end if;
 
   v_photo_id := gen_random_uuid();
@@ -129,13 +155,15 @@ begin
   return query select
     v_photo_id, v_prefix || '.jpg', v_prefix || '_view.jpg', v_prefix || '_thumb.jpg',
     greatest(v_event.shots_per_participant - (v_used + 1), 0),
-    null::text;
+    null::text, v_late, v_lead;
 end;
 $$;
 
 -- Keep the old signature during a rolling deployment. Old clients still obey
 -- the server's live window because their missing capture claim is represented
--- by now(); only the new four-argument call can use the grace period.
+-- by now(); only the new four-argument call can use the grace period. Its
+-- return type is fixed by the function it replaces, so the grace columns are
+-- left out by name.
 create or replace function public.reserve_shot(
   p_event_id        uuid,
   p_token_hash      text,
@@ -154,13 +182,13 @@ volatile
 security definer
 set search_path = ''
 as $$
-  select *
+  select r.photo_id, r.storage_path, r.view_path, r.thumb_path, r.shots_remaining, r.refusal
   from public.reserve_shot(
     p_event_id,
     p_token_hash,
     p_idempotency_key,
     now()
-  )
+  ) r
 $$;
 
 -- Supabase grants functions to API roles directly. Reassert the boundary for

@@ -10,6 +10,7 @@ import {
 } from '@/lib/commit-observed'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { hostParticipant } from '@/lib/host-capture'
+import { reportGraceReservation } from '@/lib/grace-telemetry'
 import { reportServerIssue } from '@/lib/telemetry-server'
 import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
 
@@ -76,6 +77,13 @@ export async function hostReserveShotAction(
   }
 
   if (!result.ok) return { ok: false, refusal: result.refusal as ShotRefusal }
+
+  reportGraceReservation({
+    eventId: event.id,
+    captureId: idempotencyKey,
+    surface: 'host',
+    shot: result.shot,
+  })
 
   return {
     ok: true,

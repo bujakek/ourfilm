@@ -22,6 +22,7 @@ import {
 } from '@/lib/participants'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLocale } from '@/lib/i18n'
+import { reportGraceReservation } from '@/lib/grace-telemetry'
 import { reportServerIssue } from '@/lib/telemetry-server'
 
 /**
@@ -201,6 +202,13 @@ export async function reserveShotAction(
     throw e
   }
   if (!result.ok) return { ok: false, refusal: result.refusal }
+
+  reportGraceReservation({
+    eventId,
+    captureId: idempotencyKey,
+    surface: 'guest',
+    shot: result.shot,
+  })
 
   return {
     ok: true,

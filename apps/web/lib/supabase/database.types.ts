@@ -1028,6 +1028,8 @@ export type Database = {
               p_token_hash: string
             }
             Returns: {
+              claimed_lead_seconds: number
+              late_seconds: number
               photo_id: string
               refusal: string
               shots_remaining: number
@@ -1215,3 +1217,4 @@ export const Constants = {
     },
   },
 } as const
+

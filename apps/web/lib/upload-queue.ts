@@ -22,6 +22,16 @@ import type { StoredShot, UploadStore } from '@/lib/upload-store'
  */
 
 export const MAX_ATTEMPTS = 4
+/**
+ * How long a stored shot is kept before this device gives up on it.
+ *
+ * The server's `shot_upload_grace()` (`supabase/migrations/…_upload_grace.sql`)
+ * is the same 24 hours on purpose: after the camera closes it still accepts a
+ * new reservation for exactly as long as a phone can still be holding one.
+ * Change one, change both — shorter on the server refuses photos the phone is
+ * retrying, longer accepts nothing more. `shot_reserved_in_grace` is how late
+ * they really arrive.
+ */
 export const MAX_AGE_MS = 24 * 60 * 60 * 1000
 /** After a failure, try again. Event listeners also wake the queue; this is
  *  the backup for when they fire too early (`online`) or not at all. */

@@ -36,6 +36,12 @@ export type ShotRefusal =
 export type ReservedShot = {
   photoId: string
   shotsRemaining: number
+  /**
+   * Set only when this call created the reservation after `capture_end_at`,
+   * which the upload grace alone allows. Null for a reservation made while
+   * the camera was open and for a replay. See `lib/grace-telemetry.ts`.
+   */
+  grace: { lateSeconds: number; claimedLeadSeconds: number | null } | null
   uploads: {
     full: SignedUpload
     view: SignedUpload
@@ -107,6 +113,13 @@ export async function reserveShot({
     shot: {
       photoId: data.photo_id as string,
       shotsRemaining: data.shots_remaining,
+      grace:
+        data.late_seconds === null || data.late_seconds === undefined
+          ? null
+          : {
+              lateSeconds: data.late_seconds,
+              claimedLeadSeconds: data.claimed_lead_seconds ?? null,
+            },
       uploads: { full, view, thumb },
     },
   }

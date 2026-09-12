@@ -418,6 +418,7 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `checkout_confirmation_viewed` | What the host was _told_ after paying, and how long the confirmation took     |
 | `event_created`                | The row exists, with the shape the host chose and whether it was a repeat     |
 | `event_deleted`                | The one destructive path, with the album's size and age                       |
+| `shot_reserved_in_grace`       | A frame reserved after the close through the 24 h upload grace, and how late  |
 | `photo_deleted`                | A frame destroyed, and whether it was already hidden when they did it         |
 | `event_setting_changed`        | What hosts adjust on a running camera, and how far they move the end          |
 | `album_export_queued`          | A large album was asked for; a job row exists and nothing is built yet        |
