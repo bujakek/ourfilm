@@ -1113,6 +1113,86 @@ describe('an attempt the server never saw', () => {
   })
 })
 
+describe('a failure that is not about the photo', () => {
+  /**
+   * A failed shot may be overtaken — but only by a shot that could fare
+   * differently. A kill switch or a dead connection gives every queued photo
+   * the same answer, and trying them all was one request per photo per sweep,
+   * against a server that had just been told to shed load.
+   */
+  function reservedKeys(h: Harness) {
+    return vi.mocked(h.deps.reserve).mock.calls.map(([key]) => key)
+  }
+
+  it('asks once per pass while uploads are switched off', async () => {
+    const h = harness({
+      reserve: vi.fn(async () => ({
+        ok: false as const,
+        refusal: 'uploads_disabled' as const,
+      })),
+    })
+    const q = queueFor(h)
+    for (const id of ['a', 'b', 'c']) q.enqueue(id, file(), NOW)
+    await q.drain()
+
+    expect(reservedKeys(h)).toEqual(['a'])
+
+    await q.resume()
+    await q.drain()
+
+    expect(reservedKeys(h)).toEqual(['a', 'b'])
+    expect(h.handlers.onRefusal).toHaveBeenCalledTimes(2)
+    expect((await stored()).sort()).toEqual(['a', 'b', 'c'])
+  })
+
+  it('asks once per pass with no connection, and sends them all once it is back', async () => {
+    let online = false
+    const h = harness({
+      reserve: vi.fn(async () => {
+        if (!online) throw new TypeError('Load failed')
+        return reserved(crypto.randomUUID())
+      }),
+    })
+    const q = queueFor(h)
+    for (const id of ['a', 'b', 'c']) q.enqueue(id, file(), NOW)
+    await q.drain()
+    await q.resume()
+    await q.drain()
+
+    expect(reservedKeys(h)).toEqual(['a', 'b'])
+
+    online = true
+    await q.resume()
+    await q.drain()
+
+    expect(
+      vi
+        .mocked(h.handlers.onConfirmed)
+        .mock.calls.map(([id]) => id)
+        .sort(),
+    ).toEqual(['a', 'b', 'c'])
+    expect(await stored()).toEqual([])
+  })
+
+  it('still carries on past a failure the server answered about the photo', async () => {
+    const h = harness({
+      upload: vi.fn(async ({ uploads }) => {
+        if (uploads.full.path.includes('photo-for-a')) {
+          throw Object.assign(new Error('HTTP 500'), { status: 500 })
+        }
+      }),
+      reserve: vi.fn(async (key) => reserved(`photo-for-${key}`)),
+    })
+    const q = queueFor(h)
+    for (const id of ['a', 'b', 'c']) q.enqueue(id, file(), NOW)
+    await q.drain()
+
+    expect(
+      vi.mocked(h.handlers.onConfirmed).mock.calls.map(([id]) => id),
+    ).toEqual(['b', 'c'])
+  })
+})
+
 describe('a request that never answers', () => {
   it('gives up on a hung request instead of waiting for ever', async () => {
     const h = harness({
@@ -1127,7 +1207,7 @@ describe('a request that never answers', () => {
     expect(armed(h)?.delayMs).toBe(RETRY_MS)
   })
 
-  it('still uploads the next photo after a timeout', async () => {
+  it('does not let a photo that keeps timing out hold back the next one', async () => {
     let reserves = 0
     const h = harness({
       reserve: vi.fn(async () => {
@@ -1142,16 +1222,18 @@ describe('a request that never answers', () => {
     q.enqueue('newer', file(), NOW + 1)
     await q.drain()
 
-    expect(h.handlers.onConfirmed).toHaveBeenCalledTimes(1)
-    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
-      'newer',
-      expect.any(Number),
-    )
+    // A timeout reads as a lost connection, which the next photo would hit
+    // too, so the pass ends there rather than trying it…
+    expect(h.handlers.onConfirmed).not.toHaveBeenCalled()
 
     armed(h)?.run()
     await q.drain()
 
-    expect(h.handlers.onConfirmed).toHaveBeenCalledTimes(2)
+    // …and the next pass starts with the photo behind it, even though
+    // `resume` has put the queue back into capture order.
+    expect(
+      vi.mocked(h.handlers.onConfirmed).mock.calls.map(([id]) => id),
+    ).toEqual(['newer', 'older'])
   })
 
   it('aborts on teardown without deleting the stored photo', async () => {

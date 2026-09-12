@@ -563,12 +563,28 @@ export function createUploadQueue({
     return run
   }
 
+  /**
+   * The shot whose failure ended the last pass with `wait`.
+   *
+   * `resume` re-sorts the queue into capture order, so pushing that shot to
+   * the back does not survive to the next pass. Without this, a failure that
+   * really was about one photo — a master too big for this wifi, timing out —
+   * would start every pass and end it, and nothing behind it would ever go.
+   * It is passed over while anything else is eligible, never skipped outright:
+   * a lone shot waiting on a reconnect must still be the one that goes.
+   */
+  let benched: string | null = null
+
   async function drainLoop(): Promise<void> {
     while (!stopped) {
-      const index = pending.findIndex(({ shot }) => !deferred.has(shot.id))
+      const eligible = ({ shot }: QueueItem) => !deferred.has(shot.id)
+      let index = pending.findIndex(
+        (item) => eligible(item) && item.shot.id !== benched,
+      )
+      if (index === -1) index = pending.findIndex(eligible)
       if (index === -1) break
       const [item] = pending.splice(index, 1)
-      let outcome: 'done' | 'retry'
+      let outcome: 'done' | 'retry' | 'wait'
       try {
         outcome = await runCapture(item)
       } catch (error) {
@@ -586,6 +602,18 @@ export function createUploadQueue({
         pending.push(item)
         continue
       }
+      if (outcome === 'wait') {
+        // The answer was about the connection or the server, not this photo,
+        // so every other shot would get the same one. Trying them all turned an
+        // ops kill switch into one request per queued photo per sweep — more
+        // load at exactly the moment the switch exists to shed it. End the
+        // pass instead, and bench the shot so the next pass starts with a
+        // different one — see `benched`.
+        benched = item.shot.id
+        deferred.add(item.shot.id)
+        pending.push(item)
+        break
+      }
     }
 
     if (stopped) return
@@ -593,7 +621,14 @@ export function createUploadQueue({
     else cancelSweep()
   }
 
-  async function runCapture(item: QueueItem): Promise<'done' | 'retry'> {
+  /**
+   * `retry` — this shot failed; the rest of the pass carries on.
+   * `wait` — the failure says nothing about this shot (no connection, or a
+   * refusal about the server), so the pass ends until the next retry signal.
+   */
+  async function runCapture(
+    item: QueueItem,
+  ): Promise<'done' | 'retry' | 'wait'> {
     // No server call may overtake the durable write, and none may run against
     // bytes that are about to be replaced.
     if (item.settled) {
@@ -666,7 +701,7 @@ export function createUploadQueue({
         )
         notify(() => handlers.onProgress(shot.id, 0))
         notify(() => handlers.onRefusal(reserved.refusal))
-        return 'retry'
+        return 'wait'
       }
 
       photoId = reserved.photoId
@@ -817,7 +852,9 @@ export function createUploadQueue({
       }
 
       notify(() => handlers.onProgress(shot.id, 0))
-      return 'retry'
+      // A request that never arrived is about the connection, and the next
+      // photo's would not arrive either.
+      return unsent ? 'wait' : 'retry'
     } finally {
       if (active === attempt) active = null
     }

@@ -158,7 +158,7 @@ shutter fires and deleted when `commit_shot` confirms. `apps/web/lib/upload-queu
 uploads one shot at a time and replays orphans on mount and on
 `visibilitychange` / `pageshow` / `online`. First attempts are in capture
 order; after a failure that shot is deferred until the next retry signal while
-later shots continue. A drain that still owes work retries after `RETRY_MS`.
+later shots continue. A failure that is not about the photo — no connection, or a refusal about the server such as the uploads kill switch — ends the pass instead, so an outage costs one request per retry rather than one per queued photo. A drain that still owes work retries after `RETRY_MS`.
 Give up after four attempts or 24 hours — but only
 count attempts the server actually answered. `isConnectionFailure`
 (`apps/web/lib/upload-failure.ts`) hands the attempt back for a dead connection, a

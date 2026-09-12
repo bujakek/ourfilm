@@ -317,7 +317,7 @@ The camera file is written to IndexedDB (`apps/web/lib/upload-store.ts`) the mom
 shutter fires, and deleted once `commit_shot` confirms. `apps/web/lib/upload-queue.ts`
 uploads one shot at a time and replays whatever a killed tab left behind. First
 attempts keep capture order; a failed shot is deferred until the next retry
-signal while later shots continue. Persistence swallows: private mode is the
+signal while later shots continue. A failure that is not about the photo — no connection, or a refusal about the server such as the uploads kill switch — ends the pass instead, so an outage costs one request per retry rather than one per queued photo. Persistence swallows: private mode is the
 old in-memory behaviour.
 
 **Compress once, then store the master — and write the raw file first.** The
