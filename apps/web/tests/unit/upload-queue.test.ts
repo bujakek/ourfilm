@@ -1123,3 +1123,182 @@ describe('the shipped timeouts', () => {
     expect(REQUEST_TIMEOUTS_MS.commit).toBeGreaterThan(0)
   })
 })
+
+describe('the stretch between the upload and the commit', () => {
+  /**
+   * A `pending` row with all three renders in Storage sits exactly here, and
+   * until these steps existed nothing on the device said whether its commit
+   * had been sent, answered, or never started.
+   */
+  function steps(h: Harness) {
+    return (
+      h.handlers.onAttemptStep as ReturnType<typeof vi.fn>
+    ).mock.calls.map(
+      ([id, step]) => ({ id, ...(step as object) }) as Record<string, unknown>,
+    )
+  }
+
+  it('reports the renders, the commit and its answer under one attempt id', async () => {
+    const h = harness({
+      newAttemptId: () => 'attempt-1',
+      reserve: vi.fn(async () => reserved('photo-1')),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(steps(h).map((s) => s.kind)).toEqual([
+      'uploaded',
+      'commit_started',
+      'commit_finished',
+    ])
+    expect(steps(h)[0]).toMatchObject({
+      id: 'shot-1',
+      attemptId: 'attempt-1',
+      attempt: 1,
+      photoId: 'photo-1',
+      bytes: prepared.full.size + prepared.view.size + prepared.thumb.size,
+    })
+    expect(steps(h)[2]).toMatchObject({
+      outcome: 'committed',
+      failure: null,
+      refusal: null,
+      unsent: false,
+    })
+    // The same ids go to the server, so its reports join these.
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ captureId: 'shot-1', attemptId: 'attempt-1' }),
+    )
+  })
+
+  it('names a refusal, and gives the retry an attempt id of its own', async () => {
+    let minted = 0
+    const h = harness({
+      newAttemptId: () => `attempt-${++minted}`,
+      commit: vi
+        .fn()
+        .mockResolvedValueOnce({
+          committed: false,
+          shotsRemaining: 0,
+          refusal: 'no_session',
+        })
+        .mockResolvedValue({ committed: true, shotsRemaining: 22 }),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+    armed(h)!.run()
+    await until(() => called(h.handlers.onConfirmed) === 1)
+
+    expect(steps(h).filter((s) => s.kind === 'commit_finished')).toMatchObject([
+      {
+        attemptId: 'attempt-1',
+        outcome: 'refused',
+        failure: 'commit_refused',
+        refusal: 'no_session',
+      },
+      { attemptId: 'attempt-2', outcome: 'committed' },
+    ])
+  })
+
+  it('tells a commit lost in transit from one the server answered', async () => {
+    const h = harness({
+      commit: vi.fn(async () => {
+        throw new TypeError('Load failed')
+      }),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(steps(h).at(-1)).toMatchObject({
+      kind: 'commit_finished',
+      outcome: 'failed',
+      failure: 'typeerror',
+      unsent: true,
+    })
+  })
+
+  it('marks a teardown between the upload and the commit, and sends nothing', async () => {
+    const landed = deferred<void>()
+    const h = harness({ upload: vi.fn(() => landed.promise) })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await until(() => called(h.deps.upload) === 1)
+
+    q.stop()
+    landed.resolve()
+    await until(() => steps(h).some((s) => s.kind === 'interrupted'))
+
+    expect(steps(h).map((s) => s.kind)).toEqual(['uploaded', 'interrupted'])
+    expect(steps(h)[1]).toMatchObject({ stage: 'commit' })
+    expect(h.deps.commit).not.toHaveBeenCalled()
+    expect(await stored()).toEqual(['shot-1'])
+  })
+
+  it('still reports how a commit already sent ended after a teardown', async () => {
+    const answer = deferred<{ committed: boolean; shotsRemaining: number }>()
+    const h = harness({ commit: vi.fn(() => answer.promise) })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await until(() => called(h.deps.commit) === 1)
+
+    q.stop()
+    answer.resolve({ committed: true, shotsRemaining: 5 })
+    await until(() => steps(h).some((s) => s.kind === 'commit_finished'))
+
+    expect(steps(h).at(-1)).toMatchObject({ outcome: 'committed' })
+    // `notify` is silent after stop; this handler is the one that is not.
+    expect(h.handlers.onConfirmed).not.toHaveBeenCalled()
+  })
+
+  it('says which stage is running, for a screen about to be hidden', async () => {
+    const answer = deferred<{ committed: boolean; shotsRemaining: number }>()
+    const h = harness({
+      newAttemptId: () => 'attempt-1',
+      reserve: vi.fn(async () => reserved('photo-1')),
+      commit: vi.fn(() => answer.promise),
+    })
+    const q = queueFor(h)
+    expect(q.inFlight()).toBeNull()
+    q.enqueue('shot-1', file(), NOW)
+    await until(() => called(h.deps.commit) === 1)
+
+    expect(q.inFlight()).toEqual({
+      id: 'shot-1',
+      attemptId: 'attempt-1',
+      attempt: 1,
+      stage: 'commit',
+      photoId: 'photo-1',
+    })
+
+    answer.resolve({ committed: true, shotsRemaining: 5 })
+    await q.drain()
+    expect(q.inFlight()).toBeNull()
+  })
+
+  it('uploads and commits regardless of a reporting handler that throws', async () => {
+    const h = harness({
+      newAttemptId: () => {
+        throw new Error('no crypto')
+      },
+    })
+    h.handlers.onAttemptStep = vi.fn(() => {
+      throw new Error('telemetry down')
+    })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 23)
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ attemptId: 'unavailable' }),
+    )
+    expect(await stored()).toEqual([])
+  })
+})

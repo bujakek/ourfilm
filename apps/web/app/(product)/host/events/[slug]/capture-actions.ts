@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { releaseShot, reserveShot, type ShotRefusal } from '@/lib/capture'
 import {
-  commitShot,
-  releaseShot,
-  reserveShot,
-  type ShotRefusal,
-} from '@/lib/capture'
+  type CommitShotAnswer,
+  liveCommitDeps,
+  observeCommitShot,
+} from '@/lib/commit-observed'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { hostParticipant } from '@/lib/host-capture'
 import { reportServerIssue } from '@/lib/telemetry-server'
@@ -91,6 +91,8 @@ export async function hostCommitShotAction({
   height,
   byteSize,
   takenAt,
+  captureId,
+  attemptId,
 }: {
   slug: string
   photoId: string
@@ -98,32 +100,24 @@ export async function hostCommitShotAction({
   height: number
   byteSize: number
   takenAt: string | null
-}): Promise<{ committed: boolean; shotsRemaining: number }> {
-  const resolved = await resolve(slug)
-  if (!resolved) return { committed: false, shotsRemaining: 0 }
-
-  let result
-  try {
-    result = await commitShot({
-      photoId,
-      tokenHash: resolved.participant.tokenHash,
-      width,
-      height,
-      byteSize,
-      takenAt,
-    })
-  } catch (e) {
-    // The most expensive failure in the product: the bytes are in Storage and
-    // the row never went `ready`, so the photo exists and nobody will be shown
-    // it. Same weight on this side as on the guest's.
-    await reportServerIssue(e, {
-      operation: 'commit_shot',
-      eventId: resolved.event.id,
-      route: '/host/events/[slug]',
-      routeType: 'action',
-    })
-    throw e
-  }
+  captureId?: string
+  attemptId?: string
+}): Promise<CommitShotAnswer> {
+  // Same observation as the guest's commit, and the same weight: the bytes are
+  // in Storage and a row that never goes `ready` is a photo nobody is shown.
+  // Only the identification differs, and its two refusals are told apart.
+  const result = await observeCommitShot({
+    surface: 'host',
+    route: '/host/events/[slug]',
+    input: { photoId, width, height, byteSize, takenAt, captureId, attemptId },
+    deps: liveCommitDeps(async () => {
+      const event = await getOwnedEventBySlug(slug)
+      if (!event) return { ok: false, refusal: 'not_owner' }
+      const participant = await hostParticipant(event.id)
+      if (!participant) return { ok: false, refusal: 'no_participant' }
+      return { ok: true, tokenHash: participant.tokenHash, eventId: event.id }
+    }),
+  })
 
   if (result.committed) {
     // The moderation grid and the page's own figure row are both server

@@ -52,10 +52,20 @@ export type UploadQueueDeps = {
     height: number
     byteSize: number
     takenAt: string | null
-  }) => Promise<{ committed: boolean; shotsRemaining: number }>
+    /** Sent only so the server's reports join this device's. */
+    captureId: string
+    attemptId: string
+  }) => Promise<{
+    committed: boolean
+    shotsRemaining: number
+    /** The server's code for a refusal, when it gave one. */
+    refusal?: string
+  }>
   release: (photoId: string) => Promise<void>
   store: UploadStore
   now?: () => number
+  /** One id per run of `runCapture`. Injectable so a test can name them. */
+  newAttemptId?: () => string
   schedule?: (run: () => void, delayMs: number) => () => void
   /** Whether a stored blob's bytes can still be read. Injectable because a
    *  stale handle cannot be built in a test — it only exists on a phone. */
@@ -107,6 +117,67 @@ export type UploadQueueHandlers = {
    * on Android, where an object URL of a raw HEIC does not.
    */
   onRestored(entry: { id: string; blob: Blob; capturedAt: number }): void
+  /**
+   * The last stretch of an attempt, step by step: the renders landed, the
+   * commit was sent, and what it answered — or that a teardown ended the
+   * attempt first.
+   *
+   * For telemetry only, and **unlike every other handler it still fires after
+   * `stop()`**: a commit already sent carries on when the screen unmounts, and
+   * that is exactly the ending that was invisible. So it must not touch React
+   * state.
+   */
+  onAttemptStep?(id: string, step: AttemptStep): void
+}
+
+/**
+ * Where one attempt got to. `attempt` is the budget count the attempt ran
+ * under, which a refund can hand back — so two runs may share a number, and
+ * `attemptId` is what tells them apart.
+ */
+export type AttemptStep =
+  | {
+      kind: 'uploaded'
+      attemptId: string
+      attempt: number
+      photoId: string
+      ms: number
+      bytes: number
+    }
+  | {
+      kind: 'commit_started'
+      attemptId: string
+      attempt: number
+      photoId: string
+    }
+  | {
+      kind: 'commit_finished'
+      attemptId: string
+      attempt: number
+      photoId: string
+      ms: number
+      outcome: 'committed' | 'refused' | 'failed'
+      /** `failureClass` of what was thrown, or `commit_refused`. */
+      failure: string | null
+      refusal: string | null
+      /** Whether `isConnectionFailure` read it as never having arrived. */
+      unsent: boolean
+    }
+  | {
+      kind: 'interrupted'
+      attemptId: string
+      attempt: number
+      stage: UploadStage
+      photoId: string | null
+    }
+
+/** The attempt running right now, for a screen about to be hidden. */
+export type InFlightAttempt = {
+  id: string
+  attemptId: string
+  attempt: number
+  stage: UploadStage
+  photoId: string | null
 }
 
 /**
@@ -146,6 +217,7 @@ export type UploadQueue = {
   resume(): Promise<void>
   drain(): Promise<void>
   stop(): void
+  inFlight(): InFlightAttempt | null
 }
 
 export function createUploadQueue({
@@ -190,6 +262,16 @@ export function createUploadQueue({
   let sweep: (() => void) | null = null
   let stopped = false
   let activeAbort: AbortController | null = null
+  let active: InFlightAttempt | null = null
+  const newAttemptId = () => {
+    try {
+      return (deps.newAttemptId ?? (() => crypto.randomUUID()))()
+    } catch {
+      // An id is for joining reports; a device that cannot mint one still
+      // uploads. The server turns anything that is not a uuid into null.
+      return 'unavailable'
+    }
+  }
 
   /**
    * Hand an attempt back.
@@ -507,6 +589,15 @@ export function createUploadQueue({
 
     let photoId: string | null = null
     let stage: UploadStage = 'reserve'
+    const attempt: InFlightAttempt = {
+      id: shot.id,
+      attemptId: newAttemptId(),
+      attempt: shot.attempts,
+      stage,
+      photoId: null,
+    }
+    active = attempt
+    const step = { attemptId: attempt.attemptId, attempt: attempt.attempt }
 
     try {
       const reserved = await withTimeout(
@@ -550,11 +641,13 @@ export function createUploadQueue({
       }
 
       photoId = reserved.photoId
+      attempt.photoId = photoId
       notify(() => handlers.onReserved(shot.id, reserved.photoId))
 
-      stage = 'prepare'
+      attempt.stage = stage = 'prepare'
       const prepared = await deps.prepare(shot)
-      stage = 'upload'
+      attempt.stage = stage = 'upload'
+      const uploadStarted = clock()
       await withTimeout(
         (signal) =>
           deps.upload({
@@ -567,32 +660,90 @@ export function createUploadQueue({
         limits.upload,
         'Uploading a photo',
       )
+      // All three PUTs answered without an error. This and the two steps
+      // below are the stretch a `pending` row with its files present sits in.
+      trace(shot.id, {
+        kind: 'uploaded',
+        ...step,
+        photoId: reserved.photoId,
+        ms: clock() - uploadStarted,
+        bytes: prepared.full.size + prepared.view.size + prepared.thumb.size,
+      })
 
-      stage = 'commit'
-      const committed = await withTimeout(
-        () =>
-          deps.commit({
-            photoId: reserved.photoId,
-            width: prepared.width,
-            height: prepared.height,
-            byteSize: prepared.full.size,
-            // EXIF first, the shutter press second. iOS hands a live capture
-            // to the page with its EXIF stripped, so on most guests' phones
-            // there is no timestamp in the file at all — and `taken_at` is
-            // what the host's ZIP export sorts and stamps the album by. The
-            // moment the camera returned the file is within seconds of the
-            // shutter on a product with no gallery upload, and it is right
-            // however long compression, the queue or a dead tab delayed the
-            // upload. Never null from here on.
-            takenAt:
-              prepared.takenAt?.toISOString() ??
-              new Date(shot.capturedAt).toISOString(),
-          }),
-        limits.commit,
-        'Confirming a photo',
-      )
+      attempt.stage = stage = 'commit'
+      // Checked here as well as in `withTimeout`, so a teardown between the
+      // upload and the commit reads as `interrupted` rather than as a commit
+      // that was sent.
+      if (stopped) throw aborted()
+      const commitStarted = clock()
+      trace(shot.id, {
+        kind: 'commit_started',
+        ...step,
+        photoId: reserved.photoId,
+      })
+      let committed: Awaited<ReturnType<UploadQueueDeps['commit']>>
+      try {
+        committed = await withTimeout(
+          () =>
+            deps.commit({
+              captureId: shot.id,
+              attemptId: attempt.attemptId,
+              photoId: reserved.photoId,
+              width: prepared.width,
+              height: prepared.height,
+              byteSize: prepared.full.size,
+              // EXIF first, the shutter press second. iOS hands a live capture
+              // to the page with its EXIF stripped, so on most guests' phones
+              // there is no timestamp in the file at all — and `taken_at` is
+              // what the host's ZIP export sorts and stamps the album by. The
+              // moment the camera returned the file is within seconds of the
+              // shutter on a product with no gallery upload, and it is right
+              // however long compression, the queue or a dead tab delayed the
+              // upload. Never null from here on.
+              takenAt:
+                prepared.takenAt?.toISOString() ??
+                new Date(shot.capturedAt).toISOString(),
+            }),
+          limits.commit,
+          'Confirming a photo',
+        )
+      } catch (error) {
+        trace(shot.id, {
+          kind: 'commit_finished',
+          ...step,
+          photoId: reserved.photoId,
+          ms: clock() - commitStarted,
+          outcome: 'failed',
+          failure: failureClass(error),
+          refusal: null,
+          unsent: isConnectionFailure(error),
+        })
+        throw error
+      }
 
-      if (!committed.committed) throw new Error('commit refused')
+      if (!committed.committed) {
+        trace(shot.id, {
+          kind: 'commit_finished',
+          ...step,
+          photoId: reserved.photoId,
+          ms: clock() - commitStarted,
+          outcome: 'refused',
+          failure: 'commit_refused',
+          refusal: committed.refusal ?? null,
+          unsent: false,
+        })
+        throw new Error('commit refused')
+      }
+      trace(shot.id, {
+        kind: 'commit_finished',
+        ...step,
+        photoId: reserved.photoId,
+        ms: clock() - commitStarted,
+        outcome: 'committed',
+        failure: null,
+        refusal: null,
+        unsent: false,
+      })
 
       if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
       notify(() => handlers.onConfirmed(shot.id, committed.shotsRemaining))
@@ -600,6 +751,9 @@ export function createUploadQueue({
     } catch (error) {
       console.error('Native camera upload failed', error)
       if (stopped) {
+        // `notify` is silent from here on, so without this a teardown
+        // mid-attempt left no trace at all of where the shot had got to.
+        trace(shot.id, { kind: 'interrupted', ...step, stage, photoId })
         await refund(item)
         return 'retry'
       }
@@ -635,6 +789,17 @@ export function createUploadQueue({
 
       notify(() => handlers.onProgress(shot.id, 0))
       return 'retry'
+    } finally {
+      if (active === attempt) active = null
+    }
+  }
+
+  /** See `onAttemptStep`: runs after `stop()`, never throws into the queue. */
+  function trace(id: string, step: AttemptStep) {
+    try {
+      handlers.onAttemptStep?.(id, step)
+    } catch (error) {
+      console.error('Upload handler failed', error)
     }
   }
 
@@ -654,7 +819,11 @@ export function createUploadQueue({
     activeAbort = null
   }
 
-  return { enqueue, resume, drain, stop }
+  function inFlight() {
+    return active ? { ...active } : null
+  }
+
+  return { enqueue, resume, drain, stop, inFlight }
 }
 
 function aborted() {

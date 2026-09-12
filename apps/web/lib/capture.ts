@@ -143,7 +143,7 @@ export async function commitShot({
   height: number
   byteSize: number
   takenAt: string | null
-}): Promise<{ committed: boolean; shotsRemaining: number }> {
+}): Promise<CommitShotResult> {
   const db = createAdminClient()
 
   const { data, error } = await db
@@ -161,9 +161,28 @@ export async function commitShot({
     .maybeSingle()
 
   if (error) throw error
-  if (!data) return { committed: false, shotsRemaining: 0 }
+  // Two different refusals that used to be one `false`. The function always
+  // returns a row, so no row at all is PostgREST or the client misbehaving;
+  // `committed: false` is the RPC's own answer — no photo with that id whose
+  // participant holds this token hash.
+  if (!data)
+    return { committed: false, shotsRemaining: 0, refusal: 'empty_response' }
+  if (!data.committed) {
+    return {
+      committed: false,
+      shotsRemaining: data.shots_remaining,
+      refusal: 'not_matched',
+    }
+  }
 
-  return { committed: data.committed, shotsRemaining: data.shots_remaining }
+  return { committed: true, shotsRemaining: data.shots_remaining }
+}
+
+export type CommitShotResult = {
+  committed: boolean
+  shotsRemaining: number
+  /** Only when `committed` is false. */
+  refusal?: 'not_matched' | 'empty_response'
 }
 
 /**

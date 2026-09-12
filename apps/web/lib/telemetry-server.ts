@@ -205,6 +205,57 @@ export type ServerEventProperties = {
     cancelled: number
     failed: number
   }
+
+  // The stretch between the three renders landing and the row going `ready`.
+  // Both ends of it used to be silent on the server: a commit that arrived
+  // with no cookie answered `committed: false` and reported nothing, and one
+  // that threw reported a `server_error` with no event and no photo on it.
+  // See `lib/commit-observed.ts` and `docs/upload-commit-observability.md`.
+
+  /**
+   * A commit request reached the function. Sent before anything is checked,
+   * so an invocation that later hangs or dies still left this behind.
+   *
+   * Every identifier here is the *browser's claim*: nothing has been read yet.
+   * `photo_ref` is the hash of the id the browser sent (`lib/photo-ref.ts`).
+   */
+  commit_shot_received: {
+    surface: 'guest' | 'host'
+    photo_ref: string | null
+    claimed_capture_id: string | null
+    attempt_id: string | null
+  }
+  /**
+   * …and what became of it. `outcome` is what the caller was told; `row` and
+   * `status_after` are read back from `photos` after the commit, so a refusal
+   * or an exception still says whether the row exists, whose it is and
+   * whether it went `ready` regardless.
+   *
+   * `event_id` and `capture_id` come from that row (`idempotency_key` is the
+   * capture id), or for a host from the event their session owns — never
+   * from the request. `claimed_capture_id` is the request's, and
+   * `capture_id_matches` is whether the two agree.
+   */
+  commit_shot_finished: {
+    surface: 'guest' | 'host'
+    event_id: string | null
+    capture_id: string | null
+    claimed_capture_id: string | null
+    capture_id_matches: boolean | null
+    attempt_id: string | null
+    photo_ref: string | null
+    outcome: 'committed' | 'refused' | 'error'
+    /** Refusals: `no_session`, `not_owner`, `no_participant`, `not_matched`,
+     *  `empty_response`. Errors: the stage that threw. */
+    reason: string | null
+    error_name: string | null
+    duration_ms: number
+    /** `owned` — the row is the caller's; `foreign` — it exists but the
+     *  caller's credential does not match it (or there was none); `missing`
+     *  — no such photo; `unknown` — the read-back itself failed. */
+    row: 'owned' | 'foreign' | 'missing' | 'unknown'
+    status_after: string | null
+  }
 }
 
 export type ServerEvent = keyof ServerEventProperties
@@ -353,9 +404,14 @@ export function safeServerValue(
   if (value === undefined || value === null) return null
   if (typeof value === 'boolean') return value
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
-  if (key === 'event_id' || key.endsWith('_key')) return safeUuid(value)
+  if (key.endsWith('_id') || key.endsWith('_key')) return safeUuid(value)
+  // A SHA-256 in hex (`lib/photo-ref.ts`), or nothing. Checked as strictly as
+  // an id, because the thing it stands in for is one.
+  if (key.endsWith('_ref')) return SHA256_HEX.test(value) ? value : null
   return safeToken(value, 80)
 }
+
+const SHA256_HEX = /^[0-9a-f]{64}$/
 
 /**
  * Report one bounded server product event.

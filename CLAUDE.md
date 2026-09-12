@@ -355,23 +355,28 @@ there is one, the capture id (both random uuids), plus whether the browser
 thought it was online. Filter on `event_id` and the question "did anyone at
 this wedding lose a photo" has an answer. The guest path, in order:
 
-| Event                      | Answers                                                                |
-| -------------------------- | ---------------------------------------------------------------------- |
-| `guest_page_viewed`        | How many scans reach the ticket, and what they find (camera, gallery)  |
-| `guest_join_refused`       | Cap reached vs. a bug — a refusal on an open camera is the latter      |
-| `camera_opened`            | The denominator for the OS camera hand-off                             |
-| `shutter_pressed`          | A file came back; `away_ms` is how long the OS had the screen          |
-| `capture_preparation_slow` | Successful preparation over five seconds, with safe size metadata      |
-| `upload_issue`             | One deduplicated issue: stage, class, attempt and whether terminal     |
-| `upload_confirmed`         | Done, with `elapsed_ms` from the shutter                               |
-| `upload_restored`          | A shot replayed after a killed tab, with its age                       |
-| `upload_discarded`         | A stored row thrown away unseen: expired, exhausted, empty             |
-| `upload_store_unavailable` | IndexedDB gave up, and at which stage — photos will not survive        |
-| `gallery_photo_opened`     | Somebody looked at the developed album — the format's whole payoff     |
-| `gallery_image_failed`     | A render would not load; URLs never expire, so a missing object or net |
-| `invite_shared`            | The link left the page, or the clipboard refused and it did not        |
-| `client_error`             | A rendered error boundary, with redacted stack locations               |
-| `server_error`             | An unhandled or critical handled server failure by operation           |
+| Event                        | Answers                                                                |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| `guest_page_viewed`          | How many scans reach the ticket, and what they find (camera, gallery)  |
+| `guest_join_refused`         | Cap reached vs. a bug — a refusal on an open camera is the latter      |
+| `camera_opened`              | The denominator for the OS camera hand-off                             |
+| `shutter_pressed`            | A file came back; `away_ms` is how long the OS had the screen          |
+| `capture_preparation_slow`   | Successful preparation over five seconds, with safe size metadata      |
+| `upload_issue`               | One deduplicated issue: stage, class, attempt and whether terminal     |
+| `upload_renders_uploaded`    | All three PUTs answered; `upload_ms`, keyed by `attempt_id`            |
+| `upload_commit_started`      | The commit was sent — which side of this a `pending` row stopped on    |
+| `upload_commit_finished`     | Its answer: `committed`, `refused` with the server's code, or `failed` |
+| `upload_attempt_interrupted` | A teardown ended the attempt, and at which stage                       |
+| `upload_backgrounded`        | The page was hidden or unloaded with an attempt still running          |
+| `upload_confirmed`           | Done, with `elapsed_ms` from the shutter                               |
+| `upload_restored`            | A shot replayed after a killed tab, with its age                       |
+| `upload_discarded`           | A stored row thrown away unseen: expired, exhausted, empty             |
+| `upload_store_unavailable`   | IndexedDB gave up, and at which stage — photos will not survive        |
+| `gallery_photo_opened`       | Somebody looked at the developed album — the format's whole payoff     |
+| `gallery_image_failed`       | A render would not load; URLs never expire, so a missing object or net |
+| `invite_shared`              | The link left the page, or the clipboard refused and it did not        |
+| `client_error`               | A rendered error boundary, with redacted stack locations               |
+| `server_error`               | An unhandled or critical handled server failure by operation           |
 
 Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
 is no reliable client-side signal for a cancel, so none is invented. How often
@@ -427,6 +432,8 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `invoice_failed`               | …or was not. `blocked` is the Billingo document quota, which needs a human    |
 | `invoice_cancelled`            | A refunded purchase's invoice was cancelled with a storno document            |
 | `invoice_sweep`                | One run of the invoice retry sweep. No run for an hour is the alert           |
+| `commit_shot_received`         | A commit reached the function; its ids are the browser's claims               |
+| `commit_shot_finished`         | …and how it ended, by name, with the row read back after the commit           |
 
 `checkout_confirmation_viewed` is the one event about the host rather than
 the money, and it exists because `checkout_settled` cannot answer the
@@ -436,6 +443,17 @@ while they were still reading. `settling` counted against a later `paid` on
 the same `event_id` is how long confirmation takes from where the host is
 standing; `unconfirmed` is somebody who reached that screen with no payment
 we could find, which is either a typed URL or something wrong.
+
+The five upload steps and the two `commit_shot_*` events are the stretch a
+`pending` row with its files in Storage sits in, and
+`docs/upload-commit-observability.md` maps every path there and holds the
+queries. Each attempt carries an `attempt_id` from the queue to the server.
+They break two habits on purpose: the browser ones are urgent, because the
+ending they exist for is a tab that dies a second later; and the server ones
+go through `after()` rather than being awaited, because `posthog-node`'s
+retries can hold a response past the browser's commit timeout. Server events
+carry `photo_ref`, the SHA-256 of the photo id, never the id — with the bucket
+public, `event_id` plus `photo_id` is a link to the picture.
 
 Three of those pairs are read as gaps rather than as counts. A
 `checkout_started` with no `checkout_settled` is an abandoned Stripe page; an

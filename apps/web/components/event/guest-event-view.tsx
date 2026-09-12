@@ -383,9 +383,18 @@ export function GuestEventView({
       const key = `${id}:${issue.stage}:${issue.failure}:${issue.terminal}`
       if (reportedIssues.current.has(key)) return
       reportedIssues.current.add(key)
+      // Issues are raised while their attempt is still the queue's active
+      // one. A compression failure belongs to no attempt, and the shot that is
+      // running may be a different one — hence the id check.
+      const flight = queueRef.current?.inFlight()
       track(
         'upload_issue',
-        { event_id: eventId, capture_id: id, ...issue },
+        {
+          event_id: eventId,
+          capture_id: id,
+          ...issue,
+          ...(flight?.id === id ? { attempt_id: flight.attemptId } : {}),
+        },
         { urgent: true },
       )
     },
@@ -572,6 +581,49 @@ export function GuestEventView({
           })
           claimCell(id, blob, 'stored')
         },
+        // Telemetry only, and it may run after unmount — see the handler's
+        // note in `lib/upload-queue.ts`. Nothing here may set state.
+        onAttemptStep(id, step) {
+          const attempt = {
+            event_id: eventId,
+            capture_id: id,
+            attempt_id: step.attemptId,
+            attempt: step.attempt,
+          }
+          switch (step.kind) {
+            case 'uploaded':
+              track(
+                'upload_renders_uploaded',
+                { ...attempt, upload_ms: step.ms, bytes: step.bytes },
+                { urgent: true },
+              )
+              return
+            case 'commit_started':
+              track('upload_commit_started', attempt, { urgent: true })
+              return
+            case 'commit_finished':
+              track(
+                'upload_commit_finished',
+                {
+                  ...attempt,
+                  outcome: step.outcome,
+                  failure: step.failure,
+                  refusal: step.refusal,
+                  unsent: step.unsent,
+                  commit_ms: step.ms,
+                },
+                { urgent: true },
+              )
+              return
+            case 'interrupted':
+              track(
+                'upload_attempt_interrupted',
+                { ...attempt, stage: step.stage },
+                { urgent: true },
+              )
+              return
+          }
+        },
       },
     }))
 
@@ -580,12 +632,39 @@ export function GuestEventView({
       void queue.resume()
     }
 
+    // Whether the guest left mid-attempt is the question a `pending` row
+    // raises first, and nothing answered it. iOS may freeze or reclaim the tab
+    // right after this, so the send is best effort.
+    const leaving = (event: Event) => {
+      const via = event.type === 'pagehide' ? 'pagehide' : 'visibilitychange'
+      if (via === 'visibilitychange' && document.visibilityState !== 'hidden')
+        return
+      const flight = queue.inFlight()
+      if (!flight) return
+      track(
+        'upload_backgrounded',
+        {
+          event_id: eventId,
+          capture_id: flight.id,
+          attempt_id: flight.attemptId,
+          attempt: flight.attempt,
+          stage: flight.stage,
+          via,
+        },
+        { urgent: true },
+      )
+    }
+
     reactivate()
     document.addEventListener('visibilitychange', reactivate)
+    document.addEventListener('visibilitychange', leaving)
+    window.addEventListener('pagehide', leaving)
     window.addEventListener('pageshow', reactivate)
     window.addEventListener('online', reactivate)
     return () => {
       document.removeEventListener('visibilitychange', reactivate)
+      document.removeEventListener('visibilitychange', leaving)
+      window.removeEventListener('pagehide', leaving)
       window.removeEventListener('pageshow', reactivate)
       window.removeEventListener('online', reactivate)
       queue.stop()
