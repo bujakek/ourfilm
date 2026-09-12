@@ -6,19 +6,22 @@ import { EVENT_PRICE_LABELS } from './pricing'
 /**
  * The one definition of an occasion.
  *
- * Read by four places that must not drift: the homepage tab widget
- * (`components/site/occasions.tsx`), the `/alkalmak` routes, the footer, and
- * `app/sitemap.ts`. Adding an occasion here gives it a page and a sitemap
+ * Read by four places that must not drift: the homepage wall of prints
+ * (`components/site/occasion-prints.tsx`), the `/alkalmak` routes, the footer,
+ * and `app/sitemap.ts`. Adding an occasion here gives it a page and a sitemap
  * entry with no other edit.
  *
- * The homepage card and the occasion page's own hero deliberately share
- * `title` and `text` — they say the same thing, so a visitor who taps through
+ * The print's caption and the occasion page's own hero deliberately share
+ * `label` and `title` — they say the same thing, so a visitor who taps through
  * lands on the sentence they just tapped rather than a paraphrase of it.
  *
- * Not `server-only` on purpose — the homepage widget is a Client Component and
- * imports this directly. Icons therefore have to be component references
- * rather than props, which is fine as long as nothing tries to pass an
- * Occasion across the server/client boundary.
+ * Not `server-only` on purpose. It was the homepage's tab carousel that forced
+ * that — a Client Component importing this directly — and the carousel is
+ * gone; the navbar and footer now hold the constraint, because both are client
+ * components and both read `OCCASIONS_ARE_DRAFT`. Icons therefore still have
+ * to be component references rather than props, which is fine as long as
+ * nothing tries to pass an Occasion across the server/client boundary. The
+ * prints section is a Server Component and hands `Reveal` only strings.
  */
 export interface Occasion {
   /** URL segment and the widget's state id. */
@@ -26,6 +29,18 @@ export interface Occasion {
   label: string
   icon: LucideIcon
   image: string
+  /**
+   * Where the occasion page's wide header crops this photograph, as a
+   * Tailwind `object-position` class. Omitted means centred.
+   *
+   * One `image` feeds two boxes that want opposite things: the homepage print
+   * is 4:5 and portrait, the page header is a wide landscape band. A portrait
+   * source is ideal in the first and brutal in the second — `wedding-dance`
+   * is 670x1024, so a centred landscape crop of it lands on the couple's
+   * waists and takes both their heads off. This is the per-occasion escape
+   * hatch; the prints always crop centred, where it is never needed.
+   */
+  imagePosition?: string
   /** Describes the photograph, for the widget and the page hero. */
   alt: string
   title: string
@@ -34,6 +49,16 @@ export interface Occasion {
   /** What the homepage card's link to this page is called. */
   linkLabel: string
   sections: { heading: string; body: string }[]
+  /** Six things this camera does, said in this occasion's own terms. Every
+   *  one of them is a live product claim — see CLAUDE.md before editing. */
+  features: { heading: string; items: { title: string; text: string }[] }
+  /** Questions this occasion actually raises, not the homepage's again. */
+  faq: [question: string, answer: string][]
+  /** Blog document **ids**, not slugs. Resolved per locale and silently
+   *  dropped when a locale has no translation, so the section is simply
+   *  absent rather than broken — which is the state of every occasion but
+   *  the wedding today. */
+  posts?: string[]
   /** The page's closing card. Wording differs per occasion — a wedding is
    *  addressed as a couple, a birthday as one host. */
   cta: { heading: string; body: string; button: string; helper: string }
@@ -43,29 +68,47 @@ export interface Occasion {
 
 export type OccasionCopy = Pick<
   Occasion,
-  'label' | 'alt' | 'title' | 'text' | 'linkLabel' | 'sections' | 'cta' | 'meta'
+  | 'label'
+  | 'alt'
+  | 'title'
+  | 'text'
+  | 'linkLabel'
+  | 'sections'
+  | 'features'
+  | 'faq'
+  | 'posts'
+  | 'cta'
+  | 'meta'
 >
 
 /**
  * While true, the occasion pages are not part of the site.
  *
- * Three things read this flag and there is nothing else to edit:
+ * Four things read this flag and there is nothing else to edit:
  *
  *   - every `/alkalmak` page carries `noindex`
  *   - `app/sitemap.ts` and `/llms.txt` leave the routes out — a sitemap that
  *     advertises noindex URLs sends crawlers two contradictory instructions
  *   - the navbar and the footer do not link to them
+ *   - `components/site/occasion-prints.tsx` draws the homepage prints as
+ *     plain figures rather than links
  *
- * The routes still resolve. A page nobody links to and nobody indexes is
- * withdrawn from the site without being deleted from it, which is what a
- * section awaiting a rewrite wants: the copy, the images and the routing all
- * stay put and one boolean brings them back.
+ * The routes still resolve either way. A page nobody links to and nobody
+ * indexes is withdrawn from the site without being deleted from it, which is
+ * what a section awaiting a rewrite wants: the copy, the images and the
+ * routing all stay put and one boolean brings them back.
  *
- * `components/site/occasions.tsx` — the homepage carousel — is dormant for
- * the same reason but by a different mechanism: `app/[locale]/page.tsx`
- * simply does not render it, the way it does not render `<Stats />`.
+ * **It is now false**, and what earned that is the rewrite: each occasion has
+ * a problem block, six feature cards written in its own terms, its own
+ * questions and — where the blog has them — its own reading. Setting it back
+ * to true withdraws all four again and costs nothing, so it stays as the
+ * lever rather than being deleted.
+ *
+ * The homepage prints are the one reader that shows rather than hides: naming
+ * an occasion is a statement about what the camera is for, and linking one is
+ * only honest once the page it points at is part of the site.
  */
-export const OCCASIONS_ARE_DRAFT = true
+export const OCCASIONS_ARE_DRAFT = false
 
 /** The same free-trial line closes every occasion page. */
 const OCCASION_CTA_HELPER =
@@ -77,6 +120,9 @@ export const occasions: Occasion[] = [
     label: 'Esküvő',
     icon: Heart,
     image: '/images/wedding-dance.webp',
+    // The only portrait source of the four. Faces sit about a quarter of the
+    // way down, so a centred band misses them entirely.
+    imagePosition: 'object-[50%_24%]',
     alt: 'Esküvői első tánc',
     title: 'A napotok, ahogy a vendégeitek látták.',
     text: 'A fotós megörökíti a nagy pillanatokat. A vendégeitek pedig mindazt, ami közben történik.',
@@ -90,6 +136,58 @@ export const occasions: Occasion[] = [
         heading: 'Legyen ott, ahol a vendégek is vannak',
         body: 'Tegyétek ki a QR-kódot az asztalokra, a bárpulthoz vagy a vendégkönyv mellé. A vendégek beolvasás után rögtön fotózhatnak, alkalmazás és regisztráció nélkül.',
       },
+    ],
+    features: {
+      heading: 'A nagy napra kitalálva.',
+      items: [
+        {
+          title: 'Egy QR-kód mindenkinek',
+          text: 'A vendégek beolvassák, megadják a nevüket, és már fotózhatnak. Nem kell app és nem kell regisztráció.',
+        },
+        {
+          title: 'Ti mondjátok meg, mikor nyílik',
+          text: 'A galéria megnyílhat azonnal, vagy csak az esküvő végén. Ha meggondoljátok magatokat, előbb is megnyithatjátok.',
+        },
+        {
+          title: 'Mindenkinek ugyanannyi kép jut',
+          text: 'Ti választjátok ki, hány képkockát kap egy vendég: 5, 10, 16, 24 vagy 36.',
+        },
+        {
+          title: 'Nyomtatható felbontásban',
+          text: 'A képek nem chat-minőségben érkeznek, és az egész albumot egyben letölthetitek.',
+        },
+        {
+          title: 'Ti látjátok először',
+          text: 'Házigazdaként minden képet láttok, és bármelyiket elrejthetitek a vendégek elől.',
+        },
+        {
+          title: 'A fotósotok mellé',
+          text: 'A fotós a megtervezett pillanatokat viszi. Az OurFilm azt, ami közben az asztaloknál történik.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Kell a vendégeknek alkalmazást telepíteniük?',
+        'Nem. A QR-kód beolvasása után a kamera a telefonjuk böngészőjében nyílik meg.',
+      ],
+      [
+        'Mi történik, ha egy vendég elhasználja a képkockáit?',
+        'Akkor betelt a tekercse, ahogy egy eldobható gépnél is. Előre ti állítjátok be, hány kép jusson egy vendégre.',
+      ],
+      [
+        'Láthatják a vendégek egymás képeit?',
+        'Ti döntitek el. A galéria megnyílhat a vendégeknek is, vagy maradhat csak nálatok.',
+      ],
+      [
+        'Mennyibe kerül?',
+        `5 vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu} az egész esküvőre, korlátlan vendéggel.`,
+      ],
+    ],
+    posts: [
+      'wedding-qr-code-guide',
+      'qr-code-sign-text',
+      'wedding-photo-sharing-checklist',
     ],
     cta: {
       heading: 'Lássátok viszont a napot a vendégeitek szemével.',
@@ -122,6 +220,53 @@ export const occasions: Occasion[] = [
         body: 'Kerüljön egy QR-kód a bejárathoz, a tortaasztalra vagy az italpulthoz. A vendégek alkalmazás és regisztráció nélkül nyithatják meg a saját tekercsüket.',
       },
     ],
+    features: {
+      heading: 'A bulira kitalálva.',
+      items: [
+        {
+          title: 'Öt perc alatt kész',
+          text: 'Megadod a nevét és azt, hogy mikor ér véget. Kapsz egy QR-kódot, és ennyi a teendő.',
+        },
+        {
+          title: 'Maradjon meglepetés',
+          text: 'A galéria megnyílhat csak a buli végén, így másnap együtt nézitek meg, mi sikerült.',
+        },
+        {
+          title: 'Beolvassák, és fotóznak',
+          text: 'Nincs app, nincs regisztráció. A vendégek csak a nevüket adják meg.',
+        },
+        {
+          title: 'Mindenki ugyanannyit kap',
+          text: 'Te választod ki: 5, 10, 16, 24 vagy 36 képkocka jut egy vendégre.',
+        },
+        {
+          title: 'Nincs előnézet, nincs újrafotózás',
+          text: 'Ahogy egy eldobható gépnél: megnyomod a gombot, és később derül ki, mi lett belőle.',
+        },
+        {
+          title: 'Másnap egyben letöltöd',
+          text: 'Az egész albumot egyszerre töltheted le, nyomtatható felbontásban.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Kell hozzá alkalmazás?',
+        'Nem. A vendégek a QR-kód beolvasása után a böngészőben fotóznak.',
+      ],
+      [
+        'Mi van, ha valaki későn érkezik?',
+        'Bármikor becsatlakozhat, amíg a kamera nyitva van, és ő is ugyanannyi képkockát kap.',
+      ],
+      [
+        'Meddig lehet fotózni?',
+        'Addig, ameddig beállítod. A zárás idejét később is módosíthatod.',
+      ],
+      [
+        'Mennyibe kerül?',
+        `5 vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan vendéggel.`,
+      ],
+    ],
     cta: {
       heading: 'Legyen egy közös album az egész születésnapból.',
       body: 'Hozd létre az eseményt, állítsd be a képkockák számát és válaszd ki, mikor jelenjenek meg a fotók.',
@@ -153,6 +298,53 @@ export const occasions: Occasion[] = [
         body: 'Küldd el a meghívólinket a közös csoportba, így mindenki már az első naptól a saját tekercsével fotózhat. Alkalmazást senkinek sem kell letöltenie.',
       },
     ],
+    features: {
+      heading: 'Az egész útra.',
+      items: [
+        {
+          title: 'Egy link az egész társaságnak',
+          text: 'Elküldöd a linket vagy megmutatod a QR-kódot. Aki csatlakozik, saját tekercset kap.',
+        },
+        {
+          title: 'Több napon át ugyanaz a kamera',
+          text: 'A kamera addig marad nyitva, ameddig beállítod — egy hétvégére és két hétre is jó.',
+        },
+        {
+          title: 'Gyenge net sem visz el képet',
+          text: 'Ha megszakad a kapcsolat, a kép a telefonon várakozik, és magától feltöltődik, amint van hálózat.',
+        },
+        {
+          title: 'Nem kell letölteni semmit',
+          text: 'Külföldön sem kell appot telepíteni vagy fiókot létrehozni.',
+        },
+        {
+          title: 'Mindenki más szemszögből',
+          text: 'Ugyanaz az út négy-öt ember tekercsén, a végén egyetlen albumban.',
+        },
+        {
+          title: 'A végén egy album',
+          text: 'Az út után az egészet egyben letöltitek, nyomtatható felbontásban.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Működik külföldi SIM-mel vagy szállodai wifivel?',
+        'Igen. A kamera a böngészőben fut, bármilyen internetkapcsolattal.',
+      ],
+      [
+        'Mi történik, ha nincs térerő?',
+        'A kép a telefonon várakozik, és magától feltöltődik, amint újra van hálózat.',
+      ],
+      [
+        'Meddig maradhat nyitva a kamera?',
+        'Ameddig beállítod. Egy hétvégére és egy kéthetes útra is ugyanúgy jó.',
+      ],
+      [
+        'Mennyibe kerül?',
+        `5 résztvevőig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan résztvevővel.`,
+      ],
+    ],
     cta: {
       heading: 'Nézzétek vissza együtt az utat.',
       body: 'Hozd létre a közös kamerát, oszd meg az útitársaiddal, és állítsd be, mikor nyíljon meg a galéria.',
@@ -183,6 +375,53 @@ export const occasions: Occasion[] = [
         heading: 'Tedd oda, ahol mindenki megfordul',
         body: 'A bejárat, a bárpult és az asztalok a legjobb helyek. Egy beolvasás után minden vendég megkapja a saját, véges számú képkockáját.',
       },
+    ],
+    features: {
+      heading: 'Az estére kitalálva.',
+      items: [
+        {
+          title: 'Beolvassák, és már fotóznak',
+          text: 'Egy QR-kód a pultra vagy az asztalokra. Nincs app, nincs regisztráció.',
+        },
+        {
+          title: 'Korlátozott tekercs',
+          text: 'Mindenki ugyanannyi képkockát kap, ezért meg is gondolja, mire használja.',
+        },
+        {
+          title: 'Reggel derül ki, mi sikerült',
+          text: 'A galéria megnyílhat csak az este végén, így másnap együtt nézitek végig.',
+        },
+        {
+          title: 'Nincs előnézet',
+          text: 'Megnyomod a gombot, és nem tudod, mi lett belőle. Ez a formátum, nem hiba.',
+        },
+        {
+          title: 'Te látod először',
+          text: 'Házigazdaként minden képet látsz, és bármelyiket elrejtheted.',
+        },
+        {
+          title: 'Egy album, nem húsz beszélgetés',
+          text: 'Minden kép egy helyre kerül, és az egészet egyben letöltöd.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Kell regisztrálni?',
+        'A vendégeknek nem. Csak a nevüket adják meg, hogy látszódjon, ki mit fotózott.',
+      ],
+      [
+        'Mi van, ha valaki olyat fotóz, ami nem való bele?',
+        'Házigazdaként bármelyik képet elrejtheted, és véglegesen törölheted is.',
+      ],
+      [
+        'Láthatják a vendégek a képeket?',
+        'Te döntöd el. A galéria megnyílhat nekik is, vagy maradhat csak nálad.',
+      ],
+      [
+        'Mennyibe kerül?',
+        `5 vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan vendéggel.`,
+      ],
     ],
     cta: {
       heading: 'Lássátok viszont a bulit minden szemszögből.',
@@ -219,6 +458,54 @@ const englishOccasions: Record<string, OccasionCopy> = {
         body: 'Place the QR code on the tables, by the bar or next to the guest book. One scan opens the camera — no app and no account needed.',
       },
     ],
+    features: {
+      heading: 'Built for the biggest day.',
+      items: [
+        {
+          title: 'One QR code for everyone',
+          text: 'Guests scan it, give a name and start shooting. No app to install and no account to make.',
+        },
+        {
+          title: 'You decide when it opens',
+          text: 'The gallery can open straight away or only when the wedding ends. Change your mind and you can open it early.',
+        },
+        {
+          title: 'Everyone gets the same roll',
+          text: 'You choose how many frames each guest gets: 5, 10, 16, 24 or 36.',
+        },
+        {
+          title: 'Print-ready resolution',
+          text: 'Photos do not arrive at chat quality, and the whole album downloads in one go.',
+        },
+        {
+          title: 'You see them first',
+          text: 'As the host you see every photo, and you can hide any of them from your guests.',
+        },
+        {
+          title: 'Alongside your photographer',
+          text: 'Your photographer takes the planned moments. OurFilm takes what happens at the tables meanwhile.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Do guests have to install an app?',
+        'No. Once they scan the QR code the camera opens in their phone browser.',
+      ],
+      [
+        'What happens when a guest runs out of frames?',
+        'Their roll is finished, exactly as it would be on a disposable camera. You set the number of frames in advance.',
+      ],
+      [
+        'Can guests see each other’s photos?',
+        'That is your choice. The gallery can open to guests too, or stay with you alone.',
+      ],
+      [
+        'What does it cost?',
+        `Free for up to 5 guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en} for the whole wedding, with unlimited guests.`,
+      ],
+    ],
+    posts: ['wedding-photo-sharing'],
     cta: {
       heading: 'See the day through your guests’ eyes.',
       body: 'Create your camera, choose the roll length and decide when the photos should be revealed.',
@@ -246,6 +533,53 @@ const englishOccasions: Record<string, OccasionCopy> = {
         heading: 'Put the QR code in plain sight.',
         body: 'Try the entrance, the cake table or the bar. Guests can open their roll without downloading an app or creating an account.',
       },
+    ],
+    features: {
+      heading: 'Made for the party.',
+      items: [
+        {
+          title: 'Ready in five minutes',
+          text: 'Give it a name and an end time. You get a QR code, and that is the whole setup.',
+        },
+        {
+          title: 'Keep it a surprise',
+          text: 'The gallery can open only when the party ends, so you go through it together the next day.',
+        },
+        {
+          title: 'They scan and shoot',
+          text: 'No app, no account. Guests only give a name.',
+        },
+        {
+          title: 'Everyone gets the same roll',
+          text: 'You choose it: 5, 10, 16, 24 or 36 frames each.',
+        },
+        {
+          title: 'No preview, no retakes',
+          text: 'Like a disposable camera: you press the button and find out later what you got.',
+        },
+        {
+          title: 'Download it all the next day',
+          text: 'The whole album comes down in one go, at print-ready resolution.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Is an app needed?',
+        'No. Guests scan the QR code and shoot in the browser.',
+      ],
+      [
+        'What if someone arrives late?',
+        'They can join any time while the camera is open, and they get the same number of frames.',
+      ],
+      [
+        'How long can people shoot for?',
+        'For as long as you set. You can move the closing time later as well.',
+      ],
+      [
+        'What does it cost?',
+        `Free for up to 5 guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited guests.`,
+      ],
     ],
     cta: {
       heading: 'Turn the whole birthday into one shared roll.',
@@ -275,6 +609,53 @@ const englishOccasions: Record<string, OccasionCopy> = {
         body: 'Drop the invite link in the group chat so everyone can start shooting from day one. No one needs another app.',
       },
     ],
+    features: {
+      heading: 'For the whole trip.',
+      items: [
+        {
+          title: 'One link for everyone',
+          text: 'Send the link or show the QR code. Everyone who joins gets their own roll.',
+        },
+        {
+          title: 'The same camera for days',
+          text: 'It stays open for as long as you set, which works for a weekend and for a fortnight.',
+        },
+        {
+          title: 'A weak signal loses nothing',
+          text: 'If the connection drops, the photo waits on the phone and uploads by itself once there is a network again.',
+        },
+        {
+          title: 'Nothing to download',
+          text: 'No app to install and no account to make, wherever you are.',
+        },
+        {
+          title: 'Every point of view',
+          text: 'The same trip across four or five rolls, ending up in a single album.',
+        },
+        {
+          title: 'One album at the end',
+          text: 'After the trip you download the whole thing at once, at print-ready resolution.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Does it work on a foreign SIM or hotel wifi?',
+        'Yes. The camera runs in the browser over any internet connection.',
+      ],
+      [
+        'What happens with no signal?',
+        'The photo waits on the phone and uploads by itself once there is a network again.',
+      ],
+      [
+        'How long can the camera stay open?',
+        'For as long as you set. A weekend and a two-week trip work the same way.',
+      ],
+      [
+        'What does it cost?',
+        `Free for up to 5 people. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited people.`,
+      ],
+    ],
     cta: {
       heading: 'Relive the trip together.',
       body: 'Create your shared camera, send it to the group and choose when the photos are revealed.',
@@ -302,6 +683,53 @@ const englishOccasions: Record<string, OccasionCopy> = {
         heading: 'Put it where the party happens.',
         body: 'The entrance, bar and tables all work well. After one scan, every guest gets their own limited roll.',
       },
+    ],
+    features: {
+      heading: 'Made for the night.',
+      items: [
+        {
+          title: 'They scan and they are shooting',
+          text: 'One QR code on the bar or the tables. No app, no account.',
+        },
+        {
+          title: 'A limited roll',
+          text: 'Everyone gets the same number of frames, so everyone thinks about what to spend them on.',
+        },
+        {
+          title: 'You find out in the morning',
+          text: 'The gallery can open only once the night is over, so you go through it together the next day.',
+        },
+        {
+          title: 'No preview',
+          text: 'You press the button and you do not know what you got. That is the format, not a fault.',
+        },
+        {
+          title: 'You see them first',
+          text: 'As the host you see every photo and you can hide any of them.',
+        },
+        {
+          title: 'One album, not twenty chats',
+          text: 'Every photo lands in one place, and the whole thing downloads in one go.',
+        },
+      ],
+    },
+    faq: [
+      [
+        'Do people have to sign up?',
+        'Guests do not. They only give a name, so it is clear who took what.',
+      ],
+      [
+        'What if someone shoots something that does not belong there?',
+        'As the host you can hide any photo, and delete it permanently too.',
+      ],
+      [
+        'Can guests see the photos?',
+        'That is your choice. The gallery can open to them, or stay with you alone.',
+      ],
+      [
+        'What does it cost?',
+        `Free for up to 5 guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited guests.`,
+      ],
     ],
     cta: {
       heading: 'See the party from every angle.',

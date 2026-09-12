@@ -5,7 +5,9 @@ import { Footer } from '@/components/site/footer'
 import { Hero } from '@/components/site/hero'
 import { HowItWorks } from '@/components/site/how-it-works'
 import { Navbar } from '@/components/site/navbar'
+import { OccasionPrints } from '@/components/site/occasion-prints'
 import { PhotoReveal } from '@/components/site/photo-reveal'
+import { Problem } from '@/components/site/problem'
 import { QrPreview } from '@/components/site/qr-preview'
 import { TryCameraCard } from '@/components/site/try-camera-card'
 import { defaultLocale, isLocale } from '@/lib/i18n'
@@ -17,12 +19,12 @@ type Props = { params: Promise<{ locale: string }> }
 
 const metadataCopy = {
   en: {
-    title: 'OurFilm — Your Wedding, Through Their Eyes',
+    title: 'OurFilm | Your Wedding, Through Their Eyes',
     description:
       'Give every wedding guest their own digital roll with one QR code. No app, no accounts and no chasing photos after the wedding.',
   },
   hu: {
-    title: 'OurFilm — Az esküvőtök, a vendégeitek szemével',
+    title: 'OurFilm | Az esküvőtök, a vendégeitek szemével',
     description:
       'A vendégek QR-kóddal nyitják meg a saját digitális tekercsüket. Nincs app, nincs előnézet, a képek pedig akkor jelennek meg, amikor ti szeretnétek.',
   },
@@ -73,8 +75,10 @@ export default async function Page({ params }: Props) {
             and the sentence is now the supporting line of the step section it
             sat above. Nothing it said has left the page. */}
         <Hero locale={locale} />
+        <Problem locale={locale} />
         <HowItWorks locale={locale} />
         <QrPreview locale={locale} />
+        <OccasionPrints locale={locale} />
         <PhotoReveal locale={locale} />
         <Faq locale={locale} />
         <FinalCta locale={locale} />

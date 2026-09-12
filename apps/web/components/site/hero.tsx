@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
+import { demoEventUrl } from '@/lib/site'
 import { HeroTicket } from './hero-ticket'
 
 /**
@@ -22,6 +23,7 @@ import { HeroTicket } from './hero-ticket'
  */
 export function Hero({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].hero
+  const demoUrl = demoEventUrl(locale)
 
   return (
     <section
@@ -69,31 +71,25 @@ export function Hero({ locale }: { locale: Locale }) {
             >
               {copy.create}
             </Link>
-            <a
-              href="#how-it-works"
+            <Link
+              href={demoUrl}
               className="btn-shine inline-flex items-center justify-center rounded-xl border border-border-strong px-7.5 py-4.5 text-[15px] font-semibold transition-[transform,border-color] hover:scale-[1.03] hover:border-white/35"
             >
-              {copy.how}
-            </a>
+              {copy.try}
+            </Link>
           </div>
 
-          {/* The helper line was one sentence about two of the four things
-              that make this a disposable camera. All four are true and stated
-              elsewhere; here they are the format, in the counting voice. */}
-          {/* Separators, not the design's ruled cells — and this is measured,
-              not a preference. The four Hungarian claims are 658px of content;
-              the column is 575px at every desktop width, because `max-w-6xl`
-              caps it long before the viewport does. The row therefore always
-              wraps, and a left border then rules against the margin of the
-              second line, which reads as a table that has come apart. The
-              prototype's ruled cells work because "NO APP · NO SIGN-UP · NO
-              PREVIEW · FREE UP TO 5 GUESTS" is a third shorter. A separator
-              that belongs to the pair rather than the cell survives the wrap. */}
-          <ul className="mt-9 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/12 pt-4.5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-foreground/45">
+          {/* The product's four clearest promises in the counting voice. They
+              use a two-column grid on phones so the long Hungarian labels stay
+              readable, then return to the original wrapping row on desktop. */}
+          <ul className="mt-9 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-white/12 pt-4.5 font-mono text-[9.5px] font-medium tracking-[0.16em] text-foreground/45 sm:flex sm:flex-wrap sm:gap-y-1">
             {copy.claims.map((claim, i) => (
               <li key={claim} className="flex items-center gap-4 py-0.5">
                 {i > 0 ? (
-                  <span aria-hidden="true" className="text-foreground/22">
+                  <span
+                    aria-hidden="true"
+                    className="hidden text-foreground/22 sm:inline"
+                  >
                     ·
                   </span>
                 ) : null}
