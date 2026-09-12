@@ -622,6 +622,13 @@ web server cannot cryptographically prove an offline device timestamp, so the
 existing participant's fixed roll is still the abuse ceiling. An existing
 reservation remains the stronger proof and replays without this timestamp gate.
 
+**Hosts are not told about the grace (settled).** A revealed album can gain
+photos for up to a day after the close, and a host who downloads the ZIP at
+the end of the party can miss them. That is accepted silently: no line on the
+album, the export or the settings screen. It was weighed and declined, so do not
+add one without asking. `shot_reserved_in_grace` is how often it actually
+happens.
+
 **The attempt budget is only ever spent on an answer from the server**, and
 `apps/web/lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten
 seconds is forty seconds — a marquee, a lift, a walk to the car park — so
