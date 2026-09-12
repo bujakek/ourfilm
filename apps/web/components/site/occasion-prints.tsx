@@ -1,8 +1,9 @@
 import Image from 'next/image'
+import Link from 'next/link'
 
-import type { Locale } from '@/lib/i18n'
+import { type Locale, localePath } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
-import { occasionCopy, occasions } from '@/lib/occasions'
+import { OCCASIONS_ARE_DRAFT, occasionCopy, occasions } from '@/lib/occasions'
 import { Reveal } from './reveal'
 
 /**
@@ -25,13 +26,16 @@ import { Reveal } from './reveal'
  * the product returns exactly what the phone's camera gave it, at 3200px, and
  * `photo-quality.tsx` is where that claim lives.
  *
- * **These are not links.** `OCCASIONS_ARE_DRAFT` in `lib/occasions.ts` still
- * withdraws the `/alkalmak` pages from the site, and the navbar already drops
- * its own link to them for the same reason. Naming an occasion is a statement
- * about what the camera is for; linking one is advertising a page that is
- * deliberately not part of the site yet. When that flag flips, each figure
- * wants wrapping in a `Link` to `localePath(locale, '/alkalmak/' + slug)` and
- * nothing else here changes.
+ * **Each print is a link while `OCCASIONS_ARE_DRAFT` is false, and a plain
+ * figure while it is true.** Naming an occasion is a statement about what the
+ * camera is for; linking one advertises a page, so it may only do that while
+ * the page is genuinely part of the site — the same condition the navbar and
+ * the sitemap read. Withdrawing the occasion pages therefore takes the links
+ * off the homepage too, without leaving four dead prints behind.
+ *
+ * The caption is the whole of the visible link text, so the accessible name
+ * comes from `linkLabel` instead — "Esküvő" tells a screen reader nothing
+ * about where it goes, where "Vendégkamera esküvőre" does.
  */
 
 /** Deterministic, not random: a fresh tilt per render is a print that twitches
@@ -77,6 +81,29 @@ export function OccasionPrints({ locale }: { locale: Locale }) {
             // of those to a Client Component. Only strings cross into
             // `Reveal`.
             const item = occasionCopy(locale, occasion)
+            const print = (
+              <figure
+                className={`paper rounded-[4px] p-2.5 pb-0 ${TILT[i]} transition-transform duration-500 group-hover:rotate-0`}
+              >
+                {/* The ground under the photo is the film's own dark, so a
+                    frame that has not loaded is a gap in the print rather
+                    than a flash of white paper. */}
+                <div className="film relative aspect-[4/5] overflow-hidden">
+                  <Image
+                    src={occasion.image}
+                    alt={item.alt}
+                    fill
+                    sizes="(max-width: 640px) 44vw, (max-width: 1024px) 42vw, 240px"
+                    className="object-cover grayscale transition-[filter] duration-500 group-hover:grayscale-0"
+                  />
+                </div>
+                {/* The wide bottom edge is the whole reason a print reads as
+                    a print, so the caption sits in it rather than under it. */}
+                <figcaption className="px-1 pt-4 pb-5 text-center font-display text-[15px] leading-none sm:text-[17px]">
+                  {item.label}
+                </figcaption>
+              </figure>
+            )
             return (
               <Reveal
                 as="li"
@@ -84,27 +111,17 @@ export function OccasionPrints({ locale }: { locale: Locale }) {
                 delay={i * 90}
                 className={i % 2 === 0 ? 'mt-7 sm:mt-12' : ''}
               >
-                <figure
-                  className={`paper rounded-[4px] p-2.5 pb-0 ${TILT[i]} transition-transform duration-500 hover:rotate-0`}
-                >
-                  {/* The ground under the photo is the film's own dark, so a
-                      frame that has not loaded is a gap in the print rather
-                      than a flash of white paper. */}
-                  <div className="film relative aspect-[4/5] overflow-hidden">
-                    <Image
-                      src={occasion.image}
-                      alt={item.alt}
-                      fill
-                      sizes="(max-width: 640px) 44vw, (max-width: 1024px) 42vw, 240px"
-                      className="object-cover grayscale"
-                    />
-                  </div>
-                  {/* The wide bottom edge is the whole reason a print reads as
-                      a print, so the caption sits in it rather than under it. */}
-                  <figcaption className="px-1 pt-4 pb-5 text-center font-display text-[15px] leading-none sm:text-[17px]">
-                    {item.label}
-                  </figcaption>
-                </figure>
+                {OCCASIONS_ARE_DRAFT ? (
+                  <div className="group">{print}</div>
+                ) : (
+                  <Link
+                    href={localePath(locale, `/alkalmak/${occasion.slug}`)}
+                    aria-label={item.linkLabel}
+                    className="group block rounded-[4px]"
+                  >
+                    {print}
+                  </Link>
+                )}
               </Reveal>
             )
           })}
