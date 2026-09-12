@@ -19,6 +19,28 @@ export function eventUrl(slug: string, locale?: 'en' | 'hu') {
   return locale ? `${url}?lang=${locale}` : url
 }
 
+/**
+ * The guest camera a visitor may try before creating anything, or `null`.
+ *
+ * `components/site/live-demo.tsx` rejected a permanently-open demo *event*
+ * and the reasoning still holds: a camera has a capture window and a reveal,
+ * so a camera that is always open is a fourth event state existing only for
+ * the marketing page. This is the other way round — an ordinary event a human
+ * keeps running, named here by slug, and nothing at all when there isn't one.
+ * The hero falls back to "how it works", so an unset variable costs a page
+ * that promises a demo it cannot open. Never point it at `EXAMPLE_SLUG`, which
+ * is a mockup and 404s.
+ *
+ * Relative, unlike `eventUrl`. That helper is absolute because what it returns
+ * gets printed onto a card that must not say `localhost`; this is a link
+ * clicked from the page it is on, and staying on the current origin is what
+ * makes it work on a preview and on a dev machine.
+ */
+export function demoEventUrl(locale: 'en' | 'hu'): string | null {
+  const slug = process.env.NEXT_PUBLIC_DEMO_EVENT_SLUG?.trim()
+  return slug ? `/e/${slug}?lang=${locale}` : null
+}
+
 /** Origin without the scheme, for places that show the URL rather than link it
  *  (the printed card, the landing page's mockups). */
 export const SITE_HOST = SITE_URL.replace(/^https?:\/\//, '')

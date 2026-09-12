@@ -4,7 +4,7 @@ export const marketingCopy = {
   en: {
     nav: {
       aria: 'Main navigation',
-      home: 'OurFilm — back to homepage',
+      home: 'OurFilm, back to homepage',
       links: ['How it works', 'Occasions', 'Pricing', 'About'],
       login: 'Log in',
       create: 'Create your camera',
@@ -15,17 +15,41 @@ export const marketingCopy = {
       eyebrow: 'A DIGITAL DISPOSABLE CAMERA FOR WEDDINGS',
       titleStart: 'Your wedding,',
       titleEnd: 'through your guests’ eyes.',
-      lead: 'Guests scan the QR code, get their own roll and start shooting. You reveal every photo together when the night is over.',
-      create: 'Create your camera',
+      lead: 'Every photo your guests take, in one place. No app, no account — they scan the QR code and start shooting.',
+      create: 'Create your wedding',
       how: 'See how it works',
+      try: 'Try the guest camera',
       helper: 'No app. No guest accounts.',
       /** The one word the headline turns on, italicised inside `titleEnd`. */
       emphasis: 'guests’',
       /** The format, in the counting voice. All four are enforced in the
        *  product — see the landing-page promises in `CLAUDE.md`. */
-      claims: ['NO APP', 'NO SIGN-UP', 'NO PREVIEW', 'FREE UP TO 5 GUESTS'],
+      claims: ['ONE QR CODE', 'NO APP', 'NO PREVIEW', 'FREE UP TO 5 GUESTS'],
       gallery: 'Shared gallery',
       couple: 'Anna & Peter',
+    },
+    problem: {
+      eyebrow: 'GUEST PHOTOS IN ONE PLACE',
+      title: 'Stop chasing photos after the wedding.',
+      lead: 'Guest photos usually scatter across Messenger, AirDrop and Drive links, or simply get lost. OurFilm gathers them in one place while the wedding is still happening.',
+      /**
+       * The old way struck through, then what happens instead. Four pairs,
+       * one per icon in `components/site/problem.tsx` and in that order.
+       *
+       * Each right-hand line is a claim `CLAUDE.md` already holds the product
+       * to — one album, the ZIP download, no app, the 3200px master. None of
+       * them may become a promise about camera-roll upload or unlimited
+       * photos, which is the one thing this section is shaped to invite.
+       */
+      rows: [
+        ['“Can you send me the photos?”', 'Guest photos arrive in one album.'],
+        ['Photos buried in group chats.', 'Download the whole album at once.'],
+        ['Download an app first.', 'Scan the QR code and start shooting.'],
+        [
+          'Chat apps can reduce photo quality.',
+          'Photos stay at print-ready resolution.',
+        ],
+      ],
     },
     benefits: {
       title: 'One camera for the whole wedding.',
@@ -36,35 +60,41 @@ export const marketingCopy = {
       tap: 'Tap to start shooting',
       steps: [
         [
-          'Create your event',
-          'Choose the roll length and when the photos should be revealed.',
+          'Create your wedding',
+          'Your gallery and QR code are ready in a couple of minutes.',
         ],
         [
-          'Share one QR code',
-          'Put it on the tables or send the link to your guests.',
+          'Put the QR code out',
+          'Guests scan it with their phone. Nothing to download.',
         ],
         [
-          'Let your guests shoot',
-          'They open the camera and use their own roll. No previews. No retakes.',
+          'Watch it fill up',
+          'Photos land straight in your wedding gallery. No previews, no retakes.',
         ],
       ],
     },
+    occasions: {
+      eyebrow: 'OCCASIONS',
+      title: 'For every kind of gathering.',
+      lead: 'Wherever people come together, everyone sees the evening from somewhere else. OurFilm collects every one of those angles.',
+    },
     qr: {
       eyebrow: 'ONE QR CODE',
-      title: 'Your camera is ready for guests.',
-      lead: 'Place the QR code on tables, by the entrance or at the bar. One scan and they’re in.',
+      title: 'Guests really only have to shoot.',
+      lead: 'No account, no app, no complicated sign-in. The whole thing is built for a phone, so it works in the middle of the dance floor.',
       label: 'Event name',
       placeholder: 'Anna & Peter',
       fallback: 'Your event name',
       link: 'Shareable link:',
       helper: 'Your event comes with its own QR code and link.',
+      sample: 'SAMPLE',
       cardLabel: 'DIGITAL DISPOSABLE CAMERA',
       cardBody: 'Scan the QR code and capture the day as you see it.',
     },
     reveal: {
       eyebrow: 'PHOTO REVEAL',
-      title: 'Keep the photos a surprise.',
-      lead: 'Reveal the gallery right away or wait until the event ends.',
+      title: 'Don’t watch the screen. Be there.',
+      lead: 'Keep the photos hidden until the wedding ends, then discover together what your guests captured.',
       opened: 'Gallery open',
       developing: 'Developing',
       waiting: 'Your photos are still developing',
@@ -104,13 +134,17 @@ export const marketingCopy = {
           'Can we download the photos?',
           'Yes. You can download the complete album, then share or print your favourites.',
         ],
+        [
+          'Does OurFilm replace the wedding photographer?',
+          'No. Your photographer captures the day’s most important moments. OurFilm gathers what your guests see in between.',
+        ],
       ],
     },
     final: {
       titleStart: 'See your wedding',
       titleEnd: 'through your guests’ eyes.',
-      lead: 'Create your event, share the QR code and let your guests capture the rest.',
-      create: 'Create your camera',
+      lead: 'Create your wedding, share the QR code and collect every moment in one place.',
+      create: 'Create your wedding',
       helper: 'No app. No guest accounts.',
     },
     /**
@@ -121,7 +155,7 @@ export const marketingCopy = {
     card: {
       eyebrow: 'TRY OURFILM',
       title: 'Your camera is ready.',
-      lead: 'Scan it — no app, no sign-up.',
+      lead: 'Scan it. No app or sign-up.',
       dismiss: 'Dismiss',
       reopen: 'TRY THE CAMERA',
     },
@@ -139,7 +173,7 @@ export const marketingCopy = {
   hu: {
     nav: {
       aria: 'Fő navigáció',
-      home: 'OurFilm — vissza a főoldalra',
+      home: 'OurFilm, vissza a főoldalra',
       links: ['Hogyan működik', 'Alkalmak', 'Árak', 'Rólunk'],
       login: 'Belépés',
       create: 'Hozzátok létre ingyen',
@@ -150,19 +184,40 @@ export const marketingCopy = {
       eyebrow: 'DIGITÁLIS ELDOBHATÓ FÉNYKÉPEZŐGÉP ESKÜVŐRE',
       titleStart: 'Az esküvőtök,',
       titleEnd: 'ahogy a vendégeitek látták.',
-      lead: 'A vendégek beolvassák a QR-kódot, mind saját tekercset kapnak, és már fotózhatnak is. A képeket később együtt nézitek meg.',
-      create: 'Hozzátok létre ingyen',
+      lead: 'Egy helyen minden fotó, amit a vendégeitek készítenek. Nincs app, nincs regisztráció — beolvassák a QR-kódot, és már fotózhatnak is.',
+      create: 'Készítsétek el az esküvőtöket',
       how: 'Így működik',
+      try: 'Próbáld ki vendégként',
       helper: 'Nincs app. Nincs vendégregisztráció.',
       emphasis: 'vendégeitek',
       claims: [
+        'EGYETLEN QR-KÓD',
         'NINCS APP',
-        'NINCS REGISZTRÁCIÓ',
         'NINCS ELŐNÉZET',
         '5 VENDÉGIG INGYEN',
       ],
       gallery: 'Közös galéria',
       couple: 'Anna & Péter',
+    },
+    problem: {
+      eyebrow: 'A VENDÉGFOTÓK EGY HELYEN',
+      title: 'Ne az esküvő után kelljen elkérnetek a képeket.',
+      lead: 'A vendégfotók általában szétszóródnak Messengerben, AirDropon, Drive-linkeken — vagy egyszerűen elvesznek. Az OurFilm egy helyre gyűjti őket, már az esküvő alatt.',
+      rows: [
+        ['„Átküldöd majd a képeket?”', 'A vendégfotók egy albumba érkeznek.'],
+        [
+          'Szétszórt képek az üzenetek között.',
+          'Az egész album egyszerre letölthető.',
+        ],
+        [
+          'Előbb tölts le egy appot.',
+          'Olvasd be a QR-kódot, és már fotózhatsz is.',
+        ],
+        [
+          'Üzenetben gyakran romlik a képminőség.',
+          'A képek nyomtatható felbontásban maradnak.',
+        ],
+      ],
     },
     benefits: {
       title: 'Egy kamera az egész násznépnek.',
@@ -173,36 +228,42 @@ export const marketingCopy = {
       tap: 'Koppints a fotózáshoz',
       steps: [
         [
-          'Hozzátok létre az eseményt',
-          'Állítsátok be, hány képet készíthet egy vendég, és mikor jelenjenek meg a képek.',
+          'Hozzátok létre az esküvőtöket',
+          'Pár perc alatt elkészül a saját galériátok és QR-kódotok.',
         ],
         [
-          'Osszátok meg a QR-kódot',
-          'Tegyétek ki az asztalokra, vagy küldjétek el a linket a vendégeknek.',
+          'Tegyétek ki a QR-kódot',
+          'A vendégek beolvassák a telefonjukkal. Nem kell appot letölteniük.',
         ],
         [
-          'A vendégek fotóznak',
-          'Megnyitják a kamerát, és végigfotózzák a saját tekercsüket.',
+          'Nézzétek, ahogy megtelik',
+          'A fotók egyből az esküvői galériátokba kerülnek. Nincs előnézet, nincs újrafotózás.',
         ],
       ],
     },
+    occasions: {
+      eyebrow: 'ALKALMAK',
+      title: 'Minden közös pillanatra.',
+      lead: 'Ahol emberek összegyűlnek, ott mindenki máshonnan látja az estét. Az OurFilm minden szemszöget összegyűjt.',
+    },
     qr: {
       eyebrow: 'EGYETLEN QR-KÓD',
-      title: 'A kamera már várja a vendégeket.',
-      lead: 'Tegyétek ki az asztalokra, a bejárathoz vagy a bárpulthoz. A vendégek beolvassák, és már fotózhatnak is.',
+      title: 'A vendégeknek tényleg csak fotózniuk kell.',
+      lead: 'Nincs fiók, nincs app, nincs bonyolult belépés. Az egész mobilra készült, hogy még a táncparkett közepén is működjön.',
       label: 'Az esemény neve',
       placeholder: 'Anna & Péter',
       fallback: 'Az esemény neve',
       link: 'Megosztható link:',
       helper: 'A saját eseményetekhez egyedi QR-kódot és linket kaptok.',
+      sample: 'MINTA',
       cardLabel: 'DIGITÁLIS ELDOBHATÓ KAMERA',
       cardBody:
         'Olvasd be a QR-kódot, és fotózd le az estét úgy, ahogy te látod.',
     },
     reveal: {
       eyebrow: 'ELŐHÍVÁS',
-      title: 'Maradjon meglepetés, mi sikerült.',
-      lead: 'Ti döntitek el, mikor nyíljon meg a galéria: azonnal vagy az esemény végén.',
+      title: 'Ne a kijelzőt nézzétek. Éljetek benne.',
+      lead: 'Elrejthetitek a képeket az esküvő végéig, így utána együtt fedezhetitek fel, mit örökítettek meg a vendégeitek.',
       opened: 'Megnyílt a galéria',
       developing: 'Előhívás alatt',
       waiting: 'A képek még előhívás alatt vannak',
@@ -241,19 +302,23 @@ export const marketingCopy = {
           'Letölthetők a képek?',
           'Igen. Az esemény összes képét egyben is letölthetitek, majd megoszthatjátok vagy kinyomtathatjátok őket.',
         ],
+        [
+          'Helyettesíti az OurFilm az esküvői fotóst?',
+          'Nem. A fotósotok örökíti meg a nap legfontosabb pillanatait. Az OurFilm pedig összegyűjti mindazt, amit közben a vendégeitek látnak.',
+        ],
       ],
     },
     final: {
       titleStart: 'Nézzétek meg az esküvőt',
       titleEnd: 'a vendégeitek szemével.',
-      lead: 'Hozzátok létre az eseményt, osszátok meg a QR-kódot, és a vendégek már fotózhatnak is.',
-      create: 'Hozzátok létre ingyen',
+      lead: 'Hozzátok létre az esküvőtöket, osszátok meg a QR-kódot, és gyűjtsetek össze minden pillanatot egy helyre.',
+      create: 'Esküvő létrehozása',
       helper: 'Nincs app. Nincs vendégregisztráció.',
     },
     card: {
       eyebrow: 'PRÓBÁLD KI',
       title: 'A kamerád készen áll.',
-      lead: 'Olvasd be — app és regisztráció nélkül.',
+      lead: 'Olvasd be. Nem kell app vagy regisztráció.',
       dismiss: 'Bezárás',
       reopen: 'PRÓBÁLD KI A KAMERÁT',
     },

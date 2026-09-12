@@ -6,19 +6,22 @@ import { EVENT_PRICE_LABELS } from './pricing'
 /**
  * The one definition of an occasion.
  *
- * Read by four places that must not drift: the homepage tab widget
- * (`components/site/occasions.tsx`), the `/alkalmak` routes, the footer, and
- * `app/sitemap.ts`. Adding an occasion here gives it a page and a sitemap
+ * Read by four places that must not drift: the homepage wall of prints
+ * (`components/site/occasion-prints.tsx`), the `/alkalmak` routes, the footer,
+ * and `app/sitemap.ts`. Adding an occasion here gives it a page and a sitemap
  * entry with no other edit.
  *
- * The homepage card and the occasion page's own hero deliberately share
- * `title` and `text` — they say the same thing, so a visitor who taps through
+ * The print's caption and the occasion page's own hero deliberately share
+ * `label` and `title` — they say the same thing, so a visitor who taps through
  * lands on the sentence they just tapped rather than a paraphrase of it.
  *
- * Not `server-only` on purpose — the homepage widget is a Client Component and
- * imports this directly. Icons therefore have to be component references
- * rather than props, which is fine as long as nothing tries to pass an
- * Occasion across the server/client boundary.
+ * Not `server-only` on purpose. It was the homepage's tab carousel that forced
+ * that — a Client Component importing this directly — and the carousel is
+ * gone; the navbar and footer now hold the constraint, because both are client
+ * components and both read `OCCASIONS_ARE_DRAFT`. Icons therefore still have
+ * to be component references rather than props, which is fine as long as
+ * nothing tries to pass an Occasion across the server/client boundary. The
+ * prints section is a Server Component and hands `Reveal` only strings.
  */
 export interface Occasion {
   /** URL segment and the widget's state id. */
@@ -61,9 +64,12 @@ export type OccasionCopy = Pick<
  * section awaiting a rewrite wants: the copy, the images and the routing all
  * stay put and one boolean brings them back.
  *
- * `components/site/occasions.tsx` — the homepage carousel — is dormant for
- * the same reason but by a different mechanism: `app/[locale]/page.tsx`
- * simply does not render it, the way it does not render `<Stats />`.
+ * It does **not** govern the homepage. `components/site/occasion-prints.tsx`
+ * renders the four occasions as prints whatever this says, because naming an
+ * occasion is a statement about what the camera is for, where linking one
+ * advertises a page that is deliberately not part of the site. That is also
+ * what the prints have to gain when this flips: a `Link` around each figure,
+ * and nothing else.
  */
 export const OCCASIONS_ARE_DRAFT = true
 
