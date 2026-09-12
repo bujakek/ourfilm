@@ -579,8 +579,10 @@ also probed with a four-byte read and discarded as `unreadable` if that fails,
 because retrying a read that cannot succeed only spends the budget in front of
 the guest. Prepare failures carry a `step` (`decode` | `encode`) and `raw`, so
 the next unknown one is not a mystery. `apps/web/lib/upload-queue.ts`
-drains one shot at a time, in capture order, and replays whatever a killed tab
-left behind. Persistence swallows: private mode is the old in-memory behaviour.
+uploads one shot at a time and replays whatever a killed tab left behind. First
+attempts keep capture order; a failed shot is deferred until the next retry
+signal while later shots continue. Persistence swallows: private mode is the
+old in-memory behaviour.
 
 **Compress once, then store the master — and write the raw file first.** The
 row's `blob` is the camera original for a second or two, then
@@ -606,8 +608,18 @@ ones. Do not release a reservation between retries.
 A failed shot stays on the strip and is retried after `RETRY_MS`, and also on
 `visibilitychange` / `pageshow` / `online`. Every network step has a timeout:
 a hung `fetch` otherwise wedges the whole uploader. Four attempts or 24 hours
-and the bytes are dropped. `ended` and `no_shots` drop the rest of the queue;
-other refusals wait and retry.
+and the bytes are dropped. `ended` and `no_shots` drop only the refused shot —
+a later item may already hold a valid reservation. Other refusals wait and
+retry.
+
+There is a **24-hour upload grace after `capture_end_at`** for a shot that has
+not reached `reserve_shot` yet. The queue reports when the native-camera handoff
+started; after the event, the RPC accepts a new guest reservation only if the
+participant's server-stamped `joined_at` predates the close, that device time
+falls inside the capture window, and the request arrives inside the grace. A
+web server cannot cryptographically prove an offline device timestamp, so the
+existing participant's fixed roll is still the abuse ceiling. An existing
+reservation remains the stronger proof and replays without this timestamp gate.
 
 **The attempt budget is only ever spent on an answer from the server**, and
 `apps/web/lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten

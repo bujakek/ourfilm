@@ -44,6 +44,7 @@ async function resolve(slug: string) {
 export async function hostReserveShotAction(
   slug: string,
   idempotencyKey: string,
+  captureStartedAt: string,
 ): Promise<ReserveState> {
   const resolved = await resolve(slug)
   if (!resolved) return { ok: false, refusal: 'no_session' }
@@ -62,6 +63,7 @@ export async function hostReserveShotAction(
       eventId: event.id,
       tokenHash: participant.tokenHash,
       idempotencyKey,
+      captureStartedAt,
     })
   } catch (e) {
     await reportServerIssue(e, {

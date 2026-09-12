@@ -239,15 +239,29 @@ describe('a shot the guest has just taken', () => {
     ).toEqual(['a', 'b'])
     expect(h.handlers.onConfirmed).toHaveBeenCalledTimes(2)
   })
+
+  it('reserves with the time the native camera was opened', async () => {
+    const h = harness()
+    const q = queueFor(h)
+
+    q.enqueue('shot-1', file(), NOW + 60_000, NOW)
+    await q.drain()
+
+    expect(h.deps.reserve).toHaveBeenCalledWith(
+      'shot-1',
+      new Date(NOW).toISOString(),
+    )
+  })
 })
 
 describe('a refusal', () => {
-  it('drops the rest of the roll when shooting has ended', async () => {
+  it('drops only the refused shot when another queued shot is still valid', async () => {
     const h = harness({
-      reserve: vi.fn(async () => ({
-        ok: false as const,
-        refusal: 'ended' as const,
-      })),
+      reserve: vi.fn(async (key) =>
+        key === 'a'
+          ? ({ ok: false as const, refusal: 'ended' as const } as const)
+          : reserved('photo-b'),
+      ),
     })
     const q = queueFor(h)
     q.enqueue('a', file(), NOW)
@@ -255,7 +269,8 @@ describe('a refusal', () => {
     await q.drain()
 
     expect(h.handlers.onDropped).toHaveBeenCalledWith('a', 'refused')
-    expect(h.handlers.onDropped).toHaveBeenCalledWith('b', 'refused')
+    expect(h.handlers.onDropped).not.toHaveBeenCalledWith('b', 'refused')
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('b', expect.any(Number))
     expect(h.handlers.onRefusal).toHaveBeenCalledWith('ended')
     expect(await stored()).toEqual([])
   })
@@ -307,7 +322,10 @@ describe('a tab that died mid-upload', () => {
     await q.resume()
     await q.drain()
 
-    expect(h.deps.reserve).toHaveBeenCalledWith('same-key')
+    expect(h.deps.reserve).toHaveBeenCalledWith(
+      'same-key',
+      new Date(NOW).toISOString(),
+    )
   })
 
   it('does not restore a shot that is still in flight', async () => {
@@ -373,7 +391,7 @@ describe('giving up', () => {
     expect(await stored()).toEqual([])
   })
 
-  it('does not let a newer shot overtake a failed older one', async () => {
+  it('defers a failed shot and lets newer shots continue', async () => {
     let uploads = 0
     const h = harness({
       upload: vi.fn(async () => {
@@ -386,8 +404,18 @@ describe('giving up', () => {
     q.enqueue('newer', file(), NOW + 1)
     await q.drain()
 
-    expect(called(h.deps.reserve)).toBe(1)
-    expect(h.handlers.onConfirmed).not.toHaveBeenCalled()
+    expect(vi.mocked(h.deps.reserve).mock.calls.map(([key]) => key)).toEqual([
+      'older',
+      'newer',
+    ])
+    expect(h.handlers.onConfirmed).not.toHaveBeenCalledWith(
+      'older',
+      expect.any(Number),
+    )
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
+      'newer',
+      expect.any(Number),
+    )
 
     armed(h)?.run()
     await q.drain()
@@ -395,6 +423,27 @@ describe('giving up', () => {
       'older',
       expect.any(Number),
     )
+  })
+
+  it('does not retry a deferred shot just because a new photo arrives', async () => {
+    let olderUploads = 0
+    const h = harness({
+      upload: vi.fn(async ({ uploads }) => {
+        if (uploads.full.path.includes('photo-for-older')) {
+          olderUploads += 1
+          throw new Error('wifi')
+        }
+      }),
+      reserve: vi.fn(async (key) => reserved(`photo-for-${key}`)),
+    })
+    const q = queueFor(h)
+
+    q.enqueue('older', file(), NOW)
+    await q.drain()
+    q.enqueue('newer', file(), NOW + 1)
+    await q.drain()
+
+    expect(olderUploads).toBe(1)
     expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
       'newer',
       expect.any(Number),
@@ -1092,6 +1141,13 @@ describe('a request that never answers', () => {
     q.enqueue('older', file(), NOW)
     q.enqueue('newer', file(), NOW + 1)
     await q.drain()
+
+    expect(h.handlers.onConfirmed).toHaveBeenCalledTimes(1)
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(
+      'newer',
+      expect.any(Number),
+    )
+
     armed(h)?.run()
     await q.drain()
 

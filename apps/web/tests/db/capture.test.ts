@@ -9,6 +9,7 @@ import {
   createUser,
   deleteEvent,
   deleteUser,
+  hostParticipant,
   joinEvent,
   newSession,
   reserveShot,
@@ -327,6 +328,148 @@ describe('the capture window', () => {
       await deleteEvent(event.id)
     }
   })
+
+  it('accepts an in-window capture during the upload grace period', async () => {
+    const end = new Date(Date.now() - 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 7200_000),
+      captureEndAt: end,
+      revealAt: end,
+    })
+    try {
+      const session = newSession()
+      const participant = await joinEvent(event.slug, 'Lassú wifi', session)
+      // The real guest joined while the event was open. This fixture creates
+      // an already-closed event to avoid sleeping on wall-clock time, so stamp
+      // the server-owned join time to the state the scenario exercises.
+      await serviceClient()
+        .from('participants')
+        .update({ joined_at: new Date(end.getTime() - 60_000).toISOString() })
+        .eq('id', participant?.participant_id as string)
+
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(end.getTime() - 60_000),
+      )
+
+      expect(result?.refusal).toBeNull()
+      expect(await countPhotos(event.id)).toBe(1)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('does not turn the upload grace into a late capture window', async () => {
+    const end = new Date(Date.now() - 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 7200_000),
+      captureEndAt: end,
+      revealAt: end,
+    })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Későn jött', session)
+
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(),
+      )
+
+      expect(result?.refusal).toBe('ended')
+      expect(await countPhotos(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('does not grant a late-joining guest a fresh roll during grace', async () => {
+    const end = new Date(Date.now() - 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 7200_000),
+      captureEndAt: end,
+      revealAt: end,
+    })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Utólag csatlakozott', session)
+
+      // Even a forged in-window device time cannot compensate for joined_at:
+      // that timestamp came from the server and proves this roll did not exist
+      // while the camera was open.
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(end.getTime() - 60_000),
+      )
+
+      expect(result?.refusal).toBe('ended')
+      expect(await countPhotos(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('lets the lazily-created host roll finish an in-window capture', async () => {
+    const end = new Date(Date.now() - 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 7200_000),
+      captureEndAt: end,
+      revealAt: end,
+    })
+    try {
+      // Host participants are created by the first reserve action, so their
+      // joined_at can legitimately be after close even when the native camera
+      // was opened before it. user_id is server-controlled and is the safe
+      // distinction from a newly joined guest.
+      const participant = await hostParticipant(event.id, host.id, 'Házigazda')
+      const result = await reserveShot(
+        event.id,
+        { token: '', hash: participant?.token_hash as string },
+        randomUUID(),
+        new Date(end.getTime() - 60_000),
+      )
+
+      expect(result?.refusal).toBeNull()
+      expect(await countPhotos(event.id)).toBe(1)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('closes the upload grace after 24 hours', async () => {
+    const end = new Date(Date.now() - 25 * 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 26 * 3600_000),
+      captureEndAt: end,
+      revealAt: end,
+    })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Másnap érkezett', session)
+
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(end.getTime() - 60_000),
+      )
+
+      expect(result?.refusal).toBe('ended')
+      expect(await countPhotos(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
 })
 
 describe('capture cannot be reached from the client', () => {
@@ -358,6 +501,14 @@ describe('capture cannot be reached from the client', () => {
       const guest = anonClient()
 
       for (const call of [
+        guest.rpc('reserve_shot', {
+          p_event_id: event.id,
+          p_token_hash: session.hash,
+          p_idempotency_key: randomUUID(),
+          p_capture_started_at: new Date().toISOString(),
+        }),
+        // The compatibility overload kept for a rolling deployment is the
+        // same write surface and must stay service-role only too.
         guest.rpc('reserve_shot', {
           p_event_id: event.id,
           p_token_hash: session.hash,

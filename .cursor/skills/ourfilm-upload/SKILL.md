@@ -155,9 +155,11 @@ Guests are anonymous, so RLS allows insert only — see `ourfilm-supabase` for t
 
 The camera file is written to IndexedDB (`apps/web/lib/upload-store.ts`) when the
 shutter fires and deleted when `commit_shot` confirms. `apps/web/lib/upload-queue.ts`
-drains one shot at a time, in capture order, and replays orphans on mount and
-on `visibilitychange` / `pageshow` / `online`. A drain that still owes work
-retries after `RETRY_MS`. Give up after four attempts or 24 hours — but only
+uploads one shot at a time and replays orphans on mount and on
+`visibilitychange` / `pageshow` / `online`. First attempts are in capture
+order; after a failure that shot is deferred until the next retry signal while
+later shots continue. A drain that still owes work retries after `RETRY_MS`.
+Give up after four attempts or 24 hours — but only
 count attempts the server actually answered. `isConnectionFailure`
 (`apps/web/lib/upload-failure.ts`) hands the attempt back for a dead connection, a
 teardown, or a refusal about the server rather than the photo; without it a
@@ -185,8 +187,15 @@ forty-second outage deletes a frame that never left the device.
   fetch alive.
 - **A failed shot stays on the strip.** The cell stays counted in
   `outstanding` until `exhausted` or `refused`. Dropping it early un-gates the
-  shutter on the last frame. Only `ended` and `no_shots` drop the rest of the
-  queue.
+  shutter on the last frame. A terminal refusal drops only that shot: a later
+  queue item may already hold a valid reservation now that failures can be
+  overtaken.
+- **The upload grace is 24 hours after `capture_end_at`.** A new reservation in
+  that interval must report a native-camera start inside the event window, and
+  a guest's server-stamped `joined_at` must also predate the close. The
+  timestamp is device-supplied rather than cryptographic proof, so the existing
+  participant's fixed roll remains the abuse ceiling; after the grace, only a
+  reservation the server had already created can replay.
 
 Progress is coarse and byte-weighted: `uploadToSignedUrl` reports none, so the
 fraction moves as each of the three renders lands.

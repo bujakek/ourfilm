@@ -1004,27 +1004,45 @@ export type Database = {
           terms_accepted_at: string
         }[]
       }
-      reserve_shot: {
-        Args: {
-          p_event_id: string
-          p_idempotency_key: string
-          p_token_hash: string
-        }
-        Returns: {
-          photo_id: string
-          refusal: string
-          shots_remaining: number
-          storage_path: string
-          thumb_path: string
-          view_path: string
-        }[]
-      }
+      reserve_shot:
+        | {
+            Args: {
+              p_event_id: string
+              p_idempotency_key: string
+              p_token_hash: string
+            }
+            Returns: {
+              photo_id: string
+              refusal: string
+              shots_remaining: number
+              storage_path: string
+              thumb_path: string
+              view_path: string
+            }[]
+          }
+        | {
+            Args: {
+              p_capture_started_at: string
+              p_event_id: string
+              p_idempotency_key: string
+              p_token_hash: string
+            }
+            Returns: {
+              photo_id: string
+              refusal: string
+              shots_remaining: number
+              storage_path: string
+              thumb_path: string
+              view_path: string
+            }[]
+          }
       revoke_event_plan: {
         Args: { p_event_slug: string; p_note?: string }
         Returns: boolean
       }
       set_host_display_name: { Args: { p_name: string }; Returns: string }
       shot_reservation_ttl: { Args: never; Returns: string }
+      shot_upload_grace: { Args: never; Returns: string }
       sweep_album_exports: {
         Args: never
         Returns: {
@@ -1197,4 +1215,3 @@ export const Constants = {
     },
   },
 } as const
-

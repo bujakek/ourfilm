@@ -157,6 +157,7 @@ export type ReserveState =
 export async function reserveShotAction(
   eventId: string,
   idempotencyKey: string,
+  captureStartedAt: string,
 ): Promise<ReserveState> {
   const tokenHash = await readParticipantTokenHash()
   if (!tokenHash) return { ok: false, refusal: 'no_session' }
@@ -180,7 +181,12 @@ export async function reserveShotAction(
 
   let result
   try {
-    result = await reserveShot({ eventId, tokenHash, idempotencyKey })
+    result = await reserveShot({
+      eventId,
+      tokenHash,
+      idempotencyKey,
+      captureStartedAt,
+    })
   } catch (e) {
     // The guest's browser already reports this as an `upload_issue` with a
     // failure class. What it cannot know is the reason — the RPC's own code —

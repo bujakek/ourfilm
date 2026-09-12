@@ -9,6 +9,8 @@ import type { StoredShot, UploadStore } from '@/lib/upload-store'
 
 /**
  * Persist the camera file, upload one at a time, replay after a killed tab.
+ * First attempts keep capture order; a failed shot steps aside until the next
+ * retry signal so it cannot hold every later photo behind it.
  *
  * iOS reclaims a tab handed to the OS camera. Without a store that is a lost
  * photo, and this product has no retake. Everything else — retries, timeouts —
@@ -32,7 +34,10 @@ export const REQUEST_TIMEOUTS_MS = {
 }
 
 export type UploadQueueDeps = {
-  reserve: (idempotencyKey: string) => Promise<ReserveState>
+  reserve: (
+    idempotencyKey: string,
+    captureStartedAt: string,
+  ) => Promise<ReserveState>
   /**
    * Reduce one capture to the single blob worth keeping. Runs once, right
    * after the shutter — never again, however many times the shot is retried.
@@ -213,7 +218,12 @@ export type PreparedOutcome =
   | { ok: false; ms: number; error: string }
 
 export type UploadQueue = {
-  enqueue(id: string, file: File, capturedAt: number): void
+  enqueue(
+    id: string,
+    file: File,
+    capturedAt: number,
+    captureStartedAt?: number,
+  ): void
   resume(): Promise<void>
   drain(): Promise<void>
   stop(): void
@@ -257,6 +267,15 @@ export function createUploadQueue({
 
   const pending: QueueItem[] = []
   const claimed = new Set<string>()
+  /**
+   * Shots that already failed in this activation.
+   *
+   * They stay in `pending`, but a fresh capture must be able to pass them. A
+   * retry sweep, reconnect or page activation clears the set and gives each
+   * one another turn. Keeping this in memory rather than IndexedDB is
+   * deliberate: a reload is itself a useful retry signal.
+   */
+  const deferred = new Set<string>()
   let draining: Promise<void> | null = null
   let resuming = false
   let sweep: (() => void) | null = null
@@ -290,7 +309,12 @@ export function createUploadQueue({
     await deps.store.put(item.shot)
   }
 
-  function enqueue(id: string, file: File, capturedAt: number) {
+  function enqueue(
+    id: string,
+    file: File,
+    capturedAt: number,
+    captureStartedAt = capturedAt,
+  ) {
     if (stopped || claimed.has(id)) return
     claimed.add(id)
     const item: QueueItem = {
@@ -307,6 +331,7 @@ export function createUploadQueue({
         type: file.type,
         lastModified: file.lastModified,
         capturedAt,
+        captureStartedAt,
         attempts: 0,
       },
       settled: null,
@@ -435,6 +460,10 @@ export function createUploadQueue({
   async function resume() {
     if (stopped || resuming) return
     resuming = true
+    // A retry timer, reconnect or foregrounding is permission to give every
+    // deferred shot one new turn. `enqueue` calls `drain` directly, so a new
+    // photo can pass a failed one without prematurely retrying it.
+    deferred.clear()
 
     try {
       const at = clock()
@@ -442,6 +471,7 @@ export function createUploadQueue({
         const { shot } = pending[i]
         if (at - shot.capturedAt <= MAX_AGE_MS) continue
         pending.splice(i, 1)
+        deferred.delete(shot.id)
         if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
         notify(() => handlers.onDropped(shot.id, 'exhausted'))
       }
@@ -535,9 +565,10 @@ export function createUploadQueue({
 
   async function drainLoop(): Promise<void> {
     while (!stopped) {
-      const item = pending.shift()
-      if (!item) break
-      let outcome: 'done' | 'retry' | 'stop'
+      const index = pending.findIndex(({ shot }) => !deferred.has(shot.id))
+      if (index === -1) break
+      const [item] = pending.splice(index, 1)
+      let outcome: 'done' | 'retry'
       try {
         outcome = await runCapture(item)
       } catch (error) {
@@ -546,14 +577,15 @@ export function createUploadQueue({
         // decision below down with it — without the re-queue the shot would be
         // dropped from memory while its row stayed on disk.
         console.error('Upload handler failed', error)
-        pending.unshift(item)
-        break
+        deferred.add(item.shot.id)
+        pending.push(item)
+        continue
       }
       if (outcome === 'retry') {
-        pending.unshift(item)
-        break
+        deferred.add(item.shot.id)
+        pending.push(item)
+        continue
       }
-      if (outcome === 'stop') break
     }
 
     if (stopped) return
@@ -561,17 +593,7 @@ export function createUploadQueue({
     else cancelSweep()
   }
 
-  async function dropAll(reason: 'refused' | 'exhausted') {
-    const doomed = pending.splice(0, pending.length)
-    for (const { shot } of doomed) {
-      if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
-      notify(() => handlers.onDropped(shot.id, reason))
-    }
-  }
-
-  async function runCapture(
-    item: QueueItem,
-  ): Promise<'done' | 'retry' | 'stop'> {
+  async function runCapture(item: QueueItem): Promise<'done' | 'retry'> {
     // No server call may overtake the durable write, and none may run against
     // bytes that are about to be replaced.
     if (item.settled) {
@@ -601,7 +623,11 @@ export function createUploadQueue({
 
     try {
       const reserved = await withTimeout(
-        () => deps.reserve(shot.id),
+        () =>
+          deps.reserve(
+            shot.id,
+            new Date(shot.captureStartedAt ?? shot.capturedAt).toISOString(),
+          ),
         limits.reserve,
         'Reserving a frame',
       )
@@ -617,9 +643,12 @@ export function createUploadQueue({
           notify(() => handlers.onIssue?.(shot.id, issue))
           if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
           notify(() => handlers.onDropped(shot.id, 'refused'))
-          await dropAll('refused')
           notify(() => handlers.onRefusal(reserved.refusal))
-          return 'stop'
+          // A terminal answer belongs to this capture only. Once failed shots
+          // may be overtaken, another queued item can already hold a valid
+          // reservation (or an earlier in-window timestamp), so dropping the
+          // whole tail here would destroy a photo the server still accepts.
+          return 'done'
         }
         // `not_started`, `uploads_disabled`, `storage_limit`, `no_session`,
         // `error`: the server answered, but about itself rather than about this
