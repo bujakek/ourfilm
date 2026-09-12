@@ -17,7 +17,6 @@ export const marketingCopy = {
       titleEnd: 'through your guests’ eyes.',
       lead: 'Every photo your guests take, in one place. No app, no account — they scan the QR code and start shooting.',
       create: 'Create your wedding',
-      how: 'See how it works',
       try: 'Try the guest camera',
       helper: 'No app. No guest accounts.',
       /** The one word the headline turns on, italicised inside `titleEnd`. */
@@ -186,7 +185,6 @@ export const marketingCopy = {
       titleEnd: 'ahogy a vendégeitek látták.',
       lead: 'Egy helyen minden fotó, amit a vendégeitek készítenek. Nincs app, nincs regisztráció — beolvassák a QR-kódot, és már fotózhatnak is.',
       create: 'Készítsétek el az esküvőtöket',
-      how: 'Így működik',
       try: 'Próbáld ki vendégként',
       helper: 'Nincs app. Nincs vendégregisztráció.',
       emphasis: 'vendégeitek',

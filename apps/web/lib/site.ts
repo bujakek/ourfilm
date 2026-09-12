@@ -20,25 +20,33 @@ export function eventUrl(slug: string, locale?: 'en' | 'hu') {
 }
 
 /**
- * The guest camera a visitor may try before creating anything, or `null`.
+ * The guest camera the landing page offers as a demo.
  *
- * `components/site/live-demo.tsx` rejected a permanently-open demo *event*
- * and the reasoning still holds: a camera has a capture window and a reveal,
- * so a camera that is always open is a fourth event state existing only for
- * the marketing page. This is the other way round — an ordinary event a human
- * keeps running, named here by slug, and nothing at all when there isn't one.
- * The hero falls back to "how it works", so an unset variable costs a page
- * that promises a demo it cannot open. Never point it at `EXAMPLE_SLUG`, which
- * is a mockup and 404s.
+ * A real event someone keeps running, named here rather than in an
+ * environment variable. It was an env var, and that bought a graceful
+ * fallback nobody wanted: a hero whose second button silently became "how it
+ * works" on every deploy where the variable had not been set — which is every
+ * preview, and production until somebody remembered. A slug is not a secret;
+ * it is printed on cards and pasted into chats, and `EXAMPLE_SLUG` already
+ * sits in `lib/slug.ts` for the same reason.
  *
+ * What the constant costs is that there is no degradation left. If this event
+ * is deleted the button 404s, and nothing in the code can notice — the
+ * homepage is prerendered, so checking would put a database round trip in
+ * front of every landing. Keeping it alive is an operational habit, and
+ * `pnpm grant` has already uncapped it so the participant limit cannot turn
+ * visitors away on a link the hero offers them.
+ */
+export const DEMO_EVENT_SLUG = '5k6jj55jzn'
+
+/**
  * Relative, unlike `eventUrl`. That helper is absolute because what it returns
  * gets printed onto a card that must not say `localhost`; this is a link
  * clicked from the page it is on, and staying on the current origin is what
  * makes it work on a preview and on a dev machine.
  */
-export function demoEventUrl(locale: 'en' | 'hu'): string | null {
-  const slug = process.env.NEXT_PUBLIC_DEMO_EVENT_SLUG?.trim()
-  return slug ? `/e/${slug}?lang=${locale}` : null
+export function demoEventUrl(locale: 'en' | 'hu'): string {
+  return `/e/${DEMO_EVENT_SLUG}?lang=${locale}`
 }
 
 /** Origin without the scheme, for places that show the URL rather than link it

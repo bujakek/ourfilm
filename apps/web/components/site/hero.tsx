@@ -72,10 +72,10 @@ export function Hero({ locale }: { locale: Locale }) {
               {copy.create}
             </Link>
             <Link
-              href={demoUrl ?? '#how-it-works'}
+              href={demoUrl}
               className="btn-shine inline-flex items-center justify-center rounded-xl border border-border-strong px-7.5 py-4.5 text-[15px] font-semibold transition-[transform,border-color] hover:scale-[1.03] hover:border-white/35"
             >
-              {demoUrl ? copy.try : copy.how}
+              {copy.try}
             </Link>
           </div>
 
