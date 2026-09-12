@@ -11,6 +11,12 @@ export const POSTHOG_INGEST_PATH = '/ingest'
 export const POSTHOG_UI_HOST = 'https://eu.posthog.com'
 
 type CameraState = 'open' | 'closed'
+type AttemptProperties = {
+  event_id: string
+  capture_id: string
+  attempt_id: string
+  attempt: number
+}
 type UploadIssueStage = 'prepare' | 'reserve' | 'upload' | 'commit'
 type StoreStage =
   'missing' | 'open' | 'open_timeout' | 'blocked' | 'put' | 'list' | 'remove'
@@ -65,11 +71,45 @@ export type TelemetryEventProperties = {
     failure: string
     attempts: number
     terminal: boolean
+    /** The run it happened in; absent for a compression failure, which
+     *  belongs to no attempt. Issues are deduplicated per capture, stage and
+     *  class, so a repeat on a later attempt carries the first one's id. */
+    attempt_id?: string
     /** Prepare failures only: which browser API threw, whether the row was
      *  still the raw camera file, and how big it claimed to be. */
     step?: 'decode' | 'encode'
     raw?: boolean
     blob_size?: number
+  }
+  // The stretch between the renders landing and the row going `ready`, one
+  // event per step, per attempt. `attempt_id` is minted per run of the queue's
+  // capture loop and sent to the commit action, so the server's
+  // `commit_shot_received` / `commit_shot_finished` join on it; `attempt`
+  // is the budget count, which a refund can repeat.
+  //
+  // All urgent, unlike the routine funnel. The question these answer is
+  // "where did this photo stop", and the ending that matters is a tab that
+  // dies a second later — which takes a batched event with it.
+  upload_renders_uploaded: AttemptProperties & {
+    upload_ms: number
+    bytes: number
+  }
+  upload_commit_started: AttemptProperties
+  upload_commit_finished: AttemptProperties & {
+    outcome: 'committed' | 'refused' | 'failed'
+    failure: string | null
+    /** The server's refusal code: `no_session`, `not_matched`, … */
+    refusal: string | null
+    /** The failure looked like the request never arrived. */
+    unsent: boolean
+    commit_ms: number
+  }
+  /** A teardown (`stop()` on unmount) ended the attempt at `stage`. */
+  upload_attempt_interrupted: AttemptProperties & { stage: UploadIssueStage }
+  /** The page was hidden or unloaded with this attempt still running. */
+  upload_backgrounded: AttemptProperties & {
+    stage: UploadIssueStage
+    via: 'visibilitychange' | 'pagehide'
   }
   upload_restored: {
     event_id: string

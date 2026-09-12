@@ -4,12 +4,16 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import {
-  commitShot,
   releaseShot,
   reserveShot,
   type ShotRefusal,
   type SignedUpload,
 } from '@/lib/capture'
+import {
+  type CommitShotAnswer,
+  liveCommitDeps,
+  observeCommitShot,
+} from '@/lib/commit-observed'
 import {
   joinEvent,
   newParticipantSession,
@@ -200,7 +204,14 @@ export async function reserveShotAction(
   }
 }
 
-/** Mark a frame's renders as landed. Returns the authoritative count. */
+/**
+ * Mark a frame's renders as landed. Returns the authoritative count.
+ *
+ * The most expensive failure in the product lives here: the bytes are in
+ * Storage and the row never went `ready`, so the photo exists and nobody will
+ * ever be shown it. `observeCommitShot` reports every ending — arrival,
+ * success, each refusal by name, and a throw — without waiting on any of it.
+ */
 export async function commitShotAction({
   slug,
   photoId,
@@ -208,6 +219,8 @@ export async function commitShotAction({
   height,
   byteSize,
   takenAt,
+  captureId,
+  attemptId,
 }: {
   slug: string
   photoId: string
@@ -215,31 +228,20 @@ export async function commitShotAction({
   height: number
   byteSize: number
   takenAt: string | null
-}): Promise<{ committed: boolean; shotsRemaining: number }> {
-  const tokenHash = await readParticipantTokenHash()
-  if (!tokenHash) return { committed: false, shotsRemaining: 0 }
-
-  let result
-  try {
-    result = await commitShot({
-      photoId,
-      tokenHash,
-      width,
-      height,
-      byteSize,
-      takenAt,
-    })
-  } catch (e) {
-    // The most expensive failure in the product: the bytes are in Storage and
-    // the row never went `ready`, so the photo exists and nobody will ever be
-    // shown it.
-    await reportServerIssue(e, {
-      operation: 'commit_shot',
-      route: '/e/[slug]',
-      routeType: 'action',
-    })
-    throw e
-  }
+  captureId?: string
+  attemptId?: string
+}): Promise<CommitShotAnswer> {
+  const result = await observeCommitShot({
+    surface: 'guest',
+    route: '/e/[slug]',
+    input: { photoId, width, height, byteSize, takenAt, captureId, attemptId },
+    deps: liveCommitDeps(async () => {
+      const tokenHash = await readParticipantTokenHash()
+      return tokenHash
+        ? { ok: true, tokenHash, eventId: null }
+        : { ok: false, refusal: 'no_session' }
+    }),
+  })
 
   // The unified event page may already show the instant-reveal gallery, so its
   // server render has to drop. The client still uses the authoritative count
