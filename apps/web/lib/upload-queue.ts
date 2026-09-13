@@ -3,6 +3,11 @@ import type { ShotRefusal } from '@/lib/capture'
 import type { CompressedCapture, PreparedPhoto } from '@/lib/image'
 import { isReadable, materializeBlob } from '@/lib/blob-bytes'
 import { prepareStepOf, type PrepareStep } from '@/lib/prepare-error'
+import {
+  planResume,
+  type MasterFacts,
+  type RenderKind,
+} from '@/lib/upload-resume'
 import type { RenderUpload } from '@/lib/upload-shot'
 import { failureClass, isConnectionFailure } from '@/lib/upload-failure'
 import type { StoredShot, UploadStore } from '@/lib/upload-store'
@@ -161,6 +166,19 @@ export type AttemptStep =
       renders: number
     }
   | {
+      /**
+       * The server's replay said part of the capture was already done.
+       * `present` is how many renders were in Storage; null for a row that
+       * was already `ready`, where nothing was looked up.
+       */
+      kind: 'resumed'
+      attemptId: string
+      attempt: number
+      photoId: string
+      plan: 'committed' | 'commit' | 'upload'
+      present: number | null
+    }
+  | {
       kind: 'commit_started'
       attemptId: string
       attempt: number
@@ -317,6 +335,24 @@ export function createUploadQueue({
     // Safe against resurrection: every caller still owns the row. The paths
     // that delete it — commit, exhaustion, a terminal refusal — all return
     // without coming back through here.
+    await deps.store.put(item.shot)
+  }
+
+  /**
+   * Keep the master an attempt had to make from a raw row.
+   *
+   * A raw row vouches for nothing in Storage: its next decode is a different
+   * master of a different size, so a retry could only start again. Written
+   * **before** the upload, so a master that lands is always the bytes on disk
+   * and the next retry resumes from it — and never decodes the camera file
+   * again, which is the same trade `settle` makes.
+   */
+  async function promote(item: QueueItem, prepared: PreparedPhoto) {
+    item.shot.blob = prepared.full
+    item.shot.compressed = true
+    item.shot.width = prepared.width
+    item.shot.height = prepared.height
+    item.shot.takenAt = prepared.takenAt?.toISOString() ?? null
     await deps.store.put(item.shot)
   }
 
@@ -719,36 +755,91 @@ export function createUploadQueue({
       attempt.photoId = photoId
       notify(() => handlers.onReserved(shot.id, reserved.photoId))
 
-      attempt.stage = stage = 'prepare'
-      const prepared = await deps.prepare(shot)
-      attempt.stage = stage = 'upload'
-      const renders: RenderUpload[] = [
-        { kind: 'full', slot: reserved.uploads.full, body: prepared.full },
-        { kind: 'view', slot: reserved.uploads.view, body: prepared.view },
-        { kind: 'thumb', slot: reserved.uploads.thumb, body: prepared.thumb },
-      ]
-      const uploadStarted = clock()
-      await withTimeout(
-        (signal) =>
-          deps.upload({
-            renders,
-            onProgress: (fraction) =>
-              notify(() => handlers.onProgress(shot.id, fraction)),
-            signal,
-          }),
-        limits.upload,
-        'Uploading a photo',
-      )
-      // Every render sent answered without an error. This and the two steps
-      // below are the stretch a `pending` row with its files present sits in.
-      trace(shot.id, {
-        kind: 'uploaded',
-        ...step,
-        photoId: reserved.photoId,
-        ms: clock() - uploadStarted,
-        bytes: renders.reduce((sum, { body }) => sum + body.size, 0),
-        renders: renders.length,
+      const plan = planResume(reserved.progress, {
+        compressed: shot.compressed,
+        blobSize: shot.blob.size,
+        width: shot.width,
+        height: shot.height,
       })
+      if (plan.kind !== 'upload' || plan.present > 0) {
+        trace(shot.id, {
+          kind: 'resumed',
+          ...step,
+          photoId: reserved.photoId,
+          plan: plan.kind,
+          present: plan.kind === 'committed' ? null : plan.present,
+        })
+      }
+
+      if (plan.kind === 'committed') {
+        // An earlier attempt's commit went through and its answer was lost.
+        // The replay's count already includes this frame.
+        if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
+        notify(() => handlers.onConfirmed(shot.id, reserved.shotsRemaining))
+        return 'done'
+      }
+
+      let master: MasterFacts
+      let takenAt: string | null
+      if (plan.kind === 'commit') {
+        master = plan.master
+        takenAt = shot.takenAt
+      } else {
+        let prepared: PreparedPhoto | null = null
+        if (plan.decode) {
+          attempt.stage = stage = 'prepare'
+          prepared = await deps.prepare(shot)
+          if (!shot.compressed) await promote(item, prepared)
+        }
+        const facts =
+          plan.master ??
+          (prepared && {
+            width: prepared.width,
+            height: prepared.height,
+            byteSize: prepared.full.size,
+          })
+        // `planResume` only skips the decode for a master it could measure.
+        if (!facts) throw new Error('No master to upload')
+        master = facts
+        takenAt = prepared
+          ? (prepared.takenAt?.toISOString() ?? null)
+          : shot.takenAt
+
+        const body = (kind: RenderKind): Blob => {
+          if (kind === 'full') return prepared?.full ?? shot.blob
+          if (!prepared) throw new Error(`No ${kind} render was prepared`)
+          return prepared[kind]
+        }
+        const renders: RenderUpload[] = plan.renders.map((kind) => ({
+          kind,
+          slot: reserved.uploads[kind],
+          body: body(kind),
+        }))
+
+        attempt.stage = stage = 'upload'
+        const uploadStarted = clock()
+        await withTimeout(
+          (signal) =>
+            deps.upload({
+              renders,
+              onProgress: (fraction) =>
+                notify(() => handlers.onProgress(shot.id, fraction)),
+              signal,
+            }),
+          limits.upload,
+          'Uploading a photo',
+        )
+        // Every render sent answered without an error. This and the two steps
+        // below are the stretch a `pending` row with its files present sits in.
+        trace(shot.id, {
+          kind: 'uploaded',
+          ...step,
+          photoId: reserved.photoId,
+          ms: clock() - uploadStarted,
+          bytes: renders.reduce((sum, { body }) => sum + body.size, 0),
+          renders: renders.length,
+        })
+      }
 
       attempt.stage = stage = 'commit'
       // Checked here as well as in `withTimeout`, so a teardown between the
@@ -769,9 +860,9 @@ export function createUploadQueue({
               captureId: shot.id,
               attemptId: attempt.attemptId,
               photoId: reserved.photoId,
-              width: prepared.width,
-              height: prepared.height,
-              byteSize: prepared.full.size,
+              width: master.width,
+              height: master.height,
+              byteSize: master.byteSize,
               // EXIF first, the shutter press second. iOS hands a live capture
               // to the page with its EXIF stripped, so on most guests' phones
               // there is no timestamp in the file at all — and `taken_at` is
@@ -780,9 +871,7 @@ export function createUploadQueue({
               // shutter on a product with no gallery upload, and it is right
               // however long compression, the queue or a dead tab delayed the
               // upload. Never null from here on.
-              takenAt:
-                prepared.takenAt?.toISOString() ??
-                new Date(shot.capturedAt).toISOString(),
+              takenAt: takenAt ?? new Date(shot.capturedAt).toISOString(),
             }),
           limits.commit,
           'Confirming a photo',

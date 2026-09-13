@@ -9,6 +9,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { PreparedPhoto } from '@/lib/image'
+import type { ReservationProgress } from '@/lib/upload-resume'
 import type { RenderUpload } from '@/lib/upload-shot'
 import {
   createUploadQueue,
@@ -60,6 +61,20 @@ function reserved(photoId: string, shotsRemaining = 23) {
       thumb: signed(`${EVENT}/${photoId}_thumb.jpg`),
     },
   }
+}
+
+function resumed(
+  photoId: string,
+  progress: ReservationProgress,
+  shotsRemaining = 23,
+) {
+  return { ...reserved(photoId, shotsRemaining), progress }
+}
+
+function kinds(h: Harness, call = 0) {
+  return vi
+    .mocked(h.deps.upload)
+    .mock.calls[call][0].renders.map((r: RenderUpload) => r.kind)
 }
 
 function file(name = 'IMG_0001.JPG') {
@@ -926,8 +941,11 @@ describe('compressing a capture', () => {
       'shot-1',
       expect.any(Number),
     )
+    // `prepare` was called with the raw row, but this checks the same object
+    // `promote` mutates in place once its decode is kept — so by the time the
+    // assertion runs it reads back as the master that decode produced.
     expect(h.deps.prepare).toHaveBeenCalledWith(
-      expect.objectContaining({ compressed: false }),
+      expect.objectContaining({ compressed: true }),
     )
   })
 })
@@ -1461,5 +1479,181 @@ describe('the stretch between the upload and the commit', () => {
       expect.objectContaining({ attemptId: 'unavailable' }),
     )
     expect(await stored()).toEqual([])
+  })
+})
+
+describe('a retry that picks up where the last attempt stopped', () => {
+  /**
+   * The server's replay of `reserve_shot` says how far the photo got. Nothing
+   * that already happened is done again — not the decode, not a PUT, not the
+   * commit — because the endings this exists for are a master that timed out
+   * on venue wifi and a commit whose answer never came back.
+   */
+  function steps(h: Harness) {
+    return vi
+      .mocked(h.handlers.onAttemptStep!)
+      .mock.calls.map(([, step]) => step as unknown as Record<string, unknown>)
+  }
+
+  it('confirms a shot whose commit went through, and sends nothing', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed(
+          'photo-1',
+          { status: 'ready', stored: { full: null, view: null, thumb: null } },
+          20,
+        ),
+      ),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).not.toHaveBeenCalled()
+    expect(h.deps.upload).not.toHaveBeenCalled()
+    expect(h.deps.commit).not.toHaveBeenCalled()
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 20)
+    expect(await stored()).toEqual([])
+    expect(steps(h)).toEqual([
+      expect.objectContaining({
+        kind: 'resumed',
+        plan: 'committed',
+        present: null,
+      }),
+    ])
+  })
+
+  it('commits straight away when every render already landed', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: 2, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).not.toHaveBeenCalled()
+    expect(h.deps.upload).not.toHaveBeenCalled()
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        photoId: 'photo-1',
+        width: 4032,
+        height: 3024,
+        byteSize: 2,
+        takenAt: new Date(NOW).toISOString(),
+      }),
+    )
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 23)
+    expect(steps(h).map((s) => s.kind)).toEqual([
+      'resumed',
+      'commit_started',
+      'commit_finished',
+    ])
+  })
+
+  it('sends only the master, without decoding, when the renders from it landed', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: null, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).not.toHaveBeenCalled()
+    expect(kinds(h)).toEqual(['full'])
+    expect(vi.mocked(h.deps.upload).mock.calls[0][0].renders[0].body.size).toBe(
+      2,
+    )
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ byteSize: 2 }),
+    )
+  })
+
+  it('decodes once and sends only what is missing when a derived render did not land', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: 2, view: null, thumb: 4 },
+        }),
+      ),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).toHaveBeenCalledTimes(1)
+    expect(kinds(h)).toEqual(['view'])
+  })
+
+  it('sends the master again when Storage holds a different one', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: 999, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(kinds(h)).toEqual(['full'])
+  })
+
+  it('keeps the master it prepared from a raw row, so the next retry can resume', async () => {
+    await orphan({ id: 'shot-1', compressed: false, width: null, height: null })
+    let reserves = 0
+    const h = harness({
+      reserve: vi.fn(async () => {
+        reserves += 1
+        // First: renders from some earlier raw decode — a raw row trusts none.
+        // Second: the master this attempt kept, plus the two derived renders.
+        return resumed('photo-1', {
+          status: 'pending',
+          stored:
+            reserves === 1
+              ? { full: 2, view: 16, thumb: 4 }
+              : { full: prepared.full.size, view: 16, thumb: 4 },
+        })
+      }),
+      upload: vi.fn(async () => {
+        throw Object.assign(new Error('HTTP 500'), { status: 500 })
+      }),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(kinds(h)).toEqual(['full', 'view', 'thumb'])
+    const [row] = await uploadStore.listByEvent(EVENT)
+    expect(row).toMatchObject({ compressed: true, width: 4032, height: 3024 })
+    expect(row.blob.size).toBe(prepared.full.size)
+
+    armed(h)!.run()
+    await until(async () => (await stored()).length === 0)
+
+    expect(h.deps.prepare).toHaveBeenCalledTimes(1)
+    expect(h.deps.upload).toHaveBeenCalledTimes(1)
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ byteSize: prepared.full.size }),
+    )
   })
 })
