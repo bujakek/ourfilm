@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createAdminClient } from './supabase/admin'
 import { PHOTO_BUCKET } from './storage'
+import { reservationProgress, type ReservationProgress } from './upload-resume'
 
 /**
  * The capture path: reserve a frame, hand back somewhere to put it, commit it.
@@ -42,6 +43,12 @@ export type ReservedShot = {
    * the camera was open and for a replay. See `lib/grace-telemetry.ts`.
    */
   grace: { lateSeconds: number; claimedLeadSeconds: number | null } | null
+  /**
+   * How far an earlier attempt at this reservation got: the row's status and
+   * the renders already in Storage. Null from a database that predates the
+   * report, which the queue reads as "start from the beginning".
+   */
+  progress: ReservationProgress | null
   uploads: {
     full: SignedUpload
     view: SignedUpload
@@ -120,6 +127,7 @@ export async function reserveShot({
               lateSeconds: data.late_seconds,
               claimedLeadSeconds: data.claimed_lead_seconds ?? null,
             },
+      progress: reservationProgress(data),
       uploads: { full, view, thumb },
     },
   }
