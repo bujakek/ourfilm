@@ -3,7 +3,7 @@ import type { ShotRefusal } from '@/lib/capture'
 import type { CompressedCapture, PreparedPhoto } from '@/lib/image'
 import { isReadable, materializeBlob } from '@/lib/blob-bytes'
 import { prepareStepOf, type PrepareStep } from '@/lib/prepare-error'
-import type { SignedUpload } from '@/lib/upload-shot'
+import type { RenderUpload } from '@/lib/upload-shot'
 import { failureClass, isConnectionFailure } from '@/lib/upload-failure'
 import type { StoredShot, UploadStore } from '@/lib/upload-store'
 
@@ -56,8 +56,7 @@ export type UploadQueueDeps = {
   /** The three renders for a stored shot, compressed or still raw. */
   prepare: (shot: StoredShot) => Promise<PreparedPhoto>
   upload: (args: {
-    prepared: PreparedPhoto
-    uploads: { full: SignedUpload; view: SignedUpload; thumb: SignedUpload }
+    renders: RenderUpload[]
     onProgress?: (fraction: number) => void
     signal?: AbortSignal
   }) => Promise<void>
@@ -158,6 +157,8 @@ export type AttemptStep =
       photoId: string
       ms: number
       bytes: number
+      /** How many renders this attempt sent; fewer than three on a resume. */
+      renders: number
     }
   | {
       kind: 'commit_started'
@@ -721,12 +722,16 @@ export function createUploadQueue({
       attempt.stage = stage = 'prepare'
       const prepared = await deps.prepare(shot)
       attempt.stage = stage = 'upload'
+      const renders: RenderUpload[] = [
+        { kind: 'full', slot: reserved.uploads.full, body: prepared.full },
+        { kind: 'view', slot: reserved.uploads.view, body: prepared.view },
+        { kind: 'thumb', slot: reserved.uploads.thumb, body: prepared.thumb },
+      ]
       const uploadStarted = clock()
       await withTimeout(
         (signal) =>
           deps.upload({
-            prepared,
-            uploads: reserved.uploads,
+            renders,
             onProgress: (fraction) =>
               notify(() => handlers.onProgress(shot.id, fraction)),
             signal,
@@ -734,14 +739,15 @@ export function createUploadQueue({
         limits.upload,
         'Uploading a photo',
       )
-      // All three PUTs answered without an error. This and the two steps
+      // Every render sent answered without an error. This and the two steps
       // below are the stretch a `pending` row with its files present sits in.
       trace(shot.id, {
         kind: 'uploaded',
         ...step,
         photoId: reserved.photoId,
         ms: clock() - uploadStarted,
-        bytes: prepared.full.size + prepared.view.size + prepared.thumb.size,
+        bytes: renders.reduce((sum, { body }) => sum + body.size, 0),
+        renders: renders.length,
       })
 
       attempt.stage = stage = 'commit'

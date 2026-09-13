@@ -93,6 +93,8 @@ export type TelemetryEventProperties = {
   upload_renders_uploaded: AttemptProperties & {
     upload_ms: number
     bytes: number
+    /** Fewer than three when a retry found the rest already in Storage. */
+    renders_sent: number
   }
   upload_commit_started: AttemptProperties
   upload_commit_finished: AttemptProperties & {

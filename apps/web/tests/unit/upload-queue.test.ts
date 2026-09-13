@@ -9,6 +9,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { PreparedPhoto } from '@/lib/image'
+import type { RenderUpload } from '@/lib/upload-shot'
 import {
   createUploadQueue,
   MAX_AGE_MS,
@@ -252,6 +253,22 @@ describe('a shot the guest has just taken', () => {
       new Date(NOW).toISOString(),
     )
   })
+
+  it('sends each render to its own signed slot', async () => {
+    const h = harness({ reserve: vi.fn(async () => reserved('photo-1')) })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    const [{ renders }] = vi.mocked(h.deps.upload).mock.calls[0]
+    expect(
+      renders.map(({ kind, slot, body }) => [kind, slot.path, body.size]),
+    ).toEqual([
+      ['full', `${EVENT}/photo-1.jpg`, prepared.full.size],
+      ['view', `${EVENT}/photo-1_view.jpg`, prepared.view.size],
+      ['thumb', `${EVENT}/photo-1_thumb.jpg`, prepared.thumb.size],
+    ])
+  })
 })
 
 describe('a refusal', () => {
@@ -428,8 +445,12 @@ describe('giving up', () => {
   it('does not retry a deferred shot just because a new photo arrives', async () => {
     let olderUploads = 0
     const h = harness({
-      upload: vi.fn(async ({ uploads }) => {
-        if (uploads.full.path.includes('photo-for-older')) {
+      upload: vi.fn(async ({ renders }) => {
+        if (
+          renders.some((r: RenderUpload) =>
+            r.slot.path.includes('photo-for-older'),
+          )
+        ) {
           olderUploads += 1
           throw new Error('wifi')
         }
@@ -1176,8 +1197,10 @@ describe('a failure that is not about the photo', () => {
 
   it('still carries on past a failure the server answered about the photo', async () => {
     const h = harness({
-      upload: vi.fn(async ({ uploads }) => {
-        if (uploads.full.path.includes('photo-for-a')) {
+      upload: vi.fn(async ({ renders }) => {
+        if (
+          renders.some((r: RenderUpload) => r.slot.path.includes('photo-for-a'))
+        ) {
           throw Object.assign(new Error('HTTP 500'), { status: 500 })
         }
       }),

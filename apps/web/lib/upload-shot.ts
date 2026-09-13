@@ -1,26 +1,29 @@
 import 'client-only'
 
-import type { PreparedPhoto } from './image'
+import type { RenderKind } from './upload-resume'
 import { PHOTO_BUCKET } from './storage'
 import { createGuestClient } from './supabase/client'
 
 export type SignedUpload = { path: string; token: string }
 
+/** One render and the signed slot `reserve_shot` minted for it. */
+export type RenderUpload = { kind: RenderKind; slot: SignedUpload; body: Blob }
+
 /**
- * PUT the three renders to the signed URLs `reserve_shot` minted.
+ * PUT the renders a capture still needs to the signed URLs `reserve_shot`
+ * minted — all three on a first attempt, only the missing ones on a retry that
+ * found the others in Storage (see `lib/upload-resume.ts`).
  *
  * Parallel: the thumbnail would otherwise wait a round trip behind the master.
- * Not retried here — the queue replays the whole capture with a fresh reserve.
+ * Not retried here — the queue replays the capture with a fresh reserve.
  * `signal` aborts the PUTs when the queue's upload timeout fires.
  */
 export async function uploadShotRenders({
-  prepared,
-  uploads,
+  renders,
   onProgress,
   signal,
 }: {
-  prepared: PreparedPhoto
-  uploads: { full: SignedUpload; view: SignedUpload; thumb: SignedUpload }
+  renders: readonly RenderUpload[]
   onProgress?: (fraction: number) => void
   signal?: AbortSignal
 }): Promise<void> {
@@ -28,17 +31,11 @@ export async function uploadShotRenders({
     signal ? (input, init) => fetch(input, { ...init, signal }) : undefined,
   )
 
-  const renders = [
-    [uploads.full, prepared.full],
-    [uploads.view, prepared.view],
-    [uploads.thumb, prepared.thumb],
-  ] as const
-
-  const total = renders.reduce((sum, [, body]) => sum + body.size, 0)
+  const total = renders.reduce((sum, { body }) => sum + body.size, 0)
   let landed = 0
 
   const puts = await Promise.all(
-    renders.map(([slot, body]) =>
+    renders.map(({ slot, body }) =>
       supabase.storage
         .from(PHOTO_BUCKET)
         .uploadToSignedUrl(slot.path, slot.token, body, {
