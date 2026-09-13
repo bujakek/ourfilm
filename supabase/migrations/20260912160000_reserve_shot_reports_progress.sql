@@ -88,10 +88,17 @@ begin
 
   if found then
     if v_existing.status::text = 'pending' then
+      -- `size` is whatever Storage's own trigger wrote, not something this
+      -- function controls, so it is read defensively: a cast that raises turns
+      -- into a refusal the queue waits on for up to 24 hours. A non-numeric
+      -- value reads as "unknown" (null), same as an object with no metadata.
       select
-        max((o.metadata ->> 'size')::bigint) filter (where o.name = v_existing.storage_path),
-        max((o.metadata ->> 'size')::bigint) filter (where o.name = v_existing.view_path),
-        max((o.metadata ->> 'size')::bigint) filter (where o.name = v_existing.thumb_path)
+        max(case when jsonb_typeof(o.metadata -> 'size') = 'number'
+          then (o.metadata ->> 'size')::bigint end) filter (where o.name = v_existing.storage_path),
+        max(case when jsonb_typeof(o.metadata -> 'size') = 'number'
+          then (o.metadata ->> 'size')::bigint end) filter (where o.name = v_existing.view_path),
+        max(case when jsonb_typeof(o.metadata -> 'size') = 'number'
+          then (o.metadata ->> 'size')::bigint end) filter (where o.name = v_existing.thumb_path)
       into v_full, v_view, v_thumb
       from storage.objects o
       where o.bucket_id = 'event-photos'

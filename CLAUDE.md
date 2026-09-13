@@ -355,29 +355,29 @@ there is one, the capture id (both random uuids), plus whether the browser
 thought it was online. Filter on `event_id` and the question "did anyone at
 this wedding lose a photo" has an answer. The guest path, in order:
 
-| Event                        | Answers                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| `guest_page_viewed`          | How many scans reach the ticket, and what they find (camera, gallery)     |
-| `guest_join_refused`         | Cap reached vs. a bug — a refusal on an open camera is the latter         |
-| `camera_opened`              | The denominator for the OS camera hand-off                                |
-| `shutter_pressed`            | A file came back; `away_ms` is how long the OS had the screen             |
-| `capture_preparation_slow`   | Successful preparation over five seconds, with safe size metadata         |
-| `upload_issue`               | One deduplicated issue: stage, class, attempt and whether terminal        |
-| `upload_renders_uploaded`    | All three PUTs answered; `upload_ms`, keyed by `attempt_id`               |
-| `upload_resumed`             | A retry skipped work already done: `committed`, `commit`, or some renders |
-| `upload_commit_started`      | The commit was sent — which side of this a `pending` row stopped on       |
-| `upload_commit_finished`     | Its answer: `committed`, `refused` with the server's code, or `failed`    |
-| `upload_attempt_interrupted` | A teardown ended the attempt, and at which stage                          |
-| `upload_backgrounded`        | The page was hidden or unloaded with an attempt still running             |
-| `upload_confirmed`           | Done, with `elapsed_ms` from the shutter                                  |
-| `upload_restored`            | A shot replayed after a killed tab, with its age                          |
-| `upload_discarded`           | A stored row thrown away unseen: expired, exhausted, empty                |
-| `upload_store_unavailable`   | IndexedDB gave up, and at which stage — photos will not survive           |
-| `gallery_photo_opened`       | Somebody looked at the developed album — the format's whole payoff        |
-| `gallery_image_failed`       | A render would not load; URLs never expire, so a missing object or net    |
-| `invite_shared`              | The link left the page, or the clipboard refused and it did not           |
-| `client_error`               | A rendered error boundary, with redacted stack locations                  |
-| `server_error`               | An unhandled or critical handled server failure by operation              |
+| Event                        | Answers                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `guest_page_viewed`          | How many scans reach the ticket, and what they find (camera, gallery)          |
+| `guest_join_refused`         | Cap reached vs. a bug — a refusal on an open camera is the latter              |
+| `camera_opened`              | The denominator for the OS camera hand-off                                     |
+| `shutter_pressed`            | A file came back; `away_ms` is how long the OS had the screen                  |
+| `capture_preparation_slow`   | Successful preparation over five seconds, with safe size metadata              |
+| `upload_issue`               | One deduplicated issue: stage, class, attempt and whether terminal             |
+| `upload_renders_uploaded`    | Every render sent answered; `upload_ms`, `renders_sent`, keyed by `attempt_id` |
+| `upload_resumed`             | A retry skipped work already done: `committed`, `commit`, or some renders      |
+| `upload_commit_started`      | The commit was sent — which side of this a `pending` row stopped on            |
+| `upload_commit_finished`     | Its answer: `committed`, `refused` with the server's code, or `failed`         |
+| `upload_attempt_interrupted` | A teardown ended the attempt, and at which stage                               |
+| `upload_backgrounded`        | The page was hidden or unloaded with an attempt still running                  |
+| `upload_confirmed`           | Done, with `elapsed_ms` from the shutter                                       |
+| `upload_restored`            | A shot replayed after a killed tab, with its age                               |
+| `upload_discarded`           | A stored row thrown away unseen: expired, exhausted, empty                     |
+| `upload_store_unavailable`   | IndexedDB gave up, and at which stage — photos will not survive                |
+| `gallery_photo_opened`       | Somebody looked at the developed album — the format's whole payoff             |
+| `gallery_image_failed`       | A render would not load; URLs never expire, so a missing object or net         |
+| `invite_shared`              | The link left the page, or the clipboard refused and it did not                |
+| `client_error`               | A rendered error boundary, with redacted stack locations                       |
+| `server_error`               | An unhandled or critical handled server failure by operation                   |
 
 Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
 is no reliable client-side signal for a cancel, so none is invented. How often

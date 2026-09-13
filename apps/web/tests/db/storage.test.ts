@@ -442,6 +442,40 @@ describe('a replayed reservation', () => {
     }
   }, 60_000)
 
+  it('maps the view render to view_bytes, not another column', async () => {
+    // The three columns are matched to `storage_path` / `view_path` /
+    // `thumb_path` by name in the migration's `filter (where o.name = …)`
+    // clauses. Uploading only the master proved nothing about that mapping —
+    // it would still pass with view_bytes and thumb_bytes swapped.
+    const event = await createEvent({ ownerId: host.id })
+    const db = serviceClient()
+    let path: string | null = null
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Réka', session)
+      const key = randomUUID()
+      const first = await reserveShot(event.id, session, key)
+      path = first!.view_path as string
+
+      const { error } = await db.storage
+        .from(BUCKET)
+        .upload(path, JPEG, { contentType: 'image/jpeg' })
+      expect(error).toBeNull()
+
+      const replay = await reserveShot(event.id, session, key)
+      expect(replay?.photo_id).toBe(first?.photo_id)
+      expect(replay).toMatchObject({
+        photo_status: 'pending',
+        full_bytes: null,
+        view_bytes: JPEG.size,
+        thumb_bytes: null,
+      })
+    } finally {
+      if (path) await db.storage.from(BUCKET).remove([path])
+      await deleteEvent(event.id)
+    }
+  }, 60_000)
+
   it('says a committed row needs nothing more', async () => {
     const event = await createEvent({ ownerId: host.id })
     try {

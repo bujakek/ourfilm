@@ -806,7 +806,12 @@ export function createUploadQueue({
           : shot.takenAt
 
         const body = (kind: RenderKind): Blob => {
-          if (kind === 'full') return prepared?.full ?? shot.blob
+          // Always the stored master, never `prepared.full`: they are the same
+          // bytes for a compressed row (`prepareStoredShot` returns
+          // `full: shot.blob`), and the commit below reports `master.byteSize`
+          // from this same `shot.blob`. Two expressions that happen to agree
+          // is how a harness fake can quietly stop matching production.
+          if (kind === 'full') return shot.blob
           if (!prepared) throw new Error(`No ${kind} render was prepared`)
           return prepared[kind]
         }

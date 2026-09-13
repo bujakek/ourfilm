@@ -85,7 +85,7 @@ before it attaches wait in memory.
 | Event (browser)              | Step                                                                                             |
 | ---------------------------- | ------------------------------------------------------------------------------------------------ |
 | `shutter_pressed`            | Capture id minted                                                                                |
-| `upload_renders_uploaded`    | All three PUTs answered without an error. `upload_ms`, `bytes`                                   |
+| `upload_renders_uploaded`    | Every render sent answered without an error. `upload_ms`, `bytes`, `renders_sent`                |
 | `upload_resumed`             | A retry skipped what was already done: `committed`, `commit`, or `upload` with `renders_present` |
 | `upload_commit_started`      | The commit request is being sent                                                                 |
 | `upload_commit_finished`     | Its answer: `committed`, `refused` + server `refusal`, or `failed` + `unsent`                    |
