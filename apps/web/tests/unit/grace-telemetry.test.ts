@@ -13,6 +13,7 @@ function shot(grace: ReservedShot['grace']): ReservedShot {
     photoId: 'b359f2dd-9a07-4653-8c3b-78c5e2cfdce5',
     shotsRemaining: 3,
     grace,
+    progress: null,
     uploads: { full: slot, view: slot, thumb: slot },
   }
 }

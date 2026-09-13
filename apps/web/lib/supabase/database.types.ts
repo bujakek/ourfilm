@@ -1029,12 +1029,16 @@ export type Database = {
             }
             Returns: {
               claimed_lead_seconds: number
+              full_bytes: number
               late_seconds: number
               photo_id: string
+              photo_status: string
               refusal: string
               shots_remaining: number
               storage_path: string
+              thumb_bytes: number
               thumb_path: string
+              view_bytes: number
               view_path: string
             }[]
           }

@@ -90,6 +90,7 @@ export async function hostReserveShotAction(
     photoId: result.shot.photoId,
     shotsRemaining: result.shot.shotsRemaining,
     uploads: result.shot.uploads,
+    progress: result.shot.progress,
   }
 }
 

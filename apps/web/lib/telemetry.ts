@@ -93,6 +93,17 @@ export type TelemetryEventProperties = {
   upload_renders_uploaded: AttemptProperties & {
     upload_ms: number
     bytes: number
+    /** Fewer than three when a retry found the rest already in Storage. */
+    renders_sent: number
+  }
+  /**
+   * A retry found part of the capture already done and skipped it:
+   * `committed` (the commit had gone through; nothing sent), `commit` (all
+   * renders in Storage) or `upload` with some renders present.
+   */
+  upload_resumed: AttemptProperties & {
+    resume: 'committed' | 'commit' | 'upload'
+    renders_present: number | null
   }
   upload_commit_started: AttemptProperties
   upload_commit_finished: AttemptProperties & {

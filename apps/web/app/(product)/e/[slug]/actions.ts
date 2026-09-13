@@ -24,6 +24,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLocale } from '@/lib/i18n'
 import { reportGraceReservation } from '@/lib/grace-telemetry'
 import { reportServerIssue } from '@/lib/telemetry-server'
+import type { ReservationProgress } from '@/lib/upload-resume'
 
 /**
  * Everything a guest can do, and the only way they can do it.
@@ -146,6 +147,8 @@ export type ReserveState =
         view: SignedUpload
         thumb: SignedUpload
       }
+      /** See `ReservedShot.progress`. Optional: an older deployment omits it. */
+      progress?: ReservationProgress | null
     }
   | { ok: false; refusal: ShotRefusal }
 
@@ -215,6 +218,7 @@ export async function reserveShotAction(
     photoId: result.shot.photoId,
     shotsRemaining: result.shot.shotsRemaining,
     uploads: result.shot.uploads,
+    progress: result.shot.progress,
   }
 }
 

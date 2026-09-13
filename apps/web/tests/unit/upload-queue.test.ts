@@ -9,6 +9,8 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { PreparedPhoto } from '@/lib/image'
+import type { ReservationProgress } from '@/lib/upload-resume'
+import type { RenderUpload } from '@/lib/upload-shot'
 import {
   createUploadQueue,
   MAX_AGE_MS,
@@ -61,6 +63,20 @@ function reserved(photoId: string, shotsRemaining = 23) {
   }
 }
 
+function resumed(
+  photoId: string,
+  progress: ReservationProgress,
+  shotsRemaining = 23,
+) {
+  return { ...reserved(photoId, shotsRemaining), progress }
+}
+
+function kinds(h: Harness, call = 0) {
+  return vi
+    .mocked(h.deps.upload)
+    .mock.calls[call][0].renders.map((r: RenderUpload) => r.kind)
+}
+
 function file(name = 'IMG_0001.JPG') {
   return new File([new Uint8Array([0xff, 0xd8, 0xff, 0xdb])], name, {
     type: 'image/jpeg',
@@ -104,7 +120,15 @@ function harness(overrides: Partial<UploadQueueDeps> = {}): Harness {
   const deps: UploadQueueDeps = {
     reserve: vi.fn(async () => reserved(crypto.randomUUID())),
     compress: vi.fn(async () => master),
-    prepare: vi.fn(async () => prepared),
+    // `prepareStoredShot` returns `full: shot.blob` for a compressed row — the
+    // master goes up as the exact bytes on disk, never a second generation.
+    // A fake that always answered a fixed 64-byte `full` let the queue's own
+    // upload body drift from the byte size it commits without any test
+    // noticing, because both numbers were fabricated independently of the
+    // stored shot.
+    prepare: vi.fn(async (shot: StoredShot) =>
+      shot.compressed ? { ...prepared, full: shot.blob } : prepared,
+    ),
     upload: vi.fn(async () => undefined),
     commit: vi.fn(async () => ({ committed: true, shotsRemaining: 23 })),
     release: vi.fn(async () => undefined),
@@ -251,6 +275,22 @@ describe('a shot the guest has just taken', () => {
       'shot-1',
       new Date(NOW).toISOString(),
     )
+  })
+
+  it('sends each render to its own signed slot', async () => {
+    const h = harness({ reserve: vi.fn(async () => reserved('photo-1')) })
+    const q = queueFor(h)
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    const [{ renders }] = vi.mocked(h.deps.upload).mock.calls[0]
+    expect(
+      renders.map(({ kind, slot, body }) => [kind, slot.path, body.size]),
+    ).toEqual([
+      ['full', `${EVENT}/photo-1.jpg`, prepared.full.size],
+      ['view', `${EVENT}/photo-1_view.jpg`, prepared.view.size],
+      ['thumb', `${EVENT}/photo-1_thumb.jpg`, prepared.thumb.size],
+    ])
   })
 })
 
@@ -428,8 +468,12 @@ describe('giving up', () => {
   it('does not retry a deferred shot just because a new photo arrives', async () => {
     let olderUploads = 0
     const h = harness({
-      upload: vi.fn(async ({ uploads }) => {
-        if (uploads.full.path.includes('photo-for-older')) {
+      upload: vi.fn(async ({ renders }) => {
+        if (
+          renders.some((r: RenderUpload) =>
+            r.slot.path.includes('photo-for-older'),
+          )
+        ) {
           olderUploads += 1
           throw new Error('wifi')
         }
@@ -886,6 +930,14 @@ describe('compressing a capture', () => {
       'shot-1',
       expect.any(Number),
     )
+    // The commit's byteSize and the uploaded master must come from the same
+    // bytes — `shot.blob` — or the row Storage holds and the row the database
+    // describes disagree about how big the photo is.
+    const uploadedFull = vi
+      .mocked(h.deps.upload)
+      .mock.calls[0][0].renders.find((r) => r.kind === 'full')!
+    const { byteSize } = vi.mocked(h.deps.commit).mock.calls[0][0]
+    expect(uploadedFull.body.size).toBe(byteSize)
   })
 
   it('still uploads when compression itself fails', async () => {
@@ -905,8 +957,11 @@ describe('compressing a capture', () => {
       'shot-1',
       expect.any(Number),
     )
+    // `prepare` was called with the raw row, but this checks the same object
+    // `promote` mutates in place once its decode is kept — so by the time the
+    // assertion runs it reads back as the master that decode produced.
     expect(h.deps.prepare).toHaveBeenCalledWith(
-      expect.objectContaining({ compressed: false }),
+      expect.objectContaining({ compressed: true }),
     )
   })
 })
@@ -1176,8 +1231,10 @@ describe('a failure that is not about the photo', () => {
 
   it('still carries on past a failure the server answered about the photo', async () => {
     const h = harness({
-      upload: vi.fn(async ({ uploads }) => {
-        if (uploads.full.path.includes('photo-for-a')) {
+      upload: vi.fn(async ({ renders }) => {
+        if (
+          renders.some((r: RenderUpload) => r.slot.path.includes('photo-for-a'))
+        ) {
           throw Object.assign(new Error('HTTP 500'), { status: 500 })
         }
       }),
@@ -1438,5 +1495,253 @@ describe('the stretch between the upload and the commit', () => {
       expect.objectContaining({ attemptId: 'unavailable' }),
     )
     expect(await stored()).toEqual([])
+  })
+})
+
+describe('a retry that picks up where the last attempt stopped', () => {
+  /**
+   * The server's replay of `reserve_shot` says how far the photo got. Nothing
+   * that already happened is done again — not the decode, not a PUT, not the
+   * commit — because the endings this exists for are a master that timed out
+   * on venue wifi and a commit whose answer never came back.
+   */
+  function steps(h: Harness) {
+    return vi
+      .mocked(h.handlers.onAttemptStep!)
+      .mock.calls.map(([, step]) => step as unknown as Record<string, unknown>)
+  }
+
+  it('confirms a shot whose commit went through, and sends nothing', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed(
+          'photo-1',
+          { status: 'ready', stored: { full: null, view: null, thumb: null } },
+          20,
+        ),
+      ),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).not.toHaveBeenCalled()
+    expect(h.deps.upload).not.toHaveBeenCalled()
+    expect(h.deps.commit).not.toHaveBeenCalled()
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 20)
+    expect(await stored()).toEqual([])
+    expect(steps(h)).toEqual([
+      expect.objectContaining({
+        kind: 'resumed',
+        plan: 'committed',
+        present: null,
+      }),
+    ])
+  })
+
+  it('commits straight away when every render already landed', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: 2, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).not.toHaveBeenCalled()
+    expect(h.deps.upload).not.toHaveBeenCalled()
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        photoId: 'photo-1',
+        width: 4032,
+        height: 3024,
+        byteSize: 2,
+        takenAt: new Date(NOW).toISOString(),
+      }),
+    )
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith('shot-1', 23)
+    expect(steps(h).map((s) => s.kind)).toEqual([
+      'resumed',
+      'commit_started',
+      'commit_finished',
+    ])
+  })
+
+  it('commits the stored takenAt, not the shutter time, when every render already landed', async () => {
+    // A `commit` plan never decodes, so `prepared.takenAt` does not exist to
+    // fall back on — the row's own `takenAt`, from whichever earlier attempt
+    // wrote the master, is the only capture time left.
+    const shutter = NOW - 90_000
+    await orphan({
+      id: 'shot-1',
+      capturedAt: shutter,
+      takenAt: '2026-08-15T14:32:10.000Z',
+    })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: 2, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ takenAt: '2026-08-15T14:32:10.000Z' }),
+    )
+  })
+
+  it('sends only the master, without decoding, when the renders from it landed', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: null, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).not.toHaveBeenCalled()
+    expect(kinds(h)).toEqual(['full'])
+    expect(vi.mocked(h.deps.upload).mock.calls[0][0].renders[0].body.size).toBe(
+      2,
+    )
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ byteSize: 2 }),
+    )
+  })
+
+  it('reports a resumed upload plan, with how many renders landed, before it sends what is missing', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: null, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(steps(h).map((s) => s.kind)).toEqual([
+      'resumed',
+      'uploaded',
+      'commit_started',
+      'commit_finished',
+    ])
+    expect(steps(h)[0]).toMatchObject({ plan: 'upload', present: 2 })
+  })
+
+  it('emits no resumed step for a replay with nothing stored yet', async () => {
+    // `reserve_shot` answers the same shape for a row it has just inserted:
+    // pending, all three renders null. A `resumed` step here would claim a
+    // retry skipped work that never happened.
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: null, view: null, thumb: null },
+        }),
+      ),
+    })
+    h.handlers.onAttemptStep = vi.fn()
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(steps(h).map((s) => s.kind)).not.toContain('resumed')
+  })
+
+  it('decodes once and sends only what is missing when a derived render did not land', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: 2, view: null, thumb: 4 },
+        }),
+      ),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(h.deps.prepare).toHaveBeenCalledTimes(1)
+    expect(kinds(h)).toEqual(['view'])
+  })
+
+  it('sends the master again when Storage holds a different one', async () => {
+    await orphan({ id: 'shot-1' })
+    const h = harness({
+      reserve: vi.fn(async () =>
+        resumed('photo-1', {
+          status: 'pending',
+          stored: { full: 999, view: 16, thumb: 4 },
+        }),
+      ),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(kinds(h)).toEqual(['full'])
+  })
+
+  it('keeps the master it prepared from a raw row, so the next retry can resume', async () => {
+    await orphan({ id: 'shot-1', compressed: false, width: null, height: null })
+    let reserves = 0
+    const h = harness({
+      reserve: vi.fn(async () => {
+        reserves += 1
+        // First: renders from some earlier raw decode — a raw row trusts none.
+        // Second: the master this attempt kept, plus the two derived renders.
+        return resumed('photo-1', {
+          status: 'pending',
+          stored:
+            reserves === 1
+              ? { full: 2, view: 16, thumb: 4 }
+              : { full: prepared.full.size, view: 16, thumb: 4 },
+        })
+      }),
+      upload: vi.fn(async () => {
+        throw Object.assign(new Error('HTTP 500'), { status: 500 })
+      }),
+    })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+
+    expect(kinds(h)).toEqual(['full', 'view', 'thumb'])
+    const [row] = await uploadStore.listByEvent(EVENT)
+    expect(row).toMatchObject({ compressed: true, width: 4032, height: 3024 })
+    expect(row.blob.size).toBe(prepared.full.size)
+
+    armed(h)!.run()
+    await until(async () => (await stored()).length === 0)
+
+    expect(h.deps.prepare).toHaveBeenCalledTimes(1)
+    expect(h.deps.upload).toHaveBeenCalledTimes(1)
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ byteSize: prepared.full.size }),
+    )
   })
 })

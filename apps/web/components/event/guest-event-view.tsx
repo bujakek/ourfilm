@@ -595,7 +595,23 @@ export function GuestEventView({
             case 'uploaded':
               track(
                 'upload_renders_uploaded',
-                { ...attempt, upload_ms: step.ms, bytes: step.bytes },
+                {
+                  ...attempt,
+                  upload_ms: step.ms,
+                  bytes: step.bytes,
+                  renders_sent: step.renders,
+                },
+                { urgent: true },
+              )
+              return
+            case 'resumed':
+              track(
+                'upload_resumed',
+                {
+                  ...attempt,
+                  resume: step.plan,
+                  renders_present: step.present,
+                },
                 { urgent: true },
               )
               return

@@ -355,28 +355,29 @@ there is one, the capture id (both random uuids), plus whether the browser
 thought it was online. Filter on `event_id` and the question "did anyone at
 this wedding lose a photo" has an answer. The guest path, in order:
 
-| Event                        | Answers                                                                |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| `guest_page_viewed`          | How many scans reach the ticket, and what they find (camera, gallery)  |
-| `guest_join_refused`         | Cap reached vs. a bug — a refusal on an open camera is the latter      |
-| `camera_opened`              | The denominator for the OS camera hand-off                             |
-| `shutter_pressed`            | A file came back; `away_ms` is how long the OS had the screen          |
-| `capture_preparation_slow`   | Successful preparation over five seconds, with safe size metadata      |
-| `upload_issue`               | One deduplicated issue: stage, class, attempt and whether terminal     |
-| `upload_renders_uploaded`    | All three PUTs answered; `upload_ms`, keyed by `attempt_id`            |
-| `upload_commit_started`      | The commit was sent — which side of this a `pending` row stopped on    |
-| `upload_commit_finished`     | Its answer: `committed`, `refused` with the server's code, or `failed` |
-| `upload_attempt_interrupted` | A teardown ended the attempt, and at which stage                       |
-| `upload_backgrounded`        | The page was hidden or unloaded with an attempt still running          |
-| `upload_confirmed`           | Done, with `elapsed_ms` from the shutter                               |
-| `upload_restored`            | A shot replayed after a killed tab, with its age                       |
-| `upload_discarded`           | A stored row thrown away unseen: expired, exhausted, empty             |
-| `upload_store_unavailable`   | IndexedDB gave up, and at which stage — photos will not survive        |
-| `gallery_photo_opened`       | Somebody looked at the developed album — the format's whole payoff     |
-| `gallery_image_failed`       | A render would not load; URLs never expire, so a missing object or net |
-| `invite_shared`              | The link left the page, or the clipboard refused and it did not        |
-| `client_error`               | A rendered error boundary, with redacted stack locations               |
-| `server_error`               | An unhandled or critical handled server failure by operation           |
+| Event                        | Answers                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `guest_page_viewed`          | How many scans reach the ticket, and what they find (camera, gallery)          |
+| `guest_join_refused`         | Cap reached vs. a bug — a refusal on an open camera is the latter              |
+| `camera_opened`              | The denominator for the OS camera hand-off                                     |
+| `shutter_pressed`            | A file came back; `away_ms` is how long the OS had the screen                  |
+| `capture_preparation_slow`   | Successful preparation over five seconds, with safe size metadata              |
+| `upload_issue`               | One deduplicated issue: stage, class, attempt and whether terminal             |
+| `upload_renders_uploaded`    | Every render sent answered; `upload_ms`, `renders_sent`, keyed by `attempt_id` |
+| `upload_resumed`             | A retry skipped work already done: `committed`, `commit`, or some renders      |
+| `upload_commit_started`      | The commit was sent — which side of this a `pending` row stopped on            |
+| `upload_commit_finished`     | Its answer: `committed`, `refused` with the server's code, or `failed`         |
+| `upload_attempt_interrupted` | A teardown ended the attempt, and at which stage                               |
+| `upload_backgrounded`        | The page was hidden or unloaded with an attempt still running                  |
+| `upload_confirmed`           | Done, with `elapsed_ms` from the shutter                                       |
+| `upload_restored`            | A shot replayed after a killed tab, with its age                               |
+| `upload_discarded`           | A stored row thrown away unseen: expired, exhausted, empty                     |
+| `upload_store_unavailable`   | IndexedDB gave up, and at which stage — photos will not survive                |
+| `gallery_photo_opened`       | Somebody looked at the developed album — the format's whole payoff             |
+| `gallery_image_failed`       | A render would not load; URLs never expire, so a missing object or net         |
+| `invite_shared`              | The link left the page, or the clipboard refused and it did not                |
+| `client_error`               | A rendered error boundary, with redacted stack locations                       |
+| `server_error`               | An unhandled or critical handled server failure by operation                   |
 
 Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
 is no reliable client-side signal for a cancel, so none is invented. How often
@@ -605,6 +606,19 @@ at the bottom of the wedding.
 Resume replays with the same capture id — that id is `reserve_shot`'s
 idempotency key. Do not persist photo ids or signed URLs; a replay gets fresh
 ones. Do not release a reservation between retries.
+
+**A replay resumes where the last attempt stopped, and the server says where
+that was.** `reserve_shot` replaying an existing reservation also returns the
+row's `photo_status` and the byte size of each render already in Storage
+(`20260912160000`), and `planResume` in `apps/web/lib/upload-resume.ts` is the
+whole decision: a `ready` row is confirmed without sending anything — its
+commit went through and the answer was lost; a pending row with all three
+renders goes straight to the commit; otherwise only the missing renders go up,
+and the master is decoded only when the view or thumb is among them. The
+device keeps no checkpoint of its own on purpose: the endings this exists for
+are answers it never received. A raw row vouches for nothing in Storage — its
+next decode is a different master — so a master prepared from one is written
+back to the store before it is uploaded.
 
 A failed shot stays on the strip and is retried after `RETRY_MS`, and also on
 `visibilitychange` / `pageshow` / `online`. Every network step has a timeout:
