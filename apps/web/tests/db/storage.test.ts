@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto'
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   ANON_KEY,
   SUPABASE_URL,
+  commitShot,
   createEvent,
   createUser,
   deleteEvent,
@@ -380,6 +383,96 @@ describe('the exports bucket', () => {
       expect(listed?.[0]?.metadata?.size).toBe(body.byteLength)
     } finally {
       await db.storage.from(EXPORTS).remove([path])
+    }
+  }, 60_000)
+})
+
+describe('a replayed reservation', () => {
+  /**
+   * A retry asks `reserve_shot` again with the same capture id, and the answer
+   * says how far the last attempt got. The device cannot know that on its own:
+   * the endings that matter are a PUT that landed after the browser gave up
+   * and a commit whose response was lost.
+   */
+  it('says nothing is stored for a row it has just made', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Réka', session)
+      const first = await reserveShot(event.id, session)
+
+      expect(first).toMatchObject({
+        photo_status: 'pending',
+        full_bytes: null,
+        view_bytes: null,
+        thumb_bytes: null,
+      })
+    } finally {
+      await deleteEvent(event.id)
+    }
+  }, 60_000)
+
+  it('names each render Storage already holds, with its size', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    const db = serviceClient()
+    let path: string | null = null
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Réka', session)
+      const key = randomUUID()
+      const first = await reserveShot(event.id, session, key)
+      path = first!.storage_path as string
+
+      const { error } = await db.storage
+        .from(BUCKET)
+        .upload(path, JPEG, { contentType: 'image/jpeg' })
+      expect(error).toBeNull()
+
+      const replay = await reserveShot(event.id, session, key)
+      expect(replay?.photo_id).toBe(first?.photo_id)
+      expect(replay).toMatchObject({
+        photo_status: 'pending',
+        full_bytes: JPEG.size,
+        view_bytes: null,
+        thumb_bytes: null,
+      })
+    } finally {
+      if (path) await db.storage.from(BUCKET).remove([path])
+      await deleteEvent(event.id)
+    }
+  }, 60_000)
+
+  it('says a committed row needs nothing more', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Réka', session)
+      const key = randomUUID()
+      const first = await reserveShot(event.id, session, key)
+      await commitShot(first!.photo_id as string, session)
+
+      const replay = await reserveShot(event.id, session, key)
+      expect(replay).toMatchObject({
+        photo_id: first?.photo_id,
+        photo_status: 'ready',
+        refusal: null,
+      })
+    } finally {
+      await deleteEvent(event.id)
+    }
+  }, 60_000)
+
+  it('reports no status on a refusal', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      // Never joined: the RPC refuses before any row exists.
+      const replay = await reserveShot(event.id, newSession())
+      expect(replay).toMatchObject({
+        refusal: 'no_session',
+        photo_status: null,
+      })
+    } finally {
+      await deleteEvent(event.id)
     }
   }, 60_000)
 })
