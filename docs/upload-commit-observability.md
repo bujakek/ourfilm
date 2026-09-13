@@ -47,7 +47,9 @@ statement sends the commit; between them only a `stopped` check.
 6. **The request never arrived or its answer was lost.** The browser's 20 s
    commit timeout, or a network failure. `isConnectionFailure` refunds the
    attempt and the whole capture is retried. A request that arrived after the
-   browser gave up may still commit.
+   browser gave up may still commit; the retry's `reserve_shot` then reports
+   the row `ready`, and the device confirms it without uploading or
+   committing again (`upload_resumed`, `resume = 'committed'`).
 
 ### C. `commit_shot` ran and did not commit
 
@@ -67,9 +69,11 @@ nothing, so **the row stays `pending` with its files**.
 ### D. The upload looked failed to the browser
 
 10. All three objects landed but a PUT reported an error (a lost response, the
-    120 s upload timeout). The whole capture is retried; `upsert: true`
-    re-uploads the same paths. If it never succeeds, it ends as A3 or as a
-    terminal drop.
+    120 s upload timeout). The retry's `reserve_shot` reports the objects
+    that landed, and only the missing renders are sent again
+    (`upload_resumed`); a stored master whose size differs from the device's
+    is sent again under `upsert: true`. If it never succeeds, it ends as A3
+    or as a terminal drop.
 
 ## What reports each step
 
@@ -78,17 +82,18 @@ that matters is a tab that dies a second later. They are still best effort: a
 frozen or reclaimed tab sends nothing, and PostHog loads on idle, so events
 before it attaches wait in memory.
 
-| Event (browser)              | Step                                                                          |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| `shutter_pressed`            | Capture id minted                                                             |
-| `upload_renders_uploaded`    | All three PUTs answered without an error. `upload_ms`, `bytes`                |
-| `upload_commit_started`      | The commit request is being sent                                              |
-| `upload_commit_finished`     | Its answer: `committed`, `refused` + server `refusal`, or `failed` + `unsent` |
-| `upload_attempt_interrupted` | `stop()` ended the attempt, with the `stage` it was in                        |
-| `upload_backgrounded`        | The page was hidden (`visibilitychange`) or unloaded (`pagehide`) mid-attempt |
-| `upload_issue`               | Existing; now with `attempt_id` when raised inside an attempt                 |
-| `upload_confirmed`           | Existing, batched                                                             |
-| `upload_restored`            | Existing, batched: a stored shot replayed after a reload                      |
+| Event (browser)              | Step                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| `shutter_pressed`            | Capture id minted                                                                                |
+| `upload_renders_uploaded`    | All three PUTs answered without an error. `upload_ms`, `bytes`                                   |
+| `upload_resumed`             | A retry skipped what was already done: `committed`, `commit`, or `upload` with `renders_present` |
+| `upload_commit_started`      | The commit request is being sent                                                                 |
+| `upload_commit_finished`     | Its answer: `committed`, `refused` + server `refusal`, or `failed` + `unsent`                    |
+| `upload_attempt_interrupted` | `stop()` ended the attempt, with the `stage` it was in                                           |
+| `upload_backgrounded`        | The page was hidden (`visibilitychange`) or unloaded (`pagehide`) mid-attempt                    |
+| `upload_issue`               | Existing; now with `attempt_id` when raised inside an attempt                                    |
+| `upload_confirmed`           | Existing, batched                                                                                |
+| `upload_restored`            | Existing, batched: a stored shot replayed after a reload                                         |
 
 | Event (server)         | Step                                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------------- |
@@ -143,6 +148,8 @@ SELECT
   properties.surface AS server_surface,
   properties.stage AS stage,
   properties.outcome AS outcome,
+  properties.resume AS resume,
+  properties.renders_present AS renders_present,
   coalesce(properties.reason, properties.refusal, properties.failure) AS why,
   properties.error_name AS error_name,
   properties.unsent AS unsent,

@@ -179,6 +179,10 @@ forty-second outage deletes a frame that never left the device.
 - **Resume replays with the same capture id.** That id is the idempotency key.
   Do not persist a photo id or a signed URL. Do not release a reservation
   between retries — only after the client has exhausted the photo.
+  The replay's `reserve_shot` answer says how far the last attempt got
+  (`photo_status` and each render's stored size), and
+  `apps/web/lib/upload-resume.ts` turns that into what is left: nothing, the
+  commit, or only the missing renders.
 - **Persistence is never a gate.** Store calls swallow; `put` is not awaited
   on the capture path. Private mode is the old in-memory behaviour.
 - **Never await a network call without a timeout.** A dropped connection does

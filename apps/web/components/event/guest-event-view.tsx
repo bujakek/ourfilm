@@ -604,6 +604,17 @@ export function GuestEventView({
                 { urgent: true },
               )
               return
+            case 'resumed':
+              track(
+                'upload_resumed',
+                {
+                  ...attempt,
+                  resume: step.plan,
+                  renders_present: step.present,
+                },
+                { urgent: true },
+              )
+              return
             case 'commit_started':
               track('upload_commit_started', attempt, { urgent: true })
               return
