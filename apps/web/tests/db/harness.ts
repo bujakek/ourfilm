@@ -221,12 +221,14 @@ export async function reserveShot(
   eventId: string,
   session: Session,
   idempotencyKey = randomUUID(),
+  capturedAt = new Date(),
 ) {
   const { data, error } = await serviceClient()
     .rpc('reserve_shot', {
       p_event_id: eventId,
       p_token_hash: session.hash,
       p_idempotency_key: idempotencyKey,
+      p_capture_started_at: capturedAt.toISOString(),
     })
     .maybeSingle()
   if (error) throw error

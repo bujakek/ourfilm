@@ -418,6 +418,7 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `checkout_confirmation_viewed` | What the host was _told_ after paying, and how long the confirmation took     |
 | `event_created`                | The row exists, with the shape the host chose and whether it was a repeat     |
 | `event_deleted`                | The one destructive path, with the album's size and age                       |
+| `shot_reserved_in_grace`       | A frame reserved after the close through the 24 h upload grace, and how late  |
 | `photo_deleted`                | A frame destroyed, and whether it was already hidden when they did it         |
 | `event_setting_changed`        | What hosts adjust on a running camera, and how far they move the end          |
 | `album_export_queued`          | A large album was asked for; a job row exists and nothing is built yet        |
@@ -579,8 +580,10 @@ also probed with a four-byte read and discarded as `unreadable` if that fails,
 because retrying a read that cannot succeed only spends the budget in front of
 the guest. Prepare failures carry a `step` (`decode` | `encode`) and `raw`, so
 the next unknown one is not a mystery. `apps/web/lib/upload-queue.ts`
-drains one shot at a time, in capture order, and replays whatever a killed tab
-left behind. Persistence swallows: private mode is the old in-memory behaviour.
+uploads one shot at a time and replays whatever a killed tab left behind. First
+attempts keep capture order; a failed shot is deferred until the next retry
+signal while later shots continue. A failure that is not about the photo — no connection, or a refusal about the server such as the uploads kill switch — ends the pass instead, so an outage costs one request per retry rather than one per queued photo. Persistence swallows: private mode is the
+old in-memory behaviour.
 
 **Compress once, then store the master — and write the raw file first.** The
 row's `blob` is the camera original for a second or two, then
@@ -606,8 +609,25 @@ ones. Do not release a reservation between retries.
 A failed shot stays on the strip and is retried after `RETRY_MS`, and also on
 `visibilitychange` / `pageshow` / `online`. Every network step has a timeout:
 a hung `fetch` otherwise wedges the whole uploader. Four attempts or 24 hours
-and the bytes are dropped. `ended` and `no_shots` drop the rest of the queue;
-other refusals wait and retry.
+and the bytes are dropped. `ended` and `no_shots` drop only the refused shot —
+a later item may already hold a valid reservation. Other refusals wait and
+retry.
+
+There is a **24-hour upload grace after `capture_end_at`** for a shot that has
+not reached `reserve_shot` yet. The queue reports when the native-camera handoff
+started; after the event, the RPC accepts a new guest reservation only if the
+participant's server-stamped `joined_at` predates the close, that device time
+falls inside the capture window, and the request arrives inside the grace. A
+web server cannot cryptographically prove an offline device timestamp, so the
+existing participant's fixed roll is still the abuse ceiling. An existing
+reservation remains the stronger proof and replays without this timestamp gate.
+
+**Hosts are not told about the grace (settled).** A revealed album can gain
+photos for up to a day after the close, and a host who downloads the ZIP at
+the end of the party can miss them. That is accepted silently: no line on the
+album, the export or the settings screen. It was weighed and declined, so do not
+add one without asking. `shot_reserved_in_grace` is how often it actually
+happens.
 
 **The attempt budget is only ever spent on an answer from the server**, and
 `apps/web/lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten

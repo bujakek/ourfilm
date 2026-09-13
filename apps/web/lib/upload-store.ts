@@ -66,6 +66,16 @@ export type StoredShot = {
   /** When the shutter was pressed. The ordering key, and the age policy's. */
   capturedAt: number
   /**
+   * When the user opened the native camera for this shot.
+   *
+   * The browser only receives the file after the camera UI returns, which can
+   * be after the event closes even when the capture started before it. This
+   * earlier timestamp is sent to `reserve_shot` during the upload grace
+   * window. Optional so rows written by the previous store shape still replay;
+   * those fall back to `capturedAt`.
+   */
+  captureStartedAt?: number
+  /**
    * Drains started on this entry, written **before** the attempt runs.
    *
    * Counting afterwards would never count the failure that matters: a decode

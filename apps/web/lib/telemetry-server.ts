@@ -155,6 +155,24 @@ export type ServerEventProperties = {
     object_count: number
     age_hours: number
   }
+  /**
+   * A frame reserved after `capture_end_at`, which only the upload grace
+   * (`shot_upload_grace()`, 24 h, the client's `MAX_AGE_MS`) allows. How late
+   * these arrive is the evidence for that number: minutes would argue for a
+   * tighter close, the next morning for keeping it.
+   *
+   * `claimed_lead_seconds` is how long before the close the device says its
+   * camera was opened. Device-supplied, so its tail is where clock skew or a
+   * forged claim shows. A replay of an existing reservation is not counted.
+   * `capture_id` is the reservation's own idempotency key.
+   */
+  shot_reserved_in_grace: {
+    event_id: string
+    capture_id: string
+    surface: 'guest' | 'host'
+    late_seconds: number
+    claimed_lead_seconds: number | null
+  }
   /** A host changed a running camera. One event with a `setting` rather than
    *  five, so "what do hosts adjust" is one breakdown. */
   /** A host destroyed one guest's frame. `hidden_before` says whether they

@@ -416,7 +416,8 @@ export function GuestEventView({
     const queue = (queueRef.current ??= createUploadQueue({
       eventId,
       deps: {
-        reserve: (idempotencyKey) => reserveShotAction(eventId, idempotencyKey),
+        reserve: (idempotencyKey, captureStartedAt) =>
+          reserveShotAction(eventId, idempotencyKey, captureStartedAt),
         compress: compressForStorage,
         prepare: prepareStoredShot,
         upload: uploadShotRenders,
@@ -710,7 +711,7 @@ export function GuestEventView({
         setOfflineBacklog(0)
       }
       claimCell(id, file)
-      queueRef.current?.enqueue(id, file, now)
+      queueRef.current?.enqueue(id, file, now, opened ?? now)
     },
     [claimCell, eventId, online, remaining, outstanding],
   )

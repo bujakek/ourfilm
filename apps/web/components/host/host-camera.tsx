@@ -29,9 +29,9 @@ import { uploadStore } from '@/lib/upload-store'
  *
  * Everything below the shutter is the guest's machinery unchanged
  * (`lib/upload-queue.ts`, `lib/upload-store.ts`, `lib/image.ts`): the file is
- * written to IndexedDB before it is compressed, the queue drains one shot at a
- * time in capture order, and a killed tab replays what it owes. The pieces
- * that are genuinely different are the three server actions — a host is
+ * written to IndexedDB before it is compressed, the queue uploads one shot at
+ * a time while deferring failures, and a killed tab replays what it owes. The
+ * pieces that are genuinely different are the three server actions — a host is
  * recognised by their session rather than by a cookie — and `scope="host"`,
  * which keeps the two rolls apart on a device that has both.
  *
@@ -65,6 +65,7 @@ export function HostCamera({
   const reduceMotion = useReducedMotion()
   const inputRef = useRef<HTMLInputElement>(null)
   const queueRef = useRef<UploadQueue | null>(null)
+  const cameraOpenedAt = useRef<number | null>(null)
   const [outstanding, setOutstanding] = useState(0)
   const [handedOff, setHandedOff] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,8 +76,8 @@ export function HostCamera({
       // Two cameras, one device, one event. See the note on `scope`.
       scope: 'host',
       deps: {
-        reserve: (idempotencyKey) =>
-          hostReserveShotAction(slug, idempotencyKey),
+        reserve: (idempotencyKey, captureStartedAt) =>
+          hostReserveShotAction(slug, idempotencyKey, captureStartedAt),
         compress: compressForStorage,
         prepare: prepareStoredShot,
         upload: uploadShotRenders,
@@ -148,7 +149,10 @@ export function HostCamera({
   const takePhoto = useCallback((file: File) => {
     setError(null)
     setOutstanding((n) => n + 1)
-    queueRef.current?.enqueue(crypto.randomUUID(), file, Date.now())
+    const now = Date.now()
+    const opened = cameraOpenedAt.current
+    cameraOpenedAt.current = null
+    queueRef.current?.enqueue(crypto.randomUUID(), file, now, opened ?? now)
   }, [])
 
   return (
@@ -157,6 +161,7 @@ export function HostCamera({
         <motion.button
           type="button"
           onClick={() => {
+            cameraOpenedAt.current = Date.now()
             setHandedOff(true)
             inputRef.current?.click()
           }}
