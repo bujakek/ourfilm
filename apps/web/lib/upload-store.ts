@@ -75,6 +75,9 @@ export type StoredShot = {
    * those fall back to `capturedAt`.
    */
   captureStartedAt?: number
+  /** Which picker supplied the file. Missing rows predate library uploads and
+   *  therefore replay as ordinary native-camera captures. */
+  source?: 'camera' | 'library'
   /**
    * Drains started on this entry, written **before** the attempt runs.
    *

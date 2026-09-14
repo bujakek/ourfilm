@@ -85,6 +85,7 @@ async function run(): Promise<Outcome> {
       shots: draft.shots,
       plan: draft.plan,
       guestsCanView: draft.guestsCanView,
+      afterEventUploadsEnabled: draft.afterEventUploadsEnabled,
       legalAccepted: draft.legalAccepted,
       creationKey: draft.creationKey,
     })

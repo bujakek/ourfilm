@@ -252,6 +252,7 @@ export type Database = {
       }
       events: {
         Row: {
+          after_event_uploads_enabled: boolean
           capture_end_at: string
           capture_start_at: string
           cover_path: string | null
@@ -270,6 +271,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          after_event_uploads_enabled?: boolean
           capture_end_at: string
           capture_start_at: string
           cover_path?: string | null
@@ -288,6 +290,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          after_event_uploads_enabled?: boolean
           capture_end_at?: string
           capture_start_at?: string
           cover_path?: string | null
@@ -800,6 +803,8 @@ export type Database = {
       event_guest_state: {
         Args: { p_slug: string; p_token_hash: string }
         Returns: {
+          after_event_upload_eligible: boolean
+          after_event_uploads_enabled: boolean
           can_capture: boolean
           can_guest_view_gallery: boolean
           capture_end_at: string
@@ -928,6 +933,7 @@ export type Database = {
       owned_events_with_previews: {
         Args: never
         Returns: {
+          after_event_uploads_enabled: boolean
           capture_end_at: string
           capture_start_at: string
           cover_path: string
@@ -1025,6 +1031,29 @@ export type Database = {
               p_capture_started_at: string
               p_event_id: string
               p_idempotency_key: string
+              p_token_hash: string
+            }
+            Returns: {
+              claimed_lead_seconds: number
+              full_bytes: number
+              late_seconds: number
+              photo_id: string
+              photo_status: string
+              refusal: string
+              shots_remaining: number
+              storage_path: string
+              thumb_bytes: number
+              thumb_path: string
+              view_bytes: number
+              view_path: string
+            }[]
+          }
+        | {
+            Args: {
+              p_capture_started_at: string
+              p_event_id: string
+              p_idempotency_key: string
+              p_source: string
               p_token_hash: string
             }
             Returns: {
@@ -1221,4 +1250,3 @@ export const Constants = {
     },
   },
 } as const
-

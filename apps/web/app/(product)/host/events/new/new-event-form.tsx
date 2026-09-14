@@ -201,6 +201,9 @@ function OnboardingFlow({
   const [shots, setShots] = useState<ShotOption>(initial.shots)
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
   const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
+  const [afterEventUploadsEnabled, setAfterEventUploadsEnabled] = useState(
+    initial.afterEventUploadsEnabled,
+  )
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
@@ -230,6 +233,7 @@ function OnboardingFlow({
       shots,
       plan,
       guestsCanView,
+      afterEventUploadsEnabled,
       legalAccepted,
       step,
       creationKey: initialCreationKey,
@@ -246,6 +250,7 @@ function OnboardingFlow({
       shots,
       plan,
       guestsCanView,
+      afterEventUploadsEnabled,
       legalAccepted,
       step,
       initialCreationKey,
@@ -295,6 +300,7 @@ function OnboardingFlow({
         shots,
         plan,
         guestsCanView,
+        afterEventUploadsEnabled,
         legalAccepted,
         creationKey: initialCreationKey,
       })
@@ -402,6 +408,8 @@ function OnboardingFlow({
             time,
             setTime: (value) => setChosenEnd(`${day}T${value}`),
             today,
+            afterEventUploadsEnabled,
+            setAfterEventUploadsEnabled,
             canAdvance: endIsFuture,
           })
         : step === 2

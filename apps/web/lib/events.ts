@@ -114,11 +114,12 @@ export type OwnedEvent = {
   reveal_at: string
   shots_per_participant: number
   guests_can_view: boolean
+  after_event_uploads_enabled: boolean
   created_at: string
 }
 
 const OWNED_EVENT_COLUMNS =
-  'id, slug, event_name, cover_path, time_zone, locale, capture_start_at, capture_end_at, reveal_mode, reveal_at, shots_per_participant, guests_can_view, created_at'
+  'id, slug, event_name, cover_path, time_zone, locale, capture_start_at, capture_end_at, reveal_mode, reveal_at, shots_per_participant, guests_can_view, after_event_uploads_enabled, created_at'
 
 /**
  * One of the host's own events, by slug. Returns null when it does not exist

@@ -48,6 +48,13 @@ export type TelemetryEventProperties = {
     input_bytes: number
     heic: boolean
   }
+  library_photos_selected: {
+    event_id: string
+    selected: number
+    accepted: number
+    shots_remaining: number
+    outstanding: number
+  }
   capture_preparation_slow: {
     event_id: string
     capture_id: string

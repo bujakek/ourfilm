@@ -1,5 +1,6 @@
 import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
 import type { ShotRefusal } from '@/lib/capture'
+import { AFTER_EVENT_UPLOAD_WINDOW_MS } from '@/lib/camera'
 import type { CompressedCapture, PreparedPhoto } from '@/lib/image'
 import { isReadable, materializeBlob } from '@/lib/blob-bytes'
 import { prepareStepOf, type PrepareStep } from '@/lib/prepare-error'
@@ -37,7 +38,7 @@ export const MAX_ATTEMPTS = 4
  * retrying, longer accepts nothing more. `shot_reserved_in_grace` is how late
  * they really arrive.
  */
-export const MAX_AGE_MS = 24 * 60 * 60 * 1000
+export const MAX_AGE_MS = AFTER_EVENT_UPLOAD_WINDOW_MS
 /** After a failure, try again. Event listeners also wake the queue; this is
  *  the backup for when they fire too early (`online`) or not at all. */
 export const RETRY_MS = 10_000
@@ -52,6 +53,7 @@ export type UploadQueueDeps = {
   reserve: (
     idempotencyKey: string,
     captureStartedAt: string,
+    source: 'camera' | 'library',
   ) => Promise<ReserveState>
   /**
    * Reduce one capture to the single blob worth keeping. Runs once, right
@@ -252,6 +254,7 @@ export type UploadQueue = {
     file: File,
     capturedAt: number,
     captureStartedAt?: number,
+    source?: 'camera' | 'library',
   ): void
   resume(): Promise<void>
   drain(): Promise<void>
@@ -361,6 +364,7 @@ export function createUploadQueue({
     file: File,
     capturedAt: number,
     captureStartedAt = capturedAt,
+    source: 'camera' | 'library' = 'camera',
   ) {
     if (stopped || claimed.has(id)) return
     claimed.add(id)
@@ -379,6 +383,7 @@ export function createUploadQueue({
         lastModified: file.lastModified,
         capturedAt,
         captureStartedAt,
+        source,
         attempts: 0,
       },
       settled: null,
@@ -709,6 +714,7 @@ export function createUploadQueue({
           deps.reserve(
             shot.id,
             new Date(shot.captureStartedAt ?? shot.capturedAt).toISOString(),
+            shot.source ?? 'camera',
           ),
         limits.reserve,
         'Reserving a frame',

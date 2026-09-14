@@ -23,6 +23,11 @@ export type ShotOption = (typeof SHOT_OPTIONS)[number]
  *  guest shoots without rationing, short enough to still feel like film. */
 export const DEFAULT_SHOTS: ShotOption = 24
 
+/** How long an opted-in event accepts photo-library uploads after closing.
+ * Also the durable queue's retention window and the database's
+ * `shot_upload_grace()` interval: change the three together. */
+export const AFTER_EVENT_UPLOAD_WINDOW_MS = 24 * 60 * 60 * 1000
+
 export function isShotOption(value: unknown): value is ShotOption {
   return SHOT_OPTIONS.includes(value as ShotOption)
 }

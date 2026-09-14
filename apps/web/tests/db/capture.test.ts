@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   anonClient,
   countPhotos,
+  commitShot,
   createEvent,
   createUser,
   deleteEvent,
@@ -501,6 +502,174 @@ describe('the capture window', () => {
   })
 })
 
+describe('after-event library uploads', () => {
+  async function joinedBeforeClose(slug: string, end: Date, name: string) {
+    const session = newSession()
+    const participant = await joinEvent(slug, name, session)
+    await serviceClient()
+      .from('participants')
+      .update({ joined_at: new Date(end.getTime() - 60_000).toISOString() })
+      .eq('id', participant?.participant_id as string)
+    return session
+  }
+
+  it('does not replace the disposable camera with a library picker mid-event', async () => {
+    const event = await createEvent({
+      ownerId: host.id,
+      afterEventUploadsEnabled: true,
+    })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Még tart', session)
+
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(),
+        'library',
+      )
+      expect(result?.refusal).toBe('ended')
+      expect(await countPhotos(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('spends only the frames left on the guest’s original roll', async () => {
+    const end = new Date(Date.now() - 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 7200_000),
+      captureEndAt: end,
+      revealAt: end,
+      shotsPerParticipant: 5,
+      afterEventUploadsEnabled: true,
+    })
+    try {
+      const session = await joinedBeforeClose(
+        event.slug,
+        end,
+        'Másnapi válogató',
+      )
+
+      // Two photos taken during the event leave three frames for afterwards.
+      for (let i = 0; i < 2; i++) {
+        const shot = await reserveShot(
+          event.id,
+          session,
+          randomUUID(),
+          new Date(end.getTime() - 60_000),
+        )
+        await commitShot(shot?.photo_id as string, session)
+      }
+
+      const remaining: number[] = []
+      for (let i = 0; i < 3; i++) {
+        const shot = await reserveShot(
+          event.id,
+          session,
+          randomUUID(),
+          new Date(),
+          'library',
+        )
+        expect(shot?.refusal).toBeNull()
+        remaining.push(shot?.shots_remaining as number)
+      }
+
+      expect(remaining).toEqual([2, 1, 0])
+      const extra = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(),
+        'library',
+      )
+      expect(extra?.refusal).toBe('no_shots')
+    } finally {
+      await deleteEvent(event.id)
+    }
+  }, 60_000)
+
+  it('refuses the library when the host left the option off', async () => {
+    const end = new Date(Date.now() - 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 7200_000),
+      captureEndAt: end,
+      revealAt: end,
+    })
+    try {
+      const session = await joinedBeforeClose(event.slug, end, 'Kikapcsolva')
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(),
+        'library',
+      )
+
+      expect(result?.refusal).toBe('ended')
+      expect(await countPhotos(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('does not give a late viewer a roll after the event', async () => {
+    const end = new Date(Date.now() - 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 7200_000),
+      captureEndAt: end,
+      revealAt: end,
+      afterEventUploadsEnabled: true,
+    })
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Késői néző', session)
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(),
+        'library',
+      )
+
+      expect(result?.refusal).toBe('ended')
+      expect(await countPhotos(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('closes the library window after 24 hours', async () => {
+    const end = new Date(Date.now() - 25 * 3600_000)
+    const event = await createEvent({
+      ownerId: host.id,
+      captureStartAt: new Date(Date.now() - 26 * 3600_000),
+      captureEndAt: end,
+      revealAt: end,
+      afterEventUploadsEnabled: true,
+    })
+    try {
+      const session = await joinedBeforeClose(event.slug, end, 'Túl késő')
+      const result = await reserveShot(
+        event.id,
+        session,
+        randomUUID(),
+        new Date(),
+        'library',
+      )
+
+      expect(result?.refusal).toBe('ended')
+      expect(await countPhotos(event.id)).toBe(0)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+})
+
 describe('capture cannot be reached from the client', () => {
   it('refuses a session token that matches nothing', async () => {
     const event = await createEvent({ ownerId: host.id })
@@ -530,6 +699,13 @@ describe('capture cannot be reached from the client', () => {
       const guest = anonClient()
 
       for (const call of [
+        guest.rpc('reserve_shot', {
+          p_event_id: event.id,
+          p_token_hash: session.hash,
+          p_idempotency_key: randomUUID(),
+          p_capture_started_at: new Date().toISOString(),
+          p_source: 'library',
+        }),
         guest.rpc('reserve_shot', {
           p_event_id: event.id,
           p_token_hash: session.hash,

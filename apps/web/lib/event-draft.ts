@@ -28,11 +28,15 @@ import { defaultLocale, locales } from '@/lib/i18n'
 /** Versioned, so a shape change is a fresh start rather than a crash. Bump the
  *  suffix whenever a field changes meaning; the old key is then simply never
  *  read again, and the legacy list below clears it on the next load. */
-export const DRAFT_KEY = 'ourfilm:event-draft:v3'
+export const DRAFT_KEY = 'ourfilm:event-draft:v4'
 
 /** Keys from earlier shapes, cleared on load so a browser does not carry an
  *  unreadable blob forever. Add the previous key here when bumping. */
-const LEGACY_KEYS = ['ourfilm:event-draft:v1', 'ourfilm:event-draft:v2']
+const LEGACY_KEYS = [
+  'ourfilm:event-draft:v1',
+  'ourfilm:event-draft:v2',
+  'ourfilm:event-draft:v3',
+]
 
 /** How long a draft stays resumable. A week covers "I started this on the bus
  *  and finished it at home"; past that, the dates in it are usually wrong
@@ -59,6 +63,9 @@ const draftSchema = z.object({
   ),
   plan: z.enum(['free', 'full']),
   guestsCanView: z.boolean(),
+  /** Whether guests who joined before the camera closes may spend their
+   *  remaining frames on photos from their library for the following day. */
+  afterEventUploadsEnabled: z.boolean(),
   /** Required on the final screen. Persisted so the explicit choice survives
    *  the magic-link round trip together with the rest of the draft. */
   legalAccepted: z.boolean(),
@@ -101,6 +108,7 @@ export function emptyDraft(
     shots: DEFAULT_SHOTS,
     plan: 'free',
     guestsCanView: true,
+    afterEventUploadsEnabled: false,
     legalAccepted: false,
     step: 0,
     creationKey,

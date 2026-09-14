@@ -115,6 +115,7 @@ export type EventOptions = {
   revealAt?: Date
   shotsPerParticipant?: number
   guestsCanView?: boolean
+  afterEventUploadsEnabled?: boolean
 }
 
 const HOUR = 60 * 60 * 1000
@@ -137,6 +138,7 @@ export async function createEvent(options: EventOptions) {
       reveal_at: (options.revealAt ?? end).toISOString(),
       shots_per_participant: options.shotsPerParticipant ?? 24,
       guests_can_view: options.guestsCanView ?? true,
+      after_event_uploads_enabled: options.afterEventUploadsEnabled ?? false,
     })
     .select('id, slug, shots_per_participant, reveal_at, reveal_mode')
     .single()
@@ -222,6 +224,7 @@ export async function reserveShot(
   session: Session,
   idempotencyKey = randomUUID(),
   capturedAt = new Date(),
+  source: 'camera' | 'library' = 'camera',
 ) {
   const { data, error } = await serviceClient()
     .rpc('reserve_shot', {
@@ -229,6 +232,7 @@ export async function reserveShot(
       p_token_hash: session.hash,
       p_idempotency_key: idempotencyKey,
       p_capture_started_at: capturedAt.toISOString(),
+      p_source: source,
     })
     .maybeSingle()
   if (error) throw error

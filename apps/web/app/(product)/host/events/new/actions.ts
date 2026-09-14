@@ -29,6 +29,7 @@ export type EventDraftInput = {
   shots: number
   plan: string
   guestsCanView: boolean
+  afterEventUploadsEnabled: boolean
   legalAccepted: boolean
   /** Per-draft uuid. Makes a repeat attempt land on the event the first one
    *  created instead of a second one. Optional: a flow with no draft behind it
@@ -123,6 +124,7 @@ export async function createEventFromDraft(
   const shots = Number(input.shots)
   const planRaw = String(input.plan ?? 'free')
   const guestsCanView = input.guestsCanView === true
+  const afterEventUploadsEnabled = input.afterEventUploadsEnabled === true
 
   if (!captureEndIso) {
     return {
@@ -216,6 +218,7 @@ export async function createEventFromDraft(
       shots,
       reveal_mode: revealModeRaw,
       guests_can_view: guestsCanView,
+      after_event_uploads_enabled: afterEventUploadsEnabled,
       window_hours:
         Math.round(
           ((captureEndAt.getTime() - captureStartAt.getTime()) / 3_600_000) *
@@ -273,6 +276,7 @@ export async function createEventFromDraft(
         reveal_at: revealAt,
         shots_per_participant: shots,
         guests_can_view: guestsCanView,
+        after_event_uploads_enabled: afterEventUploadsEnabled,
         creation_key: creationKey,
       })
       .select('id, slug')

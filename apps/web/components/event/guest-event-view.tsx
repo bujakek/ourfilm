@@ -2,7 +2,7 @@
 
 import type { Frame } from '@/lib/frames'
 import type { GalleryTile } from '@/lib/photos'
-import { Camera } from 'lucide-react'
+import { Camera, Images } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -20,6 +20,7 @@ import {
   ownRollNote,
   queueClearedNote,
 } from '@/lib/event-copy'
+import { AFTER_EVENT_UPLOAD_WINDOW_MS } from '@/lib/camera'
 import { compressForStorage, isHeic, prepareStoredShot } from '@/lib/image'
 import { track } from '@/lib/telemetry'
 import {
@@ -115,6 +116,7 @@ export function GuestEventView({
   captureEndAt,
   initialNow,
   initialCanCapture,
+  afterEventUploadEligible,
   initialShotsRemaining,
   shotsPerParticipant,
   frames,
@@ -131,6 +133,8 @@ export function GuestEventView({
   captureEndAt: string
   initialNow: number
   initialCanCapture: boolean
+  /** True only for an opted-in event and a guest who joined before close. */
+  afterEventUploadEligible: boolean
   initialShotsRemaining: number
   shotsPerParticipant: number
   frames: Frame[]
@@ -143,6 +147,7 @@ export function GuestEventView({
   const router = useRouter()
   const reduceMotion = useReducedMotion()
   const inputRef = useRef<HTMLInputElement>(null)
+  const libraryInputRef = useRef<HTMLInputElement>(null)
   // Timing for telemetry, keyed by capture id. Refs, not state: none of it is
   // drawn, and a re-render per timestamp would be a re-render per photo.
   const startedAt = useRef(new Map<string, number>())
@@ -248,6 +253,10 @@ export function GuestEventView({
 
   const captureEnd = new Date(captureEndAt).getTime()
   const captureIsOpen = initialCanCapture && now <= captureEnd
+  const afterEventUploadIsOpen =
+    afterEventUploadEligible &&
+    now > captureEnd &&
+    now <= captureEnd + AFTER_EVENT_UPLOAD_WINDOW_MS
 
   // Shots taken but not yet confirmed by `commit_shot`. `remaining` is server
   // truth and stays server truth — it is only ever what a commit returned —
@@ -256,7 +265,6 @@ export function GuestEventView({
   // refused after it was taken, and there is no retake in this product.
   const outstanding = captures.filter((c) => isOutstanding(c)).length
   const canTakePhoto = captureIsOpen && remaining - outstanding > 0
-  const uploading = outstanding > 0
   /**
    * What the big number says: frames left after the ones already spent.
    *
@@ -271,6 +279,8 @@ export function GuestEventView({
    * server has not caught up.
    */
   const framesLeft = Math.max(0, remaining - outstanding)
+  const canAddFromLibrary = afterEventUploadIsOpen && framesLeft > 0
+  const uploading = outstanding > 0
 
   // Derived rather than cleared in an effect: once `router.refresh()` has
   // brought a capture's own photo down, the strip renders the real frame and
@@ -317,7 +327,14 @@ export function GuestEventView({
               text: en ? 'Your roll is full.' : 'Megtelt a tekercsed.',
               tone: 'text-muted-foreground',
             }
-          : null
+          : afterEventUploadIsOpen
+            ? {
+                text: en
+                  ? `Use your ${framesLeft} remaining ${framesLeft === 1 ? 'frame' : 'frames'} on photos from your library.`
+                  : `A megmaradt ${framesLeft} képkockádra a telefonod fotótárából is tölthetsz fel.`,
+                tone: 'text-muted-foreground',
+              }
+            : null
 
   const status = captureStatus(
     {
@@ -416,8 +433,8 @@ export function GuestEventView({
     const queue = (queueRef.current ??= createUploadQueue({
       eventId,
       deps: {
-        reserve: (idempotencyKey, captureStartedAt) =>
-          reserveShotAction(eventId, idempotencyKey, captureStartedAt),
+        reserve: (idempotencyKey, captureStartedAt, source) =>
+          reserveShotAction(eventId, idempotencyKey, captureStartedAt, source),
         compress: compressForStorage,
         prepare: prepareStoredShot,
         upload: uploadShotRenders,
@@ -732,6 +749,46 @@ export function GuestEventView({
     [claimCell, eventId, online, remaining, outstanding],
   )
 
+  /**
+   * Add several library photos without minting a second allowance. The picker
+   * can return more files than the roll has room for, so claim only the number
+   * visible in `framesLeft`; the database independently enforces the same cap.
+   */
+  const addLibraryPhotos = useCallback(
+    (files: readonly File[]) => {
+      const capacity = Math.max(0, remaining - outstanding)
+      const accepted = files.slice(0, capacity)
+      const selectedAt = Date.now()
+
+      track('library_photos_selected', {
+        event_id: eventId,
+        selected: files.length,
+        accepted: accepted.length,
+        shots_remaining: remaining,
+        outstanding,
+      })
+
+      if (files.length > accepted.length) {
+        setFlash(
+          en
+            ? `Your roll has room for ${capacity} more ${capacity === 1 ? 'photo' : 'photos'}.`
+            : `A tekercseden még ${capacity} képnek van hely.`,
+        )
+      } else {
+        setFlash(null)
+      }
+
+      accepted.forEach((file, index) => {
+        const id = crypto.randomUUID()
+        const queuedAt = selectedAt + index
+        startedAt.current.set(id, queuedAt)
+        claimCell(id, file)
+        queueRef.current?.enqueue(id, file, queuedAt, queuedAt, 'library')
+      })
+    },
+    [claimCell, en, eventId, outstanding, remaining],
+  )
+
   return (
     <main
       className="mx-auto min-h-dvh w-full max-w-3xl px-5 pt-[34px] pb-6"
@@ -854,34 +911,56 @@ export function GuestEventView({
         <motion.button
           type="button"
           onClick={() => {
-            cameraOpenedAt.current = Date.now()
-            track('camera_opened', {
-              event_id: eventId,
-              shots_remaining: remaining,
-              outstanding,
-            })
-            setHandedOff(true)
-            inputRef.current?.click()
+            if (afterEventUploadIsOpen) {
+              libraryInputRef.current?.click()
+            } else {
+              cameraOpenedAt.current = Date.now()
+              track('camera_opened', {
+                event_id: eventId,
+                shots_remaining: remaining,
+                outstanding,
+              })
+              setHandedOff(true)
+              inputRef.current?.click()
+            }
           }}
-          disabled={!canTakePhoto}
+          disabled={afterEventUploadIsOpen ? !canAddFromLibrary : !canTakePhoto}
           initial={false}
-          animate={{ opacity: handedOff || !canTakePhoto ? 0.5 : 1 }}
+          animate={{
+            opacity:
+              handedOff ||
+              !(afterEventUploadIsOpen ? canAddFromLibrary : canTakePhoto)
+                ? 0.5
+                : 1,
+          }}
           whileTap={
-            canTakePhoto && !reduceMotion ? { scale: 0.972 } : undefined
+            (afterEventUploadIsOpen ? canAddFromLibrary : canTakePhoto) &&
+            !reduceMotion
+              ? { scale: 0.972 }
+              : undefined
           }
           transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
           className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-lg text-[15px] font-semibold disabled:pointer-events-none"
         >
-          <Camera
-            className="size-[19px]"
-            strokeWidth={1.8}
-            aria-hidden="true"
-          />
+          {afterEventUploadIsOpen ? (
+            <Images
+              className="size-[19px]"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+          ) : (
+            <Camera
+              className="size-[19px]"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+          )}
           {remaining <= 0
             ? en
               ? 'Roll finished'
               : 'Megtelt a tekercs'
-            : uploading && !canTakePhoto
+            : uploading &&
+                !(afterEventUploadIsOpen ? canAddFromLibrary : canTakePhoto)
               ? // The roll is spent but the last frames are still going up.
                 // The only moment this screen says "saving" — while a shot is
                 // uploading with film left, the shutter still reads "Kamera",
@@ -889,9 +968,17 @@ export function GuestEventView({
                 en
                 ? 'Saving…'
                 : 'Mentés…'
-              : en
-                ? 'Camera'
-                : 'Kamera'}
+              : afterEventUploadIsOpen
+                ? en
+                  ? 'Add from library'
+                  : 'Feltöltés a fotótárból'
+                : en
+                  ? captureIsOpen
+                    ? 'Camera'
+                    : 'Shooting ended'
+                  : captureIsOpen
+                    ? 'Kamera'
+                    : 'Véget ért a fotózás'}
         </motion.button>
 
         <InviteButton
@@ -914,6 +1001,23 @@ export function GuestEventView({
             event.target.value = ''
             setHandedOff(false)
             if (file) takePhoto(file)
+          }}
+        />
+
+        <input
+          ref={libraryInputRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          disabled={!canAddFromLibrary}
+          className="sr-only"
+          aria-label={
+            en ? 'Add photos from library' : 'Képek feltöltése a fotótárból'
+          }
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? [])
+            event.target.value = ''
+            if (files.length > 0) addLibraryPhotos(files)
           }}
         />
       </motion.div>

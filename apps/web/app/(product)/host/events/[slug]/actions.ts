@@ -83,7 +83,7 @@ async function refusedDelete(error: unknown) {
   return error
 }
 
-/** One event for all five controls, so "what do hosts adjust, and when" is a
+/** One event for all six controls, so "what do hosts adjust, and when" is a
  *  single breakdown rather than five series to line up by hand. */
 function changed(
   eventId: string,
@@ -98,6 +98,7 @@ function changed(
     reveal_mode: null,
     shots: null,
     guests_can_view: null,
+    after_event_uploads_enabled: null,
     moved_minutes: null,
     ...values,
   })
@@ -273,6 +274,35 @@ export async function setGuestsCanView(slug: string, canView: boolean) {
 
   revalidateEvent(slug)
   revalidatePath(`/e/${slug}`)
+}
+
+/** Let guests who were already at the event spend their remaining frames on
+ * photos from their library during the 24 hours after the camera closes. */
+export async function setAfterEventUploadsEnabled(
+  slug: string,
+  enabled: boolean,
+) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('events')
+    .update({ after_event_uploads_enabled: enabled })
+    .eq('slug', slug)
+    .select('id')
+
+  if (error) throw await refused(error, 'after_event_uploads')
+  if (!data || data.length === 0) {
+    throw await refused(
+      new Error('Az esemény nem módosult.'),
+      'after_event_uploads',
+    )
+  }
+
+  await changed(data[0].id, 'after_event_uploads', {
+    after_event_uploads_enabled: enabled,
+  })
+
+  revalidateEvent(slug)
 }
 
 /**

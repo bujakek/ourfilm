@@ -274,6 +274,21 @@ describe('a shot the guest has just taken', () => {
     expect(h.deps.reserve).toHaveBeenCalledWith(
       'shot-1',
       new Date(NOW).toISOString(),
+      'camera',
+    )
+  })
+
+  it('keeps a library upload labelled across the durable queue', async () => {
+    const h = harness()
+    const q = queueFor(h)
+
+    q.enqueue('library-1', file(), NOW, NOW, 'library')
+    await q.drain()
+
+    expect(h.deps.reserve).toHaveBeenCalledWith(
+      'library-1',
+      new Date(NOW).toISOString(),
+      'library',
     )
   })
 
@@ -365,6 +380,7 @@ describe('a tab that died mid-upload', () => {
     expect(h.deps.reserve).toHaveBeenCalledWith(
       'same-key',
       new Date(NOW).toISOString(),
+      'camera',
     )
   })
 

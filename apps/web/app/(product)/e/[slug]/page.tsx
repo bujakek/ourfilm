@@ -109,6 +109,7 @@ export default async function EventPage({ params, searchParams }: Props) {
       captureEndAt={event.capture_end_at}
       initialNow={now.getTime()}
       initialCanCapture={event.can_capture}
+      afterEventUploadEligible={event.after_event_upload_eligible}
       initialShotsRemaining={event.shots_remaining}
       shotsPerParticipant={event.shots_per_participant}
       frames={frames}

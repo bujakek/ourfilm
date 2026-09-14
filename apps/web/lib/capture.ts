@@ -74,6 +74,7 @@ export async function reserveShot({
   tokenHash,
   idempotencyKey,
   captureStartedAt,
+  source = 'camera',
 }: {
   eventId: string
   tokenHash: string
@@ -84,6 +85,7 @@ export async function reserveShot({
    * upload grace window; while capture is live, server time remains truth.
    */
   captureStartedAt: string
+  source?: 'camera' | 'library'
 }): Promise<ReserveResult> {
   const db = createAdminClient()
 
@@ -93,6 +95,7 @@ export async function reserveShot({
       p_token_hash: tokenHash,
       p_idempotency_key: idempotencyKey,
       p_capture_started_at: captureStartedAt,
+      p_source: source,
     })
     .maybeSingle()
 

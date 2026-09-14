@@ -4,6 +4,7 @@ import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
 import { EventNameCard } from '@/components/host/event-name-card'
 import { GuestsToggle } from '@/components/host/guests-toggle'
+import { AfterEventUploadsToggle } from '@/components/host/after-event-uploads-toggle'
 import { RevealCard } from '@/components/host/reveal-card'
 import { ShotsCard } from '@/components/host/shots-card'
 import {
@@ -121,8 +122,8 @@ export default async function AdminEventSettingsPage({
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {en
-          ? 'Change the name, when shooting ends, when photos appear, each guest’s roll, gallery access, billing and deletion.'
-          : 'Itt állíthatod be az esemény nevét, meddig lehet fotózni, mikor jelenjenek meg a képek, hányat készíthet egy vendég — és itt törölheted az eseményt.'}
+          ? 'Change the name, when shooting ends, after-event uploads, when photos appear, each guest’s roll, gallery access, billing and deletion.'
+          : 'Itt állíthatod be az esemény nevét, meddig lehet fotózni, tölthetnek-e fel utána a vendégek, mikor jelenjenek meg a képek és hányat készíthetnek — és itt törölheted az eseményt.'}
       </p>
 
       <div className="mt-8 flex flex-col gap-4">
@@ -146,6 +147,12 @@ export default async function AdminEventSettingsPage({
             zone,
           ).slice(0, 10)}
           state={windowState}
+          locale={locale}
+        />
+
+        <AfterEventUploadsToggle
+          slug={event.slug}
+          enabled={event.after_event_uploads_enabled}
           locale={locale}
         />
 

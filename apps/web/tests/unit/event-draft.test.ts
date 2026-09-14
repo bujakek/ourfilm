@@ -55,6 +55,7 @@ describe('saving and reading a draft', () => {
       shots: 36,
       plan: 'full',
       guestsCanView: false,
+      afterEventUploadsEnabled: true,
       legalAccepted: true,
       step: 3,
     })
@@ -69,6 +70,7 @@ describe('saving and reading a draft', () => {
       shots: 36,
       plan: 'full',
       guestsCanView: false,
+      afterEventUploadsEnabled: true,
       legalAccepted: true,
       step: 3,
       creationKey: KEY,

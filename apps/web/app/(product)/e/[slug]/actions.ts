@@ -162,6 +162,7 @@ export async function reserveShotAction(
   eventId: string,
   idempotencyKey: string,
   captureStartedAt: string,
+  source: 'camera' | 'library',
 ): Promise<ReserveState> {
   const tokenHash = await readParticipantTokenHash()
   if (!tokenHash) return { ok: false, refusal: 'no_session' }
@@ -190,6 +191,7 @@ export async function reserveShotAction(
       tokenHash,
       idempotencyKey,
       captureStartedAt,
+      source,
     })
   } catch (e) {
     // The guest's browser already reports this as an `upload_issue` with a
@@ -206,12 +208,14 @@ export async function reserveShotAction(
   }
   if (!result.ok) return { ok: false, refusal: result.refusal }
 
-  reportGraceReservation({
-    eventId,
-    captureId: idempotencyKey,
-    surface: 'guest',
-    shot: result.shot,
-  })
+  if (source === 'camera') {
+    reportGraceReservation({
+      eventId,
+      captureId: idempotencyKey,
+      surface: 'guest',
+      shot: result.shot,
+    })
+  }
 
   return {
     ok: true,
