@@ -13,7 +13,11 @@ import { galleryLock, joinStateLabel } from '@/lib/event-copy'
 import { captureWindowState } from '@/lib/camera'
 import { getMyFrames } from '@/lib/frames'
 import { publicPhotoUrl } from '@/lib/photo-urls'
-import { getGalleryPhotosBySlug, toGalleryTiles } from '@/lib/photos'
+import {
+  getDevelopingGalleryBySlug,
+  getGalleryPhotosBySlug,
+  toGalleryTiles,
+} from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
 import { isLocale, type Locale, resolveLocale } from '@/lib/i18n'
 
@@ -90,12 +94,23 @@ export default async function EventPage({ params, searchParams }: Props) {
   // they are theirs, and the reveal exists so the *group* sees the night
   // together, not to withhold your own shots from you. `my_frames` is a
   // separate, narrower read than the gallery's; see `lib/frames.ts`.
-  const [participantCount, frames, tiles] = await Promise.all([
+  const [participantCount, frames, tiles, wall] = await Promise.all([
     getGuestParticipantCount(event.id),
     getMyFrames(event.id),
     lock.open
       ? getGalleryPhotosBySlug(slug).then(toGalleryTiles)
       : Promise.resolve([]),
+    // The locked album as a wall of undeveloped tiles. Not while the host
+    // keeps guests out: that lock is a decision, and a wall would promise a
+    // reveal that is not coming. Never fatal either — it decorates a sentence
+    // that is already true on its own, so a failed read (the migration not yet
+    // on this database) falls back to that sentence.
+    lock.open || !event.guests_can_view
+      ? Promise.resolve(null)
+      : getDevelopingGalleryBySlug(slug).catch((error) => {
+          console.error('Could not read the developing gallery', error)
+          return null
+        }),
   ])
 
   return (
@@ -115,6 +130,8 @@ export default async function EventPage({ params, searchParams }: Props) {
       participantCount={participantCount}
       gallery={lock}
       photos={tiles}
+      wall={wall}
+      revealAt={event.reveal_at}
     />
   )
 }
