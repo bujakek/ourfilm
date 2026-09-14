@@ -41,6 +41,50 @@ export async function getGalleryPhotosBySlug(
   return data ?? []
 }
 
+/**
+ * One photo in the reveal-locked gallery: that it exists, who took it, and a
+ * seed for its tile.
+ *
+ * Deliberately no id and no path. The bucket is public, and either one beside
+ * the event id this page already hands the browser is the photo — see
+ * `20260914120000_developing_gallery.sql`.
+ */
+export type DevelopingTile = { seed: number; uploaderName: string | null }
+
+export type DevelopingWall = {
+  /** Newest first, at most 24. */
+  tiles: DevelopingTile[]
+  /** Every photo waiting, including the ones past the wall. */
+  total: number
+}
+
+/**
+ * The wall a guest sees before the reveal.
+ *
+ * Empty after it, and while the host keeps guests out: the RPC's clause is the
+ * exact complement of `getGalleryPhotosBySlug`'s, so a page cannot be handed
+ * both the wall and the album.
+ */
+export async function getDevelopingGalleryBySlug(
+  slug: string,
+): Promise<DevelopingWall> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc(
+    'event_developing_gallery_by_slug',
+    { p_slug: slug },
+  )
+
+  if (error) throw error
+  const rows = data ?? []
+  return {
+    tiles: rows.map((row) => ({
+      seed: row.tile_seed,
+      uploaderName: row.uploader_name || null,
+    })),
+    total: rows[0]?.total_count ?? 0,
+  }
+}
+
 /** The columns a host-side read needs, shared with the export job's loader so
  *  the archive built by the worker sees exactly what the host's page saw. */
 export const HOST_PHOTO_COLUMNS =

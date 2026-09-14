@@ -1,7 +1,7 @@
 'use client'
 
 import type { Frame } from '@/lib/frames'
-import type { GalleryTile } from '@/lib/photos'
+import type { DevelopingWall, GalleryTile } from '@/lib/photos'
 import { Camera } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
@@ -37,6 +37,7 @@ import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
 import { CreateOwnAlbum } from './create-own-album'
+import { DevelopingGallery } from './developing-gallery'
 import { type CaptureReceiptState, FilmStrip } from './film-strip'
 import { InviteButton } from './invite-button'
 import { PhotoGrid } from './photo-grid'
@@ -121,6 +122,8 @@ export function GuestEventView({
   participantCount,
   gallery,
   photos,
+  wall,
+  revealAt,
   locale,
 }: {
   eventId: string
@@ -137,6 +140,9 @@ export function GuestEventView({
   participantCount: number
   gallery: GalleryState
   photos: GalleryTile[]
+  /** The locked album as tiles; null when there is no wall to draw. */
+  wall: DevelopingWall | null
+  revealAt: string
   locale: Locale
 }) {
   const en = locale === 'en'
@@ -173,6 +179,19 @@ export function GuestEventView({
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  // The wall counts down to an instant nothing announces: the album opens
+  // because a request arrives after it. So the page makes that request
+  // itself, once, when the clock it already ticks crosses the line — keyed on
+  // the boolean, so a server whose clock disagrees is asked once rather than
+  // every thirty seconds.
+  const revealDue =
+    wall !== null && !gallery.open && now >= Date.parse(revealAt)
+  useEffect(() => {
+    if (revealDue) router.refresh()
+  }, [revealDue, router])
+
+  const photoCount = gallery.open ? photos.length : (wall?.total ?? 0)
 
   // The joined half of the funnel's first step. `guest_page_viewed` with
   // `joined: false` is the ticket (`join-form.tsx`); this one says what the
@@ -958,16 +977,32 @@ export function GuestEventView({
           <h2 className="font-display text-[22px] leading-none">
             {en ? 'Shared photos' : 'Közös képek'}
           </h2>
-          {gallery.open && photos.length > 0 ? (
+          {photoCount > 0 ? (
             <p className="text-xs font-medium text-muted-foreground tabular-nums">
               {en
-                ? `${photos.length} ${photos.length === 1 ? 'photo' : 'photos'}`
-                : `${photos.length} kép`}
+                ? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
+                : `${photoCount} kép`}
             </p>
           ) : null}
         </div>
 
-        {!gallery.open ? (
+        {!gallery.open && wall && wall.tiles.length > 0 ? (
+          <div className="mt-4">
+            <p className="mb-3 text-sm leading-relaxed text-pretty text-muted-foreground">
+              {gallery.detail ?? gallery.heading}
+            </p>
+            <DevelopingGallery
+              tiles={wall.tiles}
+              total={wall.total}
+              revealAt={revealAt}
+              now={now}
+              locale={locale}
+            />
+            <p className="mt-3 text-xs leading-relaxed text-pretty text-muted-foreground/70">
+              {ownRollNote(locale)}
+            </p>
+          </div>
+        ) : !gallery.open ? (
           <div className="mt-4 rounded-2xl border border-border px-6 py-8 text-center">
             <h3 className="text-base font-semibold text-balance">
               {gallery.heading}

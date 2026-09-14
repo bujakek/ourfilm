@@ -784,6 +784,14 @@ export type Database = {
         Args: { p_key: string; p_limit: number; p_window_seconds: number }
         Returns: boolean
       }
+      event_developing_gallery_by_slug: {
+        Args: { p_slug: string }
+        Returns: {
+          tile_seed: number
+          total_count: number
+          uploader_name: string
+        }[]
+      }
       event_gallery_by_slug: {
         Args: { p_slug: string }
         Returns: {

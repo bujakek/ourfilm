@@ -1062,6 +1062,17 @@ editing `_thumb` out of a URL `my_frames` returned. What was **not** given up:
 the bucket cannot be listed (below), and no anonymous request can find out
 what paths exist.
 
+**Before the reveal the album is a wall, and a tile carries no photo.** The
+guest page draws the locked gallery from `event_developing_gallery_by_slug`
+(`20260914120000`): each tile is an uploader name and a 32-bit seed hashed
+from the photo id, plus the total — newest 24, only while `now() < reveal_at`
+and `guests_can_view`. Never an id or a path: either one beside the event id
+the page already holds is the photo. That is why the tiles are washes of the
+palette (`apps/web/lib/developing-wash.ts`) and not CSS-blurred thumbnails — a
+blurred `thumb_path` would put every guest's photo one long-press away before
+the reveal. `apps/web/tests/db/developing-gallery.test.ts` pins the shape; a
+new column on that function needs the same scrutiny.
+
 **Guests hold no direct write access to Supabase at all.** Both anon insert
 policies — on `photos` and on `storage.objects` — are gone. Uploads go to signed
 upload URLs minted by `reserve_shot`'s server action and bound to one exact path

@@ -140,6 +140,31 @@ export function ownRollNote(locale: Locale = 'hu'): string {
 }
 
 /**
+ * `Előhívás: 1N 5Ó` — the label on a tile in the locked gallery.
+ *
+ * The short spelling, because it sits on a 120px tile. Once the instant has
+ * passed and the page has not caught up yet, it says so rather than counting
+ * down to `0P` and staying there.
+ */
+export function developingTileLabel(
+  revealAt: Date,
+  now: Date,
+  locale: Locale = 'hu',
+): string {
+  const en = locale === 'en'
+  if (now.getTime() >= revealAt.getTime()) {
+    return en ? 'Developing now' : 'Most hívódik elő'
+  }
+  const left = shortTimeRemaining(revealAt, now, locale)
+  return en ? `Reveals in ${left}` : `Előhívás: ${left}`
+}
+
+/** `+12 további` — the last cell when more photos wait than the wall shows. */
+export function moreDevelopingLabel(count: number, locale: Locale = 'hu') {
+  return locale === 'en' ? `+${count} more` : `+${count} további`
+}
+
+/**
  * `6Ó 20P` — how long the camera stays open, in as few characters as possible.
  *
  * A second, shorter spelling of the same number the join screen states in a
