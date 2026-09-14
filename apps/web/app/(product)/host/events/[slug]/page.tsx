@@ -14,6 +14,7 @@ import { captureWindowState } from '@/lib/camera'
 import { shortTimeRemaining } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { localeTag } from '@/lib/i18n'
+import { fittedMonoSize } from '@/lib/mono-fit'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
 import { reportServerIssue } from '@/lib/telemetry-server'
@@ -286,14 +287,40 @@ function Figure({
   alarming?: boolean
   divided?: boolean
 }) {
+  const digits = String(value)
+  const numeral = of === null ? digits : `${digits}/${of}`
+
+  // The cell is a size container and the numeral is sized to it: 30px while it
+  // fits, smaller once it would not. A fixed 30px clipped "100" to "10" on a
+  // 320px phone — see `lib/mono-fit.ts`. The line itself stays 30px tall and
+  // the numeral sits on its floor, so a shrunken figure does not lift its
+  // label out of line with its neighbours'.
   return (
-    <div className={`py-4 ${divided ? 'border-l border-border px-5' : 'pr-5'}`}>
+    <div
+      className={`@container py-4 ${divided ? 'border-l border-border px-5' : 'pr-5'}`}
+    >
       <p
-        className={`flex items-baseline font-mono text-[30px] leading-none font-medium tracking-[-0.05em] ${
+        className={`flex h-[30px] items-end font-mono leading-none font-medium tracking-[-0.05em] ${
           alarming ? 'text-destructive' : ''
         }`}
+        style={{
+          fontSize: fittedMonoSize({
+            text: numeral,
+            maxPx: 30,
+            trackingEm: -0.05,
+          }),
+        }}
       >
-        <Odometer value={value} dir="up" />
+        {/* Keyed on the digit count. The odometer's box never shrinks while it
+            is mounted, which is right for a roll but wrong across a size
+            change: `100 → 99` would keep a three-digit box at a two-digit
+            size. Crossing a digit boundary remounts instead of rolling. */}
+        <Odometer
+          key={digits.length}
+          value={value}
+          dir="up"
+          className="shrink-0"
+        />
         {of === null ? null : <span>/{of}</span>}
       </p>
       <p
