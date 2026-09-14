@@ -4,6 +4,7 @@ import type { EventListItem } from '@/lib/events'
 import { captureIsOpen } from '@/lib/events'
 import { shortTimeRemaining } from '@/lib/event-copy'
 import { formatEventDay } from '@/lib/format'
+import { fittedMonoSize } from '@/lib/mono-fit'
 import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -61,8 +62,17 @@ function PreviewStrip({ event }: { event: EventListItem }) {
         </span>
       ))}
       {overflow > 0 ? (
-        <span className="flex aspect-square items-center justify-center rounded-[2px] bg-white/5 font-mono text-[13px] font-medium text-foreground/55">
-          +{overflow}
+        // A tile is about 40px on a phone, and "+1000" at a fixed 13px ran
+        // past both of its edges. The tile is the container; the count fits it.
+        <span className="@container flex aspect-square items-center justify-center rounded-[2px] bg-white/5 px-0.5 font-mono font-medium text-foreground/55">
+          <span
+            className="whitespace-nowrap"
+            style={{
+              fontSize: fittedMonoSize({ text: `+${overflow}`, maxPx: 13 }),
+            }}
+          >
+            +{overflow}
+          </span>
         </span>
       ) : null}
       {/* An event with fewer than eight photos still gets a full-width sheet.
