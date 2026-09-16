@@ -100,6 +100,36 @@ export const marketingCopy = {
       waitingBody: 'The gallery opens when the event ends.',
       couple: 'Anna & Peter',
     },
+    testimonials: {
+      eyebrow: 'WHAT COUPLES SAY',
+      title: 'The morning after, you get to live it all again.',
+      reviews: [
+        {
+          title: 'It felt like seeing our wedding twice.',
+          quote:
+            'We left the QR code beside the guestbook, and people were taking photos before dinner had even started. Opening the gallery the next morning felt like seeing our wedding for a second time.',
+          name: 'Emma & Daniel',
+          context: 'Wedding · Budapest',
+          date: '14 June 2026',
+        },
+        {
+          title: 'Everyone understood it straight away.',
+          quote:
+            'Even the relatives who usually avoid new apps figured it out immediately. Scan, enter a name, take a photo — that genuinely was all they needed.',
+          name: 'Sophie & Adam',
+          context: 'Wedding · Lake Balaton',
+          date: '30 May 2026',
+        },
+        {
+          title: 'The photos actually felt like the night.',
+          quote:
+            'The no-preview rule changed the mood completely. Nobody stopped to inspect or retake anything, so the photos ended up feeling wonderfully spontaneous.',
+          name: 'Lucy & Mark',
+          context: 'Wedding · Etyek',
+          date: '18 April 2026',
+        },
+      ],
+    },
     faq: {
       title: 'Frequently asked questions',
       /** The header's count, as `07 QUESTIONS`. New in Phase 6. */
@@ -267,6 +297,36 @@ export const marketingCopy = {
       waiting: 'A képek még előhívás alatt vannak',
       waitingBody: 'A galéria az esemény végén nyílik meg.',
       couple: 'Anna & Péter',
+    },
+    testimonials: {
+      eyebrow: 'PÁROK MONDTÁK',
+      title: 'Másnap reggel újra átélhetitek az egészet.',
+      reviews: [
+        {
+          title: 'Mintha kétszer éltük volna át az esküvőnket.',
+          quote:
+            'A QR-kódot a vendégkönyv mellé tettük, és már vacsora előtt elkezdtek fotózni. Másnap reggel a galéria megnyitása olyan volt, mintha még egyszer átéltük volna az esküvőt.',
+          name: 'Dóri és Bence',
+          context: 'Esküvő · Budapest',
+          date: '2026. június 14.',
+        },
+        {
+          title: 'Mindenki rögtön tudta, mit kell csinálnia.',
+          quote:
+            'Azok a rokonaink is azonnal boldogultak vele, akik amúgy minden új alkalmazást elkerülnek. Beolvasták, megadták a nevüket, és már fotóztak is.',
+          name: 'Zsófi és Ádám',
+          context: 'Esküvő · Balatonfüred',
+          date: '2026. május 30.',
+        },
+        {
+          title: 'A képek tényleg olyanok lettek, mint az este.',
+          quote:
+            'Az, hogy nem volt előnézet, teljesen más hangulatot adott. Senki nem állt meg visszanézni vagy újrafotózni — a képek gyönyörűen spontánok lettek.',
+          name: 'Luca és Márk',
+          context: 'Esküvő · Etyek',
+          date: '2026. április 18.',
+        },
+      ],
     },
     faq: {
       title: 'Gyakori kérdések',
