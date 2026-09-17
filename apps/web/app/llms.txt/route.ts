@@ -1,5 +1,6 @@
 import { getDocs } from '@/lib/content/docs'
-import { defaultLocale, localePath } from '@/lib/i18n'
+import type { ContentKind } from '@/lib/content/kinds'
+import { type Locale, localePath, locales } from '@/lib/i18n'
 import { canonicalUrl } from '@/lib/seo'
 
 /**
@@ -10,21 +11,66 @@ import { canonicalUrl } from '@/lib/seo'
  * for answer engines, **not** a replacement for the sitemap, structured data
  * or crawlable HTML — all of which do the actual work.
  *
- * The links are the default locale's — Hungarian, see `defaultLocale` — so
- * flipping the site default moves this file with it. The description is in
- * English because that is what reads it.
+ * **Every section lists both languages**, the way the sitemap does. An article
+ * and its translation are separate URLs with separate slugs — nothing relates
+ * them but `getTranslations(id)` — so a file built from `defaultLocale` alone
+ * is a file that answers an English question with a Hungarian URL. The prose
+ * is in English because that is what reads it; each entry keeps the title and
+ * description of the page it points at.
  */
 export const dynamic = 'force-static'
+
+/** How each language is named to the reader of this file, which is English. */
+const languageLabel: Record<Locale, string> = {
+  en: 'English',
+  hu: 'Magyar (Hungarian)',
+}
+
+/** The three fixed entry points, in the language of the page they open. */
+const productLinks: Record<Locale, { path: string; label: string }[]> = {
+  en: [
+    { path: '/', label: 'OurFilm' },
+    { path: '/arak', label: 'Pricing' },
+    { path: '/blog', label: 'Blog' },
+  ],
+  hu: [
+    { path: '/', label: 'OurFilm' },
+    { path: '/arak', label: 'Árak' },
+    { path: '/blog', label: 'Blog' },
+  ],
+}
+
+const productNotes = [
+  'what it is and how it works.',
+  'one-time payment per event, no subscription.',
+  'practical guides.',
+]
 
 const link = (doc: { title: string; href: string; description: string }) =>
   `- [${doc.title}](${canonicalUrl(doc.href)}): ${doc.description}`
 
+/** One section, every live locale under its own heading. */
+function byLanguage(render: (locale: Locale) => string): string {
+  return locales
+    .map((locale) => `### ${languageLabel[locale]}\n\n${render(locale)}`)
+    .join('\n\n')
+}
+
+const docsOfKind = (kinds: readonly ContentKind[]) => (locale: Locale) =>
+  getDocs(locale, kinds).map(link).join('\n')
+
 export function GET() {
-  const solutions = getDocs(defaultLocale, ['pages']).map(link).join('\n')
-  const guides = getDocs(defaultLocale, ['blog']).map(link).join('\n')
-  const comparisons = getDocs(defaultLocale, ['alternatives', 'vs', 'compare'])
-    .map(link)
-    .join('\n')
+  const product = byLanguage((locale) =>
+    productLinks[locale]
+      .map(
+        ({ path, label }, index) =>
+          `- [${label}](${canonicalUrl(localePath(locale, path))}): ${productNotes[index]}`,
+      )
+      .join('\n'),
+  )
+  const solutions = byLanguage(docsOfKind(['pages']))
+  const guides = byLanguage(docsOfKind(['blog']))
+  const comparisons = byLanguage(docsOfKind(['alternatives', 'vs', 'compare']))
 
   const body = `# OurFilm
 
@@ -32,21 +78,20 @@ OurFilm is a shared digital disposable camera for events. The host creates one
 camera per event; guests scan a QR code or open a link, give a name, and get a
 fixed roll of shots — no app to install and no account to create. The host picks
 5, 10, 16, 24 or 36 shots per guest, and decides when the photos are developed:
-instantly, at the end of the event, or at a chosen later moment. There is no
-preview and no retake. The number of guests is not capped, the film stays
-private, and the finished album downloads as one archive.
+instantly, or at the end of the event. There is no preview and no retake. The
+number of guests is not capped, the film stays private, and the finished album
+downloads as one archive.
 
 It is not a camera-roll upload album: guests shoot into the shared camera at the
 event rather than uploading afterwards.
 
-The interface is available in Hungarian and English; the service operates in
-Hungary.
+The site is published in English and Hungarian, and the two are separate URLs
+rather than one page with a language switch: every section below lists both.
+The service operates from Hungary.
 
 ## Product
 
-- [OurFilm](${canonicalUrl(localePath(defaultLocale, '/'))}): what it is and how it works.
-- [Árak / Pricing](${canonicalUrl(localePath(defaultLocale, '/arak'))}): one-time payment per event, no subscription.
-- [Blog](${canonicalUrl(localePath(defaultLocale, '/blog'))}): practical guides.
+${product}
 
 ## Solutions
 

@@ -1,8 +1,19 @@
 import { getDocs, getTranslations } from '@/lib/content/docs'
 import { hubKinds, hubs } from '@/lib/content/kinds'
-import { type Locale, localePath, locales } from '@/lib/i18n'
-import { OCCASIONS_ARE_DRAFT, occasions } from '@/lib/occasions'
-import { canonicalUrl, languageAlternates } from '@/lib/seo'
+import { hasRealCompanyDetails } from '@/lib/company'
+import {
+  defaultLocale,
+  type Locale,
+  localePath,
+  locales,
+  localeTag,
+} from '@/lib/i18n'
+import { OCCASIONS_ARE_DRAFT, occasionPath, occasions } from '@/lib/occasions'
+import {
+  canonicalUrl,
+  languageAlternates,
+  localizedPageLanguages,
+} from '@/lib/seo'
 import type { MetadataRoute } from 'next'
 
 /**
@@ -13,11 +24,9 @@ import type { MetadataRoute } from 'next'
  * hand away the only thing keeping them private, and would undo the random
  * slug suffix entirely. Nothing under /e/ or /host ever belongs here.
  *
- * The draft marketing pages are excluded for a different reason: /arak,
- * /rolunk, /kapcsolat, /adatvedelem and /aszf all still carry
- * `robots.index: false`, and listing a noindex URL in a sitemap sends crawlers
- * two contradictory instructions. Add each one here in the same change that
- * removes its noindex and its DraftNotice.
+ * Legal and pricing pages enter only once the real company details are set,
+ * which is the same condition their metadata uses for indexing. About and
+ * contact remain deliberately noindex and therefore stay out of this list.
  *
  * The occasion routes need no such bookkeeping: they come and go with
  * `OCCASIONS_ARE_DRAFT`, which is the same flag their pages read. Content
@@ -36,8 +45,23 @@ function localeEntries(locale: Locale): MetadataRoute.Sitemap {
       url: canonicalUrl(localePath(locale, '/')),
       changeFrequency: 'monthly',
       priority: 1,
+      alternates: { languages: localizedPageLanguages('/') },
     },
   ]
+
+  const marketingPages: MetadataRoute.Sitemap = hasRealCompanyDetails
+    ? [
+        { path: '/arak', priority: 0.9 },
+        { path: '/aszf', priority: 0.3 },
+        { path: '/adatvedelem', priority: 0.3 },
+        { path: '/impresszum', priority: 0.3 },
+      ].map(({ path, priority }) => ({
+        url: canonicalUrl(localePath(locale, path)),
+        changeFrequency: 'monthly' as const,
+        priority,
+        alternates: { languages: localizedPageLanguages(path) },
+      }))
+    : []
 
   const occasionPages: MetadataRoute.Sitemap = OCCASIONS_ARE_DRAFT
     ? []
@@ -46,12 +70,23 @@ function localeEntries(locale: Locale): MetadataRoute.Sitemap {
           url: canonicalUrl(localePath(locale, '/alkalmak')),
           changeFrequency: 'monthly',
           priority: 0.8,
+          alternates: { languages: localizedPageLanguages('/alkalmak') },
         },
-        ...occasions.map((occasion) => ({
-          url: canonicalUrl(localePath(locale, `/alkalmak/${occasion.slug}`)),
-          changeFrequency: 'monthly' as const,
-          priority: 0.7,
-        })),
+        ...occasions.map((occasion) => {
+          const languages = Object.fromEntries([
+            ...locales.map((item) => [
+              localeTag[item],
+              canonicalUrl(occasionPath(item, occasion)),
+            ]),
+            ['x-default', canonicalUrl(occasionPath(defaultLocale, occasion))],
+          ])
+          return {
+            url: canonicalUrl(occasionPath(locale, occasion)),
+            changeFrequency: 'monthly' as const,
+            priority: 0.7,
+            alternates: { languages },
+          }
+        }),
       ]
 
   // Every content page, whatever kind — one loop, so a new kind cannot be
@@ -66,8 +101,7 @@ function localeEntries(locale: Locale): MetadataRoute.Sitemap {
       // reach, and everything else exists to feed them.
       priority: doc.kind === 'pages' ? 0.9 : 0.7,
       // `languageAlternates` returns nothing until a page genuinely exists in
-      // two languages, so this is empty today and fills in by itself when a
-      // translation lands.
+      // two languages, then fills in by itself when a translation lands.
       ...(Object.keys(alternates).length > 0
         ? { alternates: { languages: alternates } }
         : {}),
@@ -87,11 +121,18 @@ function localeEntries(locale: Locale): MetadataRoute.Sitemap {
         lastModified: lastModifiedOf(listed[0]),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
+        ...(locales.every((item) => getDocs(item, hubKinds[hub]).length > 0)
+          ? {
+              alternates: {
+                languages: localizedPageLanguages(`/${hub}`),
+              },
+            }
+          : {}),
       },
     ]
   })
 
-  return [...home, ...occasionPages, ...hubPages, ...content]
+  return [...home, ...marketingPages, ...occasionPages, ...hubPages, ...content]
 }
 
 /** Frontmatter dates are calendar days; pin to UTC so the sitemap does not

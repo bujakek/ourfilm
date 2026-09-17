@@ -15,11 +15,13 @@ import {
 } from '@/lib/company'
 import { isLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { localizedPageAlternates } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
+  if (!isLocale(locale)) return {}
   return {
     title:
       locale === 'en'
@@ -29,6 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       locale === 'en'
         ? 'How OurFilm handles account, event, guest and photo data.'
         : 'Hogyan kezeli az OurFilm az eseményeket, a vendégek adatait és a fényképeket.',
+    alternates: localizedPageAlternates(locale, '/adatvedelem'),
     ...(hasRealCompanyDetails
       ? {}
       : { robots: { index: false, follow: true } }),

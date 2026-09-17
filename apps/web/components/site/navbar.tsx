@@ -1,13 +1,19 @@
 'use client'
 
-import { type Locale, localePath } from '@/lib/i18n'
+import { type Locale, localePath, translatedMarketingPath } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { MenuMark } from '@/components/brand/menu-mark'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
-import { OCCASIONS_ARE_DRAFT, occasionCopy, occasions } from '@/lib/occasions'
+import {
+  OCCASIONS_ARE_DRAFT,
+  occasionCopy,
+  occasionPath,
+  occasions,
+} from '@/lib/occasions'
 import { CREATE_EVENT_PATH, LOGIN_PATH } from '@/lib/routes'
 import { marketingCopy } from '@/lib/marketing-copy'
 import { useEffect, useRef, useState } from 'react'
@@ -34,6 +40,14 @@ const NAV_ITEMS = [
 
 export function Navbar({ locale }: { locale: Locale }) {
   const copy = marketingCopy[locale].nav
+  const pathname = usePathname()
+  const targetLocale: Locale = locale === 'en' ? 'hu' : 'en'
+  const currentOccasion = occasions.find(
+    (occasion) => pathname === occasionPath(locale, occasion),
+  )
+  const languageHref = currentOccasion
+    ? occasionPath(targetLocale, currentOccasion)
+    : translatedMarketingPath(pathname, targetLocale)
   // Labelled before it is filtered: `copy.links` is index-mapped to the list
   // above, so dropping an entry first would shift every label after it by one.
   const navLinks = NAV_ITEMS.map((item, index) => ({
@@ -173,12 +187,9 @@ export function Navbar({ locale }: { locale: Locale }) {
                 >
                   <ul className="rounded-2xl border border-white/10 bg-[#0c0c0f] p-1.5 shadow-[0_24px_60px_-24px_rgba(0,0,0,.9)]">
                     {occasions.map((occasion) => (
-                      <li key={occasion.slug}>
+                      <li key={occasion.id}>
                         <Link
-                          href={localePath(
-                            locale,
-                            `/alkalmak/${occasion.slug}`,
-                          )}
+                          href={occasionPath(locale, occasion)}
                           onClick={() => setMenu(null)}
                           className="block rounded-xl px-3.5 py-2.5 font-display text-[15px] text-foreground/85 transition-colors hover:bg-white/6 hover:text-foreground"
                         >
@@ -219,8 +230,8 @@ export function Navbar({ locale }: { locale: Locale }) {
         </Link>
 
         <Link
-          href={locale === 'en' ? '/hu' : '/en'}
-          hrefLang={locale === 'en' ? 'hu' : 'en'}
+          href={languageHref}
+          hrefLang={targetLocale}
           // Was `text-xs` sans while everything beside it was letterspaced
           // mono — three items on one side of a bar in three type treatments.
           className="hidden shrink-0 rounded-full px-2.5 py-2 font-mono text-[10.5px] font-medium tracking-[0.14em] text-foreground/45 transition-colors hover:text-foreground md:inline-flex"
@@ -307,8 +318,8 @@ export function Navbar({ locale }: { locale: Locale }) {
               {link.menu
                 ? occasions.map((occasion) => (
                     <Link
-                      key={occasion.slug}
-                      href={localePath(locale, `/alkalmak/${occasion.slug}`)}
+                      key={occasion.id}
+                      href={occasionPath(locale, occasion)}
                       onClick={() => setOpen(false)}
                       className="rounded-2xl py-2.5 pr-5 pl-9 font-display text-[16px] text-foreground/75 transition-colors hover:bg-white/5 hover:text-foreground"
                     >
@@ -326,8 +337,8 @@ export function Navbar({ locale }: { locale: Locale }) {
             {copy.login}
           </Link>
           <Link
-            href={locale === 'en' ? '/hu' : '/en'}
-            hrefLang={locale === 'en' ? 'hu' : 'en'}
+            href={languageHref}
+            hrefLang={targetLocale}
             onClick={() => setOpen(false)}
             className="rounded-2xl px-5 py-4 text-lg font-medium text-foreground/90 transition-colors hover:bg-white/5"
           >

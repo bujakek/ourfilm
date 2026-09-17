@@ -5,10 +5,7 @@ import type { ComponentType } from 'react'
 import type { ContentKind } from './kinds'
 
 type MdxModule = { default: ComponentType<MDXProps> }
-
-const unavailable = async (): Promise<MdxModule> => {
-  throw new Error('No English document exists for this content kind.')
-}
+type MdxLoader = (slug: string) => Promise<MdxModule>
 
 /**
  * Loads a document's compiled body.
@@ -24,10 +21,7 @@ const unavailable = async (): Promise<MdxModule> => {
  * `locales`, or a sixth kind, makes this object a type error until the loader
  * is added, which is the reminder you want at exactly that moment.
  */
-const loaders: Record<
-  ContentKind,
-  Record<Locale, (slug: string) => Promise<MdxModule>>
-> = {
+const loaders: Record<ContentKind, Record<Locale, MdxLoader | null>> = {
   pages: {
     hu: (slug) => import(`@/content/pages/hu/${slug}.mdx`),
     en: (slug) => import(`@/content/pages/en/${slug}.mdx`),
@@ -42,12 +36,19 @@ const loaders: Record<
   },
   vs: {
     hu: (slug) => import(`@/content/vs/hu/${slug}.mdx`),
-    en: unavailable,
+    en: (slug) => import(`@/content/vs/en/${slug}.mdx`),
   },
   compare: {
     hu: (slug) => import(`@/content/compare/hu/${slug}.mdx`),
-    en: unavailable,
+    en: (slug) => import(`@/content/compare/en/${slug}.mdx`),
   },
+}
+
+export function hasDocContentLoader(
+  kind: ContentKind,
+  locale: Locale,
+): boolean {
+  return loaders[kind][locale] !== null
 }
 
 export async function loadDocContent(
@@ -55,6 +56,11 @@ export async function loadDocContent(
   locale: Locale,
   slug: string,
 ): Promise<ComponentType<MDXProps>> {
-  const { default: Content } = await loaders[kind][locale](slug)
+  const loader = loaders[kind][locale]
+  if (!loader) {
+    throw new Error(`No ${locale} document exists for this content kind.`)
+  }
+
+  const { default: Content } = await loader(slug)
   return Content
 }

@@ -1,7 +1,7 @@
 import { EarlyCoupleApplicationForm } from './application-form'
 import { PageShell } from '@/components/site/page-shell'
-import { defaultLocale, type Locale, isLocale } from '@/lib/i18n'
-import { canonicalUrl } from '@/lib/seo'
+import { type Locale, isLocale } from '@/lib/i18n'
+import { canonicalUrl, localizedPageAlternates } from '@/lib/seo'
 import {
   CalendarHeart,
   Camera,
@@ -141,14 +141,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: current.title,
     description: current.description,
-    alternates: {
-      canonical,
-      languages: {
-        'en-GB': canonicalUrl(`/en${programPath}`),
-        'hu-HU': canonicalUrl(`/hu${programPath}`),
-        'x-default': canonicalUrl(`/${defaultLocale}${programPath}`),
-      },
-    },
+    alternates: localizedPageAlternates(locale, programPath),
     openGraph: {
       title: current.title,
       description: current.description,

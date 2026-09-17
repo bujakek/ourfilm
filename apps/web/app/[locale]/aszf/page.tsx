@@ -16,17 +16,20 @@ import {
 import { isLocale } from '@/lib/i18n'
 import { EVENT_PRICE_LABEL, EVENT_PRICE_LABELS } from '@/lib/pricing'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { localizedPageAlternates } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
+  if (!isLocale(locale)) return {}
   return {
     title: locale === 'en' ? 'Terms of Service · OurFilm' : 'ÁSZF · OurFilm',
     description:
       locale === 'en'
         ? 'Terms governing the use of OurFilm by hosts and guests.'
         : 'Az OurFilm általános szerződési feltételei házigazdák és vendégek számára.',
+    alternates: localizedPageAlternates(locale, '/aszf'),
     ...(hasRealCompanyDetails
       ? {}
       : { robots: { index: false, follow: true } }),

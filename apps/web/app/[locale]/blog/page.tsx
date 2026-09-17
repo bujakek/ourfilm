@@ -5,7 +5,7 @@ import { hubCopy } from '@/lib/content/copy'
 import { getDocsByTopic } from '@/lib/content/docs'
 import { topicLabel, topicOrder } from '@/lib/content/topics'
 import { isLocale, localePath } from '@/lib/i18n'
-import { canonicalUrl } from '@/lib/seo'
+import { canonicalUrl, localizedPageAlternates } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${copy.title} — OurFilm`,
     description: copy.lead,
     alternates: {
-      canonical: canonicalUrl(path),
+      ...localizedPageAlternates(locale, '/blog'),
       types: {
         'application/rss+xml': canonicalUrl(`${path}/rss.xml`),
       },

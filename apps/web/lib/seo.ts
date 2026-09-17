@@ -1,7 +1,13 @@
 import { kindDefinitions } from '@/lib/content/kinds'
 import type { FaqEntry } from '@/lib/content/faq'
 import type { ContentDoc, Translations } from '@/lib/content/types'
-import { defaultLocale, type Locale, localePath, localeTag } from '@/lib/i18n'
+import {
+  defaultLocale,
+  type Locale,
+  localePath,
+  locales,
+  localeTag,
+} from '@/lib/i18n'
 import { SITE_URL } from '@/lib/site'
 
 /**
@@ -15,6 +21,25 @@ import { SITE_URL } from '@/lib/site'
 /** `/hu/blog/foo` → `https://ourfilm.app/hu/blog/foo` */
 export function canonicalUrl(path: string): string {
   return `${SITE_URL}${path}`
+}
+
+/** Reciprocal hreflang URLs for a route that exists in every live locale. */
+export function localizedPageLanguages(path: string) {
+  return Object.fromEntries([
+    ...locales.map((locale) => [
+      localeTag[locale],
+      canonicalUrl(localePath(locale, path)),
+    ]),
+    ['x-default', canonicalUrl(localePath(defaultLocale, path))],
+  ])
+}
+
+/** Self-canonical plus reciprocal hreflang for a translated static page. */
+export function localizedPageAlternates(locale: Locale, path: string) {
+  return {
+    canonical: canonicalUrl(localePath(locale, path)),
+    languages: localizedPageLanguages(path),
+  }
 }
 
 /**

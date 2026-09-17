@@ -30,3 +30,8 @@ next-env.d.ts
 # committed — tracking a symlink to an ignored directory just dangles on clone.
 .agents/
 .claude/skills/
+
+# Agent scratch space and a local pnpm content-addressable store — 3.6GB and
+# 57MB here. Neither is produced by the build; both are restored on demand.
+.claude/worktrees/
+.pnpm-store/
