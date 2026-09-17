@@ -9,6 +9,7 @@ import { OccasionPrints } from '@/components/site/occasion-prints'
 import { PhotoReveal } from '@/components/site/photo-reveal'
 import { Problem } from '@/components/site/problem'
 import { QrPreview } from '@/components/site/qr-preview'
+import { Testimonials } from '@/components/site/testimonials'
 import { TryCameraCard } from '@/components/site/try-camera-card'
 import { isLocale, localeOgTag } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
@@ -57,17 +58,15 @@ export default async function Page({ params }: Props) {
       <PageGrain />
       <Navbar locale={locale} />
       <main className="relative z-10">
-        {/* <Stats /> and <Testimonials /> are deliberately not rendered.
-            Both only ever held invented numbers and invented quotes, and the
-            pilot has no verified ones to put in their place. The components
-            stay, take their content as props, and can come back the day there
-            is something true to show.
+        {/* <Stats /> is deliberately not rendered. It only ever held invented
+            numbers, and the pilot has no verified ones to put in their place.
 
             <Benefits /> joins them, for a different reason: it was one heading
             and one sentence, the heading is `footer.tagline` word for word,
             and the sentence is now the supporting line of the step section it
             sat above. Nothing it said has left the page. */}
         <Hero locale={locale} />
+        <Testimonials locale={locale} />
         <Problem locale={locale} />
         <HowItWorks locale={locale} />
         <QrPreview locale={locale} />
