@@ -1,9 +1,14 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { type Locale, localePath } from '@/lib/i18n'
+import type { Locale } from '@/lib/i18n'
 import { marketingCopy } from '@/lib/marketing-copy'
-import { OCCASIONS_ARE_DRAFT, occasionCopy, occasions } from '@/lib/occasions'
+import {
+  OCCASIONS_ARE_DRAFT,
+  occasionCopy,
+  occasionPath,
+  occasions,
+} from '@/lib/occasions'
 import { Reveal } from './reveal'
 
 /**
@@ -107,7 +112,7 @@ export function OccasionPrints({ locale }: { locale: Locale }) {
             return (
               <Reveal
                 as="li"
-                key={occasion.slug}
+                key={occasion.id}
                 delay={i * 90}
                 className={i % 2 === 0 ? 'mt-7 sm:mt-12' : ''}
               >
@@ -115,7 +120,7 @@ export function OccasionPrints({ locale }: { locale: Locale }) {
                   <div className="group">{print}</div>
                 ) : (
                   <Link
-                    href={localePath(locale, `/alkalmak/${occasion.slug}`)}
+                    href={occasionPath(locale, occasion)}
                     aria-label={item.linkLabel}
                     className="group block rounded-[4px]"
                   >

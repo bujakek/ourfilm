@@ -1,6 +1,7 @@
 import { getAllDocs, getDocs, getRelatedDocs } from '@/lib/content/docs'
 import { getFaq } from '@/lib/content/faq'
 import { hubKinds, hubs, kindDefinitions } from '@/lib/content/kinds'
+import { hasDocContentLoader } from '@/lib/content/mdx'
 import type { ContentDoc } from '@/lib/content/types'
 import { localePath, locales } from '@/lib/i18n'
 import { readFileSync } from 'node:fs'
@@ -9,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * What the content library must be true of, checked at `pnpm verify` time.
  *
- * Sixty-nine hand-written pages is past the point where a person can hold the
+ * One hundred thirty-eight hand-written pages is past the point where a person can hold the
  * invariants in their head — a duplicate description, a `related` id that lost
  * its page, a link to a route that was renamed. Every one of those fails
  * silently in production and is invisible in review, which is exactly the kind
@@ -51,17 +52,17 @@ function internalLinks(doc: ContentDoc): string[] {
 describe('the content pack', () => {
   it('serves every published page in both content packs', () => {
     expect(getDocs('hu')).toHaveLength(69)
-    expect(getDocs('en')).toHaveLength(7)
+    expect(getDocs('en')).toHaveLength(69)
     expect(docs.filter((doc) => doc.draft)).toHaveLength(0)
   })
 
   it('puts each kind where the kind map says', () => {
     const counts = {
-      pages: 11,
-      blog: 42,
-      alternatives: 11,
-      vs: 7,
-      compare: 5,
+      pages: 16,
+      blog: 82,
+      alternatives: 16,
+      vs: 14,
+      compare: 10,
     } as const
 
     for (const [kind, expected] of Object.entries(counts)) {
@@ -75,6 +76,12 @@ describe('the content pack', () => {
           ),
         )
       }
+    }
+  })
+
+  it('can load the body for every discovered locale and content kind', () => {
+    for (const doc of docs) {
+      expect(hasDocContentLoader(doc.kind, doc.locale), doc.filePath).toBe(true)
     }
   })
 

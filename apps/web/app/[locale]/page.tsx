@@ -11,10 +11,10 @@ import { Problem } from '@/components/site/problem'
 import { QrPreview } from '@/components/site/qr-preview'
 import { Testimonials } from '@/components/site/testimonials'
 import { TryCameraCard } from '@/components/site/try-camera-card'
-import { defaultLocale, isLocale } from '@/lib/i18n'
+import { isLocale, localeOgTag } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { SITE_URL } from '@/lib/site'
+import { canonicalUrl, localizedPageAlternates } from '@/lib/seo'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -38,19 +38,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: copy.title,
     description: copy.description,
-    alternates: {
-      canonical: `${SITE_URL}/${locale}`,
-      languages: {
-        en: `${SITE_URL}/en`,
-        hu: `${SITE_URL}/hu`,
-        'x-default': `${SITE_URL}/${defaultLocale}`,
-      },
-    },
+    alternates: localizedPageAlternates(locale, '/'),
     openGraph: {
       title: copy.title,
       description: copy.description,
-      locale: locale === 'en' ? 'en_GB' : 'hu_HU',
-      url: `${SITE_URL}/${locale}`,
+      locale: localeOgTag[locale],
+      url: canonicalUrl(`/${locale}`),
     },
     twitter: { title: copy.title, description: copy.description },
   }

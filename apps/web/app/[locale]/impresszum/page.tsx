@@ -13,17 +13,20 @@ import {
 } from '@/lib/company'
 import { isLocale } from '@/lib/i18n'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { localizedPageAlternates } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
+  if (!isLocale(locale)) return {}
   return {
     title: locale === 'en' ? 'Legal notice — OurFilm' : 'Impresszum — OurFilm',
     description:
       locale === 'en'
         ? 'Legal and contact details of the OurFilm service provider.'
         : 'Az OurFilm szolgáltatójának kötelező azonosító adatai.',
+    alternates: localizedPageAlternates(locale, '/impresszum'),
     ...(hasRealCompanyDetails
       ? {}
       : { robots: { index: false, follow: true } }),

@@ -60,6 +60,10 @@ export async function ContentArticle({
             </time>
             {doc.author ? <span>· {doc.author}</span> : null}
           </div>
+          {/* Every kind, blog included. An article and its translation share
+              no slug, so the navbar's language toggle cannot reach one — it
+              falls back to the homepage for any path it cannot map. This is
+              the only link between the two versions a reader has. */}
           <LanguageSwitcher current={locale} translations={translations} />
         </header>
 

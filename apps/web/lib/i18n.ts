@@ -61,18 +61,7 @@ export function isKnownLocale(value: string): value is KnownLocale {
 export function localePath(locale: Locale, path: string): string {
   if (path === '/') return `/${locale}`
   if (locale === 'en') {
-    const aliases: Record<string, string> = {
-      '/arak': '/pricing',
-      '/alkalmak': '/occasions',
-      '/rolunk': '/about',
-      '/kapcsolat': '/contact',
-      '/alternativak': '/alternatives',
-      '/osszehasonlitas': '/comparisons',
-      '/aszf': '/terms',
-      '/adatvedelem': '/privacy',
-      '/impresszum': '/legal',
-    }
-    for (const [source, destination] of Object.entries(aliases)) {
+    for (const [source, destination] of Object.entries(englishPathAliases)) {
       if (path === source || path.startsWith(`${source}/`)) {
         return `/${locale}${destination}${path.slice(source.length)}`
       }
@@ -81,10 +70,72 @@ export function localePath(locale: Locale, path: string): string {
   return `/${locale}${path}`
 }
 
+/** The language-neutral identity of every translated marketing route. */
+const englishPathAliases: Record<string, string> = {
+  '/arak': '/pricing',
+  '/alkalmak': '/occasions',
+  '/rolunk': '/about',
+  '/kapcsolat': '/contact',
+  '/alternativak': '/alternatives',
+  '/osszehasonlitas': '/comparisons',
+  '/aszf': '/terms',
+  '/adatvedelem': '/privacy',
+  '/impresszum': '/legal',
+}
+
+const translatedMarketingRoutes = new Set([
+  '/arak',
+  '/alkalmak',
+  '/rolunk',
+  '/kapcsolat',
+  '/alternativak',
+  '/aszf',
+  '/adatvedelem',
+  '/impresszum',
+  '/blog',
+  '/early-couple-program',
+])
+
+/**
+ * Switches a translated marketing page to the same page in another locale.
+ *
+ * Only exact routes are accepted. Article and comparison slugs are translated
+ * independently, so guessing by copying their slug would create a convincing
+ * but broken language link. Those pages use their document translation IDs
+ * instead; an unknown path safely falls back to the target-language homepage.
+ */
+export function translatedMarketingPath(
+  pathname: string,
+  targetLocale: Locale,
+): string {
+  const match = pathname.match(/^\/(en|hu)(\/.*)?$/)
+  if (!match || !isLocale(match[1])) return localePath(targetLocale, '/')
+
+  const sourceLocale = match[1]
+  const sourcePath = match[2] || '/'
+  if (sourceLocale === targetLocale) return pathname
+
+  if (sourcePath === '/') return localePath(targetLocale, '/')
+
+  const logicalPath =
+    sourceLocale === 'en'
+      ? (Object.entries(englishPathAliases).find(
+          ([, englishPath]) => englishPath === sourcePath,
+        )?.[0] ?? sourcePath)
+      : sourcePath
+
+  return logicalPath && translatedMarketingRoutes.has(logicalPath)
+    ? localePath(targetLocale, logicalPath)
+    : localePath(targetLocale, '/')
+}
+
 /** BCP 47 tag for `Intl`, `<html lang>` and RSS `<language>`. */
 export const localeTag: Record<KnownLocale, string> = {
   hu: 'hu-HU',
-  en: 'en-GB',
+  // English is the international version, not a UK-only version. A generic
+  // tag lets search engines serve it anywhere no more specific English page
+  // exists, while Hungarian remains country-specific.
+  en: 'en',
 }
 
 /** Open Graph wants underscores, not hyphens. */

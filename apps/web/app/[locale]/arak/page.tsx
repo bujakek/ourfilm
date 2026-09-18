@@ -4,6 +4,7 @@ import { isLocale, localePath } from '@/lib/i18n'
 import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import { EVENT_PRICE_LABEL, EVENT_PRICE_LABELS } from '@/lib/pricing'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
+import { localizedPageAlternates } from '@/lib/seo'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -90,6 +91,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: current.title,
     description: current.description,
     openGraph: { title: current.title, description: current.description },
+    alternates: localizedPageAlternates(locale, '/arak'),
     robots: { index: hasRealCompanyDetails, follow: true },
   }
 }

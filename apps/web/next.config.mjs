@@ -100,6 +100,23 @@ const nextConfig = {
       '/adatvedelem',
       '/blog',
     ]
+    const occasionSlugMoves = [
+      ['eskuvo', 'wedding'],
+      ['szuletesnap', 'birthday'],
+      ['utazas', 'travel'],
+      ['buli', 'party'],
+    ].flatMap(([hungarian, english]) => [
+      {
+        source: `/en/occasions/${hungarian}`,
+        destination: `/en/occasions/${english}`,
+        permanent: true,
+      },
+      {
+        source: `/en/alkalmak/${hungarian}`,
+        destination: `/en/occasions/${english}`,
+        permanent: true,
+      },
+    ])
 
     return [
       // The bare domain lands on Hungarian while the pilot is Hungarian —
@@ -111,6 +128,10 @@ const nextConfig = {
       // visitors pinned to the old language with nothing the server can say
       // about it.
       { source: '/', destination: '/hu', permanent: false },
+      // English occasion pages originally inherited their Hungarian data keys
+      // as public slugs. Keep every printed or indexed URL alive, but send it
+      // directly to the English canonical rather than through two redirects.
+      ...occasionSlugMoves,
       { source: '/en/arak', destination: '/en/pricing', permanent: true },
       { source: '/en/alkalmak', destination: '/en/occasions', permanent: true },
       {

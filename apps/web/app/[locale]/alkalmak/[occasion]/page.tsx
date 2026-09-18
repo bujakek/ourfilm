@@ -3,6 +3,7 @@ import {
   OCCASIONS_ARE_DRAFT,
   occasionBySlug,
   occasionCopy,
+  occasionPath,
   occasions,
 } from '@/lib/occasions'
 import type { Metadata } from 'next'
@@ -16,28 +17,57 @@ import { Reveal } from '@/components/site/reveal'
 
 import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { notFound } from 'next/navigation'
-import { type Locale, isLocale, localePath } from '@/lib/i18n'
+import {
+  defaultLocale,
+  type Locale,
+  isLocale,
+  localePath,
+  locales,
+  localeTag,
+} from '@/lib/i18n'
+import { canonicalUrl } from '@/lib/seo'
 
 type Props = { params: Promise<{ locale: string; occasion: string }> }
 
-/** Four known slugs, so all four prerender and an unknown one 404s. */
-export function generateStaticParams() {
-  return occasions.map((o) => ({ occasion: o.slug }))
+/** Four locale-specific slugs, so every canonical page prerenders. */
+export function generateStaticParams({
+  params,
+}: {
+  params: { locale: string }
+}) {
+  const { locale } = params
+  if (!isLocale(locale)) return []
+  return occasions.map((occasion) => ({
+    occasion: occasion.slugs[locale],
+  }))
 }
+
+export const dynamicParams = false
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, occasion: slug } = await params
   if (!isLocale(locale)) return {}
-  const occasion = occasionBySlug(slug)
+  const occasion = occasionBySlug(locale, slug)
   if (!occasion) return {}
   const copy = occasionCopy(locale, occasion)
 
   return {
     title: copy.meta.title,
     description: copy.meta.description,
+    alternates: {
+      canonical: canonicalUrl(occasionPath(locale, occasion)),
+      languages: Object.fromEntries([
+        ...locales.map((item) => [
+          localeTag[item],
+          canonicalUrl(occasionPath(item, occasion)),
+        ]),
+        ['x-default', canonicalUrl(occasionPath(defaultLocale, occasion))],
+      ]),
+    },
     openGraph: {
       title: copy.meta.title,
       description: copy.meta.description,
+      url: canonicalUrl(occasionPath(locale, occasion)),
     },
     ...(OCCASIONS_ARE_DRAFT ? { robots: { index: false, follow: true } } : {}),
   }
@@ -65,7 +95,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function OccasionPage({ params }: Props) {
   const { locale, occasion: slug } = await params
   if (!isLocale(locale)) notFound()
-  const occasion = occasionBySlug(slug)
+  const occasion = occasionBySlug(locale, slug)
   if (!occasion) notFound()
   const copy = occasionCopy(locale, occasion)
   const en = locale === 'en'
@@ -243,7 +273,7 @@ export default async function OccasionPage({ params }: Props) {
             </p>
           </Reveal>
 
-          <OtherOccasions locale={locale} current={occasion.slug} />
+          <OtherOccasions locale={locale} current={occasion.id} />
 
           <BackLink
             href={localePath(locale, '/alkalmak')}
@@ -273,14 +303,14 @@ function OtherOccasions({
   locale: Locale
   current: string
 }) {
-  const others = occasions.filter((o) => o.slug !== current)
+  const others = occasions.filter((occasion) => occasion.id !== current)
 
   return (
     <ul className="mt-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-white/11 pt-7">
       {others.map((occasion) => (
-        <li key={occasion.slug}>
+        <li key={occasion.id}>
           <Link
-            href={localePath(locale, `/alkalmak/${occasion.slug}`)}
+            href={occasionPath(locale, occasion)}
             className="inline-flex rounded-full border border-white/12 px-4 py-2 font-mono text-[9.5px] font-medium tracking-[0.16em] text-foreground/60 transition-colors hover:border-white/30 hover:text-foreground/90"
           >
             {occasionCopy(locale, occasion).label.toUpperCase()}

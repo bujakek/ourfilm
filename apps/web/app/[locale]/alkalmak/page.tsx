@@ -1,10 +1,16 @@
 import { PageShell } from '@/components/site/page-shell'
-import { OCCASIONS_ARE_DRAFT, occasionCopy, occasions } from '@/lib/occasions'
+import {
+  OCCASIONS_ARE_DRAFT,
+  occasionCopy,
+  occasionPath,
+  occasions,
+} from '@/lib/occasions'
 import { ArrowRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { isLocale, localePath } from '@/lib/i18n'
+import { isLocale } from '@/lib/i18n'
+import { localizedPageAlternates } from '@/lib/seo'
 import { notFound } from 'next/navigation'
 
 const pageCopy = {
@@ -35,6 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: current.title,
     description: current.description,
+    alternates: localizedPageAlternates(locale, '/alkalmak'),
     ...(OCCASIONS_ARE_DRAFT ? { robots: { index: false, follow: true } } : {}),
   }
 }
@@ -59,9 +66,9 @@ export default async function AlkalmakPage({ params }: Props) {
             {occasions.map((occasion) => {
               const item = occasionCopy(locale, occasion)
               return (
-                <li key={occasion.slug}>
+                <li key={occasion.id}>
                   <Link
-                    href={localePath(locale, `/alkalmak/${occasion.slug}`)}
+                    href={occasionPath(locale, occasion)}
                     className="glass glass-hover group flex h-full flex-col overflow-hidden rounded-2xl"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden">

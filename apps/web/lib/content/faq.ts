@@ -6,7 +6,7 @@ import { cache } from 'react'
 import type { ContentDoc } from './types'
 
 /**
- * The `## Gyakori kérdések` block, read back out of the page it renders on.
+ * The localized FAQ block, read back out of the page it renders on.
  *
  * FAQ structured data is only honest when the same question and the same
  * answer are visible to a reader, so nothing here is authored: the questions
@@ -23,7 +23,7 @@ import type { ContentDoc } from './types'
  * form at all, so a section containing one produces no FAQ schema.
  */
 
-const FAQ_HEADING = '## Gyakori kérdések'
+const FAQ_HEADINGS = ['## Gyakori kérdések', '## Frequently asked questions']
 
 export interface FaqEntry {
   question: string
@@ -46,16 +46,20 @@ function toPlainText(markdown: string): string {
 export const getFaq = cache((doc: ContentDoc): FaqEntry[] => {
   const source = readFileSync(doc.filePath, 'utf8')
 
-  const start = source.indexOf(`\n${FAQ_HEADING}`)
-  if (start === -1) {
+  const heading = FAQ_HEADINGS.find((candidate) =>
+    source.includes(`\n${candidate}`),
+  )
+  if (!heading) {
     const entries = [
       ...source.matchAll(/q:\s*'([^']+)',\s*a:\s*'([^']+)',/g),
     ].map(([, question, answer]) => ({ question, answer }))
     return entries
   }
 
+  const start = source.indexOf(`\n${heading}`)
+
   // The section runs to the next `##` of any depth-2 kind, or to the end.
-  const rest = source.slice(start + FAQ_HEADING.length + 1)
+  const rest = source.slice(start + heading.length + 1)
   const nextSection = rest.search(/\n## /)
   const section = nextSection === -1 ? rest : rest.slice(0, nextSection)
 

@@ -1,6 +1,6 @@
 import { Cake, GlassWater, Heart, Plane } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { Locale } from './i18n'
+import { type Locale, localePath } from './i18n'
 import { EVENT_PRICE_LABELS } from './pricing'
 
 /**
@@ -24,8 +24,10 @@ import { EVENT_PRICE_LABELS } from './pricing'
  * prints section is a Server Component and hands `Reveal` only strings.
  */
 export interface Occasion {
-  /** URL segment and the widget's state id. */
-  slug: string
+  /** Stable identity for React keys and translation lookup. */
+  id: OccasionId
+  /** Locale-specific URL segment. Public URLs must read in their own language. */
+  slugs: Record<Locale, string>
   label: string
   icon: LucideIcon
   image: string
@@ -65,6 +67,8 @@ export interface Occasion {
   /** `<title>` and `<meta name="description">` for the page. */
   meta: { title: string; description: string }
 }
+
+export type OccasionId = 'wedding' | 'birthday' | 'travel' | 'party'
 
 export type OccasionCopy = Pick<
   Occasion,
@@ -116,7 +120,8 @@ const OCCASION_CTA_HELPER =
 
 export const occasions: Occasion[] = [
   {
-    slug: 'eskuvo',
+    id: 'wedding',
+    slugs: { en: 'wedding', hu: 'eskuvo' },
     label: 'Esküvő',
     icon: Heart,
     image: '/images/wedding-dance.webp',
@@ -202,7 +207,8 @@ export const occasions: Occasion[] = [
     },
   },
   {
-    slug: 'szuletesnap',
+    id: 'birthday',
+    slugs: { en: 'birthday', hu: 'szuletesnap' },
     label: 'Születésnap',
     icon: Cake,
     image: '/images/birthday.webp',
@@ -280,7 +286,8 @@ export const occasions: Occasion[] = [
     },
   },
   {
-    slug: 'utazas',
+    id: 'travel',
+    slugs: { en: 'travel', hu: 'utazas' },
     label: 'Utazás',
     icon: Plane,
     image: '/images/travel.webp',
@@ -358,7 +365,8 @@ export const occasions: Occasion[] = [
     },
   },
   {
-    slug: 'buli',
+    id: 'party',
+    slugs: { en: 'party', hu: 'buli' },
     label: 'Buli',
     icon: GlassWater,
     image: '/images/party.webp',
@@ -437,12 +445,20 @@ export const occasions: Occasion[] = [
   },
 ]
 
-export function occasionBySlug(slug: string): Occasion | undefined {
-  return occasions.find((o) => o.slug === slug)
+export function occasionBySlug(
+  locale: Locale,
+  slug: string,
+): Occasion | undefined {
+  return occasions.find((occasion) => occasion.slugs[locale] === slug)
 }
 
-const englishOccasions: Record<string, OccasionCopy> = {
-  eskuvo: {
+/** The canonical public path for an occasion in one locale. */
+export function occasionPath(locale: Locale, occasion: Occasion): string {
+  return localePath(locale, `/alkalmak/${occasion.slugs[locale]}`)
+}
+
+const englishOccasions: Record<OccasionId, OccasionCopy> = {
+  wedding: {
     label: 'Wedding',
     alt: 'A couple sharing their first dance',
     title: 'Your wedding, through your guests’ eyes.',
@@ -518,7 +534,7 @@ const englishOccasions: Record<string, OccasionCopy> = {
         'Give every guest their own digital roll with one QR code. No app, no accounts and no chasing photos after the wedding.',
     },
   },
-  szuletesnap: {
+  birthday: {
     label: 'Birthday',
     alt: 'Friends celebrating a birthday',
     title: 'You celebrate. Your guests capture it.',
@@ -593,7 +609,7 @@ const englishOccasions: Record<string, OccasionCopy> = {
         'Give every guest their own digital roll for your birthday. One QR code, no app and no accounts.',
     },
   },
-  utazas: {
+  travel: {
     label: 'Trips',
     alt: 'Friends travelling together',
     title: 'One trip. Many viewpoints. One shared roll.',
@@ -668,7 +684,7 @@ const englishOccasions: Record<string, OccasionCopy> = {
         'Give every traveller their own digital roll and collect the whole trip in one gallery. No app or accounts needed.',
     },
   },
-  buli: {
+  party: {
     label: 'Parties',
     alt: 'Friends at an evening party',
     title: 'Everyone shoots. You get every side of the night.',
@@ -746,5 +762,5 @@ const englishOccasions: Record<string, OccasionCopy> = {
 }
 
 export function occasionCopy(locale: Locale, occasion: Occasion): OccasionCopy {
-  return locale === 'en' ? englishOccasions[occasion.slug] : occasion
+  return locale === 'en' ? englishOccasions[occasion.id] : occasion
 }

@@ -3,8 +3,8 @@ import { HubLinks } from '@/components/content/hub-links'
 import { PageHeader } from '@/components/site/page-header'
 import { hubCopy } from '@/lib/content/copy'
 import { getDocs } from '@/lib/content/docs'
-import { isLocale, localePath } from '@/lib/i18n'
-import { canonicalUrl } from '@/lib/seo'
+import { isLocale } from '@/lib/i18n'
+import { localizedPageAlternates } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
@@ -19,9 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${copy.title} — OurFilm`,
     description: copy.lead,
-    alternates: {
-      canonical: canonicalUrl(localePath(locale, '/alternativak')),
-    },
+    alternates: localizedPageAlternates(locale, '/alternativak'),
   }
 }
 
