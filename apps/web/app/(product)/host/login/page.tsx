@@ -1,4 +1,5 @@
 import { PageGrain } from '@/components/site/page-grain'
+import { AuthLegalNotice } from '@/components/host/auth-legal-notice'
 import { localeTag, resolveLocale } from '@/lib/i18n'
 import type { Metadata } from 'next'
 import { requestOrigin } from '@/lib/request-origin'
@@ -37,6 +38,7 @@ export default async function LoginPage({
           locale={locale}
           next={safeNext(next ?? `/host?lang=${locale}`, await requestOrigin())}
         />
+        <AuthLegalNotice locale={locale} />
       </main>
     </div>
   )

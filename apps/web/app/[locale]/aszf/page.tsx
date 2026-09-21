@@ -9,7 +9,7 @@ import {
   REGISTRY,
   hasRealCompanyDetails,
   HOSTING_PROVIDER,
-  LAST_UPDATED,
+  TERMS_LAST_UPDATED,
   DIRECT_SALE,
   PAYMENT_PROCESSOR,
 } from '@/lib/company'
@@ -58,6 +58,7 @@ const sections: LegalSection[] = [
   {
     title: 'Szerződéskötés és a használat feltételei',
     body: [
+      'A házigazda e-mailben küldött belépési linkkel vagy választhatóan Google-fiókkal hozhat létre fiókot és jelentkezhet be. Azonos, ellenőrzött e-mail-cím esetén a Google-belépés a meglévő OurFilm-fiókhoz kapcsolódhat, így ugyanazok az események maradnak elérhetők. A Google-belépés önmagában nem jelent megrendelést, és nem helyettesíti az esemény létrehozásakor vagy a fizetős megrendeléskor kért feltétel-elfogadást. A belépési adatok kezelését az Adatkezelési tájékoztató ismerteti.',
       `A házigazda a feltételek elfogadásával és az esemény létrehozásával köt szerződést az OurFilmmel a digitális szolgáltatás használatára. A vendégkorlát megszüntetésére vonatkozó megrendelés a Stripe fizetési oldalán történő fizetéssel válik véglegessé. A magyar nyelvű eseményeknél az eladó az OurFilm: mi nyújtjuk a digitális szolgáltatást, mi állítjuk ki a számlát, és mi felelünk a megrendelésért. A szerződés magyar nyelven jön létre, nem minősül írásba foglalt szerződésnek, és külön nem iktatjuk.`,
       'A vendég a csatlakozással elfogadja a rá vonatkozó használati szabályokat, és tudomásul veszi az Adatkezelési tájékoztatót. A vendégtől nem kérünk díjat.',
       'A megrendelés előtt a házigazda a böngésző vissza gombjával vagy az OurFilm felületén módosíthatja a megadott adatokat. Az adatbeviteli hibákat a rendszer a létrehozás előtt jelzi.',
@@ -148,6 +149,7 @@ const englishSections: LegalSection[] = [
   {
     title: 'Contract and eligibility',
     body: [
+      'Hosts can create an account and sign in using an email sign-in link or, optionally, a Google Account. Google sign-in may be linked to an existing OurFilm account with the same verified email address, preserving access to the same events. Signing in with Google does not itself place an order or replace acceptance of the terms requested when creating an event or placing a paid order. The Privacy Notice explains how sign-in data is handled.',
       `A host enters into a contract with OurFilm by accepting these Terms and creating an event. A paid order becomes final when payment is completed in Stripe Checkout. OurFilm supplies the digital service; ${PAYMENT_PROCESSOR.merchantOfRecord} acts as Merchant of Record for the purchase transaction. The contract is concluded in English for the English flow, is not separately filed, and can be saved or printed from this page.`,
       'Hosts must be at least 18 years old and able to enter into a binding contract. A guest accepts the guest rules and acknowledges the Privacy Notice by joining. Guests are not charged.',
     ],
@@ -232,7 +234,7 @@ export default async function AszfPage({ params }: Props) {
 
           <p className="mt-12 text-sm text-muted-foreground">
             {locale === 'en' ? 'Last updated' : 'Utolsó frissítés'}:{' '}
-            {LAST_UPDATED}
+            {TERMS_LAST_UPDATED[locale]}
           </p>
         </div>
       </section>

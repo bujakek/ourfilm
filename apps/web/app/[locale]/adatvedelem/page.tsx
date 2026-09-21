@@ -62,6 +62,26 @@ const sections: LegalSection[] = [
     ],
   },
   {
+    title: 'Választható Google-belépés',
+    body: [
+      'A házigazda e-mailes belépési link helyett Google-fiókkal is regisztrálhat és beléphet. A Google-belépés nem kötelező, és a vendégeknek továbbra sincs szükségük fiókra. A Google-tól a fiókod azonosítóját, e-mail-címét és az e-mail ellenőrzöttségére vonatkozó jelzést kapjuk meg; az alap profiladatok között a neved és a profilképed internetes címe is érkezhet. Ezeket a Supabase Auth a fiókhoz tartozó hitelesítési adatok között tárolhatja.',
+      'Az azonosítót és az e-mail-címet a kért fiók létrehozásához, a belépéshez és az azonos, ellenőrzött e-mail-címhez tartozó meglévő OurFilm-fiók összekapcsolásához használjuk. Ennek jogalapja a kért szolgáltatáshoz kapcsolódó szerződés előkészítése és teljesítése (GDPR 6. cikk (1) b)); a hitelesítési adatok biztonsági célú kezelése jogos érdeken alapul (GDPR 6. cikk (1) f)). A Google-tól kapott nevet és profilképet jelenleg nem jelenítjük meg a vendégeknek. A Google-adatokat nem használjuk hirdetéshez, és nem adjuk el. A belépés nem ad hozzáférést a Gmail-leveleidhez, a Drive-fájljaidhoz, a Google Fotók-képeidhez vagy a névjegyeidhez.',
+      'A Google-belépés választásakor a böngésző a Google oldalára irányít át. A Google tudomást szerez arról, hogy az OurFilmbe szeretnél belépni, és a saját oldalán a fiókodhoz, az eszközödhöz, a hálózati címedhez és a belépéshez kapcsolódó adatokat, illetve sütiket kezelhet. A Google a saját fiók- és hitelesítési szolgáltatása tekintetében saját adatvédelmi tájékoztatója szerint jár el. Ennek részeként az EGT-n kívül is kezelhet adatokat; a rá vonatkozó garanciákat és megőrzési szabályokat a Google tájékoztatója ismerteti. Az OurFilm a belépés céljából nem továbbítja az eseményeid fényképeit a Google-nak.',
+      `A Google-tól kapott, a fiókodhoz tárolt adatokra az alábbi fiókadat-megőrzési szabályok vonatkoznak. Az OurFilm-fiók és a hozzá tárolt Google-adatok törlését a ${CONTACT_EMAIL} címen kérheted; a Fiókbeállítások „Fiók törlése” hivatkozása is ilyen e-mailes kérést indít. A jogszabály vagy jogi igény miatt megőrzendő adatokra az alább leírt kivételek vonatkoznak.`,
+      'A Google-fiókod kapcsolódó alkalmazásai között bármikor megszüntetheted az OurFilm Google-kapcsolatát. Ez önmagában nem törli az OurFilm-fiókodat, az eseményeidet vagy a korábban átvett adatokat, és nem jelent automatikus kijelentkezést az OurFilmből. A fiókod e-mail-címére kért belépési linkkel továbbra is bejelentkezhetsz. Az OurFilm-fiók törlése nem törli a Google-fiókodat.',
+    ],
+    links: [
+      {
+        href: 'https://policies.google.com/privacy?hl=hu',
+        label: 'A Google adatvédelmi irányelvei',
+      },
+      {
+        href: 'https://myaccount.google.com/connections',
+        label: 'Google-fiók: kapcsolódó alkalmazások kezelése',
+      },
+    ],
+  },
+  {
     title: 'Célok és jogalapok',
     body: [
       'A házigazda fiókját, eseményét és megrendelését a szerződés teljesítéséhez kezeljük (GDPR 6. cikk (1) b)). A saját számviteli, adózási és jogi bizonylatainkat jogi kötelezettség alapján kezeljük (GDPR 6. cikk (1) c)). A vásárlónak szóló tranzakciós számlát vagy bizonylatot a Link állítja ki és őrzi meg a rá vonatkozó szabályok szerint.',
@@ -82,7 +102,7 @@ const sections: LegalSection[] = [
   {
     title: 'Szolgáltatók és adattovábbítás',
     body: [
-      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (adatbázis és fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési linkek, jogi visszaigazolások és az album elkészültéről szóló értesítések), fizetésnél ${DIRECT_SALE.processorName}, magyar nyelvű esemény számlázásánál pedig ${DIRECT_SALE.invoiceProvider}.`,
+      `Az adatkezeléshez a következő szolgáltatókat vesszük igénybe: Supabase (fiókkezelés és hitelesítés, adatbázis és fájltárolás), Vercel (webalkalmazás és sütimentes látogatottságmérés), PostHog, Inc. (sütimentes termékanalitika és hibadiagnosztika), ${EMAIL_PROVIDER} (belépési linkek, jogi visszaigazolások és az album elkészültéről szóló értesítések), fizetésnél ${DIRECT_SALE.processorName}, magyar nyelvű esemény számlázásánál pedig ${DIRECT_SALE.invoiceProvider}.`,
       `Magyar nyelvű eseménynél az eladó az OurFilm. A fizetést a Stripe fizetési szolgáltatóként dolgozza fel; a számlázási nevet, címet és e-mail-címet a Stripe fizetési oldala gyűjti össze. Mi ezeket az adatokat kizárólag a számla kiállításához használjuk. A számlát a ${DIRECT_SALE.invoiceProvider} rendszerén keresztül állítjuk ki, és a számlaadatokat jogszabályi kötelezettség alapján a NAV Online Számla rendszerébe is továbbítjuk. A számlázási adatokat a számviteli előírások szerinti ideig őrizzük meg, az esemény törlése után is.`,
       `Angol nyelvű eseménynél a ${PAYMENT_PROCESSOR.merchantOfRecord} jár el Merchant of Recordként: ő kezeli a fizetést, az alkalmazandó közvetett adót, a vásárlói számlát vagy bizonylatot, a visszatérítést, a fizetési vitát, a csalásmegelőzést és a tranzakciós ügyfélszolgálatot, és ezekhez a célokhoz a vásárlótól közvetlenül is gyűjt adatot. A Link tranzakciós támogatása itt érhető el: ${PAYMENT_PROCESSOR.supportUrl}.`,
       'A Supabase projekt jelenlegi régiója Zürich, Svájc. Svájc az EGT-n kívüli ország, amelyre az Európai Bizottság megfelelőségi határozata vonatkozik.',
@@ -150,6 +170,26 @@ const englishSections: LegalSection[] = [
     ],
   },
   {
+    title: 'Optional Google sign-in',
+    body: [
+      'Hosts can register and sign in with a Google Account instead of an email sign-in link. Google sign-in is optional, and guests still do not need an account. We receive your Google account identifier, email address and its verification status; basic profile data may also include your name and profile picture URL. Supabase Auth may store these details with your account authentication data.',
+      'We use the identifier and email address to create the account you request, sign you in and link an existing OurFilm account with the same verified email address. The legal basis is taking steps at your request before entering into a contract and performing the requested service (GDPR Art. 6(1)(b)); security processing of authentication data relies on legitimate interests (Art. 6(1)(f)). We do not currently display your Google name or profile picture to guests. We do not use Google data for advertising or sell it. Signing in does not give us access to your Gmail messages, Drive files, Google Photos or contacts.',
+      'Choosing Google sign-in redirects your browser to Google. Google learns that you want to sign in to OurFilm and may process account, device, network address and sign-in information and cookies on its own pages. Google operates its own account and authentication service under its own privacy policy, including any processing outside the EEA, applicable safeguards and retention rules. OurFilm does not send your event photos to Google for sign-in.',
+      `Google data stored with your account follows the account-data retention rules below. You can request deletion of your OurFilm account and its stored Google data at ${CONTACT_EMAIL}; the “Delete account” link in Account settings starts this email request. Exceptions for records required by law or legal claims are explained below.`,
+      'You can remove the OurFilm connection at any time in your Google Account’s linked apps settings. Removing it does not itself delete your OurFilm account, events or previously received data, or automatically sign you out of OurFilm. You can still sign in using a link sent to your account email address. Deleting your OurFilm account does not delete your Google Account.',
+    ],
+    links: [
+      {
+        href: 'https://policies.google.com/privacy?hl=en',
+        label: 'Google Privacy Policy',
+      },
+      {
+        href: 'https://myaccount.google.com/connections',
+        label: 'Google Account: manage linked apps',
+      },
+    ],
+  },
+  {
     title: 'Purposes and legal bases',
     body: [
       'Host accounts, events and orders are processed to perform the contract (GDPR Art. 6(1)(b)); records required by tax, accounting or law are processed under legal obligations (Art. 6(1)(c)). Security, session protection, quota enforcement, troubleshooting, abuse prevention, preventing lost uploads and improving the product, including Vercel’s cookie-free traffic measurement and PostHog’s technical events, rely on legitimate interests (Art. 6(1)(f)). We do not use this data for advertising, personalised marketing, profiling or automated decision-making. You may object to legitimate-interest analytics and can also block it with browser or network filtering.',
@@ -160,7 +200,7 @@ const englishSections: LegalSection[] = [
     title: 'Access and sharing',
     body: [
       'Event links contain a long random identifier, event pages are not indexed, and which photos are shown is decided server-side. Photo files sit at unguessable, unlistable addresses that do not expire, so anyone who obtains a photo’s exact address can open it later. Anyone can forward a link. The host can access, download and hide every photo. Guests see revealed photos only where the host permits it. Authorised personnel access content only where needed for operations, security or a report.',
-      `We use Supabase for database and file storage, Vercel for hosting and cookie-free analytics, PostHog, Inc. for cookie-free product analytics and error diagnostics, ${EMAIL_PROVIDER} for login, legal and album-ready emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment on English events. Hungarian events are sold directly by OurFilm: Stripe processes the payment and ${DIRECT_SALE.invoiceProvider} issues the invoice, which is also reported to the Hungarian tax authority as the law requires. PostHog project data is stored in Frankfurt, Germany. PostHog, Inc. and some of its subprocessors may perform support, security or network processing outside the EEA. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
+      `We use Supabase for account management and authentication, database and file storage, Vercel for hosting and cookie-free analytics, PostHog, Inc. for cookie-free product analytics and error diagnostics, ${EMAIL_PROVIDER} for login, legal and album-ready emails, and ${PAYMENT_PROCESSOR.name}/${PAYMENT_PROCESSOR.merchantOfRecord} for payment on English events. Hungarian events are sold directly by OurFilm: Stripe processes the payment and ${DIRECT_SALE.invoiceProvider} issues the invoice, which is also reported to the Hungarian tax authority as the law requires. PostHog project data is stored in Frankfurt, Germany. PostHog, Inc. and some of its subprocessors may perform support, security or network processing outside the EEA. Providers may process data outside the EEA using an adequacy decision, the EU–US Data Privacy Framework where applicable, or Standard Contractual Clauses.`,
     ],
   },
   {

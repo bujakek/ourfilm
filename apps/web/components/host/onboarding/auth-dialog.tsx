@@ -7,6 +7,7 @@ import { sendSignInLink } from '@/lib/auth-link'
 import { track } from '@/lib/telemetry'
 
 import { AuthDivider, GoogleSignIn } from '@/components/host/google-sign-in'
+import { AuthLegalNotice } from '@/components/host/auth-legal-notice'
 import { Sheet } from '@/components/host/sheet'
 import { Button } from '@/components/ui/button'
 import { inputClassName } from '@/components/ui/input'
@@ -91,6 +92,7 @@ export function AuthDialog({
             <Check className="size-7 text-accent" strokeWidth={2.2} />
           </span>
         </div>
+        <AuthLegalNotice locale={locale} />
       </Sheet>
     )
   }
@@ -174,6 +176,7 @@ export function AuthDialog({
           </button>
         )}
       </form>
+      <AuthLegalNotice locale={locale} />
     </Sheet>
   )
 }

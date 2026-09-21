@@ -2,6 +2,7 @@ export interface LegalSection {
   title: string
   /** Each string renders as its own paragraph. */
   body: string[]
+  links?: { href: string; label: string }[]
 }
 
 /**
@@ -28,6 +29,15 @@ export function LegalSections({ sections }: { sections: LegalSection[] }) {
               >
                 {paragraph}
               </p>
+            ))}
+            {section.links?.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="flex min-h-11 items-center text-accent underline underline-offset-4 hover:text-foreground"
+              >
+                {link.label}
+              </a>
             ))}
           </div>
         </li>
