@@ -212,6 +212,56 @@ export type Database = {
           },
         ]
       }
+      event_emails: {
+        Row: {
+          attempts: number
+          capture_end_at: string
+          created_at: string
+          event_id: string
+          id: string
+          kind: string
+          next_attempt_at: string
+          payload: Json | null
+          scheduled_at: string
+          sent_at: string | null
+          snapshot: Json
+        }
+        Insert: {
+          attempts?: number
+          capture_end_at: string
+          created_at?: string
+          event_id: string
+          id?: string
+          kind: string
+          next_attempt_at?: string
+          payload?: Json | null
+          scheduled_at: string
+          sent_at?: string | null
+          snapshot: Json
+        }
+        Update: {
+          attempts?: number
+          capture_end_at?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          kind?: string
+          next_attempt_at?: string
+          payload?: Json | null
+          scheduled_at?: string
+          sent_at?: string | null
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_emails_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_grants: {
         Row: {
           event_id: string
@@ -721,6 +771,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_event_email: {
+        Args: never
+        Returns: {
+          attempts: number
+          capture_end_at: string
+          created_at: string
+          event_id: string
+          id: string
+          kind: string
+          next_attempt_at: string
+          payload: Json | null
+          scheduled_at: string
+          sent_at: string | null
+          snapshot: Json
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "event_emails"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_purchase_invoice: {
         Args: { p_purchase_id: string }
         Returns: boolean
@@ -791,6 +863,10 @@ export type Database = {
           total_count: number
           uploader_name: string
         }[]
+      }
+      event_email_due_at: {
+        Args: { p_end: string; p_kind: string; p_zone: string }
+        Returns: string
       }
       event_gallery_by_slug: {
         Args: { p_slug: string }
