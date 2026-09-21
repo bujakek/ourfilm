@@ -1,8 +1,10 @@
 'use client'
 
+import { AuthDivider, GoogleSignIn } from '@/components/host/google-sign-in'
 import { sendSignInLink } from '@/lib/auth-link'
+import { track } from '@/lib/telemetry'
 import { Check, Loader2, Mail } from 'lucide-react'
-import { useActionState, useRef } from 'react'
+import { useActionState, useRef, useState } from 'react'
 import type { Locale } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { inputClassName } from '@/components/ui/input'
@@ -13,12 +15,17 @@ const INITIAL: Result = { status: 'idle' }
 
 export function LoginForm({
   linkError,
+  oauthError,
+  next,
   locale,
 }: {
   linkError: boolean
+  oauthError: boolean
+  next: string
   locale: Locale
 }) {
   const en = locale === 'en'
+  const [googlePending, setGooglePending] = useState(false)
   // Not hand-rolled useState, and the difference is visible: `<form action>`
   // runs its function inside a transition, and a transition deliberately
   // suppresses intermediate renders — it holds the current UI rather than
@@ -41,12 +48,13 @@ export function LoginForm({
     const email = String(formData.get('email') ?? '').trim()
     if (!email) return INITIAL
 
-    if (sendingRef.current) return previous
+    if (sendingRef.current || googlePending) return previous
     sendingRef.current = true
 
+    track('sign_in_started', { method: 'email', surface: 'login' })
     const outcome = await sendSignInLink({
       email,
-      next: `/host?lang=${locale}`,
+      next,
       locale,
     })
 
@@ -80,6 +88,23 @@ export function LoginForm({
 
   return (
     <form action={submit} className="flex flex-col gap-4">
+      <GoogleSignIn
+        locale={locale}
+        surface="login"
+        next={next}
+        disabled={pending}
+        onPendingChange={setGooglePending}
+      />
+      {/* Above the divider, with the button it is about — below it the
+          message reads as a complaint about the email form. */}
+      {oauthError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {en
+            ? 'Google sign-in was not completed. Try again or use an email link.'
+            : 'A Google-belépés nem fejeződött be. Próbáld újra, vagy kérj e-mailes linket.'}
+        </p>
+      ) : null}
+      <AuthDivider locale={locale} />
       <div>
         <label
           htmlFor="email"
@@ -93,8 +118,7 @@ export function LoginForm({
           type="email"
           required
           autoComplete="email"
-          autoFocus
-          disabled={pending}
+          disabled={pending || googlePending}
           placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
           className={inputClassName}
         />
@@ -112,7 +136,7 @@ export function LoginForm({
 
       <Button
         type="submit"
-        disabled={pending}
+        disabled={pending || googlePending}
         aria-busy={pending}
         size="lg"
         className="w-full"

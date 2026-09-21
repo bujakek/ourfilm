@@ -2,7 +2,9 @@
 
 import { useEffect } from 'react'
 
-import { completeMagicLink } from './actions'
+import { authFailureUrl } from '@/lib/auth-redirect'
+
+import { completeSignIn } from './actions'
 
 let started = false
 
@@ -19,11 +21,13 @@ export function CallbackExchange() {
     started = true
 
     const params = new URLSearchParams(window.location.search)
-    void completeMagicLink({
+    void completeSignIn({
       code: params.get('code'),
       tokenHash: params.get('token_hash'),
       type: params.get('type'),
       next: params.get('next'),
+      lang: params.get('lang'),
+      provider: params.get('provider'),
     }).catch((error) => {
       // `redirect()` reports itself by throwing, and a Server Action re-throws
       // that on the client — so the success path arrives here too. Treating it
@@ -39,7 +43,14 @@ export function CallbackExchange() {
       // navigation cannot strand a remount on the spinner with retries
       // permanently disabled.
       started = false
-      window.location.replace('/host/login?error=link')
+      window.location.replace(
+        authFailureUrl({
+          origin: window.location.origin,
+          next: params.get('next'),
+          lang: params.get('lang'),
+          provider: params.get('provider'),
+        }),
+      )
     })
   }, [])
 
