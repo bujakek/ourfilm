@@ -1,11 +1,20 @@
 # Host event emails
 
-Two transactional messages use the shared OurFilm email layout and the event's
+Three transactional messages use the shared OurFilm email layout and the event's
 stored English or Hungarian locale:
 
+- **Camera created:** queued in the same transaction as the new event and sent
+  by the next five-minute sweep (subject to queue volume and retries). Confirms
+  creation, separates the host management destination from the shareable guest
+  link, shows the capture deadline and reveal settings in the event's timezone,
+  and explains where to download the printable QR code. Private galleries get
+  their own wording. The first send reads current settings; retries retain the
+  exact original body. Existing events are not backfilled.
 - **Upcoming:** 10:00, two calendar days before the local `capture_end_at` date.
   Reminds the host to print QR codes and share the localized guest link. The
   button opens the host event page, where the QR button offers a printable PNG.
+  Three short tips suggest visible QR placement, a spoken introduction and
+  taking the first photo as the host. There is no separate tutorial email.
 - **After the event:** 09:00 the calendar day after the local end date. Thanks
   the host and reports the number of ready, non-deleted photos received so far,
   including the host's own photos and hidden photos still in their album.
@@ -21,7 +30,8 @@ follow-up on Monday at 09:00.
 ## Deployment
 
 1. Deploy the app with `/api/event-emails/sweep`.
-2. Apply `20260921061638_event_emails.sql` through the normal migration process.
+2. Apply `20260921061638_event_emails.sql` and
+   `20260921105709_event_created_email.sql` through the normal migration process.
 3. Production needs `RESEND_API_KEY`, `EXPORT_WORKER_SECRET`, and optionally
    `AUTH_EMAIL_FROM` (the existing email sender). Set `OURFILM_EVENT_EMAILS=true`
    in Production to enable delivery. Keep it unset in previews and development.
@@ -36,14 +46,15 @@ after deployment without changing other scheduled jobs.
 
 ## Delivery behavior
 
-Each event gets at most one email of each kind. An indexed private outbox and
+Each event gets one creation confirmation and at most one reminder/follow-up
+per schedule. An indexed private outbox and
 an atomic five-minute claim prevent concurrent sends. The full provider body
 is saved before sending and reused with the same Resend idempotency key, even
 if photos arrive or code changes between attempts. Provider calls time out
 after ten seconds. Successful delivery is recorded only after provider success;
 database failures retry the same body and key.
 
-The sweep handles three emails per invocation. Initial delivery is eligible for
+The sweep handles three emails per invocation. Initial reminder/follow-up delivery is eligible for
 12 hours after the scheduled time, so enabling the feature does not mail old
 events. Events created after their reminder time do not receive that reminder.
 Retries stop after 12 claims or 23 hours from queue creation, staying inside
@@ -52,7 +63,7 @@ Exhausted rows remain unsent for investigation; do not automatically replay
 them with a fresh key because a timed-out request may have delivered.
 
 Changing an event's date or timezone changes its schedule, before or after
-queueing. A queued message for the abandoned schedule is suppressed and never
+queueing. A queued reminder/follow-up for the abandoned schedule is suppressed and never
 sent; the new schedule is queued in its own right when its time comes, so a
 host who postpones still gets a reminder two days before the date they moved
 to. The outbox is keyed on `(event_id, kind, scheduled_at)` for exactly this
@@ -68,6 +79,13 @@ to a host who genuinely postponed. Deleting the event cascades its outbox
 rows. Recipient changes suppress an already queued message. The row stores the
 recipient and email body, is inaccessible to both anon and signed-in hosts,
 and goes away when the event is deleted.
+
+Creation confirmations are queued only by an event-insert trigger, so replaying
+an idempotent creation request or editing an event never queues another one.
+They are eligible while the camera remains open and the outbox retry window is
+valid, even if the host changes the end date before the first send. Paused
+delivery does not prevent queueing; enabling it can send confirmations queued
+within the last 23 hours, but never older ones.
 
 The endpoint returns send/failure counts, reports failures under
 `event_email_delivery` / `event_email_sweep`, and reports every authorized run

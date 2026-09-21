@@ -133,7 +133,7 @@ AUTH_EMAIL_FROM=                        # optional auth sender override
 OURFILM_EVENT_EMAILS=false              # true lets the sweep send host event mail
 ```
 
-`OURFILM_EVENT_EMAILS` is the rollout switch for the two host lifecycle
+`OURFILM_EVENT_EMAILS` is the rollout switch for the three host lifecycle
 emails, the same shape as `OURFILM_EXPORT_WORKER` and `OURFILM_HU_DIRECT`.
 Off, `/api/event-emails/sweep` claims nothing and sends nothing, which is how
 previews and dev machines stay silent while sharing a production-shaped cron.
@@ -298,13 +298,13 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   locale and must not replace the production hook. Deployment details are in
   `supabase/templates/README.md`.
 
-- **Host event emails are built but not switched on anywhere.** Two messages
-  per event, in the event's own locale: a reminder at 10:00 two calendar days
-  before the local `capture_end_at` date, and a thank-you at 09:00 the day
-  after. They share `apps/web/lib/email/layout.ts` with the auth and
-  album-ready mail. `OURFILM_EVENT_EMAILS` is unset everywhere, so the sweep
-  claims nothing; `20260921061638_event_emails.sql` is **not yet on the
-  remote**. `docs/event-emails.md` is the runbook and holds the cutover steps.
+- **Three host event emails are built.** A creation confirmation, a reminder
+  at 10:00 two calendar days before the local `capture_end_at` date, and a
+  thank-you at 09:00 the day after, all in the event's own locale. They share
+  `apps/web/lib/email/layout.ts` with the auth and album-ready mail. Deployment
+  requires both event-email migrations and `OURFILM_EVENT_EMAILS=true`;
+  `docs/event-emails.md` holds the cutover steps. Verify deployed migrations
+  and configuration rather than assuming this working copy reflects them.
 
 - `apps/web/lib/slug.ts` mints the slug, and it is an **opaque 10-character code** with nothing of the event name in it. It stopped carrying a readable stem when renaming shipped: the stem is minted once and printed onto QR cards, so a renamed event's link said the old name for ever. There is no `slugify()` any more and `generateEventSlug()` takes no arguments — nothing a caller could pass should influence an address. The marketing previews show `EXAMPLE_SLUG` for the same reason: a mockup with a name in the URL teaches hosts to expect a link they will never be given. Events created before September 2026 keep their name-shaped slugs; nothing reads them.
 - `apps/web/vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
@@ -1070,7 +1070,7 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
 
 - **`event_emails`** — the host lifecycle outbox, one row per
-  `(event_id, kind, scheduled_at)` where `kind` is `upcoming` | `ended`: `capture_end_at` and `scheduled_at` (the
+  `(event_id, kind, scheduled_at)` where `kind` is `created` | `upcoming` | `ended`: `capture_end_at` and `scheduled_at` (the
   schedule the row was queued against), `snapshot` (locale, event name, slug,
   recipient, photo count — frozen at queue time), `payload` (the exact provider
   body, written before the first request), `attempts`, `next_attempt_at`,
@@ -1080,10 +1080,17 @@ authenticated` by name, and both RPCs (`event_email_due_at`,
   email address, so a host must not be able to read another host's outbox, or
   their own. Cascades with the event.
 
+  Creation confirmations also have a unique index on `event_id` where kind is
+  `created`. An after-insert trigger queues them atomically; no existing events
+  are backfilled. Their snapshot is populated from current settings at the
+  first claim and frozen once a provider payload exists. Editing or reopening
+  an event never queues a second creation confirmation. They use the same
+  sweep and retry limits as the scheduled mail.
+
   `claim_event_email` queues and leases in one call: it inserts every row that
   has come due in the last 12 hours, then takes exactly one unsent row under
   `for update … skip locked`. Two guards on the re-claim are the load-bearing
-  ones — it re-checks `capture_end_at` and the recomputed schedule against the
+  ones — for reminders/follow-ups it re-checks `capture_end_at` and the recomputed schedule against the
   live event, and the recipient against `auth.users` — so a rescheduled event
   or a changed email address suppresses the queued mail instead of sending a
   lie. The 23-hour ceiling is not arbitrary: Resend retains an idempotency key
@@ -1310,13 +1317,13 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 - Retake, in-camera preview, or an editor
 - Video, audio guestbook, live slideshow, RSVP
 - Leaderboard, recap, gamification, analytics, referral
-- Marketing email, and any lifecycle mail beyond the three that exist. Those
-  three are the album-ready mail from the export worker and the two host event
-  emails (`docs/event-emails.md`) — a reminder two days before the close and a
-  thank-you the morning after. They are the whole list, not the start of one:
+- Marketing email, and any lifecycle mail beyond the four that exist. Those
+  four are the album-ready mail from the export worker and the three host event
+  emails (`docs/event-emails.md`) — a creation confirmation, a reminder two days
+  before the close and a thank-you the morning after. They are the whole list:
   each is tied to an instant in one event's own life, each is sent once, and
   none of them is a sequence, a digest, a re-engagement nudge or a product
-  announcement. A fourth needs an argument of the same weight as the cron
+  announcement. Another needs an argument of the same weight as the cron
   paragraph below, and asking first
 - **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
   actually writing and maintaining an English site is a separate decision.
@@ -1334,7 +1341,7 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
   invoice is a legal problem rather than a degraded feature.
 
   There is now a fourth, `event-emails-sweep-http`, and its argument is that
-  the two host emails are the only thing in the product that has to happen at
+  the scheduled host emails are the only thing in the product that has to happen at
   a wall-clock instant rather than when a request arrives. Every other
   deadline here is resolved lazily on read — that is the whole point of
   materialising `reveal_at` — but a reminder is worthless the day after, and
