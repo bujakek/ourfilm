@@ -1,6 +1,9 @@
 import { PageGrain } from '@/components/site/page-grain'
+import { AuthLegalNotice } from '@/components/host/auth-legal-notice'
 import { localeTag, resolveLocale } from '@/lib/i18n'
 import type { Metadata } from 'next'
+import { requestOrigin } from '@/lib/request-origin'
+import { safeNext } from '@/lib/safe-next'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = {
@@ -11,9 +14,9 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; lang?: string }>
+  searchParams: Promise<{ error?: string; lang?: string; next?: string }>
 }) {
-  const { error, lang } = await searchParams
+  const { error, lang, next } = await searchParams
   const locale = resolveLocale(lang)
   const en = locale === 'en'
 
@@ -26,10 +29,16 @@ export default async function LoginPage({
         </h1>
         <p className="mt-3 mb-8 leading-relaxed text-pretty text-muted-foreground">
           {en
-            ? 'Enter your email and we will send you a secure sign-in link. No password needed.'
-            : 'Add meg az e-mail-címed, és küldünk egy belépési linket. Ha még nincs fiókod, automatikusan létrehozzuk.'}
+            ? 'Continue with Google or get a sign-in link by email. No password needed.'
+            : 'Folytasd Google-lel, vagy kérj e-mailes belépési linket. Ha még nincs fiókod, automatikusan létrehozzuk.'}
         </p>
-        <LoginForm linkError={error === 'link'} locale={locale} />
+        <LoginForm
+          linkError={error === 'link'}
+          oauthError={error === 'oauth'}
+          locale={locale}
+          next={safeNext(next ?? `/host?lang=${locale}`, await requestOrigin())}
+        />
+        <AuthLegalNotice locale={locale} />
       </main>
     </div>
   )

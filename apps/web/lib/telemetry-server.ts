@@ -194,6 +194,22 @@ export type ServerEventProperties = {
    *  failure so "is the Hungarian branch of the hook rendering" has a
    *  positive answer as well as a negative one. */
   auth_email_sent: { locale: 'en' | 'hu'; action: string }
+  /**
+   * How a sign-in actually ended, at the one place that knows: the callback
+   * that redeemed the credential.
+   *
+   * The browser cannot report this honestly — it hands the whole tab to
+   * Google or to a mail client and gets it back with a code it has not yet
+   * spent. `method` is the browser's `?provider`, which is a claim; it is
+   * narrowed to the two literals below and never echoed further. `outcome`
+   * is ours. No email address, no provider identifier, no error message: a
+   * failure here is either an expired credential or a misconfigured
+   * provider, and the difference lives in Supabase's own logs.
+   */
+  sign_in_settled: {
+    method: 'google' | 'email'
+    outcome: 'signed_in' | 'failed'
+  }
   /** A Hungarian invoice exists in Billingo and was emailed to the buyer.
    *  Never the invoice number, the partner id or the buyer's address — those
    *  are in `purchases`, which is where an auditor should be looking anyway. */

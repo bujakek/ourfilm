@@ -4,7 +4,10 @@ import { Check, Loader2, Mail } from 'lucide-react'
 import { useActionState, useRef, useState } from 'react'
 
 import { sendSignInLink } from '@/lib/auth-link'
+import { track } from '@/lib/telemetry'
 
+import { AuthDivider, GoogleSignIn } from '@/components/host/google-sign-in'
+import { AuthLegalNotice } from '@/components/host/auth-legal-notice'
 import { Sheet } from '@/components/host/sheet'
 import { Button } from '@/components/ui/button'
 import { inputClassName } from '@/components/ui/input'
@@ -20,7 +23,7 @@ const INITIAL: Result = { status: 'idle' }
  * The same magic link `/host/login` sends, and deliberately through the same
  * `sendSignInLink` — one link both signs up and signs in, so there is no
  * "register or log in?" fork to put in front of someone who has already
- * answered four questions. No new provider was added for this.
+ * answered four questions. Google sign-in shares the same return destination.
  *
  * What is different is where the link comes back to: `returnTo` carries the
  * resume route, so the callback lands on the screen that reads the draft and
@@ -47,6 +50,7 @@ export function AuthDialog({
   const en = locale === 'en'
   const [result, submit, pending] = useActionState(sendLink, INITIAL)
   const [existing, setExisting] = useState(false)
+  const [googlePending, setGooglePending] = useState(false)
   const sendingRef = useRef(false)
 
   async function sendLink(previous: Result, formData: FormData) {
@@ -57,9 +61,10 @@ export function AuthDialog({
     // `pending` alone still allows a fast double-tap to send twice — and each
     // new magic link invalidates the previous one, so the second mail would
     // kill the link in the first.
-    if (sendingRef.current) return previous
+    if (sendingRef.current || googlePending) return previous
     sendingRef.current = true
 
+    track('sign_in_started', { method: 'email', surface: 'onboarding' })
     const outcome = await sendSignInLink({ email, next: returnTo, locale })
 
     if (outcome.status === 'error') {
@@ -87,6 +92,7 @@ export function AuthDialog({
             <Check className="size-7 text-accent" strokeWidth={2.2} />
           </span>
         </div>
+        <AuthLegalNotice locale={locale} />
       </Sheet>
     )
   }
@@ -96,24 +102,33 @@ export function AuthDialog({
       open={open}
       onClose={onClose}
       closeLabel={en ? 'Close' : 'Bezárás'}
+      busy={pending || googlePending}
       title={en ? 'Save your event' : 'Mentsd el az eseményed'}
       detail={
         existing
           ? en
-            ? 'Enter your email and we will send you a sign-in link. Your settings are already saved.'
-            : 'Add meg az e-mail-címed, és küldünk egy belépési linket. A beállításaid már el vannak mentve.'
+            ? 'Continue with Google or get a sign-in link by email. Your settings are already saved.'
+            : 'Folytasd Google-lel, vagy kérj e-mailes belépési linket. A beállításaid már el vannak mentve.'
           : en
             ? 'Create a free account so you can come back and manage your event. Your settings are already saved.'
             : 'Hozz létre egy ingyenes fiókot, hogy később is elérd és kezeld az eseményt. A beállításaid már el vannak mentve.'
       }
     >
       <form action={submit} className="flex flex-col gap-3">
+        <GoogleSignIn
+          locale={locale}
+          surface="onboarding"
+          next={returnTo}
+          disabled={pending}
+          onPendingChange={setGooglePending}
+        />
+        <AuthDivider locale={locale} />
         <input
           name="email"
           type="email"
           required
           autoComplete="email"
-          disabled={pending}
+          disabled={pending || googlePending}
           placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
           aria-label={en ? 'Email address' : 'E-mail-cím'}
           className={inputClassName}
@@ -127,7 +142,7 @@ export function AuthDialog({
 
         <Button
           type="submit"
-          disabled={pending}
+          disabled={pending || googlePending}
           aria-busy={pending}
           size="lg"
           className="w-full"
@@ -161,6 +176,7 @@ export function AuthDialog({
           </button>
         )}
       </form>
+      <AuthLegalNotice locale={locale} />
     </Sheet>
   )
 }

@@ -240,6 +240,29 @@ export type TelemetryEventProperties = {
   gallery_image_failed: { event_id: string; surface: 'grid' | 'lightbox' }
   /** The guest-to-host loop, and the only growth mechanism in the product. */
   create_own_album_clicked: { event_id: string | null }
+
+  /**
+   * A host committed to one of the two ways in, and from which screen.
+   *
+   * There is no row and no session yet, so there is nothing to key this on —
+   * it is a count, not a funnel join. Its counterpart is the server's
+   * `sign_in_settled`: a `google` start with no settle is somebody who
+   * reached Google's consent screen and turned back, which is the only part
+   * of this path neither end can see on its own. No email address, ever —
+   * the method is the whole of what is reported.
+   */
+  sign_in_started: {
+    method: 'google' | 'email'
+    surface: 'login' | 'onboarding'
+  }
+  /** …and the hand-off never began: the provider SDK refused, or the network
+   *  did. Reported because the alternative reading of a missing settle —
+   *  a host who changed their mind — is a different problem with a different
+   *  fix, and only this tells them apart. */
+  sign_in_blocked: {
+    method: 'google' | 'email'
+    surface: 'login' | 'onboarding'
+  }
 }
 
 /** The four questions, in the order they are asked. */

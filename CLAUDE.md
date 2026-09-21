@@ -315,9 +315,10 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
 
 ## `redirect()` from a Server Action rejects on the client (settled)
 
-`apps/web/app/auth/callback/callback-exchange.tsx` calls `completeMagicLink` and used to
-treat any rejection as a transport failure, sending the browser to
-`/host/login?error=link`. But `redirect()` reports itself **by throwing**, and a
+`apps/web/app/(product)/auth/callback/callback-exchange.tsx` calls
+`completeSignIn` — named `completeMagicLink` until Google sign-in gave it a
+second credential to redeem — and used to treat any rejection as a transport
+failure, sending the browser to `/host/login?error=link`. But `redirect()` reports itself **by throwing**, and a
 Server Action re-throws that on the client — so the success path arrived in the
 same `catch`. The proxy then bounced the by-then-signed-in visitor from the login
 route to `/host`, which is where an ordinary login was going anyway. It looked
@@ -420,6 +421,8 @@ onboarding screens, and `event_id` from the moment there is a row.
 | `album_export_browser_finished` | A small album zipped in the host's browser reached the save dialog             |
 | `album_export_browser_failed`   | …or did not, and at which stage. A blob that fails to save is otherwise silent |
 | `create_own_album_clicked`      | The guest-to-host loop, from the bar under a revealed album's grid             |
+| `sign_in_started`               | Which way in a host chose — Google or an email link — and from which screen    |
+| `sign_in_blocked`               | …and the hand-off never began, so no settle is coming and they are still here  |
 
 **And the server reports what the browser cannot see honestly** — a payment
 Stripe confirmed rather than a browser that reached a success URL, a stream
@@ -447,6 +450,7 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `album_export_email_failed`    | …or refused it; the sweep retries up to five times                            |
 | `album_export_sweep`           | One run of the cron-driven sweep. No run for an hour is the alert             |
 | `auth_email_sent`              | The mail was accepted, in the language the hook actually rendered             |
+| `sign_in_settled`              | What the callback redeemed, by method. A start with no settle turned back     |
 | `invoice_issued`               | A Hungarian invoice exists in Billingo and was emailed to the buyer           |
 | `invoice_failed`               | …or was not. `blocked` is the Billingo document quota, which needs a human    |
 | `invoice_cancelled`            | A refunded purchase's invoice was cancelled with a storno document            |
@@ -475,12 +479,15 @@ retries can hold a response past the browser's commit timeout. Server events
 carry `photo_ref`, the SHA-256 of the photo id, never the id — with the bucket
 public, `event_id` plus `photo_id` is a link to the picture.
 
-Three of those pairs are read as gaps rather than as counts. A
+Four of those pairs are read as gaps rather than as counts. A
 `checkout_started` with no `checkout_settled` is an abandoned Stripe page; an
 `album_export_started` with no `album_export_finished` is an export that timed
-out or was cancelled; and `quota_banner_viewed` without a later
-`checkout_started` on the same `event_id` is a host watching guests be turned
-away. The last of those is the number this product most needs.
+out or was cancelled; a `sign_in_started` with neither a `sign_in_blocked` nor
+a `sign_in_settled` is somebody who reached Google's consent screen and turned
+back — the one part of that path neither end can see alone; and
+`quota_banner_viewed` without a later `checkout_started` on the same
+`event_id` is a host watching guests be turned away. The last of those is the
+number this product most needs.
 
 Everything reported from the browser about the host is **best effort by
 design**: PostHog loads on idle, and a screen that navigates immediately — to
@@ -559,9 +566,11 @@ The dashboard is part of the implementation. Before production:
 - enforce the privacy notice's maximum 12-month event retention;
 - restrict project access and create alerts for `server_error`, terminal
   `upload_issue`, `upload_store_unavailable`, a non-zero `missing_count` on
-  `album_export_finished`, and `checkout_blocked` with reason
+  `album_export_finished`, `checkout_blocked` with reason
   `stripe_not_configured` (which in production means a host was offered a
-  payment the deployment cannot take);
+  payment the deployment cannot take), and `sign_in_settled` with
+  `outcome: failed` on `method: google` (which means the same about a way in —
+  see `docs/google-sign-in.md`);
 - set the project token and the correct `NEXT_PUBLIC_OURFILM_ENV` separately
   for Vercel Development, Preview and Production.
 
@@ -831,7 +840,7 @@ caught up.
 | `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos                                               |
 | `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                          |
 | `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                                                                          |
-| `/host`                                                                                    | The host's own area, Supabase Auth magic link. `/admin/*` 308s here                                                                      |
+| `/host`                                                                                    | The host's own area, Supabase Auth — magic link or Google. `/admin/*` 308s here                                                          |
 | `/host/events/[slug]/export`                                                               | JSON: what happens to this album. Up to 20 photos, a manifest the browser zips itself; above, where the prepared archive is              |
 | `/host/events/[slug]/export/stream`                                                        | The large-album path for now: the whole ZIP streamed through a function. Retired by the export worker                                    |
 
@@ -950,7 +959,14 @@ inert — unread and unvalidated — until step 1.
   film has to belong to somebody, and the gallery credits each photo to the
   person who took it. Everything past that is the participant session
   (`apps/web/lib/participants.ts`).
-- **Host: Supabase Auth magic link.** Only `/host` is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
+- **Host: Supabase Auth, magic link or Google.** Two ways in, one account:
+  the same email address reaches the same `auth.users` row whichever button a
+  host presses, so there is no "sign up or sign in?" fork and no second
+  identity to reconcile. Google is a Supabase dashboard setting rather than an
+  environment variable, so unlike Stripe there is nothing in the app that can
+  tell whether it is switched on — enable the provider **before** deploying,
+  or the button reaches Supabase's own error page. `docs/google-sign-in.md` is
+  the runbook. Only `/host` is protected. Every event has an `owner_id`, and RLS scopes host reads and writes to `owner_id = auth.uid()` — a signed-in user who owns nothing sees nothing. This is ownership scoping, **not** the multi-tenant dashboard ruled out below.
 - **Roles: `user` and `admin`.** Every signup gets a `profiles` row with `role = 'user'` (created by a trigger on `auth.users`), which changes nothing — ownership scoping above is still what governs them. `admin` is the operator: `public.is_admin()` is OR'd into every host policy on `events`, `photos` and the storage bucket, so an admin reads and writes every album, and an admin-owned event is exempt from the upload cap. Nobody can promote themselves — `profiles` has no self-update policy, so the role is writable only by another admin or through the service role. Expect `/host` to list **every** event once you promote an account.
 - Privacy comes from the URL being unguessable and unindexed — add `noindex` to event routes. Photo files are public objects at unguessable, unlistable paths, so the same holds one level down: knowing a path is holding the photo, and nothing anonymous can discover one. The slug is therefore the whole lock: ten characters from a 30-character alphabet (`k3f9x7ab2m`, ~5.9e14), cryptographically random. It was six while a readable name stem sat in front of it — the stem was quietly carrying part of the guess, so removing it and keeping six would have made albums enumerable. Only `generateEventSlug()` may mint one.
 

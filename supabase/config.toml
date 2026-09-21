@@ -160,7 +160,13 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# Globs, because every sign-in callback carries `next`, `lang` and (for
+# Google) `provider`, and an exact entry would refuse the whole URL.
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "http://127.0.0.1:3000/**",
+  "http://localhost:3000/**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -353,6 +359,23 @@ url = ""
 skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
+
+# Google sign-in, the second way into `/host` beside the magic link.
+#
+# Off by default so `supabase start` needs no secrets: the local stack is run
+# mostly for `pnpm test:db`, which never signs anybody in with a provider. To
+# exercise the real button locally, put the credentials of a Google OAuth
+# client whose authorized redirect URI is
+# `http://127.0.0.1:54321/auth/v1/callback` into the two environment
+# variables below and flip `enabled`. Production is configured in the Supabase
+# dashboard, not here — see `docs/google-sign-in.md`.
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Required for local sign in with Google auth, per the note on the block above.
+skip_nonce_check = true
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.

@@ -107,13 +107,19 @@ export const EMAIL_PROVIDER = 'Resend'
  */
 export const LEGAL_VERSION = '2026-09-09-direct-hu'
 
-/** Shown at the foot of the terms and imprint. */
+/** The imprint's last update; legal documents have their own dates below. */
 export const LAST_UPDATED = '2026. szeptember 9.'
+
+/** Sign-in clarification; the paid-order terms in LEGAL_VERSION are unchanged. */
+export const TERMS_LAST_UPDATED = {
+  hu: '2026. szeptember 21.',
+  en: '21 September 2026',
+} as const
 
 /** The privacy notice changes independently from the contractual terms. */
 export const PRIVACY_LAST_UPDATED = {
-  hu: '2026. szeptember 5.',
-  en: '5 September 2026',
+  hu: '2026. szeptember 21.',
+  en: '21 September 2026',
 } as const
 
 /**
