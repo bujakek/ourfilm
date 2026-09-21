@@ -126,11 +126,20 @@ Abuse and storage emergency controls are server-only:
 ```bash
 OURFILM_UPLOADS_DISABLED=false          # true pauses all new reservations
 OURFILM_EVENT_STORAGE_LIMIT_BYTES=      # optional positive per-event master-byte cap
-RESEND_API_KEY=                         # auth, legal request and album-ready emails
+RESEND_API_KEY=                         # auth, legal request, album-ready and host event emails
 LEGAL_EMAIL_FROM=                       # optional sender override
 SEND_EMAIL_HOOK_SECRET=                 # Supabase Send Email Hook signature
 AUTH_EMAIL_FROM=                        # optional auth sender override
+OURFILM_EVENT_EMAILS=false              # true lets the sweep send host event mail
 ```
+
+`OURFILM_EVENT_EMAILS` is the rollout switch for the two host lifecycle
+emails, the same shape as `OURFILM_EXPORT_WORKER` and `OURFILM_HU_DIRECT`.
+Off, `/api/event-emails/sweep` claims nothing and sends nothing, which is how
+previews and dev machines stay silent while sharing a production-shaped cron.
+It is the one env variable whose absence is invisible from the app: nothing in
+the UI changes, so the only signal is the `event_email_sweep` telemetry
+carrying `skipped`. See `docs/event-emails.md`.
 
 Payments add four more, all server-only — Checkout is a redirect to Stripe's
 hosted page, so the browser never needs a publishable key:
@@ -289,6 +298,14 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   locale and must not replace the production hook. Deployment details are in
   `supabase/templates/README.md`.
 
+- **Host event emails are built but not switched on anywhere.** Two messages
+  per event, in the event's own locale: a reminder at 10:00 two calendar days
+  before the local `capture_end_at` date, and a thank-you at 09:00 the day
+  after. They share `apps/web/lib/email/layout.ts` with the auth and
+  album-ready mail. `OURFILM_EVENT_EMAILS` is unset everywhere, so the sweep
+  claims nothing; `20260921061638_event_emails.sql` is **not yet on the
+  remote**. `docs/event-emails.md` is the runbook and holds the cutover steps.
+
 - `apps/web/lib/slug.ts` mints the slug, and it is an **opaque 10-character code** with nothing of the event name in it. It stopped carrying a readable stem when renaming shipped: the stem is minted once and printed onto QR cards, so a renamed event's link said the old name for ever. There is no `slugify()` any more and `generateEventSlug()` takes no arguments — nothing a caller could pass should influence an address. The marketing previews show `EXAMPLE_SLUG` for the same reason: a mockup with a name in the URL teaches hosts to expect a link they will never be given. Events created before September 2026 keep their name-shaped slugs; nothing reads them.
 - `apps/web/vercel.json` pins functions to **`fra1`**. Supabase is in `eu-central-2`
   (Zurich) and Vercel's default is `iad1` (Washington DC), so every query on
@@ -434,6 +451,7 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `invoice_failed`               | …or was not. `blocked` is the Billingo document quota, which needs a human    |
 | `invoice_cancelled`            | A refunded purchase's invoice was cancelled with a storno document            |
 | `invoice_sweep`                | One run of the invoice retry sweep. No run for an hour is the alert           |
+| `event_email_sweep`            | One run of the host event-email sweep; `skipped` separates paused from dead   |
 | `commit_shot_received`         | A commit reached the function; its ids are the browser's claims               |
 | `commit_shot_finished`         | …and how it ended, by name, with the row read back after the commit           |
 
@@ -636,12 +654,23 @@ web server cannot cryptographically prove an offline device timestamp, so the
 existing participant's fixed roll is still the abuse ceiling. An existing
 reservation remains the stronger proof and replays without this timestamp gate.
 
-**Hosts are not told about the grace (settled).** A revealed album can gain
-photos for up to a day after the close, and a host who downloads the ZIP at
-the end of the party can miss them. That is accepted silently: no line on the
-album, the export or the settings screen. It was weighed and declined, so do not
-add one without asking. `shot_reserved_in_grace` is how often it actually
-happens.
+**Hosts are not told about the grace _in the app_ (settled).** A revealed album
+can gain photos for up to a day after the close, and a host who downloads the
+ZIP at the end of the party can miss them. That is accepted silently on every
+screen: no line on the album, the export or the settings screen. It was weighed
+and declined, so do not add one without asking. `shot_reserved_in_grace` is how
+often it actually happens.
+
+**The after-event email is the one exception**, and it is narrow on purpose.
+That mail arrives at 09:00 the morning after — inside the grace, and at the
+moment a host is most likely to download the album and stop looking — so it
+carries one sentence saying photos may still arrive from phones that were
+offline. It names no window and no duration, because a number is a promise
+about a device nobody controls; it only stops a host concluding that what they
+see is final. The rule it narrows is still the rule everywhere else: a screen
+tells nobody. Deleting the `note` on the `ended` branch of
+`apps/web/lib/email/event-email.ts` reverses this and nothing else depends on
+it.
 
 **The attempt budget is only ever spent on an answer from the server**, and
 `apps/web/lib/upload-failure.ts` is the whole of that judgement. Four attempts at ten
@@ -1040,6 +1069,41 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
 
 - **`stripe_webhook_events`** — `id` (Stripe's `evt_…`), `type`, `received_at`, `processed_at`. Idempotency plus an audit trail. RLS on with no policies at all: only the service role reaches it.
 
+- **`event_emails`** — the host lifecycle outbox, one row per
+  `(event_id, kind, scheduled_at)` where `kind` is `upcoming` | `ended`: `capture_end_at` and `scheduled_at` (the
+  schedule the row was queued against), `snapshot` (locale, event name, slug,
+  recipient, photo count — frozen at queue time), `payload` (the exact provider
+  body, written before the first request), `attempts`, `next_attempt_at`,
+  `sent_at`. RLS on with **no policies at all**, `revoke all … from anon,
+authenticated` by name, and both RPCs (`event_email_due_at`,
+  `claim_event_email`) are service-role only — the row holds a recipient's
+  email address, so a host must not be able to read another host's outbox, or
+  their own. Cascades with the event.
+
+  `claim_event_email` queues and leases in one call: it inserts every row that
+  has come due in the last 12 hours, then takes exactly one unsent row under
+  `for update … skip locked`. Two guards on the re-claim are the load-bearing
+  ones — it re-checks `capture_end_at` and the recomputed schedule against the
+  live event, and the recipient against `auth.users` — so a rescheduled event
+  or a changed email address suppresses the queued mail instead of sending a
+  lie. The 23-hour ceiling is not arbitrary: Resend retains an idempotency key
+  for 24 hours, and a replay past that is a second email rather than a retry.
+
+  **The unique key carries `scheduled_at`, and that is the whole reschedule
+  story.** Keyed on `(event_id, kind)` alone, a reminder sent for a date the
+  host later moved away from was the only one that event would ever get — and
+  moving the end forwards is how a host reopens a closed camera, so that is an
+  ordinary flow rather than an exotic one. Per schedule, the abandoned row is
+  suppressed and kept as history while the new date queues in its own right
+  when its time comes. The 12-hour eligibility window is the only bound on how
+  often that can repeat, which is enough: moving a date later never fires
+  immediately, because the new reminder time is still in the future.
+
+  **The body is frozen before the first request, and that is the point.** A
+  redeploy, a late photo or an edited event must not change what a replayed
+  idempotency key sends. `payload` is written and confirmed before the POST;
+  if that write fails, nothing is sent.
+
 - **`album_exports`** — one prepared album archive per row: `event_id` (cascade), `status` (`queued` | `processing` | `ready` | `failed` | `expired`), `source_hash` (over ids, `hidden_at`, `taken_at`, `created_at`, uploader name and zone, so a hide after an export never serves the stale ZIP), `photo_count`, `estimated_bytes`, `byte_size` (what Storage reported, never what the worker said), `storage_path`, `missing_count`, `attempt_count` (four claims is the budget), `next_attempt_at`, `locked_at` / `locked_until` (the lease), `tus_upload_url`, `notified_at` / `notify_attempts`, `last_error_code`, timestamps. One in-flight row per event by partial unique index. RLS on with no policies; every RPC (`request_album_export`, `album_export_status`, `claim_album_export`, `heartbeat_album_export`, `complete_album_export`, `fail_album_export`, `sweep_album_exports`) is service-role only. The host reaches it only through their own page after an ownership check; the worker only through `/api/exports/*` behind `EXPORT_WORKER_SECRET`. `20260909110000` also schedules two `pg_cron` jobs: the SQL sweep every minute and the HTTP sweep every five.
 
 Storage layout: `event-photos/{event_id}/{photo_id}.jpg` plus `_thumb.jpg` and `_view.jpg` beside it, and `{event_id}/cover-{uuid}.jpg` for the cover (a fresh id per upload, because on a public bucket the URL is the CDN cache key and an overwrite under the same key serves the old bytes for an hour; events from before September 2026 keep a `cover.jpg`). Storage policies key on the **folder** (the event id) and never on the filename, so a new derivative needs no policy change.
@@ -1246,7 +1310,14 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
 - Retake, in-camera preview, or an editor
 - Video, audio guestbook, live slideshow, RSVP
 - Leaderboard, recap, gamification, analytics, referral
-- Lifecycle and marketing email. The one transactional mail beyond auth — the album-ready mail from the export worker — is built and is the exception, not the start of a list
+- Marketing email, and any lifecycle mail beyond the three that exist. Those
+  three are the album-ready mail from the export worker and the two host event
+  emails (`docs/event-emails.md`) — a reminder two days before the close and a
+  thank-you the morning after. They are the whole list, not the start of one:
+  each is tied to an instant in one event's own life, each is sent once, and
+  none of them is a sequence, a digest, a re-engagement nudge or a product
+  announcement. A fourth needs an argument of the same weight as the cron
+  paragraph below, and asking first
 - **Translated UI copy.** The _architecture_ is multi-locale (see Locales);
   actually writing and maintaining an English site is a separate decision.
 - Realtime gallery updates (Supabase Realtime) — guests refresh
@@ -1260,8 +1331,20 @@ The page remains `noindex` while `hasRealCompanyDetails` is false.
   third, `invoices-sweep-http`, and it had to make the same argument: Stripe
   stops retrying a webhook after three days, a Billingo 402 cannot be cleared
   by retrying inside the hour, and a host who paid without receiving an
-  invoice is a legal problem rather than a degraded feature. Nothing else may
-  grow a worker or a schedule without an argument of that weight.
+  invoice is a legal problem rather than a degraded feature.
+
+  There is now a fourth, `event-emails-sweep-http`, and its argument is that
+  the two host emails are the only thing in the product that has to happen at
+  a wall-clock instant rather than when a request arrives. Every other
+  deadline here is resolved lazily on read — that is the whole point of
+  materialising `reveal_at` — but a reminder is worthless the day after, and
+  nobody visits a page to trigger their own reminder. Vercel Cron was the
+  cheaper option and was not taken: the schedule belongs beside the state it
+  reads, the Vault credentials and the sweep pattern already exist, and a
+  fourth scheduling mechanism would be a worse trade than a fourth job.
+
+  Nothing else may grow a worker or a schedule without an argument of that
+  weight.
 
 **Reversed by the pivot.** Per-guest shot scarcity, delayed reveal and a
 capture-window were all on this list before, and the Once review had explicitly

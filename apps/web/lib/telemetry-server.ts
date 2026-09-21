@@ -223,6 +223,15 @@ export type ServerEventProperties = {
     cancelled: number
     failed: number
   }
+  /** One run of the host event-email sweep. Same contract as the two above,
+   *  with one addition: `skipped` carries the reason a run did nothing, so a
+   *  rollout switch turned off reads as a paused schedule rather than as a
+   *  dead one. No event for an hour is still the alert. */
+  event_email_sweep: {
+    sent: number
+    failed: number
+    skipped: 'event_emails_disabled' | 'email_not_configured' | null
+  }
 
   // The stretch between the three renders landing and the row going `ready`.
   // Both ends of it used to be silent on the server: a commit that arrived
