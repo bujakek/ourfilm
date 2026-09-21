@@ -6,16 +6,20 @@ function database({
   saveError = null,
   sentError = null,
   empty = false,
+  kind = 'ended',
+  settings = {},
 }: {
   payload?: Record<string, unknown> | null
   saveError?: Error | null
   sentError?: Error | null
   empty?: boolean
+  kind?: string
+  settings?: Record<string, unknown>
 } = {}) {
   const writes: Record<string, unknown>[] = []
   const row = {
     id: 'mail-123',
-    kind: 'ended',
+    kind,
     payload,
     snapshot: {
       locale: 'en',
@@ -23,6 +27,7 @@ function database({
       slug: 'party-123',
       recipient: 'host@example.com',
       photoCount: 12,
+      ...settings,
     },
   }
   return {
@@ -115,5 +120,23 @@ describe('event email delivery', () => {
   it('does nothing when no email is due', async () => {
     expect(await sendNextEventEmail(database({ empty: true }).db)).toBe('empty')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('sends the creation confirmation from its stored event settings', async () => {
+    const { db } = database({
+      kind: 'created',
+      settings: {
+        captureEndAt: '2026-09-27T02:00:00+00:00',
+        revealAt: '2026-09-27T02:00:00+00:00',
+        revealMode: 'event_end',
+        timeZone: 'Europe/Budapest',
+        guestsCanView: true,
+      },
+    })
+    expect(await sendNextEventEmail(db)).toBe('sent')
+    const payload = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(payload.subject).toBe('Your camera is ready: Party')
+    expect(payload.text).toContain('04:00')
+    expect(payload.to).toEqual(['host@example.com'])
   })
 })

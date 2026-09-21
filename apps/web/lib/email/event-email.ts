@@ -1,21 +1,85 @@
 import { renderEmailLayout } from './layout'
 import type { Locale } from '../i18n'
 import { eventUrl, SITE_URL } from '../site'
+import { formatDeadline } from '../format'
 
-export type EventEmailKind = 'upcoming' | 'ended'
+export type EventEmailKind = 'created' | 'upcoming' | 'ended'
 
-export function renderEventEmail(input: {
-  kind: EventEmailKind
+type EventEmailInput = {
   locale: Locale
   eventName: string
   slug: string
   photoCount: number
-}): { subject: string; html: string; text: string } {
+} & (
+  | { kind: 'upcoming' | 'ended' }
+  | {
+      kind: 'created'
+      captureEndAt: string
+      timeZone: string
+      revealMode: 'instant' | 'event_end' | 'custom'
+      revealAt: string
+      guestsCanView: boolean
+    }
+)
+
+export function renderEventEmail(input: EventEmailInput): {
+  subject: string
+  html: string
+  text: string
+} {
   const { kind, locale, eventName, slug, photoCount } = input
   const hu = locale === 'hu'
   const upcoming = kind === 'upcoming'
   const url = `${SITE_URL}/host/events/${slug}?lang=${locale}`
   const guestUrl = eventUrl(slug, locale)
+  if (input.kind === 'created') {
+    const end = formatDeadline(input.captureEndAt, input.timeZone, locale)
+    const reveal = formatDeadline(input.revealAt, input.timeZone, locale)
+    const visibility = !input.guestsCanView
+      ? hu
+        ? 'A galériát csak te láthatod; a vendégeid fotózhatnak, de a képeket nem nézhetik meg.'
+        : 'Only you can view the gallery; your guests can take photos but cannot view them.'
+      : input.revealMode === 'instant'
+        ? hu
+          ? 'A vendégeid azonnal láthatják a feltöltött képeket.'
+          : 'Your guests can see uploaded photos immediately.'
+        : hu
+          ? `A képek ekkor jelennek meg a vendégeidnek: ${reveal}.`
+          : `Photos will be revealed to your guests on ${reveal}.`
+    return {
+      subject: hu
+        ? `Elkészült a kamerád: ${eventName}`
+        : `Your camera is ready: ${eventName}`,
+      ...renderEmailLayout({
+        locale,
+        preheader: hu
+          ? 'Az eseményed létrejött. Itt találod a linkjét és a beállításait.'
+          : 'Your event is created. Here are its link and settings.',
+        eyebrow: hu ? 'Elkészült a kamerád' : 'Your camera is ready',
+        heading: eventName,
+        intro: [
+          hu
+            ? 'Elkészült a kamerád! A vendégeid már csatlakozhatnak, és elkezdhetnek fotózni. Nem kell hozzá alkalmazás vagy regisztráció.'
+            : 'Your camera is ready! Guests can join and start taking photos now. No app or account needed.',
+          hu
+            ? `Eddig lehet fotózni: ${end}.`
+            : `The camera is open until ${end}.`,
+          visibility,
+          hu
+            ? `Ezt a linket küldd el a vendégeidnek: ${guestUrl}`
+            : `Send this link to your guests: ${guestUrl}`,
+        ],
+        button: { label: hu ? 'Esemény kezelése' : 'Manage your event', url },
+        note: hu
+          ? 'A nyomtatható QR-kódot az esemény oldalán, a QR-kód gombbal töltheted le. Ezt a levelet őrizd meg, hogy később is könnyen megtaláld az eseményedet.'
+          : 'Download your printable QR code using the QR code button on your event page. Keep this email so you can find your event again later.',
+        fallbackUrl: url,
+        footer: hu
+          ? 'Azért kaptad ezt a levelet, mert létrehoztál egy eseményt az OurFilmben.'
+          : 'You received this email because you created an event on OurFilm.',
+      }),
+    }
+  }
   const count = new Intl.NumberFormat(hu ? 'hu-HU' : 'en').format(photoCount)
   const subject = upcoming
     ? hu
@@ -47,8 +111,14 @@ export function renderEventEmail(input: {
       intro: upcoming
         ? [
             hu
-              ? 'Közeleg az eseményed! Ne felejtsd el kinyomtatni a QR-kódokat, és kitenni őket oda, ahol a vendégek könnyen megtalálják.'
-              : 'Your event is coming up! Remember to print your QR codes and put them where your guests can easily find them.',
+              ? 'Közeleg az eseményed! Nyomtasd ki a QR-kódokat, és tedd őket szem elé: a bejárathoz, az asztalokra vagy a bárpultra.'
+              : 'Your event is coming up! Remember to print your QR codes and put them by the entrance, on the tables or at the bar.',
+            hu
+              ? 'Szólj róla az esemény elején: „A QR-kóddal ti is fotózhattok nekünk.” Így mindenki tudja, mire való a kód.'
+              : 'Mention it when the event begins: “Scan the QR code to take photos for us.” That way, everyone knows what the code is for.',
+            hu
+              ? 'Készítsd el te az első képet, és mutasd meg a vendégeidnek, hogyan működik.'
+              : 'Take the first photo yourself and show your guests how it works.',
             hu
               ? 'Küldd el az esemény linkjét is minden vendégednek, hogy kéznél legyen a kamerájuk. Nem kell hozzá alkalmazás vagy regisztráció.'
               : 'Send the event link to everyone, too, so their camera is close at hand. No app or account needed.',

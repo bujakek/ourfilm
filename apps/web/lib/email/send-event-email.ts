@@ -14,6 +14,14 @@ const snapshotSchema = z.object({
   photoCount: z.number().int().nonnegative(),
 })
 
+const createdSnapshotSchema = snapshotSchema.extend({
+  captureEndAt: z.iso.datetime({ offset: true }),
+  timeZone: z.string().min(1),
+  revealMode: z.enum(['instant', 'event_end', 'custom']),
+  revealAt: z.iso.datetime({ offset: true }),
+  guestsCanView: z.boolean(),
+})
+
 /** The exact body is stored before the first request. Even a deployment or a
  * late photo cannot change the body associated with a Resend idempotency key. */
 export async function sendNextEventEmail(
@@ -27,13 +35,16 @@ export async function sendNextEventEmail(
 
   let payload = row.payload
   if (!payload) {
-    const snapshot = snapshotSchema.parse(row.snapshot)
-    const kind = z.enum(['upcoming', 'ended']).parse(row.kind)
+    const kind = z.enum(['created', 'upcoming', 'ended']).parse(row.kind)
+    const input =
+      kind === 'created'
+        ? { ...createdSnapshotSchema.parse(row.snapshot), kind }
+        : { ...snapshotSchema.parse(row.snapshot), kind }
     payload = {
       from: process.env.AUTH_EMAIL_FROM ?? 'OurFilm <noreply@ourfilm.app>',
-      to: [snapshot.recipient],
+      to: [input.recipient],
       reply_to: CONTACT_EMAIL,
-      ...renderEventEmail({ ...snapshot, kind }),
+      ...renderEventEmail(input),
     }
     const { data: saved, error: saveError } = await db
       .from('event_emails')

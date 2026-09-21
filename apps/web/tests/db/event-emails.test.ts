@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { randomUUID } from 'node:crypto'
 import {
   anonClient,
   createEvent,
@@ -46,6 +47,14 @@ describe('event email scheduling and delivery claims', () => {
       })
       .eq('id', event.id)
     if (error) throw error
+    // This fixture represents an event created days ago, before its reminder.
+    // Its creation confirmation would already have been handled then.
+    const { error: cleanupError } = await db
+      .from('event_emails')
+      .delete()
+      .eq('event_id', event.id)
+      .eq('kind', 'created')
+    if (cleanupError) throw cleanupError
     return event
   }
 
@@ -293,6 +302,127 @@ describe('event email scheduling and delivery claims', () => {
       expect((await db.rpc('claim_event_email')).data).toEqual([])
     } finally {
       await deleteEvent(event.id)
+    }
+  })
+
+  it('queues creation atomically and allows only one concurrent sender', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      const { data: queued } = await db
+        .from('event_emails')
+        .select('id, kind')
+        .eq('event_id', event.id)
+      expect(queued).toHaveLength(1)
+      expect(queued?.[0].kind).toBe('created')
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () => db.rpc('claim_event_email')),
+      )
+      for (const result of results) expect(result.error).toBeNull()
+      const rows = results.flatMap((r) => r.data ?? [])
+      expect(rows).toHaveLength(1)
+      expect(rows[0].snapshot).toMatchObject({
+        recipient: host.email,
+        eventName: 'Teszt esemény',
+        guestsCanView: true,
+        revealMode: 'event_end',
+      })
+      await db
+        .from('event_emails')
+        .update({
+          sent_at: new Date().toISOString(),
+          next_attempt_at: new Date(0).toISOString(),
+        })
+        .eq('id', rows[0].id)
+      await db
+        .from('events')
+        .update({
+          capture_end_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+        })
+        .eq('id', event.id)
+      expect((await db.rpc('claim_event_email')).data).toEqual([])
+      const { data: after } = await db
+        .from('event_emails')
+        .select('id')
+        .eq('event_id', event.id)
+        .eq('kind', 'created')
+      expect(after).toHaveLength(1)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('uses current settings for the first confirmation, then preserves its retry snapshot', async () => {
+    const event = await createEvent({ ownerId: host.id })
+    try {
+      const end = new Date(Date.now() + 7 * 86400000).toISOString()
+      await db
+        .from('events')
+        .update({
+          event_name: 'Updated party',
+          locale: 'en',
+          time_zone: 'America/New_York',
+          capture_end_at: end,
+          guests_can_view: false,
+        })
+        .eq('id', event.id)
+      const first = await db.rpc('claim_event_email').single()
+      expect(first.error).toBeNull()
+      expect(first.data?.snapshot).toMatchObject({
+        eventName: 'Updated party',
+        locale: 'en',
+        timeZone: 'America/New_York',
+        guestsCanView: false,
+      })
+      await db
+        .from('event_emails')
+        .update({
+          payload: { subject: 'Saved body' },
+          next_attempt_at: new Date(0).toISOString(),
+        })
+        .eq('id', first.data!.id)
+      await db
+        .from('events')
+        .update({ event_name: 'Changed again' })
+        .eq('id', event.id)
+      const retry = await db.rpc('claim_event_email').single()
+      expect(retry.error).toBeNull()
+      expect(retry.data?.snapshot).toEqual(first.data?.snapshot)
+      expect(retry.data?.id).toBe(first.data?.id)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('queues under the real host role and does not duplicate on a repeated creation key', async () => {
+    const id = randomUUID()
+    try {
+      const client = userClient(host.accessToken)
+      const input = {
+        id,
+        slug: `mail-test-${id}`,
+        owner_id: host.id,
+        creation_key: randomUUID(),
+        event_name: 'Host-created camera',
+        capture_start_at: new Date().toISOString(),
+        capture_end_at: new Date(Date.now() + 3600000).toISOString(),
+        reveal_at: new Date(Date.now() + 3600000).toISOString(),
+        reveal_mode: 'event_end' as const,
+      }
+      expect((await client.from('events').insert(input)).error).toBeNull()
+      const duplicate = await client.from('events').insert({
+        ...input,
+        id: randomUUID(),
+        slug: `mail-test-${randomUUID()}`,
+      })
+      expect(duplicate.error?.code).toBe('23505')
+      const { data, error } = await db
+        .from('event_emails')
+        .select('kind')
+        .eq('event_id', id)
+      expect(error).toBeNull()
+      expect(data).toEqual([{ kind: 'created' }])
+    } finally {
+      await deleteEvent(id)
     }
   })
 })
