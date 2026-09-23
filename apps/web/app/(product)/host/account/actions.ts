@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { hostDisplayNameProblem } from '@/lib/host-name'
+import { isLocale } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/server'
 
 export async function updateHostDisplayName(name: string): Promise<void> {
@@ -30,5 +31,21 @@ export async function updateHostDisplayName(name: string): Promise<void> {
 
   // The database trigger also rewrites every existing host participant row,
   // so gallery credits change without touching individual photo records.
+  revalidatePath('/host', 'layout')
+}
+
+/**
+ * The host's language: host screens, host mail and Stripe's page. Through the
+ * RPC for the same reason as the name — `profiles` has no self-update policy.
+ */
+export async function updateHostLocale(locale: string): Promise<void> {
+  if (!isLocale(locale)) throw new Error('Unsupported language')
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('set_host_locale', {
+    p_locale: locale,
+  })
+  if (error) throw error
+
   revalidatePath('/host', 'layout')
 }

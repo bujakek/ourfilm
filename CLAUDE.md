@@ -21,9 +21,23 @@ Changes must preserve the real event flow and its security boundaries; this is
 no longer a marketing-only prototype.
 
 **Language:** English and Hungarian are live product locales. Public routes are
-locale-prefixed. Every event stores `events.locale`; every QR, invitation and
-guest URL must retain it. Host and auth-completion screens use the event/draft
-locale. Code, comments, commit messages, and this doc stay in English.
+locale-prefixed. Two audiences, two sources, and neither is the event:
+
+- **Guests** see `/e/<slug>` in their own phone's language, decided exactly
+  like `/`: a saved switcher choice, then `Accept-Language`, then English
+  (`rootLocale` in `apps/web/lib/locale-preference.ts`). Guest URLs no longer
+  carry `?lang`; the one printed on older QR codes is ignored.
+- **Hosts** read and receive everything in their profile language
+  (`profiles.locale`, `apps/web/lib/host-locale.ts`): host screens, all host
+  mail and Stripe's page. It is set at signup from the language they signed up
+  in, filled in by the sign-in callback for Google accounts, and changed on
+  `/host/account`. Before an account exists (onboarding, login, auth mail) the
+  page's `?lang` decides.
+
+`events.locale` is still written and no longer read, except as the fallback
+for a host whose profile has no language on record. Dropping the column is a
+separate change.
+Code, comments, commit messages, and this doc stay in English.
 
 **Mobile-first, always.** Guests arrive almost exclusively on phones via QR or a shared link. Design and test at 390px width before anything else.
 

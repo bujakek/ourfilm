@@ -1,4 +1,5 @@
 import { ExternalLink, Settings } from 'lucide-react'
+import { getHostLocale } from '@/lib/host-locale'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -51,7 +52,9 @@ export default async function AdminEventPage({ params }: Props) {
   const { slug } = await params
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
-  const locale = event.locale
+  // The host's own language, from their profile — not the event's, which
+  // is only the fallback for an account with none on record.
+  const locale = await getHostLocale(event.locale)
   const en = locale === 'en'
 
   const [quota, photos] = await Promise.all([
@@ -84,7 +87,8 @@ export default async function AdminEventPage({ params }: Props) {
           return null
         })
       : null
-  const url = eventUrl(event.slug, locale)
+  // No `?lang`: the guest page follows each guest's own phone.
+  const url = eventUrl(event.slug)
   const now = new Date()
   const windowState = captureWindowState({
     now,

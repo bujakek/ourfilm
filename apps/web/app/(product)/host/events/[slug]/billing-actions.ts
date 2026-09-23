@@ -1,5 +1,6 @@
 'use server'
 
+import { getHostLocale } from '@/lib/host-locale'
 import { getEventQuota } from '@/lib/billing'
 import { checkBillingCountry, eventPricingFor } from '@/lib/billing-country'
 import { getOwnedEventBySlug } from '@/lib/events'
@@ -141,8 +142,8 @@ export async function startEventCheckout(
       slug: event.slug,
       ownerId: user.id,
       ownerEmail: user.email ?? null,
-      // The language of Stripe's page only, as before.
-      locale: event.locale,
+      // The language of Stripe's page: the host's, from their profile.
+      locale: await getHostLocale(event.locale),
       billingCountry: country.country,
       termsAcceptedAt: new Date().toISOString(),
     })
@@ -169,7 +170,7 @@ export async function startEventCheckout(
     event_id: event.id,
     source: 'settings',
     currency: eventPricingFor(country.country).currency,
-    locale: event.locale === 'en' ? 'en' : 'hu',
+    locale: await getHostLocale(event.locale),
     settlement: settlementFor(country.country),
   })
 

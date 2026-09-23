@@ -19,13 +19,14 @@ import {
   toGalleryTiles,
 } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
-import { isLocale, type Locale, resolveLocale } from '@/lib/i18n'
+import { cookies, headers } from 'next/headers'
+
+import { LOCALE_PREFERENCE_COOKIE, rootLocale } from '@/lib/locale-preference'
 
 export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ lang?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -44,18 +45,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * photos. Keeping that on one URL means a QR scan always has one destination
  * and the guest never has to understand the app's route structure.
  */
-export default async function EventPage({ params, searchParams }: Props) {
+export default async function EventPage({ params }: Props) {
   const { slug } = await params
-  const query = await searchParams
   const event = await getGuestEventState(slug)
   if (!event) notFound()
-  // `?lang` wins so a guest can read the page in their own language; the
-  // event's stored locale is the default, and `resolveLocale` catches a row
-  // written before the column was constrained.
-  const locale: Locale =
-    typeof query.lang === 'string' && isLocale(query.lang)
-      ? query.lang
-      : resolveLocale(event.locale)
+  // The guest's own language, decided exactly like the landing page's: a
+  // saved switcher choice, then the phone's `Accept-Language`, then English.
+  // Neither the event's language nor the `?lang` printed on older QR codes
+  // counts — the couple's language is not necessarily the guest's.
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()])
+  const locale = rootLocale({
+    cookie: cookieStore.get(LOCALE_PREFERENCE_COOKIE)?.value,
+    acceptLanguage: headerStore.get('accept-language'),
+  })
 
   const now = new Date()
   const timing = {
@@ -119,7 +121,7 @@ export default async function EventPage({ params, searchParams }: Props) {
       locale={locale}
       slug={slug}
       eventName={event.event_name}
-      eventUrl={eventUrl(event.slug, locale)}
+      eventUrl={eventUrl(event.slug)}
       captureStartAt={event.capture_start_at}
       captureEndAt={event.capture_end_at}
       initialNow={now.getTime()}

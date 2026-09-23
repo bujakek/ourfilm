@@ -1,7 +1,8 @@
 import { EventList } from '@/components/host/event-list'
+import { getHostLocale } from '@/lib/host-locale'
 import { EventListSkeleton } from '@/components/host/skeletons'
 import { captureIsOpen, getEventListItems } from '@/lib/events'
-import { localeTag, resolveLocale } from '@/lib/i18n'
+import { localeTag } from '@/lib/i18n'
 import { CalendarPlus, Plus, UserRound } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -18,7 +19,7 @@ export async function generateMetadata({
   const { lang } = await searchParams
   return {
     title:
-      resolveLocale(lang) === 'hu'
+      (await getHostLocale(lang)) === 'hu'
         ? 'Áttekintés — OurFilm'
         : 'Dashboard — OurFilm',
     robots: { index: false, follow: false },
@@ -31,7 +32,8 @@ export default async function AdminPage({
   searchParams: Promise<{ lang?: string }>
 }) {
   const { lang } = await searchParams
-  const locale = resolveLocale(lang)
+  // The profile's language; `?lang` only for an account with none yet.
+  const locale = await getHostLocale(lang)
   const en = locale === 'en'
   return (
     <main

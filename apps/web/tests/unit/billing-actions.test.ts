@@ -33,6 +33,9 @@ vi.mock('@/lib/events', () => ({
     locale: 'en',
   }),
 }))
+vi.mock('@/lib/host-locale', () => ({
+  getHostLocale: async (fallback: string) => fallback,
+}))
 vi.mock('@/lib/billing', () => ({
   getEventQuota: async () => ({ unlimited: false }),
 }))

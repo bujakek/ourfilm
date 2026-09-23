@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { hostLocaleFor } from '@/lib/host-locale'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Locale } from '../i18n'
@@ -118,7 +119,9 @@ export async function sendExportReadyEmail(
     if (!to) throw new Error('Host has no email address')
     if (!resendKey) throw new Error('RESEND_API_KEY is not set')
 
-    const locale: Locale = event.locale === 'en' ? 'en' : 'hu'
+    // The host's language, from their profile; the event's is only the
+    // fallback for an account with none on record.
+    const locale: Locale = await hostLocaleFor(db, event.owner_id, event.locale)
     const url = `${SITE_URL}/host/events/${event.slug}?lang=${locale}`
     const email = renderExportReadyEmail({
       locale,

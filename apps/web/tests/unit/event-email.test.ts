@@ -12,7 +12,9 @@ describe('host event emails', () => {
   it('includes the localized guest link and host QR destination', () => {
     const email = renderEventEmail({ ...input, kind: 'upcoming' })
     expect(email.text).toContain('print your QR codes')
-    expect(email.text).toContain('/e/anna-peter-abc123?lang=en')
+    // No language on the guest link: guests see their own phone's language.
+    expect(email.text).toContain('/e/anna-peter-abc123')
+    expect(email.text).not.toContain('/e/anna-peter-abc123?lang')
     expect(email.html).toContain('/host/events/anna-peter-abc123?lang=en')
     expect(email.html).toContain('Anna &amp; Peter')
   })
@@ -28,7 +30,7 @@ describe('host event emails', () => {
     expect(email.text).toContain('chosen reveal time')
   })
 
-  it('renders Hungarian copy and links using the event locale', () => {
+  it('renders Hungarian copy and host links in the host locale', () => {
     for (const kind of ['upcoming', 'ended'] as const) {
       const email = renderEventEmail({ ...input, kind, locale: 'hu' })
       expect(email.html).toContain('<html lang="hu">')
@@ -67,7 +69,8 @@ describe('host event emails', () => {
       )
       expect(email.text).toContain('04:00')
       expect(email.text).not.toContain('Europe/Budapest')
-      expect(email.text).toContain(`/e/${input.slug}?lang=${locale}`)
+      expect(email.text).toContain(`/e/${input.slug}`)
+      expect(email.text).not.toContain(`/e/${input.slug}?lang`)
       expect(email.html).toContain(`/host/events/${input.slug}?lang=${locale}`)
       expect(email.text).toContain(
         locale === 'hu' ? 'QR-kód gombbal' : 'QR code button',

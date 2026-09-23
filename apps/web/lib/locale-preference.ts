@@ -11,6 +11,11 @@ import { isLocale, type Locale } from '@/lib/i18n'
  *   2. the browser's `Accept-Language`, by its own priorities,
  *   3. English, as the international fallback.
  *
+ * The guest page (`/e/<slug>`) makes exactly the same decision through
+ * `rootLocale`, because the couple's language is not necessarily the guest's.
+ * Hosts are the exception: their language is on their profile
+ * (`lib/host-locale.ts`), because their mail is sent with no browser to ask.
+ *
  * The language chosen here is an interface language and never a commercial
  * fact. Payment routing reads the billing country the host confirms at
  * checkout (`lib/billing-country.ts`); nothing in that path reads this cookie.
