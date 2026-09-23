@@ -19,7 +19,10 @@ import {
   toGalleryTiles,
 } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
-import { isLocale, type Locale, resolveLocale } from '@/lib/i18n'
+import { cookies, headers } from 'next/headers'
+
+import { resolveLocale } from '@/lib/i18n'
+import { guestLocale, LOCALE_PREFERENCE_COOKIE } from '@/lib/locale-preference'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,13 +52,20 @@ export default async function EventPage({ params, searchParams }: Props) {
   const query = await searchParams
   const event = await getGuestEventState(slug)
   if (!event) notFound()
-  // `?lang` wins so a guest can read the page in their own language; the
-  // event's stored locale is the default, and `resolveLocale` catches a row
-  // written before the column was constrained.
-  const locale: Locale =
-    typeof query.lang === 'string' && isLocale(query.lang)
-      ? query.lang
-      : resolveLocale(event.locale)
+  // The guest's own language first. The couple's language is not
+  // necessarily theirs, and the `?lang` on a printed QR code or a shared
+  // invitation is the host's default rather than anything the guest chose —
+  // so a saved switcher choice, then the browser's `Accept-Language`, and
+  // only then that `?lang` and the event's stored locale. `resolveLocale`
+  // catches a row written before the column was constrained. Language only:
+  // nothing a guest can do depends on it.
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()])
+  const locale = guestLocale({
+    cookie: cookieStore.get(LOCALE_PREFERENCE_COOKIE)?.value,
+    acceptLanguage: headerStore.get('accept-language'),
+    lang: query.lang,
+    eventLocale: resolveLocale(event.locale),
+  })
 
   const now = new Date()
   const timing = {
@@ -119,7 +129,9 @@ export default async function EventPage({ params, searchParams }: Props) {
       locale={locale}
       slug={slug}
       eventName={event.event_name}
-      eventUrl={eventUrl(event.slug, locale)}
+      // Invitations carry the event's language as the default, never this
+      // guest's: the next guest's own browser decides for them.
+      eventUrl={eventUrl(event.slug, resolveLocale(event.locale))}
       captureStartAt={event.capture_start_at}
       captureEndAt={event.capture_end_at}
       initialNow={now.getTime()}

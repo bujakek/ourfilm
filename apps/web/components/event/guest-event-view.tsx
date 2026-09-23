@@ -914,7 +914,7 @@ export function GuestEventView({
         </motion.button>
 
         <InviteButton
-          url={`${eventUrl}?lang=${locale}`}
+          url={eventUrl}
           eventId={eventId}
           locale={locale}
           iconOnly

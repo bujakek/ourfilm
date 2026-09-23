@@ -23,7 +23,11 @@ no longer a marketing-only prototype.
 **Language:** English and Hungarian are live product locales. Public routes are
 locale-prefixed. Every event stores `events.locale`; every QR, invitation and
 guest URL must retain it. Host and auth-completion screens use the event/draft
-locale. Code, comments, commit messages, and this doc stay in English.
+locale. The guest page (`/e/<slug>`) is the exception: it prefers the guest's
+saved switcher choice, then their browser language, over the `?lang` and the
+event locale (`guestLocale` in `apps/web/lib/locale-preference.ts`), because
+the couple's language is not necessarily the guest's. Invitations shared from
+that page still carry the event locale. Code, comments, commit messages, and this doc stay in English.
 
 **Mobile-first, always.** Guests arrive almost exclusively on phones via QR or a shared link. Design and test at 390px width before anything else.
 
