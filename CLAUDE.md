@@ -245,15 +245,24 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   it describes a product that no longer exists. Read it for the decisions that
   still hold (slug shape, region, ownership scoping, self-serve delete) and
   ignore the phase list.
-- **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the disposable
-  camera story from `apps/web/components/site/*`: hero, benefits, how-it-works,
-  qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
-  camera story for `/en` and `/hu`, with `/` redirecting to Hungarian.
-  `defaultLocale` in `apps/web/lib/i18n.ts` and the `/` redirect in
+- **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the
+  disposable camera story from `apps/web/components/site/*`, in this order:
+  hero, testimonials, problem, how-it-works, qr-preview, occasion-prints,
+  photo-reveal, FAQ and final CTA. `<Stats />` and `<Benefits />` are
+  deliberately **not** rendered — see the comment in the page. It is the
+  permanent homepage for both `/en` and `/hu`, with `/` redirecting to
+  Hungarian. `defaultLocale` in `apps/web/lib/i18n.ts` and the `/` redirect in
   `apps/web/next.config.mjs` are the only two places that decide that, and they
   must agree. Everything else — `x-default`, `/llms.txt`, the shared 404
   and error screens, and every `?lang`-less product page via
   `resolveLocale()` — follows the constant.
+
+  The homepage also carries the site's only `Organization` and `WebSite`
+  JSON-LD, plus `FAQPage` over the eight questions it asks in the open. Those
+  three and the pricing page's `Product`/`Offer` are built in
+  `apps/web/lib/seo.ts` from the same arrays the components render, so a
+  question or a price can only reach the schema by being on the page.
+
 - **The homepage and `/hu/arak` describe the disposable-camera product.** The
   old upload demo, technical quality comparison, occasions carousel and
   instant-arrival pitch are no longer in the homepage flow. The unused
@@ -332,7 +341,7 @@ a link carried a `next`: the destination was silently discarded.
 
 `readParticipantTokenHash()` (`apps/web/lib/participants.ts`) reads the httpOnly cookie,
 and **each guest page checks it and returns or redirects before fetching
-anything**. Do not move this back up into `apps/web/app/e/[slug]/layout.tsx`, however
+anything**. Do not move this back up into `apps/web/app/(product)/e/[slug]/layout.tsx`, however
 tidier that looks:
 
 - Next renders the child segment and hands the layout the **result**. A layout
@@ -349,7 +358,7 @@ cookie is set) rather than from a client effect. An effect keyed on
 object on every render — so the success path would depend on render timing
 rather than on the action having succeeded.
 
-**`apps/web/app/e/[slug]` has no `loading.tsx`, deliberately.** With one present, the
+**`apps/web/app/(product)/e/[slug]` has no `loading.tsx`, deliberately.** With one present, the
 Suspense boundary around the join screen never completed on the client: the
 server-rendered form stayed in the DOM unhydrated, so the submit button was
 permanently disabled while typing still showed text. Verified by A/B — remove the
@@ -541,12 +550,13 @@ one so loosening it is a visible decision rather than a config drift:
   reports that it was renamed and never the new name; a checkout reports the
   event id and never the Session. `apps/web/tests/unit/telemetry-server.test.ts` pins
   both halves.
-- **Loaded late, and only where a key exists.** `apps/web/components/analytics/
-posthog-loader.tsx` imports `posthog-js` on idle from the product layout.
-  Not `apps/web/instrumentation-client.ts`, which runs before hydration on every
-  page; a QR landing on venue wifi does not wait behind analytics. Outcomes
-  reported before the client attaches are buffered in `apps/web/lib/telemetry.ts`.
-  The marketing site does not load it at all.
+- **Loaded late, and only where a key exists.**
+  `apps/web/components/analytics/posthog-loader.tsx` imports `posthog-js` on
+  idle from the product layout. There is deliberately **no**
+  `apps/web/instrumentation-client.ts` — that Next.js convention file runs
+  before hydration on every page, and a QR landing on venue wifi does not wait
+  behind analytics. Outcomes reported before the client attaches are buffered in
+  `apps/web/lib/telemetry.ts`. The marketing site does not load it at all.
 
 Feature flags are off (`advanced_disable_flags`) so no `/flags` request is
 made on every page load; flip it when the first flag exists.
@@ -750,11 +760,11 @@ does it need. Neither of the other two depends on the first being answered.
   one. `cover_path` stays nullable and every surface already renders an event
   without a cover; the upload branch in `createEvent` still works and is waiting
   for whatever surfaces the picker next.
-- **`apps/web/app/host/events/new/page.tsx` must stay synchronous.** `apps/web/app/host/loading.tsx`
+- **`apps/web/app/(product)/host/events/new/page.tsx` must stay synchronous.** `apps/web/app/(product)/host/loading.tsx`
   wraps every host segment in a Suspense boundary, and an `async` page here
   suspends into it — after which the boundary never completes on the client and
   the whole flow is served as unhydrated markup. Same Next 16.3 failure as the
-  `loading.tsx` note on `apps/web/app/e/[slug]`, reproduced here by A/B.
+  `loading.tsx` note on `apps/web/app/(product)/e/[slug]`, reproduced here by A/B.
 
 ### It is filled in signed out (settled)
 
@@ -834,8 +844,12 @@ caught up.
 | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `/`                                                                                        | 307 to `/hu`. Nothing renders here. Temporary on purpose — the default language is a current decision, and a cached 308 would outlive it |
 | `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                                                                       |
-| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `apps/web/content/blog/hu/*.mdx`                                                                                          |
+| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `apps/web/content/blog/hu/*.mdx`. Plus `/hu/blog/rss.xml`                                                                 |
+| `/hu/<slug>`                                                                               | The `pages` kind — commercial landing pages, one segment from the marketing site. Matched by `[locale]/[slug]`, so it is the catch-all   |
+| `/hu/alternativak`, `/hu/alternativak/*`                                                   | Competitor-alternative pages and their hub                                                                                               |
+| `/hu/osszehasonlitas`, `/hu/osszehasonlitas/*`                                             | The `vs` and `compare` kinds, sharing one hub                                                                                            |
 | `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                                                                           |
+| `/hu/impresszum`, `/hu/early-couple-program`                                               | The imprint, and the Early Couple application form                                                                                       |
 | `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft                                                 |
 | `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos                                               |
 | `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                          |
@@ -843,6 +857,19 @@ caught up.
 | `/host`                                                                                    | The host's own area, Supabase Auth — magic link or Google. `/admin/*` 308s here                                                          |
 | `/host/events/[slug]/export`                                                               | JSON: what happens to this album. Up to 20 photos, a manifest the browser zips itself; above, where the prepared archive is              |
 | `/host/events/[slug]/export/stream`                                                        | The large-album path for now: the whole ZIP streamed through a function. Retired by the export worker                                    |
+
+**Every route above has an English twin under an English slug** — `/en/pricing`,
+`/en/occasions/*`, `/en/alternatives/*`, `/en/comparisons/*`, `/en/about`,
+`/en/contact`, `/en/terms`, `/en/privacy`, `/en/legal` — mapped by
+`englishPathAliases` in `apps/web/lib/i18n.ts` and cross-redirected in
+`apps/web/next.config.mjs`. `/hu/<slug>` and `/en/<slug>` are the `pages` kind
+in each language, and the slugs are translated independently.
+
+**`[locale]/[slug]` is a catch-all, and that is why a new marketing route is a
+real decision.** A static segment added under `app/[locale]/` shadows any
+`pages` document with that slug; `tests/unit/content-seo.test.ts` fails if one
+ever does, which is the only thing standing between a new folder and a silently
+dead landing page.
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
@@ -868,17 +895,34 @@ because no human navigates to it and the URL is pasted into Stripe's dashboard.
 
 The `/e/` prefix is what the landing page already advertises in `qr-preview.tsx` and `how-it-works.tsx`, and it keeps the root namespace free for marketing pages.
 
-## Locales and the blog (settled)
+## Locales and the content pack (settled)
 
-`apps/web/lib/i18n.ts` holds `locales = ['hu'] as const`, and everything else is derived
-from it: URLs, `generateStaticParams`, hreflang, the sitemap, RSS. Nothing else
-enumerates languages.
+`apps/web/lib/i18n.ts` holds `locales = ['en', 'hu'] as const`, and everything
+else is derived from it: URLs, `generateStaticParams`, hreflang, the sitemap,
+RSS. Nothing else enumerates languages. **Both locales are live** — see
+"Enabling English" below for the shape that left behind.
 
-**Articles are MDX files in `apps/web/content/blog/<locale>/`.** There is no registry to
-keep in step any more — `apps/web/lib/blog/posts.ts` reads the directory, validates the
-frontmatter with zod, and everything downstream follows from that. Frontmatter
-is parsed off disk with `gray-matter` rather than imported out of the MDX,
-because `@types/mdx` cannot type named exports.
+**Content is MDX under `apps/web/content/<kind>/<locale>/`, and there are five
+kinds**, mapped to their public prefixes in `apps/web/lib/content/kinds.ts`:
+
+| Kind           | Lives at                 | Served at                 | `@type`       |
+| -------------- | ------------------------ | ------------------------- | ------------- |
+| `pages`        | `content/pages/<locale>` | `/hu/<slug>`              | `WebPage`     |
+| `blog`         | `content/blog/<locale>`  | `/hu/blog/<slug>`         | `BlogPosting` |
+| `alternatives` | `content/alternatives/…` | `/hu/alternativak/<slug>` | `WebPage`     |
+| `vs`           | `content/vs/<locale>`    | `/hu/osszehasonlitas/…`   | `WebPage`     |
+| `compare`      | `content/compare/…`      | `/hu/osszehasonlitas/…`   | `BlogPosting` |
+
+`pages` are the commercial landing pages and sit one segment from the marketing
+site, because that is the address a commercial query expects to land on. `vs`
+and `compare` deliberately share one URL space — to a reader they are the same
+shelf — so a slug must be unique across the two, which `assertNoCollisions`
+checks by **URL** rather than by kind.
+
+There is no registry to keep in step — `apps/web/lib/content/docs.ts` reads the
+directories, validates the frontmatter with zod, and everything downstream
+follows from that. Frontmatter is parsed off disk with `gray-matter` rather than
+imported out of the MDX, because `@types/mdx` cannot type named exports.
 
 **`id` is the article; `slug` is its address in one language.** They are
 separate so a Hungarian URL reads Hungarian:
@@ -887,42 +931,74 @@ separate so a Hungarian URL reads Hungarian:
 segment in a URL — use `getTranslations(id)`. `related` in frontmatter lists
 **ids** for the same reason.
 
-**`apps/web/content/blog/CLAUDE.md` is the authoring guide** — frontmatter contract,
-heading and link rules, the components available inside an article, Hungarian
-copy conventions, and what the build refuses. It sits next to the articles so
-it loads automatically when one is being written; read it before writing or
-editing a post rather than reconstructing the rules from here.
+**`apps/web/content/CLAUDE.md` is the authoring guide** — frontmatter contract,
+the summary-lead convention, heading and link rules, the components available
+inside a document, Hungarian copy conventions, and what the build refuses. It
+covers all five kinds and sits at the root of `content/` so it loads
+automatically whichever kind is being edited; read it before writing or editing
+a document rather than reconstructing the rules from here.
 
-### Adding an article
+### Adding a document
 
-1. Write `apps/web/content/blog/hu/<slug>.mdx`. The filename **must** equal the `slug`
-   in its frontmatter; the build refuses otherwise.
+1. Write `apps/web/content/<kind>/<locale>/<slug>.mdx`. The filename **must**
+   equal the `slug` in its frontmatter and the folder **must** match `locale`;
+   the build refuses otherwise.
 2. Frontmatter needs `id`, `locale`, `slug`, `title`, `description`,
    `publishedAt` (`YYYY-MM-DD`). Optional: `updatedAt`, `author`, `image`,
-   `related`, `draft`.
+   `related`, `topic` (blog only), `draft`.
 3. Start the body at `##` — the `<h1>` is rendered from `title`, and a second
    one would be an SEO defect.
-4. That is all. The route, the index entry, the sitemap URL, the RSS item and
-   `/llms.txt` all follow from the file.
+4. **Open with a labelled summary** — `**Röviden:**` in Hungarian,
+   `**In short:**` in English, `**The short answer:**` on an English page that
+   answers a which-is-better question. A test refuses a fourth label and
+   refuses a document without one. Write the answer there, not the topic.
+5. That is all. The route, the index entry, the sitemap URL, the hreflang pair,
+   the JSON-LD, the RSS item and `/llms.txt` all follow from the file.
 
 `draft: true` renders in `next dev` and disappears from a production build —
 index, sitemap, RSS, related lists, and the URL itself 404s.
 
-Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`apps/web/components/blog/mdx-blocks.tsx`)
-with no import line; they are injected through `apps/web/mdx-components.tsx`. Markdown
-tables work via `remark-gfm`. **Remark plugins must be named as strings** in
-`apps/web/next.config.mjs` — Turbopack runs the MDX pipeline in Rust and cannot accept a
-JS function.
+Documents can use `<Cta>`, `<Faq>` and `<Comparison>`
+(`apps/web/components/content/mdx-blocks.tsx`) with no import line; they are
+injected through `apps/web/mdx-components.tsx`. `<Comparison>` renders a real
+`<table>` with `<thead>`/`<th>`, and markdown tables work via `remark-gfm`.
+**Remark plugins must be named as strings** in `apps/web/next.config.mjs` —
+Turbopack runs the MDX pipeline in Rust and cannot accept a JS function.
 
-### Enabling English
+`<Faq>`'s items are read back out of the rendered body by
+`apps/web/lib/content/faq.ts` and emitted as `FAQPage` JSON-LD, so a question
+in the schema is always one a reader can see. A `## Gyakori kérdések` /
+`## Frequently asked questions` section of `###` headings is parsed the same
+way. Nothing about the FAQ schema is hand-authored.
 
-1. Add `'en'` to `locales` in `apps/web/lib/i18n.ts`.
-2. Uncomment the `en` line in `apps/web/lib/blog/mdx.ts`.
-3. Run `pnpm typecheck`. Every `Record<Locale, …>` of UI strings becomes a type
-   error listing exactly what needs translating — that is the checklist, and it
-   is the reason those maps are typed that way.
-4. Translate the marketing pages under `apps/web/app/[locale]/`.
-5. **`<html lang>` — done, and this is the shape it left behind.** There is no
+### Enabling English (done — this is the shape it left behind)
+
+English is live. `locales` holds both, `apps/web/lib/content/mdx.ts` has a
+loader row per kind per locale, every `Record<Locale, …>` of UI strings is
+filled in, and the marketing pages under `apps/web/app/[locale]/` are
+translated. All 69 Hungarian documents have an English counterpart.
+
+Adding a **third** locale is the same work, and the type system is still the
+checklist: `locales` plus a loader row per kind makes `mdx.ts` a type error
+until every kind is covered, and `pnpm typecheck` then lists every string map
+that needs translating. That is the reason those maps are typed that way.
+
+What the two live locales left behind, and what not to undo:
+
+1. **English URLs are English.** `englishPathAliases` in `lib/i18n.ts` maps
+   `/arak` → `/pricing`, `/alkalmak` → `/occasions`, `/alternativak` →
+   `/alternatives`, `/osszehasonlitas` → `/comparisons`, and the rest.
+   `localePath()` applies them, so callers pass the Hungarian-keyed path and get
+   the right address in either language. `apps/web/next.config.mjs` 308s every
+   crossed pair in both directions (`/en/arak` → `/en/pricing`,
+   `/hu/pricing` → `/hu/arak`), including the four occasion slugs that shipped
+   with Hungarian keys on the English side.
+2. **Never find a translation by swapping the locale segment.** Article and
+   comparison slugs are translated independently, so the URLs share nothing —
+   `getTranslations(id)` is the only correct route, and
+   `translatedMarketingPath()` falls back to the target-language homepage rather
+   than guessing. A guessed swap produces a convincing URL that 404s.
+3. **`<html lang>`** — there is no
    `apps/web/app/layout.tsx` any more. Two root layouts render their own
    `<html>`/`<body>`: `apps/web/app/[locale]/layout.tsx` for the public site, which sets
    `lang` from its own segment, and `apps/web/app/(product)/layout.tsx` for `/e/`,
@@ -948,9 +1024,6 @@ JS function.
    `document.documentElement.lang` after hydration. It left every
    server-rendered Hungarian page — all the indexed ones — shipping `lang="en"`.
    Do not reach for it again.
-
-An `en` article already sits in `apps/web/content/blog/en/` as a worked example. It is
-inert — unread and unvalidated — until step 1.
 
 ## Access model (settled)
 
@@ -1298,8 +1371,8 @@ Key files: `apps/web/lib/stripe/*` (`checkout.ts` builds the session for both en
 points and both settlements), `apps/web/lib/billing.ts`, `apps/web/lib/pricing.ts`
 (the displayed price, in one place), `apps/web/lib/checkout-readiness.ts`,
 `apps/web/lib/roles.ts`, `apps/web/app/api/stripe/webhook/route.ts`,
-`apps/web/app/host/events/[slug]/billing-actions.ts`,
-`apps/web/components/host/billing-card.tsx`, `apps/web/app/host/events/new/step-guests.tsx`.
+`apps/web/app/(product)/host/events/[slug]/billing-actions.ts`,
+`apps/web/components/host/billing-card.tsx`, `apps/web/app/(product)/host/events/new/step-guests.tsx`.
 
 Invoicing: `apps/web/lib/billingo/*` (`env.ts`, `client.ts` over the v3 REST API,
 `invoicing.ts` for the state machine), `apps/web/lib/billing-details.ts` (the zod
@@ -1310,7 +1383,9 @@ snapshot built from the Stripe Session), `apps/web/app/api/invoices/sweep/route.
 **`/hu/arak` and `/en/pricing` mirror this model.** They present one paid event rather than a
 three-tier SaaS table: up to five participants are free, one payment admits
 unlimited participants, and every participant still has the host's chosen roll.
-The page remains `noindex` while `hasRealCompanyDetails` is false.
+The page is `noindex` while `hasRealCompanyDetails` is false; it is **true**
+now, so `/hu/arak` and `/en/pricing` are indexed and in the sitemap, and they
+carry a `Product` with one `Offer` in the locale's own currency.
 
 ## MVP scope
 

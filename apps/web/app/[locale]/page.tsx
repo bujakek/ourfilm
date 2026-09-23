@@ -11,10 +11,19 @@ import { Problem } from '@/components/site/problem'
 import { QrPreview } from '@/components/site/qr-preview'
 import { Testimonials } from '@/components/site/testimonials'
 import { TryCameraCard } from '@/components/site/try-camera-card'
+import { JsonLd } from '@/components/json-ld'
 import { isLocale, localeOgTag } from '@/lib/i18n'
+import { marketingCopy } from '@/lib/marketing-copy'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { canonicalUrl, localizedPageAlternates } from '@/lib/seo'
+import {
+  canonicalUrl,
+  faqJsonLd,
+  faqPairs,
+  localizedPageAlternates,
+  organizationJsonLd,
+  webSiteJsonLd,
+} from '@/lib/seo'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -53,8 +62,21 @@ export default async function Page({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
 
+  // The same array `<Faq>` renders, so the schema cannot describe a question
+  // the page does not ask — the guarantee `lib/content/faq.ts` gets by parsing
+  // MDX, this gets for free by sharing the source. Every article on the site
+  // already carries `FAQPage`; the homepage asks eight questions in the open
+  // and was the one page answering them only to a human reader.
+  const faq = faqJsonLd(faqPairs(marketingCopy[locale].faq.items))
+
   return (
-    <div className="relative min-h-screen">
+    <div className="editorial-home relative min-h-screen">
+      {/* Who OurFilm is, and which language's homepage this is. Rendered here
+          rather than in the layout: the layout wraps every public page, and one
+          `WebSite` node per article is noise. */}
+      <JsonLd data={organizationJsonLd()} />
+      <JsonLd data={webSiteJsonLd(locale)} />
+      {faq ? <JsonLd data={faq} /> : null}
       <PageGrain />
       <Navbar locale={locale} />
       <main className="relative z-10">

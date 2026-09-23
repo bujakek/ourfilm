@@ -1,11 +1,16 @@
 /**
  * The locale list, and everything derived from it.
  *
- * **Adding English is this array plus one line in `lib/content/mdx.ts`.** Every
- * URL, every hreflang tag, every sitemap entry and every static param is
+ * Every URL, every hreflang tag, every sitemap entry and every static param is
  * generated from `locales`, so nothing else enumerates languages by hand.
- * The one exception is `<html lang>` in `app/layout.tsx`, which is a single
- * root layout and therefore fixed at `hu` — see the checklist in CLAUDE.md.
+ * Both locales are live: adding a third is this array plus a loader row per
+ * kind in `lib/content/mdx.ts`, and `pnpm typecheck` then lists every
+ * `Record<Locale, …>` of UI strings that needs translating.
+ *
+ * `<html lang>` is **not** an exception any more. There is no `app/layout.tsx`;
+ * two root layouts render their own `<html>`, and `app/[locale]/layout.tsx`
+ * sets `lang` from its own segment. See "Locales and the content pack" in
+ * CLAUDE.md for what that shape cost.
  *
  * Not `server-only`: the navbar is a Client Component and builds its own hrefs.
  */

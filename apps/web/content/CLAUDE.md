@@ -1,13 +1,23 @@
-# Writing an article
+# Writing a content document
 
-Rules for everything under `content/blog/`. Follow them and the build passes,
-the article looks like the rest of the site, and the sitemap, RSS and
-`/llms.txt` update themselves. Most of this is enforced — `pnpm verify` fails
-with the file path and the bad field rather than publishing something wrong —
-but the enforced parts are the minority, so read the whole thing.
+Rules for everything under `content/`. Follow them and the build passes, the
+page looks like the rest of the site, and the sitemap, hreflang, JSON-LD, RSS
+and `/llms.txt` update themselves. Most of this is enforced — `pnpm verify`
+fails with the file path and the bad field rather than publishing something
+wrong — but the enforced parts are the minority, so read the whole thing.
 
-Article copy is **Hungarian**. This file, filenames, ids and frontmatter keys
-stay English.
+**There are five kinds, and they share this one contract.** `content/pages/` is
+the commercial landing pages at `/<locale>/<slug>`, `content/blog/` the guides,
+`content/alternatives/` the competitor-alternative pages, and `content/vs/` and
+`content/compare/` the two comparison kinds that share one hub.
+`lib/content/kinds.ts` maps each to its URL prefix and its schema type; a money
+page and a guide want exactly the same frontmatter, which is what lets `related`
+point across kinds.
+
+**Both locales are live**, and copy is written in the language of the folder:
+`content/blog/hu/` is Hungarian, `content/blog/en/` is English. Every Hungarian
+document has an English counterpart. This file, filenames, ids and frontmatter
+keys stay English.
 
 ## Copy-paste template
 
@@ -31,8 +41,9 @@ Nyitó bekezdés. Nincs `#` cím — a `<h1>` a `title` mezőből készül.
 Szöveg.
 ```
 
-Save it as `content/blog/hu/eskuvoi-foto-megosztas.mdx` — **the filename must
-equal `slug`**, or the build stops.
+Save it as `content/<kind>/<locale>/<slug>.mdx` — in this case
+`content/blog/hu/eskuvoi-foto-megosztas.mdx`. **The filename must equal `slug`**
+and the folder must match `locale`, or the build stops.
 
 ## Frontmatter
 
@@ -89,6 +100,41 @@ reader first and a search engine second.
 - Blank line between every block. Two spaces at the end of a line do _not_
   make a line break here — use a paragraph.
 - Keep paragraphs to three or four sentences. This is read on a phone.
+
+### The summary lead
+
+**Every page opens with a labelled one-paragraph summary**, and `pnpm verify`
+fails without one:
+
+```mdx
+**Röviden:** a vendég QR-kóddal nyitja meg a közös kamerát, véges tekercsre
+fotóz, a galéria pedig azonnal vagy az esemény végén nyílik meg.
+```
+
+Three labels, and no fourth:
+
+| Label                   | Used by                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `**Röviden:**`          | Every Hungarian page                                                                 |
+| `**In short:**`         | English guides and money pages                                                       |
+| `**The short answer:**` | English pages answering a which-is-better question (`vs`, `alternatives`, `compare`) |
+
+It goes in the first or second block — the competitor pages open with a
+sentence of context and put the summary under it, which reads better and
+extracts the same.
+
+Lowercase after the colon, unless the first word is a proper noun
+(`**Röviden:** Dropbox használható…`) or a quoted term.
+
+The point is not decoration. Answer engines quote a summary whose edges they
+can find, and an unlabelled first paragraph has none — so write the **answer**
+here, not the topic, and make it stand alone: someone who reads only this
+paragraph should have been told the thing they asked. Do not restate the
+frontmatter `description` word for word; that sentence is for a result snippet,
+this one is for a reader who already clicked.
+
+**Don't put the free-guest limit or a price in it.** Those live on `/hu/arak`,
+for the reason in the Hungarian copy section below.
 
 ### Links
 
@@ -163,6 +209,9 @@ defeats the point of the whole setup.
 
 ## Hungarian copy
 
+Applies to every document under a `hu/` folder. The English side has no
+equivalent list yet; match the tone of the `en/` documents already there.
+
 The house style, in the order it gets forgotten:
 
 - **Tegezés, always.** "Töltsd fel", "Nézd meg", "Olvasd be". Never _Ön_.
@@ -201,8 +250,14 @@ Each of these fails `pnpm verify` with the file path and the field:
   (`2026-02-31` is rejected rather than quietly becoming March 3rd)
 - `slug` that does not match the filename
 - `locale` that does not match the folder
-- two articles sharing a `slug`, or sharing an `id` within one language
-- a `related` id with no article behind it in the same language
+- two documents sharing a `slug`, or sharing an `id` within one language — and
+  for `vs` and `compare` the check is by **URL**, because they share a hub
+- a `related` id with no document behind it in the same language
+- a missing summary lead, or one whose label is not `Röviden`, `In short` or
+  `The short answer`
+- a `pages` slug that collides with a static route under `app/[locale]/`, which
+  would otherwise be a landing page that silently never renders
+- an `<h1>` in the body
 
 ## Before you commit
 
