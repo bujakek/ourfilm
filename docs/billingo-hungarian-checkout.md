@@ -1,10 +1,12 @@
 # Hungarian checkout: direct Stripe + Billingo
 
 Two arrangements sell the same product, and which one applies is decided by
-`events.locale` in exactly one place — `settlementFor()` in
-`apps/web/lib/stripe/checkout.ts`.
+the **billing country the host confirms before Checkout** — never by the
+interface language or `events.locale` — in exactly one place: `settlementFor()`
+in `apps/web/lib/settlement.ts`. The choice is stored on the purchase
+(`selected_billing_country`, `settlement`) and never re-derived.
 
-|                        | English event (`locale: 'en'`)        | Hungarian event (`locale: 'hu'`)           |
+|                        | Any other supported billing country   | `HU` billing country                       |
 | ---------------------- | ------------------------------------- | ------------------------------------------ |
 | Session                | `managed_payments: { enabled: true }` | no `managed_payments`                      |
 | Price                  | `STRIPE_PRICE_EVENT_USD`, 39 USD      | `STRIPE_PRICE_EVENT`, 12 900 Ft            |
@@ -180,7 +182,8 @@ secret to rotate.
 
 ## Verifying end to end
 
-1. A `locale: 'hu'` event → billing card → checkout. Stripe must ask for a
+1. An event in either language → billing card → billing country Hungary →
+   checkout. Stripe must ask for a
    billing address and show the ÁSZF checkbox, and Apple Pay must appear on
    HUF. Pay with `4242…`.
 2. `stripe listen --forward-to localhost:3000/api/stripe/webhook`. The row
@@ -190,10 +193,10 @@ secret to rotate.
    12 900 Ft gross, and the email went out.
 4. `stripe events resend` the same event — **no second invoice**.
 5. Refund fully in the Dashboard → a storno document, emailed.
-6. A `locale: 'en'` event still carries `managed_payments` and creates no
-   Billingo document.
-7. Unset `BILLINGO_API_KEY`: Hungarian checkout is refused with
-   `billingo_not_configured`, English checkout still works.
+6. Billing country Germany (from the Hungarian UI too) carries
+   `managed_payments` and creates no Billingo document.
+7. Unset `BILLINGO_API_KEY`: checkout for `HU` is refused with
+   `billingo_not_configured`, every other country still works.
 8. Apple Pay must be tested on a real Apple device with a Hungarian billing
    address in Wallet. A desktop test-card checkout proves nothing about it.
 
@@ -218,11 +221,19 @@ secret to rotate.
   authority on what was charged, and that is the number that reaches a document
   carrying our tax number. A disagreement is reported as
   `checkout_amount_mismatch` — nothing ordinary produces one.
-- **A non-Hungarian billing address** on a Hungarian event parks the row at
-  `invoice_status = 'failed'` and retries hourly, because a Hungarian AAM
-  invoice describes a Hungarian sale and accepting a foreign address is a VAT
-  decision rather than a UI option. Rare in practice; it needs a human, and the
-  repeated `invoice_failed` is how you learn about it.
+- **A billing country changed inside Stripe's page** cannot be prevented:
+  hosted Checkout has no parameter restricting billing-address countries and no
+  server hook before payment. The webhook compares what the buyer entered with
+  what they confirmed on our page and with Stripe's own `managed_payments`
+  record; a crossing of the HU / non-HU boundary, or a disagreement, sets
+  `purchases.reconciliation_reason` and reports `ReconciliationRequiredError`
+  (operation `checkout_reconciliation`). The sale stays paid and the album
+  unlocked; no invoice is claimed (`claim_purchase_invoice` refuses flagged
+  rows) and nothing is refunded automatically. A person decides — issue the
+  invoice by hand and clear the reason, or refund — and a completed payment's
+  merchant of record is never changed. Find them with
+  `select id, settlement, selected_billing_country, reported_billing_country,
+reconciliation_reason from purchases where reconciliation_reason is not null`.
 - **Deleting an event or an account no longer deletes the purchase.** Both
   foreign keys are `on delete set null` and the billing snapshot on the row is
   self-contained, because an accounting record has to outlive the album.

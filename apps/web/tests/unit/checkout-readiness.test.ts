@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { type BillingCountry, parseBillingCountry } from '@/lib/billing-country'
 import {
   checkoutBlockedReason,
   checkoutIsConfigured,
+  checkoutReadiness,
 } from '@/lib/checkout-readiness'
+
+// Readiness is keyed on the billing country now. These stand for the two sides
+// of the routing boundary the old locale keys used to approximate.
+const HU = parseBillingCountry('HU') as BillingCountry
+const DE = parseBillingCountry('DE') as BillingCountry
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -28,28 +35,28 @@ function billingoConfigured() {
 }
 
 describe('checkout readiness', () => {
-  it('needs nothing but Stripe to sell an English event', () => {
+  it('needs nothing but Stripe to sell to a non-Hungarian billing address', () => {
     stripeConfigured()
     huDirect(true)
 
     // Link is the merchant of record there and issues the document, so a
     // deployment with no Billingo keys is a correctly configured one.
-    expect(checkoutIsConfigured('en')).toBe(true)
-    expect(checkoutBlockedReason('en')).toBeNull()
+    expect(checkoutIsConfigured(DE)).toBe(true)
+    expect(checkoutBlockedReason(DE)).toBeNull()
   })
 
-  it('needs Billingo as well to sell a Hungarian event', () => {
+  it('needs Billingo as well to sell to a Hungarian billing address', () => {
     stripeConfigured()
     huDirect(true)
 
     // A Hungarian sale is OurFilm's own: the invoice and its NAV report are
     // ours to produce, and there is no way to make that right after the fact.
-    expect(checkoutIsConfigured('hu')).toBe(false)
-    expect(checkoutBlockedReason('hu')).toBe('billingo_not_configured')
+    expect(checkoutIsConfigured(HU)).toBe(false)
+    expect(checkoutBlockedReason(HU)).toBe('billingo_not_configured')
 
     billingoConfigured()
-    expect(checkoutIsConfigured('hu')).toBe(true)
-    expect(checkoutBlockedReason('hu')).toBeNull()
+    expect(checkoutIsConfigured(HU)).toBe(true)
+    expect(checkoutBlockedReason(HU)).toBeNull()
   })
 
   it('reports the missing payment processor before the missing invoicer', () => {
@@ -58,8 +65,8 @@ describe('checkout readiness', () => {
 
     // Without Stripe nothing works in either locale, and naming Billingo
     // first would send somebody to fix the wrong dashboard.
-    expect(checkoutBlockedReason('hu')).toBe('stripe_not_configured')
-    expect(checkoutBlockedReason('en')).toBe('stripe_not_configured')
+    expect(checkoutBlockedReason(HU)).toBe('stripe_not_configured')
+    expect(checkoutBlockedReason(DE)).toBe('stripe_not_configured')
   })
 
   it('refuses a live Stripe key anywhere but production', () => {
@@ -75,12 +82,12 @@ describe('checkout readiness', () => {
     // production URL, so that charge is never reported back: money moves with
     // no paid row, no unlocked album and no invoice.
     vi.stubEnv('VERCEL_ENV', 'preview')
-    expect(checkoutIsConfigured('hu')).toBe(false)
-    expect(checkoutIsConfigured('en')).toBe(false)
-    expect(checkoutBlockedReason('en')).toBe('stripe_not_configured')
+    expect(checkoutIsConfigured(HU)).toBe(false)
+    expect(checkoutIsConfigured(DE)).toBe(false)
+    expect(checkoutBlockedReason(DE)).toBe('stripe_not_configured')
 
     vi.stubEnv('VERCEL_ENV', 'production')
-    expect(checkoutIsConfigured('en')).toBe(true)
+    expect(checkoutIsConfigured(DE)).toBe(true)
   })
 
   it('leaves a test key alone in every environment', () => {
@@ -89,18 +96,18 @@ describe('checkout readiness', () => {
     huDirect(true)
     for (const where of ['preview', 'development', 'production']) {
       vi.stubEnv('VERCEL_ENV', where)
-      expect(checkoutIsConfigured('hu')).toBe(true)
+      expect(checkoutIsConfigured(HU)).toBe(true)
     }
   })
 
-  it('does not take English checkout down with Hungarian invoicing', () => {
+  it('does not take international checkout down with Hungarian invoicing', () => {
     stripeConfigured()
     huDirect(true)
 
     // The regression this file exists for: ANDing the two flags would switch
     // off every preview and dev machine that has no Billingo keys.
-    expect(checkoutIsConfigured('en')).toBe(true)
-    expect(checkoutIsConfigured('hu')).toBe(false)
+    expect(checkoutIsConfigured(DE)).toBe(true)
+    expect(checkoutIsConfigured(HU)).toBe(false)
   })
 
   it('asks for no Billingo while the cutover flag is off', () => {
@@ -110,15 +117,33 @@ describe('checkout readiness', () => {
     // The state this merges in: Hungarian events still settle through Managed
     // Payments, Link issues the document, and demanding an invoicing provider
     // for a sale we do not invoice would switch off a checkout that works.
-    expect(checkoutIsConfigured('hu')).toBe(true)
-    expect(checkoutBlockedReason('hu')).toBeNull()
+    expect(checkoutIsConfigured(HU)).toBe(true)
+    expect(checkoutBlockedReason(HU)).toBeNull()
   })
 
   it('starts asking for Billingo the moment the flag is flipped', () => {
     stripeConfigured()
     huDirect(true)
 
-    expect(checkoutIsConfigured('hu')).toBe(false)
-    expect(checkoutBlockedReason('hu')).toBe('billingo_not_configured')
+    expect(checkoutIsConfigured(HU)).toBe(false)
+    expect(checkoutBlockedReason(HU)).toBe('billingo_not_configured')
+  })
+
+  it('reports both sides of the boundary for a screen with no country yet', () => {
+    stripeConfigured()
+    huDirect(true)
+
+    expect(checkoutReadiness()).toEqual({
+      domestic: false,
+      international: true,
+      domesticSettlement: 'direct',
+    })
+
+    huDirect(false)
+    expect(checkoutReadiness()).toEqual({
+      domestic: true,
+      international: true,
+      domesticSettlement: 'managed',
+    })
   })
 })

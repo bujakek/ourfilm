@@ -1,6 +1,7 @@
 'use server'
 
 import { getEventQuota } from '@/lib/billing'
+import { checkBillingCountry, eventPricingFor } from '@/lib/billing-country'
 import {
   isRevealChoice,
   isShotOption,
@@ -14,6 +15,7 @@ import { generateEventSlug } from '@/lib/slug'
 import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { checkoutBlockedReason } from '@/lib/checkout-readiness'
+import { settlementFor } from '@/lib/settlement'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 
@@ -30,6 +32,10 @@ export type EventDraftInput = {
   plan: string
   guestsCanView: boolean
   legalAccepted: boolean
+  /** The billing country chosen on the paid tile. Only read when `plan` is
+   *  `full`, validated like everything else here, and the only thing that
+   *  decides how the event is sold — never `locale`. */
+  billingCountry?: string | null
   /** Per-draft uuid. Makes a repeat attempt land on the event the first one
    *  created instead of a second one. Optional: a flow with no draft behind it
    *  has nothing to be idempotent about. */
@@ -343,17 +349,23 @@ export async function createEventFromDraft(
     // payments not switched on, or try again — better than a silent landing on
     // the QR code would.
     destination = `/host/events/${slug}/settings?lang=${locale}`
-    // A Hungarian event is a direct sale that OurFilm has to invoice, so it
-    // also needs Billingo; an English one settles through Link and does not.
-    const notReady = checkoutBlockedReason(locale)
-    if (notReady) {
+    // The draft's country is client-side JSON like the rest of it. A missing
+    // or unsupported one does not stop the event being created — the host
+    // lands on the billing card, which asks again. A Hungarian address is a
+    // direct sale that OurFilm has to invoice, so it also needs Billingo; any
+    // other supported country settles through Link and does not.
+    const country = checkBillingCountry(input.billingCountry)
+    const notReady = country.ok
+      ? checkoutBlockedReason(country.country)
+      : country.reason
+    if (notReady || !country.ok) {
       // The host picked the paid tier on a deployment that cannot complete it.
       // The tile reads "Hamarosan" there, so this should be rare — and if it
       // is not rare in production, that is the incident.
       await reportServerEvent('checkout_blocked', {
         event_id: eventId,
         source: 'onboarding',
-        reason: notReady,
+        reason: notReady ?? 'billing_country_missing',
       })
     } else {
       try {
@@ -374,13 +386,15 @@ export async function createEventFromDraft(
             ownerId: user.id,
             ownerEmail: user.email ?? null,
             locale,
+            billingCountry: country.country,
             termsAcceptedAt: new Date().toISOString(),
           })
           await reportServerEvent('checkout_started', {
             event_id: eventId,
             source: 'onboarding',
-            currency: locale === 'en' ? 'usd' : 'huf',
+            currency: eventPricingFor(country.country).currency,
             locale,
+            settlement: settlementFor(country.country),
           })
         }
       } catch (e) {

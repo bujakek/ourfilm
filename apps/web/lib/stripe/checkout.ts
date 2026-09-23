@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 
 import { requestOrigin } from '@/lib/request-origin'
 import { createClient } from '@/lib/supabase/server'
+import { type BillingCountry, eventPricingFor } from '@/lib/billing-country'
 import { LEGAL_VERSION } from '@/lib/company'
 import type { Locale } from '@/lib/i18n'
 import { settlementFor } from '@/lib/settlement'
@@ -31,6 +32,12 @@ const UNIQUE_VIOLATION = '23505'
  * Callers own the guards. This does not check whether payments are configured
  * or whether the event is already unlimited: those refusals have different
  * wording and a different destination depending on where the host is standing.
+ *
+ * **The billing country decides the sale; the locale only decides the words.**
+ * The settlement and the Price are both derived here from `billingCountry`,
+ * which the caller has already validated — nothing a browser sends can name
+ * either. `locale` is passed to Stripe so its page speaks the host's language,
+ * and for nothing else.
  */
 export async function createEventCheckoutUrl({
   eventId,
@@ -38,13 +45,17 @@ export async function createEventCheckoutUrl({
   ownerId,
   ownerEmail,
   locale,
+  billingCountry,
   termsAcceptedAt,
 }: {
   eventId: string
   slug: string
   ownerId: string
   ownerEmail: string | null
+  /** The language of Stripe's page. Never commercial. */
   locale: Locale
+  /** Confirmed by the host on our page, validated by `checkBillingCountry`. */
+  billingCountry: BillingCountry
   /** Server timestamp created only after the explicit checkbox was checked. */
   termsAcceptedAt: string
 }): Promise<string> {
@@ -69,13 +80,19 @@ export async function createEventCheckoutUrl({
     attempt.terms_accepted_at,
   ).toISOString()
   const env = stripeEnv()
-  const settlement = settlementFor(locale)
-  const eventPriceId = locale === 'en' ? env.eventPriceUsdId : env.eventPriceId
+  const settlement = settlementFor(billingCountry)
+  const pricing = eventPricingFor(billingCountry)
+  const eventPriceId = env[pricing.priceKey]
 
   const baseMetadata = {
     event_id: eventId,
     owner_id: ownerId,
     locale,
+    // The routing input, echoed where the webhook can compare it with the
+    // country the buyer actually entered on Stripe's page. It also makes a
+    // changed country a changed request: the fingerprint below then gives it
+    // a fresh Session, and the superseded one is expired.
+    billing_country: billingCountry,
     settlement,
     legal_version: LEGAL_VERSION,
     terms_accepted_at: canonicalTermsAcceptedAt,
@@ -193,10 +210,10 @@ export async function createEventCheckoutUrl({
   // id pointing at the wrong currency is otherwise invisible until a host has
   // paid and Billingo refuses the document.
   //
-  // Keyed on the locale rather than the settlement, because the currency
-  // follows the Price and the Price follows the locale. A Hungarian event is
-  // still HUF while the cutover flag is off and it settles as `managed`.
-  const expectedCurrency = locale === 'en' ? 'usd' : 'huf'
+  // Keyed on the billing country rather than the settlement, because the
+  // currency follows the Price and the Price follows the country. A Hungarian
+  // buyer is still HUF while the cutover flag is off and settles as `managed`.
+  const expectedCurrency = pricing.currency
   if (
     session.amount_total === null ||
     session.amount_total <= 0 ||
@@ -214,6 +231,7 @@ export async function createEventCheckoutUrl({
     owner_id: ownerId,
     stripe_checkout_session_id: session.id,
     settlement,
+    selected_billing_country: billingCountry,
     // Host-supplied, and therefore not trusted: the webhook compares these
     // against what Stripe reports before anything is invoiced. What they buy
     // is a ledger row that says what was asked for, even if no webhook ever

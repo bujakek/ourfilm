@@ -119,15 +119,9 @@ const nextConfig = {
     ])
 
     return [
-      // The bare domain lands on Hungarian while the pilot is Hungarian —
-      // see `defaultLocale` in `lib/i18n.ts`, which must agree with this.
-      //
-      // 307, not 308, unlike every redirect below it: this one is a current
-      // decision rather than a URL that moved for good. A browser caches a 308
-      // indefinitely, so flipping the default back would leave returning
-      // visitors pinned to the old language with nothing the server can say
-      // about it.
-      { source: '/', destination: '/hu', permanent: false },
+      // No entry for `/`: the bare domain is redirected by `proxy.ts`, which
+      // can read the visitor's saved language and `Accept-Language`. A config
+      // redirect runs before the proxy and would win.
       // English occasion pages originally inherited their Hungarian data keys
       // as public slugs. Keep every printed or indexed URL alive, but send it
       // directly to the English canonical rather than through two redirects.

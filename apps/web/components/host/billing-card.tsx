@@ -4,11 +4,18 @@ import {
   type CheckoutState,
   startEventCheckout,
 } from '@/app/(product)/host/events/[slug]/billing-actions'
-import { eventPriceLabel } from '@/lib/pricing'
+import {
+  type BillingCountry,
+  type CheckoutReadiness,
+  checkoutReadyFor,
+  parseBillingCountry,
+} from '@/lib/billing-country'
+import { eventPriceLabelFor } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 import { CreditCard, Loader2, Users } from 'lucide-react'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { BillingCountryField } from '@/components/host/billing-country-field'
 import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
 import { useSettlePolling } from '@/components/host/use-settle-polling'
 
@@ -27,7 +34,12 @@ export type BillingCardProps = {
    * reasons cannot drift into describing each other.
    */
   planNote: string | null
-  stripeReady: boolean
+  /** Which side of the HU / non-HU boundary this deployment can sell to. */
+  readiness: CheckoutReadiness
+  /** The country this host confirmed on an earlier attempt, if any. */
+  savedBillingCountry: string | null
+  /** A location-based hint, listed first and never preselected. */
+  suggestedBillingCountry: BillingCountry | null
   checkout: 'success' | 'cancelled' | null
 }
 
@@ -48,11 +60,21 @@ export function BillingCard({
   participantCount,
   unlimited,
   planNote,
-  stripeReady,
+  readiness,
+  savedBillingCountry,
+  suggestedBillingCountry,
   checkout,
 }: BillingCardProps) {
   const en = locale === 'en'
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
+  const stripeReady = readiness.domestic || readiness.international
+  // Controlled, so the price on the button follows the choice before
+  // anything is submitted. Prefilled only from a country the host confirmed
+  // before — never from the page language or the IP suggestion.
+  const [country, setCountry] = useState<BillingCountry | null>(
+    parseBillingCountry(savedBillingCountry),
+  )
+  const countryReady = country ? checkoutReadyFor(readiness, country) : false
 
   // Stripe's redirect lands before the webhook does; `useSettlePolling` says
   // why that gap is polled rather than waited out.
@@ -150,6 +172,15 @@ export function BillingCard({
         <form action={submit} className="mt-4">
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="locale" value={locale} />
+          <BillingCountryField
+            locale={locale}
+            name="billing_country"
+            value={country}
+            onChange={setCountry}
+            suggested={suggestedBillingCountry}
+            readiness={readiness}
+            className="mb-4"
+          />
           <label className="mb-4 flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
             <input
               type="checkbox"
@@ -161,7 +192,7 @@ export function BillingCard({
           </label>
           <Button
             type="submit"
-            disabled={pending}
+            disabled={pending || !countryReady}
             aria-busy={pending}
             className="w-full"
           >
@@ -179,12 +210,12 @@ export function BillingCard({
                 ? 'Redirecting…'
                 : 'Átirányítás…'
               : en
-                ? `Unlock full event – ${eventPriceLabel(locale)}`
-                : `Vendégkorlát megszüntetése · ${eventPriceLabel(locale)}`}
+                ? `Unlock full event${country ? ` – ${eventPriceLabelFor(country)}` : ''}`
+                : `Vendégkorlát megszüntetése${country ? ` · ${eventPriceLabelFor(country)}` : ''}`}
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {en
-              ? 'Unlimited guests with one payment. Final price appears at checkout.'
+              ? 'Unlimited guests with one payment.'
               : 'Korlátlan számú vendég, egyszeri fizetéssel.'}
           </p>
         </form>

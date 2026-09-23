@@ -611,7 +611,11 @@ describe('Stripe webhook', () => {
   })
 
   it('parks a direct sale whose billing address is not Hungarian', async () => {
-    const { db, updates } = database({ purchase: directPurchase() })
+    // The host confirmed Hungary on our page and then typed an Austrian
+    // address into Stripe's, which hosted Checkout cannot prevent.
+    const { db, updates } = database({
+      purchase: directPurchase({ selected_billing_country: 'HU' }),
+    })
     mocks.createAdminClient.mockReturnValue(db)
     mocks.constructEventAsync.mockResolvedValue(
       event(
@@ -636,13 +640,173 @@ describe('Stripe webhook', () => {
     )
 
     expect((await POST(request())).status).toBe(200)
-    // Still paid — the money is real — but there is no lawful Hungarian
-    // invoice to build from a foreign address, and that needs a human.
+    // Still paid — the money is real and the album is unlocked — but it is
+    // flagged for a person rather than queued for Billingo, and nothing is
+    // refunded or re-routed on its own.
+    const write = updates.find((w) => w.table === 'purchases')?.values
+    expect(write).toMatchObject({
+      status: 'paid',
+      invoice_status: 'not_started',
+      reconciliation_reason: 'billing_country_mismatch',
+      reported_billing_country: 'AT',
+    })
+    // Only the country is kept from a flagged sale, never the address.
+    expect(write).not.toHaveProperty('billing_address')
+    expect(write).not.toHaveProperty('billing_city')
+    expect(mocks.ensureBillingoInvoice).not.toHaveBeenCalled()
+    const [error, context] = mocks.reportServerIssue.mock.calls.at(
+      -1,
+    ) as unknown as [Error, Record<string, unknown>]
+    expect(error.name).toBe('ReconciliationRequiredError')
+    expect(error.message).not.toContain('Stephansplatz')
+    expect(context).toMatchObject({ operation: 'checkout_reconciliation' })
+  })
+
+  it('never invoices a managed sale, even from a Hungarian address', async () => {
+    const { db, updates } = database({
+      purchase: directPurchase({
+        settlement: 'managed',
+        selected_billing_country: 'DE',
+      }),
+    })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        directSession({ managed_payments: { enabled: true } }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    // Link is the merchant of record of this completed payment, and that is
+    // never changed after the fact. The crossing is recorded for a person.
     expect(updates.find((w) => w.table === 'purchases')?.values).toMatchObject({
       status: 'paid',
-      invoice_status: 'failed',
+      reconciliation_reason: 'billing_country_mismatch',
+      reported_billing_country: 'HU',
+    })
+    expect(
+      updates.find((w) => w.table === 'purchases')?.values,
+    ).not.toHaveProperty('invoice_status')
+    expect(mocks.ensureBillingoInvoice).not.toHaveBeenCalled()
+  })
+
+  it('refuses to invoice when Stripe says the sale was Managed Payments', async () => {
+    // The ledger row is written by the host's own client. Stripe's record of
+    // the Session is the authority on which arrangement actually took money.
+    const { db, updates } = database({ purchase: directPurchase() })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        directSession({ managed_payments: { enabled: true } }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    expect(updates.find((w) => w.table === 'purchases')?.values).toMatchObject({
+      status: 'paid',
+      reconciliation_reason: 'settlement_mismatch',
     })
     expect(mocks.ensureBillingoInvoice).not.toHaveBeenCalled()
+  })
+
+  it('invoices a direct sale Stripe confirms was not Managed Payments', async () => {
+    const { db, updates } = database({
+      purchase: directPurchase({ selected_billing_country: 'HU' }),
+    })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        directSession({ managed_payments: null }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    const write = updates.find((w) => w.table === 'purchases')?.values
+    expect(write).toMatchObject({ invoice_status: 'pending' })
+    expect(write).not.toHaveProperty('reconciliation_reason')
+    expect(mocks.ensureBillingoInvoice).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not requeue an issued invoice on a second delivery', async () => {
+    // `completed` and `async_payment_succeeded` are different events for one
+    // Session, so the event-id guard does not stop the second. The row's own
+    // state does: an issued invoice stays issued, and the claim inside
+    // `ensureBillingoInvoice` refuses anything that is not waiting.
+    const { db, updates } = database({
+      purchase: directPurchase({
+        status: 'paid',
+        paid_at: '2026-09-01T12:00:00.000Z',
+        invoice_status: 'issued',
+        selected_billing_country: 'HU',
+      }),
+    })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event('checkout.session.async_payment_succeeded', directSession()),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    expect(updates.find((w) => w.table === 'purchases')?.values).toMatchObject({
+      invoice_status: 'issued',
+      paid_at: '2026-09-01T12:00:00.000Z',
+    })
+  })
+
+  it('invoices nothing for a failed direct payment', async () => {
+    const { db, updates } = database({ purchase: directPurchase() })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.async_payment_failed',
+        directSession({ payment_status: 'unpaid' }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    expect(updates.find((w) => w.table === 'purchases')?.values).toMatchObject({
+      status: 'failed',
+    })
+    expect(mocks.ensureBillingoInvoice).not.toHaveBeenCalled()
+  })
+
+  it('flags a legacy Session it cannot classify instead of guessing', async () => {
+    // No ledger row, no `settlement` in the metadata, and a payload rendered
+    // at an API version without `managed_payments`: nothing says which
+    // arrangement this was. It is recorded as a sale we never invoice, and
+    // said so.
+    const { db, upserts } = database()
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event('checkout.session.completed', session()),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    expect(upserts[0].values).toMatchObject({
+      status: 'paid',
+      settlement: 'managed',
+      reconciliation_reason: 'settlement_unverified',
+    })
+    expect(mocks.ensureBillingoInvoice).not.toHaveBeenCalled()
+  })
+
+  it('records a legacy Session Stripe confirms was Managed Payments', async () => {
+    const { db, upserts } = database()
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        session({ managed_payments: { enabled: true } }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    expect(upserts[0].values).toMatchObject({
+      settlement: 'managed',
+      reconciliation_reason: null,
+    })
   })
 
   it('takes the amount from Stripe, not from the host-written ledger row', async () => {

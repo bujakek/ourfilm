@@ -29,7 +29,11 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: mocks.createSupabaseClient,
 }))
 
+import { type BillingCountry, parseBillingCountry } from '@/lib/billing-country'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
+
+const HU = parseBillingCountry('HU') as BillingCountry
+const DE = parseBillingCountry('DE') as BillingCountry
 
 function database({
   reservationError = null,
@@ -86,6 +90,7 @@ const checkout = {
   ownerId: '6054ca65-6b32-42b0-a317-505108968879',
   ownerEmail: 'host@example.com',
   locale: 'en' as const,
+  billingCountry: DE,
   termsAcceptedAt: '2026-09-01T12:01:00.000Z',
 }
 
@@ -169,13 +174,21 @@ describe('Stripe Checkout creation', () => {
     mocks.createSupabaseClient.mockResolvedValue(before.client)
     mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_before'))
     vi.stubEnv('OURFILM_HU_DIRECT', 'false')
-    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+    await createEventCheckoutUrl({
+      ...checkout,
+      locale: 'hu',
+      billingCountry: HU,
+    })
 
     const after = database()
     mocks.createSupabaseClient.mockResolvedValue(after.client)
     mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_after'))
     vi.stubEnv('OURFILM_HU_DIRECT', 'true')
-    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+    await createEventCheckoutUrl({
+      ...checkout,
+      locale: 'hu',
+      billingCountry: HU,
+    })
 
     const [, firstOptions] = mocks.createSession.mock.calls[0]
     const [, secondOptions] = mocks.createSession.mock.calls[1]
@@ -202,12 +215,16 @@ describe('Stripe Checkout creation', () => {
     expect(db.inserts).toHaveLength(0)
   })
 
-  it('keeps Hungarian events on the HUF Price', async () => {
+  it('keeps Hungarian billing addresses on the HUF Price', async () => {
     const db = database()
     mocks.createSupabaseClient.mockResolvedValue(db.client)
     mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_test_huf'))
 
-    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+    await createEventCheckoutUrl({
+      ...checkout,
+      locale: 'hu',
+      billingCountry: HU,
+    })
 
     expect(mocks.createSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -222,12 +239,16 @@ describe('Stripe Checkout creation', () => {
   // later tidy-up that collapses the branch back into one session shape is
   // invisible until a Hungarian host cannot pay with Apple Pay, or an English
   // one is asked for a Hungarian invoice address.
-  it('sells a Hungarian event directly, and collects what an invoice needs', async () => {
+  it('sells to a Hungarian billing address directly, and collects what an invoice needs', async () => {
     const db = database()
     mocks.createSupabaseClient.mockResolvedValue(db.client)
     mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_test_huf'))
 
-    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+    await createEventCheckoutUrl({
+      ...checkout,
+      locale: 'hu',
+      billingCountry: HU,
+    })
 
     const [params] = mocks.createSession.mock.calls[0]
     expect(params.managed_payments).toBeUndefined()
@@ -251,7 +272,7 @@ describe('Stripe Checkout creation', () => {
     })
   })
 
-  it('keeps an English event on Managed Payments and asks for no address', async () => {
+  it('keeps a non-Hungarian billing address on Managed Payments and asks for no address', async () => {
     const db = database()
     mocks.createSupabaseClient.mockResolvedValue(db.client)
     mocks.createSession.mockResolvedValue(sessionFor('en'))
@@ -275,7 +296,7 @@ describe('Stripe Checkout creation', () => {
     // `purchases.id` is already promised to Billingo as its idempotency key,
     // so a session whose row does not exist must not be handed to a host.
     await expect(
-      createEventCheckoutUrl({ ...checkout, locale: 'hu' }),
+      createEventCheckoutUrl({ ...checkout, locale: 'hu', billingCountry: HU }),
     ).rejects.toThrow('ledger unavailable')
     expect(mocks.expireSession).toHaveBeenCalledWith('cs_test_huf')
   })
@@ -299,7 +320,11 @@ describe('Stripe Checkout creation', () => {
     mocks.createSupabaseClient.mockResolvedValue(db.client)
     mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_current'))
 
-    await createEventCheckoutUrl({ ...checkout, locale: 'hu' })
+    await createEventCheckoutUrl({
+      ...checkout,
+      locale: 'hu',
+      billingCountry: HU,
+    })
 
     // Rotation leaves the old attempt's Session alive until its own expiry.
     // Two payable Sessions for one event means one album charged — and on the
@@ -315,9 +340,118 @@ describe('Stripe Checkout creation', () => {
     mocks.createSession.mockResolvedValue(sessionFor('en', 'cs_test_wrong'))
 
     await expect(
-      createEventCheckoutUrl({ ...checkout, locale: 'hu' }),
+      createEventCheckoutUrl({ ...checkout, locale: 'hu', billingCountry: HU }),
     ).rejects.toThrow('HUF')
     expect(mocks.expireSession).toHaveBeenCalledWith('cs_test_wrong')
     expect(db.inserts).toHaveLength(0)
+  })
+
+  // The table the routing policy is: language never decides, country does.
+  it.each([
+    ['hu', HU, 'direct', 'price_test_ourfilm_huf'],
+    ['en', HU, 'direct', 'price_test_ourfilm_huf'],
+    ['hu', DE, 'managed', 'price_test_ourfilm_usd'],
+    ['en', DE, 'managed', 'price_test_ourfilm_usd'],
+  ] as const)(
+    'sells %s + %s as %s on %s',
+    async (locale, billingCountry, settlement, price) => {
+      const db = database()
+      mocks.createSupabaseClient.mockResolvedValue(db.client)
+      mocks.createSession.mockResolvedValue(
+        sessionFor(billingCountry === HU ? 'hu' : 'en'),
+      )
+
+      await createEventCheckoutUrl({ ...checkout, locale, billingCountry })
+
+      const [params] = mocks.createSession.mock.calls[0]
+      expect(params.line_items).toEqual([{ price, quantity: 1 }])
+      expect(params.metadata.settlement).toBe(settlement)
+      expect(params.metadata.billing_country).toBe(billingCountry)
+      // The language still reaches Stripe — as the language of its page.
+      expect(params.locale).toBe(locale)
+      if (settlement === 'managed') {
+        expect(params.managed_payments).toEqual({ enabled: true })
+        expect(params.billing_address_collection).toBeUndefined()
+      } else {
+        expect(params.managed_payments).toBeUndefined()
+        expect(params.billing_address_collection).toBe('required')
+      }
+      expect(db.inserts[0]).toMatchObject({
+        settlement,
+        selected_billing_country: billingCountry,
+      })
+    },
+  )
+
+  it('keeps a Hungarian buyer on Managed Payments in HUF while the cutover is off', async () => {
+    vi.stubEnv('OURFILM_HU_DIRECT', 'false')
+    const db = database()
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu'))
+
+    await createEventCheckoutUrl({ ...checkout, billingCountry: HU })
+
+    const [params] = mocks.createSession.mock.calls[0]
+    expect(params.managed_payments).toEqual({ enabled: true })
+    expect(params.line_items).toEqual([
+      { price: 'price_test_ourfilm_huf', quantity: 1 },
+    ])
+    expect(db.inserts[0]).toMatchObject({
+      settlement: 'managed',
+      selected_billing_country: HU,
+    })
+  })
+
+  it('gives a changed billing country a fresh Session and expires the old one', async () => {
+    // Same reservation, same event: only the country differs. Replaying the
+    // first Session would send a Hungarian buyer to Link, or a German one to
+    // a Billingo invoice, so the request — and with it the key and the
+    // purchase id — has to be a new one.
+    const first = database()
+    mocks.createSupabaseClient.mockResolvedValue(first.client)
+    mocks.createSession.mockResolvedValue(sessionFor('en', 'cs_germany'))
+    await createEventCheckoutUrl({ ...checkout, billingCountry: DE })
+
+    const second = database({
+      superseded: [{ stripe_checkout_session_id: 'cs_germany' }],
+    })
+    mocks.createSupabaseClient.mockResolvedValue(second.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu', 'cs_hungary'))
+    await createEventCheckoutUrl({ ...checkout, billingCountry: HU })
+
+    const [, firstOptions] = mocks.createSession.mock.calls[0]
+    const [, secondOptions] = mocks.createSession.mock.calls[1]
+    expect(firstOptions.idempotencyKey).not.toBe(secondOptions.idempotencyKey)
+    expect(first.inserts[0].id).not.toBe(second.inserts[0].id)
+    expect(mocks.expireSession).toHaveBeenCalledWith('cs_germany')
+  })
+
+  it('does not reclassify when only the page language changes', async () => {
+    // A language switch between two attempts is not a commercial change: the
+    // sale, the Price and the recorded country are identical.
+    const db = database()
+    mocks.createSupabaseClient.mockResolvedValue(db.client)
+    mocks.createSession.mockResolvedValue(sessionFor('hu'))
+
+    await createEventCheckoutUrl({
+      ...checkout,
+      locale: 'hu',
+      billingCountry: HU,
+    })
+    await createEventCheckoutUrl({
+      ...checkout,
+      locale: 'en',
+      billingCountry: HU,
+    })
+
+    const [hu] = mocks.createSession.mock.calls[0]
+    const [en] = mocks.createSession.mock.calls[1]
+    expect(en.metadata.settlement).toBe(hu.metadata.settlement)
+    expect(en.line_items).toEqual(hu.line_items)
+    expect(db.inserts[1]).toMatchObject({
+      settlement: db.inserts[0].settlement,
+      selected_billing_country: HU,
+      currency: 'huf',
+    })
   })
 })

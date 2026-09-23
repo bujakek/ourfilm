@@ -4,13 +4,20 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 
 import { AccountNotice } from '@/components/host/onboarding/account-notice'
+import { BillingCountryField } from '@/components/host/billing-country-field'
 import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import { ShotsSelector } from '@/components/host/shots-selector'
 import { SwitchTrack } from '@/components/ui/switch'
 import { DEFAULT_SHOTS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
-import { eventPriceLabel } from '@/lib/pricing'
+import {
+  type BillingCountry,
+  type CheckoutReadiness,
+  checkoutReadyFor,
+  parseBillingCountry,
+} from '@/lib/billing-country'
+import { eventPriceLabelFor } from '@/lib/pricing'
 import { localePath, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
@@ -33,6 +40,9 @@ export function guestsScreen({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
+  readiness,
+  billingCountry,
+  setBillingCountry,
   pending,
   locale,
 }: {
@@ -48,10 +58,19 @@ export function guestsScreen({
    *  paid tier is not offered — a price on a button that cannot charge is a
    *  worse answer than not showing the button. */
   paymentsEnabled: boolean
+  readiness: CheckoutReadiness
+  /** Asked only on the paid tile, on this same screen — no extra step. */
+  billingCountry: string | null
+  setBillingCountry: (value: BillingCountry | null) => void
   pending: boolean
   locale: Locale
 }): StepScreen {
   const en = locale === 'en'
+  const country = parseBillingCountry(billingCountry)
+  // The paid path cannot continue to Stripe without a country the server will
+  // accept for a flow this deployment can sell. The free path never asks.
+  const countryMissing =
+    plan === 'full' && !(country && checkoutReadyFor(readiness, country))
 
   return {
     compact: true,
@@ -68,7 +87,7 @@ export function guestsScreen({
         : en
           ? 'Create event'
           : 'Létrehozás',
-    ctaDisabled: !legalAccepted,
+    ctaDisabled: !legalAccepted || countryMissing,
     ctaPending: pending,
     note: <AccountNotice locale={locale} />,
     content: (
@@ -82,6 +101,9 @@ export function guestsScreen({
         legalAccepted={legalAccepted}
         setLegalAccepted={setLegalAccepted}
         paymentsEnabled={paymentsEnabled}
+        readiness={readiness}
+        billingCountry={country}
+        setBillingCountry={setBillingCountry}
         locale={locale}
       />
     ),
@@ -98,6 +120,9 @@ function GuestsFields({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
+  readiness,
+  billingCountry,
+  setBillingCountry,
   locale,
 }: {
   plan: EventPlan
@@ -109,6 +134,9 @@ function GuestsFields({
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   paymentsEnabled: boolean
+  readiness: CheckoutReadiness
+  billingCountry: BillingCountry | null
+  setBillingCountry: (value: BillingCountry | null) => void
   locale: Locale
 }) {
   const reduceMotion = useReducedMotion()
@@ -139,11 +167,18 @@ function GuestsFields({
             figure="∞"
             label={`${en ? 'UNLIMITED' : 'KORLÁTLAN'} · ${
               paymentsEnabled
-                ? // Non-breaking spaces inside the price. Martian Mono is wide
-                  // enough that this label wraps in a 134px card, and the one
-                  // place it must never wrap is between the thousands and the
-                  // hundreds — "12 / 900 FT" reads as two numbers.
-                  eventPriceLabel(locale).toUpperCase().replace(/ /g, '\u00a0')
+                ? // The price follows the billing country, so it appears once
+                  // one is chosen. Non-breaking spaces inside it: Martian Mono
+                  // is wide enough that this label wraps in a 134px card, and
+                  // the one place it must never wrap is between the thousands
+                  // and the hundreds — "12 / 900 FT" reads as two numbers.
+                  billingCountry
+                  ? eventPriceLabelFor(billingCountry)
+                      .toUpperCase()
+                      .replace(/ /g, '\u00a0')
+                  : en
+                    ? 'PAID'
+                    : 'FIZETŐS'
                 : en
                   ? 'COMING\u00a0SOON'
                   : 'HAMAROSAN'
@@ -152,6 +187,16 @@ function GuestsFields({
             reduceMotion={reduceMotion}
           />
         </div>
+        {plan === 'full' && paymentsEnabled ? (
+          <BillingCountryField
+            locale={locale}
+            value={billingCountry}
+            onChange={setBillingCountry}
+            suggested={null}
+            readiness={readiness}
+            className="mt-3.5"
+          />
+        ) : null}
       </fieldset>
 
       <fieldset className="border-t border-border pt-4.5">

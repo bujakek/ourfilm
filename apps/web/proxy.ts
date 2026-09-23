@@ -1,4 +1,5 @@
 import { isLocale } from '@/lib/i18n'
+import { LOCALE_PREFERENCE_COOKIE, rootLocale } from '@/lib/locale-preference'
 import { publicSupabaseEnv } from '@/lib/supabase/env'
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
@@ -15,7 +16,8 @@ import { NextResponse, type NextRequest } from 'next/server'
  * wrong is worse than it sounds: the matcher is ignored and the proxy runs on
  * every request, so an unauthenticated visitor is redirected to the login page
  * from the marketing homepage, the guest event pages and robots.txt alike.
- * Silently, again. Verify by requesting `/` signed out — it must return 200.
+ * Silently, again. Verify by requesting `/hu` signed out — it must return 200,
+ * and `/` must answer with the language redirect, never the login page.
  *
  * `PUBLIC_ADMIN_PATHS` is the one hole in the gate, and it is deliberate: the
  * create flow is filled in *before* anyone has an account. Nothing behind it
@@ -53,6 +55,8 @@ const KEEPS_TRAILING_SLASH = '/ingest/'
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
+
+  if (path === '/') return redirectToRootLocale(request)
 
   if (
     path.length > 1 &&
@@ -123,6 +127,32 @@ export async function proxy(request: NextRequest) {
 }
 
 /**
+ * The bare domain, sent to the language this visitor most likely reads.
+ *
+ * Here rather than in `next.config.mjs`, because a config redirect cannot see
+ * a cookie or a header. `lib/locale-preference.ts` holds the order: a saved
+ * switcher choice, then `Accept-Language`, then English.
+ *
+ * 307, never 308: the answer differs per visitor, and a browser caches a 308
+ * for good. For the same reason the response is `private, no-store` and varies
+ * on both inputs, so no shared cache can hand one visitor's language to the
+ * next. The query string rides along — a UTM-tagged link to `ourfilm.app`
+ * must still be attributed once it lands on `/hu` or `/en`.
+ */
+function redirectToRootLocale(request: NextRequest) {
+  const locale = rootLocale({
+    cookie: request.cookies.get(LOCALE_PREFERENCE_COOKIE)?.value,
+    acceptLanguage: request.headers.get('accept-language'),
+  })
+  const target = new URL(request.url)
+  target.pathname = `/${locale}`
+  const response = NextResponse.redirect(target, 307)
+  response.headers.set('Cache-Control', 'private, no-store')
+  response.headers.set('Vary', 'Cookie, Accept-Language')
+  return response
+}
+
+/**
  * Redirect inside the host area, keeping `lang` and dropping everything else.
  *
  * Dropping the query is deliberate — an inherited `?error=link` or a stale
@@ -145,8 +175,9 @@ function redirectWithin(request: NextRequest, pathname: string) {
 }
 
 export const config = {
-  // `/host/:path*` is the auth gate. `/:path*/` is every URL with a trailing
-  // slash, for the redirect at the top of `proxy` — and nothing else, so a
-  // signed-out visitor on `/` still gets a 200.
-  matcher: ['/host/:path*', '/:path*/'],
+  // `/` is the language redirect. `/host/:path*` is the auth gate.
+  // `/:path*/` is every URL with a trailing slash, for the redirect at the top
+  // of `proxy` — and nothing else, so a signed-out visitor on `/hu` still gets
+  // a 200 and never meets the host gate.
+  matcher: ['/', '/host/:path*', '/:path*/'],
 }

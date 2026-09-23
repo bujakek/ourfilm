@@ -67,7 +67,7 @@ const sections: LegalSection[] = [
   {
     title: 'Díj és fizetés',
     body: [
-      `Az ingyenes eseményhez legfeljebb 5 vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél megszünteti a vendégkorlátot. Nem előfizetés, és nem jelent vendégenkénti díjat.`,
+      `Az ingyenes eseményhez legfeljebb 5 vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél megszünteti a vendégkorlátot. Nem előfizetés, és nem jelent vendégenkénti díjat. Az alábbi feltételek a magyarországi számlázási címmel történő vásárlásra vonatkoznak, a felület nyelvétől függetlenül; Magyarországon kívüli számlázási cím esetén a vásárlás ${EVENT_PRICE_LABELS.en} áron, a ${PAYMENT_PROCESSOR.merchantOfRecord} közreműködésével, az angol nyelvű feltételek szerint történik.`,
       `A szolgáltató ${DIRECT_SALE.vatStatus}, ezért a feltüntetett ${EVENT_PRICE_LABEL} a fizetendő végösszeg. Az ár nem tartalmaz áfát, így abból áfa nem vonható le. A számla az „AAM” (alanyi adómentes) jelölést tartalmazza.`,
       `A fizetést a ${DIRECT_SALE.processorName} (${DIRECT_SALE.processorAddress}) fizetési szolgáltatóként dolgozza fel. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A számlázási névre és címre azért van szükség, mert a magyar számla kötelező tartalmi eleme.`,
       `A fizetés után a számlát az OurFilm állítja ki elektronikus számlaként, a ${DIRECT_SALE.invoiceProvider} számlázórendszerén keresztül, és a megadott e-mail-címre küldjük meg. A számlaadatokat a NAV Online Számla rendszerébe is továbbítjuk, ahogy azt jogszabály előírja. A vendégkorlátot a Stripe sikeres fizetési visszaigazolása után szüntetjük meg.`,
@@ -150,15 +150,15 @@ const englishSections: LegalSection[] = [
     title: 'Contract and eligibility',
     body: [
       'Hosts can create an account and sign in using an email sign-in link or, optionally, a Google Account. Google sign-in may be linked to an existing OurFilm account with the same verified email address, preserving access to the same events. Signing in with Google does not itself place an order or replace acceptance of the terms requested when creating an event or placing a paid order. The Privacy Notice explains how sign-in data is handled.',
-      `A host enters into a contract with OurFilm by accepting these Terms and creating an event. A paid order becomes final when payment is completed in Stripe Checkout. OurFilm supplies the digital service; ${PAYMENT_PROCESSOR.merchantOfRecord} acts as Merchant of Record for the purchase transaction. The contract is concluded in English for the English flow, is not separately filed, and can be saved or printed from this page.`,
+      `A host enters into a contract with OurFilm by accepting these Terms and creating an event. A paid order becomes final when payment is completed in Stripe Checkout. OurFilm supplies the digital service; ${PAYMENT_PROCESSOR.merchantOfRecord} acts as Merchant of Record for the purchase transaction where the billing address is outside Hungary. The contract is concluded in English for the English flow, is not separately filed, and can be saved or printed from this page.`,
       'Hosts must be at least 18 years old and able to enter into a binding contract. A guest accepts the guest rules and acknowledges the Privacy Notice by joining. Guests are not charged.',
     ],
   },
   {
     title: 'Price and payment',
     body: [
-      `Up to 5 distinct guests may join a free event. Unlocking the full event removes this participant cap for that event; it is a one-off purchase, not a subscription or per-guest fee. The final price, currency and applicable taxes are shown in Stripe Checkout before purchase. The English price is ${EVENT_PRICE_LABELS.en}.`,
-      `${PAYMENT_PROCESSOR.merchantOfRecord} handles the transaction through ${PAYMENT_PROCESSOR.name}. OurFilm does not receive or store card details. Link sends the transaction confirmation and applicable invoice or receipt.`,
+      `Up to 5 distinct guests may join a free event. Unlocking the full event removes this participant cap for that event; it is a one-off purchase, not a subscription or per-guest fee. The final price, currency and applicable taxes are shown in Stripe Checkout before purchase. For a billing address outside Hungary the price is ${EVENT_PRICE_LABELS.en}. With a Hungarian billing address the purchase is made directly from OurFilm for ${EVENT_PRICE_LABEL} under the Hungarian terms (ÁSZF), whichever language the site is shown in.`,
+      `For a billing address outside Hungary, ${PAYMENT_PROCESSOR.merchantOfRecord} handles the transaction through ${PAYMENT_PROCESSOR.name}. OurFilm does not receive or store card details. Link sends the transaction confirmation and applicable invoice or receipt.`,
     ],
   },
   {

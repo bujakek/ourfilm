@@ -2,6 +2,7 @@ import 'server-only'
 
 import { cache } from 'react'
 
+import { type BillingCountry, parseBillingCountry } from './billing-country'
 import { type PlanSource, toPlanSource } from './plan-copy'
 import type { Database } from './supabase/database.types'
 import { createClient } from './supabase/server'
@@ -129,5 +130,31 @@ export const getEventPurchase = cache(
 
     if (error) throw error
     return data
+  },
+)
+
+/**
+ * The billing country this host confirmed last time, to prefill the select.
+ *
+ * Read from the host's own purchase attempts (RLS scopes the query to them),
+ * newest first — which is also what brings a country back after a cancelled
+ * Checkout. A prefill only: the select stays visible and editable, and the
+ * country that counts is the one submitted with the next checkout. Stored
+ * sales are never re-read through here, so editing it reclassifies nothing.
+ */
+export const getSavedBillingCountry = cache(
+  async (): Promise<BillingCountry | null> => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('purchases')
+      .select('selected_billing_country')
+      .not('selected_billing_country', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    // A prefill is a convenience; an unreadable one is an empty select.
+    if (error) return null
+    return parseBillingCountry(data?.selected_billing_country)
   },
 )

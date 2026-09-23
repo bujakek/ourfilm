@@ -36,7 +36,11 @@ export type ServerEventProperties = {
     event_id: string
     source: 'settings' | 'onboarding'
     currency: 'huf' | 'usd'
+    /** The interface language. Commercially meaningless since the billing
+     *  country took over routing — kept so the two can be compared. */
     locale: 'en' | 'hu'
+    /** Derived from the billing country the host confirmed. */
+    settlement: 'direct' | 'managed'
   }
   /** A host asked to pay and was refused before Stripe was involved. Every
    *  reason here is a sentence the host read instead of a checkout page. */
@@ -46,6 +50,8 @@ export type ServerEventProperties = {
     reason:
       | 'no_slug'
       | 'terms_not_accepted'
+      | 'billing_country_missing'
+      | 'billing_country_unsupported'
       | 'stripe_not_configured'
       | 'billingo_not_configured'
       | 'signed_out'

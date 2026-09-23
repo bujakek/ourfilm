@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react'
 
 import type { EventQuota } from '@/lib/billing'
 import { T, still } from '@/lib/motion'
-import { eventPriceLabel } from '@/lib/pricing'
 import { track } from '@/lib/telemetry'
 
 /**
@@ -123,7 +122,10 @@ export function QuotaBanner({
         }
         className="relative shrink-0 rounded-full bg-primary px-4.5 py-2.5 text-[12.5px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
       >
-        {en ? 'Unlock' : 'Feloldás'} — {eventPriceLabel(locale)}
+        {/* No price: it follows the billing country, which the card this
+            links to asks for. Quoting one here would be a guess from the
+            interface language. */}
+        {en ? 'Unlock' : 'Feloldás'}
       </Link>
     </motion.div>
   )

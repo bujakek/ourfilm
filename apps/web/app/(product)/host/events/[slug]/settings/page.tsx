@@ -11,6 +11,7 @@ import {
   formatAmount,
   getEventPurchase,
   getEventQuota,
+  getSavedBillingCountry,
   type Purchase,
 } from '@/lib/billing'
 import {
@@ -23,8 +24,10 @@ import { localeTag } from '@/lib/i18n'
 import { formatEventLocalInput, formatMoment } from '@/lib/format'
 import { getAllEventPhotos } from '@/lib/photos'
 import { planNote } from '@/lib/plan-copy'
-import { checkoutIsConfigured } from '@/lib/checkout-readiness'
+import { suggestedBillingCountry } from '@/lib/billing-country'
+import { checkoutReadiness } from '@/lib/checkout-readiness'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
@@ -215,10 +218,12 @@ async function EventBilling({
   // do in a hurry.
   let quota: EventQuota
   let purchase: Purchase | null
+  let savedCountry: string | null
   try {
-    ;[quota, purchase] = await Promise.all([
+    ;[quota, purchase, savedCountry] = await Promise.all([
       getEventQuota(eventId),
       getEventPurchase(eventId),
+      getSavedBillingCountry(),
     ])
   } catch (e) {
     console.error('Could not read billing state', e)
@@ -258,7 +263,13 @@ async function EventBilling({
       participantCount={quota.participantCount}
       unlimited={quota.unlimited}
       planNote={planNote(quota.planSource, locale, receipt || null)}
-      stripeReady={checkoutIsConfigured(locale)}
+      readiness={checkoutReadiness()}
+      savedBillingCountry={savedCountry}
+      // Vercel's edge geolocation. Floated to the top of the list and never
+      // selected on the host's behalf — see `suggestedBillingCountry`.
+      suggestedBillingCountry={suggestedBillingCountry(
+        (await headers()).get('x-vercel-ip-country'),
+      )}
       checkout={checkout}
     />
   )

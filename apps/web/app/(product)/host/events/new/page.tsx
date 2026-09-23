@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 import { resolveLocale } from '@/lib/i18n'
 import { eventNameSuggestions } from '@/lib/onboarding'
-import { checkoutIsConfigured } from '@/lib/checkout-readiness'
+import { checkoutReadiness } from '@/lib/checkout-readiness'
 import { NewEventForm } from './new-event-form'
 
 // Both the suggested deadline and the earliest selectable day are computed from
@@ -75,15 +75,13 @@ export default function NewEventPage() {
       // Reads environment variables only — no await, so the segment still does
       // not suspend. See the note above.
       //
-      // Both locales, because the flow resolves its own from `?lang` on the
-      // client and the two are sold under different arrangements: a Hungarian
-      // event is a direct sale OurFilm has to invoice through Billingo, an
-      // English one settles through Link. A deployment can be able to take one
-      // and not the other, and the tile must say so honestly.
-      paymentsEnabled={{
-        en: checkoutIsConfigured('en'),
-        hu: checkoutIsConfigured('hu'),
-      }}
+      // Both sides of the billing-country boundary, because the host picks
+      // the country on the last screen: a Hungarian address is a direct sale
+      // OurFilm has to invoice through Billingo, any other settles through
+      // Link. A deployment can be able to take one and not the other, and the
+      // tile must say so honestly. No IP suggestion here: reading headers
+      // would make this page async, which the note above forbids.
+      readiness={checkoutReadiness()}
       // Minted here rather than in a state initializer: it is rendered into the
       // draft, and `crypto.randomUUID()` on both sides of hydration would give
       // two different values. The page is `force-dynamic`, so every visit gets

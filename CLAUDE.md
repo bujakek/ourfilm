@@ -151,10 +151,11 @@ STRIPE_PRICE_EVENT=             # price_… for the one-time per-event purchase
 STRIPE_PRICE_EVENT_USD=         # price_… for the USD version of that purchase
 ```
 
-Hungarian events are sold directly rather than through Managed Payments, so
-OurFilm issues their invoice. Three more server-only variables, and without all
-three `checkoutIsConfigured('hu')` is false and Hungarian checkout says payment
-is not switched on — English checkout is deliberately unaffected:
+Purchases with a Hungarian billing address are sold directly rather than
+through Managed Payments, so OurFilm issues their invoice. Three more
+server-only variables, and without all three checkout for a `HU` billing
+country says payment is not switched on — every other country is deliberately
+unaffected:
 
 ```bash
 BILLINGO_API_KEY=               # v3 "Olvasás, írás" key; a test-profile key is what test mode means
@@ -210,8 +211,10 @@ not switched on — `stripeIsConfigured()` is what keeps that UI honest.
   copy, not a label. Live mode needs its own Price; test and live objects
   never cross.
 - `STRIPE_PRICE_EVENT_USD` is `price_1UAr8Y35IJWm7mhtF4tTDhTO` — the active,
-  tax-inclusive test Price for 39 USD on the same product. English events use
-  this Price; Hungarian events use `STRIPE_PRICE_EVENT`.
+  tax-inclusive test Price for 39 USD on the same product. A non-Hungarian
+  billing country uses this Price; a Hungarian one uses `STRIPE_PRICE_EVENT`.
+  The interface language picks neither (`eventPricingFor` in
+  `apps/web/lib/billing-country.ts`).
 
   **List before you create.** A second product/price pair with the same
   12 900 Ft amount was created here by accident and archived again
@@ -248,12 +251,16 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
 - **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the disposable
   camera story from `apps/web/components/site/*`: hero, benefits, how-it-works,
   qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
-  camera story for `/en` and `/hu`, with `/` redirecting to Hungarian.
-  `defaultLocale` in `apps/web/lib/i18n.ts` and the `/` redirect in
-  `apps/web/next.config.mjs` are the only two places that decide that, and they
-  must agree. Everything else — `x-default`, `/llms.txt`, the shared 404
-  and error screens, and every `?lang`-less product page via
-  `resolveLocale()` — follows the constant.
+  camera story for `/en` and `/hu`. `/` is negotiated per visitor by
+  `apps/web/proxy.ts` (`apps/web/lib/locale-preference.ts`): a saved switcher
+  choice (`ourfilm_locale` cookie, written only by a switcher click), then
+  `Accept-Language`, then English — a 307 that keeps the query and is
+  `private, no-store` with `Vary: Cookie, Accept-Language`. `next.config.mjs`
+  must not grow a `/` redirect again: config redirects run before the proxy.
+  `defaultLocale` in `apps/web/lib/i18n.ts` is separate and still Hungarian:
+  `x-default`, `/llms.txt`, the shared 404 and error screens, and every
+  `?lang`-less product page via `resolveLocale()` follow it. Neither decides
+  anything about payment.
 - **The homepage and `/hu/arak` describe the disposable-camera product.** The
   old upload demo, technical quality comparison, occasions carousel and
   instant-arrival pitch are no longer in the homepage flow. The unused
@@ -434,7 +441,7 @@ are separate promises: every property is reduced to a bounded scalar, and
 | Event                          | Answers                                                                       |
 | ------------------------------ | ----------------------------------------------------------------------------- |
 | `checkout_started`             | A host reached Stripe, and from which of the two entry points                 |
-| `checkout_blocked`             | …or was refused first, and why. Six reasons, all of them a sentence read      |
+| `checkout_blocked`             | …or was refused first, and why. Every reason is a sentence the host read      |
 | `checkout_settled`             | What Stripe reported server to server: paid, failed, expired, refunded        |
 | `checkout_confirmation_viewed` | What the host was _told_ after paying, and how long the confirmation took     |
 | `event_created`                | The row exists, with the shape the host chose and whether it was a repeat     |
@@ -830,19 +837,19 @@ caught up.
 
 ## Routing (settled — QR codes get printed, so this is expensive to change)
 
-| Route                                                                                      | Purpose                                                                                                                                  |
-| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                                                                                        | 307 to `/hu`. Nothing renders here. Temporary on purpose — the default language is a current decision, and a cached 308 would outlive it |
-| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                                                                       |
-| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `apps/web/content/blog/hu/*.mdx`                                                                                          |
-| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                                                                           |
-| `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft                                                 |
-| `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos                                               |
-| `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                          |
-| `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                                                                          |
-| `/host`                                                                                    | The host's own area, Supabase Auth — magic link or Google. `/admin/*` 308s here                                                          |
-| `/host/events/[slug]/export`                                                               | JSON: what happens to this album. Up to 20 photos, a manifest the browser zips itself; above, where the prepared archive is              |
-| `/host/events/[slug]/export/stream`                                                        | The large-album path for now: the whole ZIP streamed through a function. Retired by the export worker                                    |
+| Route                                                                                      | Purpose                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                                                                        | 307 to `/hu` or `/en` per visitor (saved choice, then `Accept-Language`, then English), from `proxy.ts`. Nothing renders here. Never a 308: the answer differs per visitor, and a cached 308 would outlive it |
+| `/hu`                                                                                      | Marketing homepage. Permanent. Don't repurpose it.                                                                                                                                                            |
+| `/hu/blog`, `/hu/blog/*`                                                                   | Articles, from `apps/web/content/blog/hu/*.mdx`                                                                                                                                                               |
+| `/hu/arak`, `/hu/alkalmak/*`, `/hu/rolunk`, `/hu/kapcsolat`, `/hu/aszf`, `/hu/adatvedelem` | The rest of the marketing site                                                                                                                                                                                |
+| `/auth/event-complete`                                                                     | Where a magic link sent from the create flow lands. Finishes the creation from the draft                                                                                                                      |
+| `/e/[slug]`                                                                                | The complete guest flow: join, event status, native camera trigger and reveal-gated photos                                                                                                                    |
+| `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                                                                                               |
+| `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                                                                                                                                               |
+| `/host`                                                                                    | The host's own area, Supabase Auth — magic link or Google. `/admin/*` 308s here                                                                                                                               |
+| `/host/events/[slug]/export`                                                               | JSON: what happens to this album. Up to 20 photos, a manifest the browser zips itself; above, where the prepared archive is                                                                                   |
+| `/host/events/[slug]/export/stream`                                                        | The large-album path for now: the whole ZIP streamed through a function. Retired by the export worker                                                                                                         |
 
 **Public pages are locale-prefixed; the product is not.** `/e/`, `/host`,
 `/auth` and `/api` sit outside the locale tree on purpose: QR codes are printed
@@ -1181,9 +1188,23 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
 
 ## Billing (settled)
 
-**One-time purchase per event: 39 USD in English, 12 900 Ft in Hungarian.** No
-subscription, no per-guest fee. The event's stored locale selects the Stripe
-Price, so a translated label cannot silently choose the other currency.
+**One-time purchase per event: 12 900 Ft to a Hungarian billing address, 39 USD
+to any other supported one.** No subscription, no per-guest fee. The host
+confirms a billing country on the billing card or the paid onboarding tile;
+the server validates it (`checkBillingCountry`) and derives both the Stripe
+Price and the settlement from it. The interface language, `events.locale`, IP
+and anything else the browser sends decide neither.
+
+- **Supported markets** are Hungary plus Managed Payments' cross-border
+  tax-coverage list (`MANAGED_PAYMENTS_COUNTRIES`), not every country Link can
+  take a card from. Another country is refused before Checkout.
+- **Hosted Checkout cannot lock the billing country** — no parameter restricts
+  billing-address countries and there is no server hook before payment, and
+  the Elements `confirm` gate is not available to Managed Payments. So a buyer
+  who crosses the HU / non-HU boundary on Stripe's page is caught by the
+  webhook, recorded as `purchases.reconciliation_reason`, and never invoiced,
+  refunded or re-routed automatically. `claim_purchase_invoice` refuses a
+  flagged row; clearing the reason is a person's decision.
 
 - **The free tier is a _participant_ cap, not a photo cap:** an event is free for
   up to **5 distinct guests** (`public.free_participant_limit()`). The host's own
@@ -1237,13 +1258,13 @@ null` — the grant's own `reason`, not a flat `'grant'`, because an Early
   re-cap a live album.
 - **Admin-owned events are never capped**, which is how the operator runs the
   pilot wedding without charging themselves.
-- **Hungarian events are sold directly; English ones through Managed
-  Payments.** `settlementFor()` in `apps/web/lib/settlement.ts` is the one
-  place that decides, keyed on the same `events.locale` that picks the Price,
-  and gated by `OURFILM_HU_DIRECT` — off, a Hungarian event stays on Managed
-  Payments and nothing is invoiced.
-  `locale: 'en'` keeps `managed_payments: { enabled: true }` — Link, LLC is
-  merchant of record and issues the document. `locale: 'hu'` is an ordinary
+- **Hungarian billing addresses are sold directly; every other one through
+  Managed Payments.** `settlementFor()` in `apps/web/lib/settlement.ts` is the
+  one place that decides, keyed on the confirmed billing country that also
+  picks the Price, and gated by `OURFILM_HU_DIRECT` — off, a Hungarian buyer
+  stays on Managed Payments and nothing is invoiced.
+  A non-`HU` country keeps `managed_payments: { enabled: true }` — Link, LLC is
+  merchant of record and issues the document. `HU` is an ordinary
   Stripe charge with **OurFilm as seller of record**, because Managed Payments
   does not currently do Apple Pay on HUF and a phone-first product cannot give
   up one-tap payment. The stored `purchases.settlement` (`managed` | `direct`)

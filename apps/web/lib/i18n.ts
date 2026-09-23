@@ -14,13 +14,13 @@ export const locales = ['en', 'hu'] as const
 
 export type Locale = (typeof locales)[number]
 
-/** Where `/` sends visitors, and what `x-default` points at.
+/** What `x-default` points at, and the language of any product page that
+ *  arrives without `?lang`. **Not** where `/` sends visitors any more: that is
+ *  negotiated per visitor in `proxy.ts` (`lib/locale-preference.ts`).
  *
- *  Hungarian for now: the pilot is run in Hungary, the legal pages and the
- *  support address are Hungarian, and a bare `ourfilm.app` is overwhelmingly
- *  reached by people who were handed the domain here. English exists in full
- *  and is one edit away — this constant, and the `/` redirect in
- *  `next.config.mjs`, are the only two places that decide it. */
+ *  Hungarian for now: the pilot is run in Hungary and the legal pages and
+ *  the support address are Hungarian. It never decides how anything is sold —
+ *  that is the billing country's job (`lib/billing-country.ts`). */
 export const defaultLocale: Locale = 'hu'
 
 /** Every locale the content model knows about, enabled or not.
