@@ -445,7 +445,6 @@ function OnboardingFlow({
               legalAccepted,
               setLegalAccepted,
               paymentsEnabled: paymentsAvailable,
-              readiness,
               billingCountry,
               setBillingCountry,
               pending,

@@ -7,7 +7,7 @@ import {
 import {
   type BillingCountry,
   type CheckoutReadiness,
-  checkoutReadyFor,
+  DOMESTIC_BILLING_COUNTRY,
   parseBillingCountry,
 } from '@/lib/billing-country'
 import { eventPriceLabelFor } from '@/lib/pricing'
@@ -69,12 +69,13 @@ export function BillingCard({
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
   const stripeReady = readiness.domestic || readiness.international
   // Controlled, so the price on the button follows the choice before
-  // anything is submitted. Prefilled only from a country the host confirmed
-  // before — never from the page language or the IP suggestion.
+  // anything is submitted. Prefilled from a country the host confirmed
+  // before; otherwise the Hungarian page starts on Hungary, which the host
+  // can see and change before paying. The IP suggestion never preselects.
   const [country, setCountry] = useState<BillingCountry | null>(
-    parseBillingCountry(savedBillingCountry),
+    parseBillingCountry(savedBillingCountry) ??
+      (en ? null : DOMESTIC_BILLING_COUNTRY),
   )
-  const countryReady = country ? checkoutReadyFor(readiness, country) : false
 
   // Stripe's redirect lands before the webhook does; `useSettlePolling` says
   // why that gap is polled rather than waited out.
@@ -178,7 +179,6 @@ export function BillingCard({
             value={country}
             onChange={setCountry}
             suggested={suggestedBillingCountry}
-            readiness={readiness}
             className="mb-4"
           />
           <label className="mb-4 flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
@@ -192,7 +192,9 @@ export function BillingCard({
           </label>
           <Button
             type="submit"
-            disabled={pending || !countryReady}
+            // A country the deployment cannot sell to is refused by the
+            // action with a sentence, which is the explanation the host needs.
+            disabled={pending || !country}
             aria-busy={pending}
             className="w-full"
           >

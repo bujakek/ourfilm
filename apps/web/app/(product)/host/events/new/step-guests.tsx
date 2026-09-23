@@ -11,12 +11,7 @@ import { ShotsSelector } from '@/components/host/shots-selector'
 import { SwitchTrack } from '@/components/ui/switch'
 import { DEFAULT_SHOTS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
-import {
-  type BillingCountry,
-  type CheckoutReadiness,
-  checkoutReadyFor,
-  parseBillingCountry,
-} from '@/lib/billing-country'
+import { type BillingCountry, parseBillingCountry } from '@/lib/billing-country'
 import { eventPriceLabelFor } from '@/lib/pricing'
 import { localePath, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
@@ -40,7 +35,6 @@ export function guestsScreen({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
-  readiness,
   billingCountry,
   setBillingCountry,
   pending,
@@ -58,7 +52,6 @@ export function guestsScreen({
    *  paid tier is not offered — a price on a button that cannot charge is a
    *  worse answer than not showing the button. */
   paymentsEnabled: boolean
-  readiness: CheckoutReadiness
   /** Asked only on the paid tile, on this same screen — no extra step. */
   billingCountry: string | null
   setBillingCountry: (value: BillingCountry | null) => void
@@ -67,10 +60,10 @@ export function guestsScreen({
 }): StepScreen {
   const en = locale === 'en'
   const country = parseBillingCountry(billingCountry)
-  // The paid path cannot continue to Stripe without a country the server will
-  // accept for a flow this deployment can sell. The free path never asks.
-  const countryMissing =
-    plan === 'full' && !(country && checkoutReadyFor(readiness, country))
+  // The paid path cannot continue to Stripe without a country. One this
+  // deployment cannot sell to still creates the event and lands on the
+  // billing card, which says why. The free path never asks.
+  const countryMissing = plan === 'full' && !country
 
   return {
     compact: true,
@@ -101,7 +94,6 @@ export function guestsScreen({
         legalAccepted={legalAccepted}
         setLegalAccepted={setLegalAccepted}
         paymentsEnabled={paymentsEnabled}
-        readiness={readiness}
         billingCountry={country}
         setBillingCountry={setBillingCountry}
         locale={locale}
@@ -120,7 +112,6 @@ function GuestsFields({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
-  readiness,
   billingCountry,
   setBillingCountry,
   locale,
@@ -134,7 +125,6 @@ function GuestsFields({
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   paymentsEnabled: boolean
-  readiness: CheckoutReadiness
   billingCountry: BillingCountry | null
   setBillingCountry: (value: BillingCountry | null) => void
   locale: Locale
@@ -193,7 +183,6 @@ function GuestsFields({
             value={billingCountry}
             onChange={setBillingCountry}
             suggested={null}
-            readiness={readiness}
             className="mt-3.5"
           />
         ) : null}
