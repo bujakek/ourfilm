@@ -472,18 +472,21 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          locale: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
           created_at?: string
           display_name?: string | null
           id: string
+          locale?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
           created_at?: string
           display_name?: string | null
           id?: string
+          locale?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
@@ -1143,6 +1146,10 @@ export type Database = {
         Returns: boolean
       }
       set_host_display_name: { Args: { p_name: string }; Returns: string }
+      set_host_locale: {
+        Args: { p_locale: string; p_only_if_unset?: boolean }
+        Returns: undefined
+      }
       shot_reservation_ttl: { Args: never; Returns: string }
       shot_upload_grace: { Args: never; Returns: string }
       sweep_album_exports: {

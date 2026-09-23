@@ -2,6 +2,7 @@ import {
   type CheckoutOutcome,
   CheckoutSuccess,
 } from '@/components/host/checkout-success'
+import { getHostLocale } from '@/lib/host-locale'
 import {
   formatAmount,
   getEventPurchase,
@@ -23,9 +24,10 @@ type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const event = await getOwnedEventBySlug(slug)
+  const locale = event ? await getHostLocale(event.locale) : null
   return {
     title: event
-      ? `${event.locale === 'en' ? 'Payment' : 'Fizetés'} · ${event.event_name} · OurFilm`
+      ? `${locale === 'en' ? 'Payment' : 'Fizetés'} · ${event.event_name} · OurFilm`
       : 'OurFilm',
     robots: { index: false, follow: false },
   }
@@ -52,6 +54,8 @@ export default async function CheckoutSuccessPage({ params }: Props) {
   const { slug } = await params
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
+  // The host's language, not the event's; see `lib/host-locale.ts`.
+  const locale = await getHostLocale(event.locale)
 
   let quota: EventQuota | null = null
   let purchase: Purchase | null = null
@@ -104,11 +108,11 @@ export default async function CheckoutSuccessPage({ params }: Props) {
 
   return (
     <CheckoutSuccess
-      locale={event.locale}
+      locale={locale}
       slug={event.slug}
       outcome={outcome}
       shots={event.shots_per_participant}
-      note={planNote(quota?.planSource ?? null, event.locale, receipt || null)}
+      note={planNote(quota?.planSource ?? null, locale, receipt || null)}
     />
   )
 }

@@ -11,9 +11,10 @@ import { isLocale, type Locale } from '@/lib/i18n'
  *   2. the browser's `Accept-Language`, by its own priorities,
  *   3. English, as the international fallback.
  *
- * The guest page (`/e/<slug>`) uses the same two signals first, through
- * `guestLocale`, because the couple's language is not necessarily the
- * guest's.
+ * The guest page (`/e/<slug>`) makes exactly the same decision through
+ * `rootLocale`, because the couple's language is not necessarily the guest's.
+ * Hosts are the exception: their language is on their profile
+ * (`lib/host-locale.ts`), because their mail is sent with no browser to ask.
  *
  * The language chosen here is an interface language and never a commercial
  * fact. Payment routing reads the billing country the host confirms at
@@ -89,33 +90,6 @@ export function rootLocale({
     savedLocalePreference(cookie) ??
     negotiateLocale(acceptLanguage) ??
     ROOT_FALLBACK_LOCALE
-  )
-}
-
-/**
- * The language of the guest page.
- *
- * The guest's own signals first — a saved switcher choice, then their
- * browser — and only then the host's: the `?lang` on the QR code or the
- * shared invitation, which is the event's language rather than anything the
- * guest picked, and finally the event's stored locale.
- */
-export function guestLocale({
-  cookie,
-  acceptLanguage,
-  lang,
-  eventLocale,
-}: {
-  cookie: string | undefined | null
-  acceptLanguage: string | undefined | null
-  lang: unknown
-  eventLocale: Locale
-}): Locale {
-  return (
-    savedLocalePreference(cookie) ??
-    negotiateLocale(acceptLanguage) ??
-    (typeof lang === 'string' ? savedLocalePreference(lang) : null) ??
-    eventLocale
   )
 }
 

@@ -2,13 +2,15 @@ import { beforeEach, expect, it, vi } from 'vitest'
 
 import { completeSignIn } from '@/app/(product)/auth/callback/actions'
 
-const { exchange, verifyOtp } = vi.hoisted(() => ({
+const { exchange, verifyOtp, rpc } = vi.hoisted(() => ({
   exchange: vi.fn(),
   verifyOtp: vi.fn(),
+  rpc: vi.fn(),
 }))
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
     auth: { exchangeCodeForSession: exchange, verifyOtp },
+    rpc,
   }),
 }))
 vi.mock('@/lib/request-origin', () => ({
@@ -36,6 +38,7 @@ beforeEach(() => {
   exchange.mockReset().mockResolvedValue({ error: null })
   verifyOtp.mockReset().mockResolvedValue({ error: null })
   report.mockReset().mockResolvedValue(undefined)
+  rpc.mockReset().mockResolvedValue({ error: null })
 })
 
 it('exchanges the Google code and continues creation without swallowing the redirect', async () => {
@@ -107,4 +110,32 @@ it('never echoes an invented provider into the reported method', async () => {
     method: 'email',
     outcome: 'signed_in',
   })
+})
+
+it('records the arrival language without overriding a chosen one', async () => {
+  // Google carries none of our metadata, so this is where its first
+  // profile language comes from — and only if the host has none yet.
+  await expect(completeSignIn(google)).rejects.toThrow('NEXT_REDIRECT')
+  expect(rpc).toHaveBeenCalledExactlyOnceWith('set_host_locale', {
+    p_locale: 'hu',
+    p_only_if_unset: true,
+  })
+})
+
+it('never lets a failed language write cost the sign-in', async () => {
+  rpc.mockResolvedValue({ error: new Error('unavailable') })
+  vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  await expect(completeSignIn(google)).rejects.toThrow(
+    'NEXT_REDIRECT:/auth/event-complete',
+  )
+})
+
+it('records nothing for a failed sign-in or an unknown language', async () => {
+  exchange.mockResolvedValue({ error: new Error('Expired code') })
+  await expect(completeSignIn(google)).rejects.toThrow('NEXT_REDIRECT')
+  exchange.mockResolvedValue({ error: null })
+  await expect(completeSignIn({ ...google, lang: 'de' })).rejects.toThrow(
+    'NEXT_REDIRECT',
+  )
+  expect(rpc).not.toHaveBeenCalled()
 })

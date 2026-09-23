@@ -1,5 +1,6 @@
 'use server'
 
+import { isLocale } from '@/lib/i18n'
 import { authFailureUrl } from '@/lib/auth-redirect'
 import { requestOrigin } from '@/lib/request-origin'
 import { safeNext } from '@/lib/safe-next'
@@ -54,6 +55,19 @@ export async function completeSignIn({
       authFailureUrl({ origin: await requestOrigin(), next, lang, provider }),
       RedirectType.replace,
     )
+  }
+
+  // Record the language this host arrived in, unless they already have one.
+  // Email sign-ups carry it in user metadata; Google carries none of ours,
+  // so this is where a Google account gets its first. Best effort: a missing
+  // language falls back to `?lang`, and must never cost a sign-in.
+  if (lang && isLocale(lang)) {
+    await supabase
+      .rpc('set_host_locale', { p_locale: lang, p_only_if_unset: true })
+      .then(({ error: localeError }) => {
+        if (localeError)
+          console.error('Could not record host locale', localeError)
+      })
   }
 
   redirect(safeNext(next, await requestOrigin()), RedirectType.replace)

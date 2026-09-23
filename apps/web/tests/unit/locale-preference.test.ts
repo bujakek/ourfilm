@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { describe, expect, it } from 'vitest'
 
 import {
-  guestLocale,
   LOCALE_PREFERENCE_COOKIE,
   negotiateLocale,
   rootLocale,
@@ -31,41 +30,6 @@ describe('Accept-Language negotiation', () => {
       expect(negotiateLocale(header)).toBeNull()
     },
   )
-})
-
-describe('guest page locale', () => {
-  const qr = { lang: 'hu', eventLocale: 'hu' as const }
-
-  it('follows the guest’s browser over the QR code’s language', () => {
-    expect(
-      guestLocale({ ...qr, cookie: null, acceptLanguage: 'en-GB,en;q=0.9' }),
-    ).toBe('en')
-  })
-
-  it('prefers a saved switcher choice over the browser', () => {
-    expect(guestLocale({ ...qr, cookie: 'hu', acceptLanguage: 'en-US' })).toBe(
-      'hu',
-    )
-  })
-
-  it('falls back to the QR code, then the event, for other languages', () => {
-    expect(
-      guestLocale({
-        cookie: null,
-        acceptLanguage: 'de-DE',
-        lang: 'en',
-        eventLocale: 'hu',
-      }),
-    ).toBe('en')
-    expect(
-      guestLocale({
-        cookie: null,
-        acceptLanguage: 'de-DE',
-        lang: 'xx',
-        eventLocale: 'hu',
-      }),
-    ).toBe('hu')
-  })
 })
 
 describe('root locale', () => {

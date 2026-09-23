@@ -1,4 +1,5 @@
 import { BillingCard } from '@/components/host/billing-card'
+import { getHostLocale } from '@/lib/host-locale'
 import { BackLink } from '@/components/ui/back-link'
 import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
@@ -69,7 +70,9 @@ export default async function AdminEventSettingsPage({
   const { slug } = await params
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
-  const locale = event.locale
+  // The host's own language, from their profile — not the event's, which
+  // is only the fallback for an account with none on record.
+  const locale = await getHostLocale(event.locale)
   const en = locale === 'en'
 
   // Every date field is rendered in the event's own zone, not the server's and

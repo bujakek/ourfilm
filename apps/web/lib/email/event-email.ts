@@ -31,7 +31,8 @@ export function renderEventEmail(input: EventEmailInput): {
   const hu = locale === 'hu'
   const upcoming = kind === 'upcoming'
   const url = `${SITE_URL}/host/events/${slug}?lang=${locale}`
-  const guestUrl = eventUrl(slug, locale)
+  // No `?lang`: guests see the page in their own phone's language.
+  const guestUrl = eventUrl(slug)
   if (input.kind === 'created') {
     const end = formatDeadline(input.captureEndAt, input.timeZone, locale)
     const reveal = formatDeadline(input.revealAt, input.timeZone, locale)

@@ -21,14 +21,12 @@ import {
 import { eventUrl } from '@/lib/site'
 import { cookies, headers } from 'next/headers'
 
-import { resolveLocale } from '@/lib/i18n'
-import { guestLocale, LOCALE_PREFERENCE_COOKIE } from '@/lib/locale-preference'
+import { LOCALE_PREFERENCE_COOKIE, rootLocale } from '@/lib/locale-preference'
 
 export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ lang?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -47,24 +45,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * photos. Keeping that on one URL means a QR scan always has one destination
  * and the guest never has to understand the app's route structure.
  */
-export default async function EventPage({ params, searchParams }: Props) {
+export default async function EventPage({ params }: Props) {
   const { slug } = await params
-  const query = await searchParams
   const event = await getGuestEventState(slug)
   if (!event) notFound()
-  // The guest's own language first. The couple's language is not
-  // necessarily theirs, and the `?lang` on a printed QR code or a shared
-  // invitation is the host's default rather than anything the guest chose —
-  // so a saved switcher choice, then the browser's `Accept-Language`, and
-  // only then that `?lang` and the event's stored locale. `resolveLocale`
-  // catches a row written before the column was constrained. Language only:
-  // nothing a guest can do depends on it.
+  // The guest's own language, decided exactly like the landing page's: a
+  // saved switcher choice, then the phone's `Accept-Language`, then English.
+  // Neither the event's language nor the `?lang` printed on older QR codes
+  // counts — the couple's language is not necessarily the guest's.
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()])
-  const locale = guestLocale({
+  const locale = rootLocale({
     cookie: cookieStore.get(LOCALE_PREFERENCE_COOKIE)?.value,
     acceptLanguage: headerStore.get('accept-language'),
-    lang: query.lang,
-    eventLocale: resolveLocale(event.locale),
   })
 
   const now = new Date()
@@ -129,9 +121,7 @@ export default async function EventPage({ params, searchParams }: Props) {
       locale={locale}
       slug={slug}
       eventName={event.event_name}
-      // Invitations carry the event's language as the default, never this
-      // guest's: the next guest's own browser decides for them.
-      eventUrl={eventUrl(event.slug, resolveLocale(event.locale))}
+      eventUrl={eventUrl(event.slug)}
       captureStartAt={event.capture_start_at}
       captureEndAt={event.capture_end_at}
       initialNow={now.getTime()}

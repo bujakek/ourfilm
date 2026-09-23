@@ -137,7 +137,7 @@ function EventRow({
           markup stays a real `<ul>` of `<li>`s. */}
       <HostBlock index={index}>
         <Link
-          href={`/host/events/${event.slug}?lang=${event.locale}`}
+          href={`/host/events/${event.slug}?lang=${locale}`}
           className={`block overflow-hidden rounded-lg border transition-colors ${
             open
               ? 'border-white/12 hover:border-white/25'

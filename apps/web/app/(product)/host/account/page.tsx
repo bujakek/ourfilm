@@ -6,16 +6,18 @@ import {
   Mail,
   Trash2,
 } from 'lucide-react'
+import { getHostLocale } from '@/lib/host-locale'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { SiInstagram, SiTiktok } from 'react-icons/si'
 
+import { AccountLanguageSelect } from '@/components/host/account-language-select'
 import { AccountNameForm } from '@/components/host/account-name-form'
 import { BackLink } from '@/components/ui/back-link'
 import { getCurrentHostProfile } from '@/lib/host-profile'
-import { localePath, localeTag, resolveLocale } from '@/lib/i18n'
+import { localePath, localeTag } from '@/lib/i18n'
 import { CONTACT_EMAIL, INSTAGRAM_URL, SITE_URL, TIKTOK_URL } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
@@ -28,7 +30,7 @@ export async function generateMetadata({
   const { lang } = await searchParams
   return {
     title:
-      resolveLocale(lang) === 'hu'
+      (await getHostLocale(lang)) === 'hu'
         ? 'Fiókbeállítások — OurFilm'
         : 'Account settings — OurFilm',
     robots: { index: false, follow: false },
@@ -106,7 +108,8 @@ export default async function AccountPage({
   searchParams: Promise<{ lang?: string }>
 }) {
   const { lang } = await searchParams
-  const locale = resolveLocale(lang)
+  // The profile's language; `?lang` only for an account with none yet.
+  const locale = await getHostLocale(lang)
   const en = locale === 'en'
   const profile = await getCurrentHostProfile()
   if (!profile) redirect(`/host/login?lang=${locale}`)
@@ -156,6 +159,10 @@ export default async function AccountPage({
               </p>
             </div>
           )}
+        </div>
+
+        <div className="mt-8">
+          <AccountLanguageSelect locale={locale} />
         </div>
 
         <div className="mt-8 border-b border-border pb-7">
