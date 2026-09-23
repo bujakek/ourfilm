@@ -25,7 +25,8 @@ import {
   locales,
   localeTag,
 } from '@/lib/i18n'
-import { canonicalUrl } from '@/lib/seo'
+import { canonicalUrl, faqJsonLd, faqPairs, breadcrumbJsonLd } from '@/lib/seo'
+import { JsonLd } from '@/components/json-ld'
 
 type Props = { params: Promise<{ locale: string; occasion: string }> }
 
@@ -107,6 +108,12 @@ export default async function OccasionPage({ params }: Props) {
     .map((id) => getDocById(locale, id))
     .filter((doc) => doc !== undefined)
 
+  // These four pages are indexed and in the sitemap (`OCCASIONS_ARE_DRAFT` is
+  // off), and each asks its own questions in an open `<dl>` — the same defect
+  // the homepage had. `occasion.faq` is the array the section below renders, so
+  // the schema describes exactly what a reader sees.
+  const faq = faqJsonLd(faqPairs(copy.faq))
+
   return (
     <PageShell
       locale={locale}
@@ -114,6 +121,19 @@ export default async function OccasionPage({ params }: Props) {
       title={copy.title}
       lead={copy.text}
     >
+      {faq ? <JsonLd data={faq} /> : null}
+      <JsonLd
+        data={breadcrumbJsonLd(locale, [
+          { name: 'OurFilm', path: '/' },
+          { name: en ? 'Occasions' : 'Alkalmak', path: '/alkalmak' },
+          // Locale-relative: `breadcrumbJsonLd` runs it through `localePath`
+          // itself, which is also what turns `/alkalmak/…` into `/occasions/…`
+          // on the English side. Passing `occasionPath` here would prefix the
+          // locale twice.
+          { name: copy.label, path: `/alkalmak/${occasion.slugs[locale]}` },
+        ])}
+      />
+
       <section className="relative px-5 pb-16 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-5xl">
           {/* 16:9, not the 16:7 this started as. Every one of these sources

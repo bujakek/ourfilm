@@ -132,6 +132,32 @@ describe('the content pack', () => {
     }
   })
 
+  it('opens every page with a labelled summary', () => {
+    // Answer engines quote a summary they can find the edges of, and an
+    // unlabelled first paragraph has none — every one of these pages already
+    // led with its answer, so this is the label that marks where that answer
+    // stops. Two blocks, not one: the competitor pages open with a sentence of
+    // context and put the summary under it, which reads better and extracts
+    // the same.
+    //
+    // The label is checked against a closed list so a new article cannot
+    // invent a fourth way of saying "in short" — `Röviden` is Hungarian,
+    // `In short` is the English default, and `The short answer` belongs to the
+    // pages that answer a which-is-better question.
+    const labels = ['Röviden', 'In short', 'The short answer']
+
+    for (const doc of docs) {
+      const opening = body(doc).trim().split('\n\n').slice(0, 2)
+      const summary = opening.find((block) => block.trim().startsWith('**'))
+
+      expect(summary, doc.filePath).toBeDefined()
+      expect(
+        labels.some((label) => summary?.trim().startsWith(`**${label}:**`)),
+        `${doc.filePath} — summary label must be one of ${labels.join(', ')}`,
+      ).toBe(true)
+    }
+  })
+
   it('ships no placeholders', () => {
     for (const doc of docs) {
       expect(body(doc), doc.filePath).not.toMatch(

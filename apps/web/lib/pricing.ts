@@ -27,3 +27,28 @@ export const EVENT_PRICE_LABEL = EVENT_PRICE_LABELS.hu
 export function eventPriceLabel(locale: Locale): string {
   return EVENT_PRICE_LABELS[locale]
 }
+
+/**
+ * The same price, as a machine reads it.
+ *
+ * Split from the labels above because `Offer` structured data needs a bare
+ * number and an ISO 4217 code where a host needs "12 900 Ft". They are two
+ * renderings of one fact, and `tests/unit/pricing.test.ts` asserts the label
+ * still spells out the amount — the drift this guards against is a price
+ * change applied to the line a host reads and not to the number an answer
+ * engine quotes back at them.
+ *
+ * Major units, not Stripe's minor ones: schema.org `price` is the amount as
+ * written on the page, and `lib/billing.ts` already owns the minor-unit
+ * conversion for the side that actually moves money.
+ */
+export const EVENT_PRICE_AMOUNTS: Record<Locale, number> = {
+  en: 39,
+  hu: 12900,
+}
+
+/** ISO 4217, for `priceCurrency`. Matches the currency of the locale's Price. */
+export const EVENT_PRICE_CURRENCIES: Record<Locale, string> = {
+  en: 'USD',
+  hu: 'HUF',
+}

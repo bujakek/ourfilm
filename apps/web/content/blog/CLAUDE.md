@@ -90,6 +90,41 @@ reader first and a search engine second.
   make a line break here — use a paragraph.
 - Keep paragraphs to three or four sentences. This is read on a phone.
 
+### The summary lead
+
+**Every page opens with a labelled one-paragraph summary**, and `pnpm verify`
+fails without one:
+
+```mdx
+**Röviden:** a vendég QR-kóddal nyitja meg a közös kamerát, véges tekercsre
+fotóz, a galéria pedig azonnal vagy az esemény végén nyílik meg.
+```
+
+Three labels, and no fourth:
+
+| Label                   | Used by                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `**Röviden:**`          | Every Hungarian page                                                                 |
+| `**In short:**`         | English guides and money pages                                                       |
+| `**The short answer:**` | English pages answering a which-is-better question (`vs`, `alternatives`, `compare`) |
+
+It goes in the first or second block — the competitor pages open with a
+sentence of context and put the summary under it, which reads better and
+extracts the same.
+
+Lowercase after the colon, unless the first word is a proper noun
+(`**Röviden:** Dropbox használható…`) or a quoted term.
+
+The point is not decoration. Answer engines quote a summary whose edges they
+can find, and an unlabelled first paragraph has none — so write the **answer**
+here, not the topic, and make it stand alone: someone who reads only this
+paragraph should have been told the thing they asked. Do not restate the
+frontmatter `description` word for word; that sentence is for a result snippet,
+this one is for a reader who already clicked.
+
+**Don't put the free-guest limit or a price in it.** Those live on `/hu/arak`,
+for the reason in the Hungarian copy section below.
+
 ### Links
 
 Internal links are **locale-prefixed and written in full**: `/hu/arak`,

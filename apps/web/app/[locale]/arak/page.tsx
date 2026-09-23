@@ -1,10 +1,11 @@
+import { JsonLd } from '@/components/json-ld'
 import { PageShell } from '@/components/site/page-shell'
 import { hasRealCompanyDetails } from '@/lib/company'
 import { isLocale, localePath } from '@/lib/i18n'
 import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import { EVENT_PRICE_LABEL, EVENT_PRICE_LABELS } from '@/lib/pricing'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
-import { localizedPageAlternates } from '@/lib/seo'
+import { eventProductJsonLd, localizedPageAlternates } from '@/lib/seo'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -14,6 +15,9 @@ const copy = {
     title: 'Pricing – OurFilm',
     description: `One complete wedding guest camera for ${EVENT_PRICE_LABELS.en}. Try it free with up to ${FREE_PARTICIPANT_LIMIT} guests.`,
     eyebrow: 'PRICING',
+    /** `Product.name` in the structured data. Not `plan`, which is a
+     *  typographic label set in caps for the receipt. */
+    productName: 'OurFilm — full event',
     heading: 'One wedding. One camera. One price.',
     lead: 'No subscription and no per-guest fee. Pay once and invite everyone.',
     plan: 'FULL EVENT',
@@ -50,6 +54,7 @@ const copy = {
     title: 'Árak · OurFilm',
     description: `Egy teljes esküvői vendégkamera ${EVENT_PRICE_LABEL}-ért, egyszeri fizetéssel. Legfeljebb ${FREE_PARTICIPANT_LIMIT} vendéggel ingyen kipróbálható.`,
     eyebrow: 'ÁRAK',
+    productName: 'OurFilm — teljes esemény',
     heading: 'Egy esküvő. Egy kamera. Egy ár.',
     lead: 'Nincs előfizetés és nincs vendégenkénti díj. Egyszer fizettek, az egész násznép fotózhat.',
     plan: 'TELJES ESEMÉNY',
@@ -110,13 +115,24 @@ export default async function ArakPage({ params }: Props) {
       title={current.heading}
       lead={current.lead}
     >
+      {/* The price was on the page as three styled spans and nowhere a machine
+          could read it — which is the one question an answer engine gets asked
+          about a paid product. Keyed on the locale, so the Hungarian page
+          cannot quote dollars. */}
+      <JsonLd
+        data={eventProductJsonLd({
+          locale,
+          name: current.productName,
+          description: current.description,
+        })}
+      />
       <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
         <div className="mx-auto max-w-4xl">
           {/* One receipt, in paper. The `glass-strong` panel it replaces was
               the same material as everything else on the page, which left the
               price — the one thing this page exists to state — competing with
               its own container. */}
-          <article className="paper overflow-hidden rounded-2xl">
+          <article className="paper overflow-hidden rounded-xs">
             <div className="grid gap-10 p-7 sm:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:p-12">
               <div className="flex flex-col">
                 <p className="paper-muted font-mono text-[9.5px] font-medium tracking-[0.2em]">
@@ -151,7 +167,7 @@ export default async function ArakPage({ params }: Props) {
 
                 <Link
                   href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-                  className="btn-shine mt-8 inline-flex min-h-13 items-center justify-center rounded-lg bg-[color:var(--paper-foreground)] px-7 text-[15px] font-semibold text-[color:var(--paper)]"
+                  className="btn-shine mt-8 inline-flex min-h-13 items-center justify-center rounded-xs bg-[color:var(--paper-foreground)] px-7 text-[15px] font-semibold text-[color:var(--paper)]"
                 >
                   {current.create}
                 </Link>
