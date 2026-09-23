@@ -48,8 +48,9 @@ export function localizedPageAlternates(locale: Locale, path: string) {
  * `alternates` for a page that exists in more than one language.
  *
  * Only locales with a real page are listed: an `hreflang` pointing at a URL
- * that 404s is worse than no `hreflang` at all — and with `locales = ['hu']`
- * there is nothing to relate, so the map comes back empty.
+ * that 404s is worse than no `hreflang` at all. Both locales are live now, so
+ * this fills in for every translated document and still comes back empty for
+ * one that exists in a single language.
  *
  * Each language keeps its **own** canonical — the canonical is passed in by
  * the caller and is always the page's own URL. Canonicalising English to
@@ -60,9 +61,10 @@ export function languageAlternates(translations: Translations) {
 
   // hreflang describes a *relationship between* language versions. One
   // version has no relationship to describe, and emitting `hu-HU` plus an
-  // `x-default` both pointing at the page you are already on is noise in every
-  // article until English ships. The moment a translation exists, this fills
-  // in on its own.
+  // `x-default` both pointing at the page you are already on is noise. This is
+  // no longer the common case — both locales are live and nearly every
+  // document is translated — but an untranslated one still passes through here
+  // and must emit nothing rather than a self-referential pair.
   if (refs.length < 2) return {}
 
   const languages: Record<string, string> = {}
