@@ -33,29 +33,39 @@ export function PaidTermsAcceptance({ locale }: { locale: Locale }) {
       target="_blank"
       className="underline underline-offset-2 hover:text-foreground"
     >
-      {locale === 'en' ? 'Privacy Notice' : 'adatkezelési tájékoztatót'}
+      {locale === 'en' ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
     </Link>
   )
 
   if (locale === 'en') {
     return (
       <span>
-        I accept the {terms}, and expressly ask OurFilm to start the service
-        before the 14-day cancellation period ends. I understand that, if I
-        cancel after service has started, I may have to pay for the proportion
-        already supplied. The {privacy} explains how personal data is handled.
+        I ask for the service to start immediately, within the 14-day period. I
+        acknowledge that I lose my right to cancel without giving a reason once
+        the service has been fully performed.
+        <span className="mt-1.5 block">
+          If you cancel within the 14-day period, you pay a proportionate fee
+          for the service provided up to that point.
+        </span>
+        <span className="mt-1.5 block">
+          By purchasing, you accept the {terms}. {privacy}.
+        </span>
       </span>
     )
   }
 
   return (
     <span>
-      Elfogadom az {terms}, és kijelentem, hogy megismertem az {privacy}.
-      Kifejezetten kérem, hogy az OurFilm a 14 napos elállási/felmondási
-      határidő lejárta előtt kezdje meg a szolgáltatás teljesítését. Tudomásul
-      veszem, hogy felmondás esetén a felmondás közléséig arányosan teljesített
-      szolgáltatás díját meg kell fizetnem, valamint azt, hogy a szolgáltatás
-      maradéktalan teljesítését követően elveszítem a felmondási jogomat.
+      Kérem a szolgáltatás azonnali megkezdését a 14 napos határidőn belül.
+      Tudomásul veszem, hogy maradéktalan teljesítéskor elveszítem az indokolás
+      nélküli felmondási jogomat.
+      <span className="mt-1.5 block">
+        A 14 napos határidőn belüli felmondáskor az addig teljesített
+        szolgáltatás arányos díja fizetendő.
+      </span>
+      <span className="mt-1.5 block">
+        A vásárlással elfogadod az {terms}. {privacy}.
+      </span>
     </span>
   )
 }
