@@ -1,6 +1,7 @@
 'use client'
 
 import { type Locale, localePath, translatedMarketingPath } from '@/lib/i18n'
+import { rememberLocalePreference } from '@/lib/locale-preference'
 import { cn } from '@/lib/utils'
 import { MenuMark } from '@/components/brand/menu-mark'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -232,6 +233,9 @@ export function Navbar({ locale }: { locale: Locale }) {
         <Link
           href={languageHref}
           hrefLang={targetLocale}
+          // The one place a language preference is saved: `/` reads it on the
+          // next visit. Visiting `/hu` or `/en` directly saves nothing.
+          onClick={() => rememberLocalePreference(targetLocale)}
           // Was `text-xs` sans while everything beside it was letterspaced
           // mono — three items on one side of a bar in three type treatments.
           className="hidden shrink-0 rounded-full px-2.5 py-2 font-mono text-[10.5px] font-medium tracking-[0.14em] text-foreground/45 transition-colors hover:text-foreground md:inline-flex"
@@ -339,7 +343,10 @@ export function Navbar({ locale }: { locale: Locale }) {
           <Link
             href={languageHref}
             hrefLang={targetLocale}
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              rememberLocalePreference(targetLocale)
+              setOpen(false)
+            }}
             className="rounded-2xl px-5 py-4 text-lg font-medium text-foreground/90 transition-colors hover:bg-white/5"
           >
             {locale === 'en' ? 'Magyar' : 'English'}

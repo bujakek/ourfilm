@@ -23,6 +23,7 @@ import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
 import type { EventPlan } from '@/lib/onboarding'
 import { type Locale, resolveLocale } from '@/lib/i18n'
 import { track, type OnboardingStep } from '@/lib/telemetry'
+import type { CheckoutReadiness } from '@/lib/billing-country'
 import { createEventFromDraft } from './actions'
 import { endScreen } from './step-end'
 import { guestsScreen } from './step-guests'
@@ -55,11 +56,12 @@ type Props = {
   defaultEndIso: string
   /** The five ÖTLETEK titles, resolved on the server. */
   suggestions: string[]
-  /** Whether a paid event can actually be sold here, per locale. Deployed
-   *  environments have no `STRIPE_*` variables, so the paid tier is not
-   *  offered there; a Hungarian event additionally needs Billingo, because
-   *  OurFilm is the seller and owes the invoice. */
-  paymentsEnabled: Record<Locale, boolean>
+  /** Whether a paid event can actually be sold here, per side of the
+   *  billing-country boundary. Deployed environments without `STRIPE_*`
+   *  variables offer no paid tier at all; a Hungarian billing address
+   *  additionally needs Billingo, because OurFilm is the seller and owes the
+   *  invoice. Never keyed on the interface language. */
+  readiness: CheckoutReadiness
   /** Minted server-side so the first render matches on both sides — a
    *  `crypto.randomUUID()` in a state initializer would differ between the
    *  server's HTML and the client's, and this value is rendered into the
@@ -174,7 +176,7 @@ function OnboardingFlow({
   nowIso,
   defaultEndIso,
   suggestions,
-  paymentsEnabled,
+  readiness,
   initial,
   initialCreationKey,
   startStep,
@@ -191,9 +193,9 @@ function OnboardingFlow({
   const [error, setError] = useState<string | null>(null)
   const [authOpen, setAuthOpen] = useState(false)
 
-  // The flow resolves its own locale from `?lang`, so which of the two
-  // arrangements this event will be sold under is only knowable here.
-  const paymentsAvailable = paymentsEnabled[locale]
+  // Whether the paid tier can be offered at all. Which arrangement sells it
+  // is decided by the billing country chosen on the last screen.
+  const paymentsAvailable = readiness.domestic || readiness.international
 
   const [step, setStep] = useState(Math.min(LAST_STEP, Math.max(0, startStep)))
   const [name, setName] = useState(initial.name)
@@ -202,6 +204,9 @@ function OnboardingFlow({
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
   const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
+  const [billingCountry, setBillingCountry] = useState<string | null>(
+    initial.billingCountry ?? null,
+  )
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
   // apart between the calendar and the time pill. Null means "not chosen yet",
@@ -231,6 +236,7 @@ function OnboardingFlow({
       plan,
       guestsCanView,
       legalAccepted,
+      billingCountry,
       step,
       creationKey: initialCreationKey,
       pendingCreate: false,
@@ -247,6 +253,7 @@ function OnboardingFlow({
       plan,
       guestsCanView,
       legalAccepted,
+      billingCountry,
       step,
       initialCreationKey,
       initial.createdAt,
@@ -296,6 +303,7 @@ function OnboardingFlow({
         plan,
         guestsCanView,
         legalAccepted,
+        billingCountry,
         creationKey: initialCreationKey,
       })
 
@@ -437,6 +445,8 @@ function OnboardingFlow({
               legalAccepted,
               setLegalAccepted,
               paymentsEnabled: paymentsAvailable,
+              billingCountry,
+              setBillingCountry,
               pending,
             })
 

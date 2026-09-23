@@ -1,5 +1,9 @@
 import { billingDetailsFromStripeSession } from '@/lib/billing-details'
 import {
+  DOMESTIC_BILLING_COUNTRY,
+  parseBillingCountry,
+} from '@/lib/billing-country'
+import {
   cancelBillingoInvoice,
   ensureBillingoInvoice,
 } from '@/lib/billingo/invoicing'
@@ -7,6 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripe } from '@/lib/stripe/client'
 import { stripeEnv } from '@/lib/stripe/env'
 import type { Database } from '@/lib/supabase/database.types'
+import type { Settlement } from '@/lib/settlement'
 import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
@@ -34,6 +39,25 @@ class OrphanedPaymentError extends Error {
     this.name = 'OrphanedPaymentError'
   }
 }
+
+/**
+ * A paid sale that no automatic path may invoice until a person has looked.
+ *
+ * Its own class so `server_error` names it; the reason travels in the ledger
+ * row, never in the report, because nothing here may carry an address.
+ */
+class ReconciliationRequiredError extends Error {
+  constructor(sessionId: string, reason: ReconciliationReason) {
+    super(`Session ${sessionId} needs reconciliation: ${reason}`)
+    this.name = 'ReconciliationRequiredError'
+  }
+}
+
+type ReconciliationReason =
+  | 'billing_country_mismatch'
+  | 'unsupported_billing_country'
+  | 'settlement_mismatch'
+  | 'settlement_unverified'
 
 /**
  * Stripe's server-to-server report of what actually happened.
@@ -171,6 +195,64 @@ function idOf(
 }
 
 /**
+ * Which arrangement Stripe itself says this Session was, when it says.
+ *
+ * `managed_payments` is on the Session object from the API version we pin,
+ * but a webhook payload is rendered at the endpoint's version, and an older
+ * one omits the field entirely. Absent is therefore "unknown", never "direct":
+ * the one answer that can issue an invoice is not the one to guess.
+ */
+function stripeSettlement(session: Stripe.Checkout.Session): Settlement | null {
+  if (!('managed_payments' in session)) return null
+  return session.managed_payments?.enabled ? 'managed' : 'direct'
+}
+
+/** The country the buyer entered on Stripe's page. Only the country. */
+function reportedCountry(session: Stripe.Checkout.Session): string | null {
+  const country = session.customer_details?.address?.country
+  return country && /^[A-Z]{2}$/i.test(country) ? country.toUpperCase() : null
+}
+
+/**
+ * Whether this paid sale can be trusted to be what its ledger row says.
+ *
+ * Hosted Checkout cannot lock the billing country: the host confirms one on
+ * our page, but Stripe's address form lets them enter another, and nothing
+ * between that form and the charge lets us refuse it. So a crossing of the
+ * HU / non-HU boundary is detected here, after the money moved, and parked
+ * for a person — never refunded automatically, never re-routed, and never
+ * invoiced as though it had not happened. The merchant of record of a
+ * completed payment is what it was.
+ */
+function reconciliationReasonFor(
+  purchase: Pick<Purchase, 'settlement' | 'selected_billing_country'>,
+  session: Stripe.Checkout.Session,
+): ReconciliationReason | null {
+  const stripe = stripeSettlement(session)
+  if (stripe && stripe !== purchase.settlement) return 'settlement_mismatch'
+
+  const reported = reportedCountry(session)
+  if (!reported) return null
+
+  const reportedDomestic = reported === DOMESTIC_BILLING_COUNTRY
+  // A direct sale is a Hungarian sale; Billingo cannot invoice anything else.
+  if (purchase.settlement === 'direct' && !reportedDomestic) {
+    return 'billing_country_mismatch'
+  }
+  const selected = purchase.selected_billing_country
+  if (
+    selected &&
+    (selected === DOMESTIC_BILLING_COUNTRY) !== reportedDomestic
+  ) {
+    return 'billing_country_mismatch'
+  }
+  if (purchase.settlement === 'managed' && !parseBillingCountry(reported)) {
+    return 'unsupported_billing_country'
+  }
+  return null
+}
+
+/**
  * Record a settled checkout, and with it the entitlement that lifts the cap.
  *
  * Two shapes, because there are two of them. A direct Hungarian sale always
@@ -222,6 +304,33 @@ async function recordPaidSession(
     throw new OrphanedPaymentError(session.id, identity.eventId)
   }
 
+  // No ledger row, so no settlement recorded at checkout. What it was is
+  // taken from Stripe and our own metadata, and only when they agree; a
+  // Session carrying neither — the earliest checkouts — is recorded as
+  // `managed`, which can never be invoiced, and flagged so the ledger does not
+  // pretend to know. Never `direct` by default.
+  const metadataSettlement =
+    session.metadata?.settlement === 'managed' ? 'managed' : null
+  const fromStripe = stripeSettlement(session)
+  // Only a Stripe answer of `managed`, or our own `managed` metadata that
+  // Stripe does not contradict, is a classification.
+  const legacyReason: ReconciliationReason | null =
+    fromStripe === 'direct'
+      ? metadataSettlement
+        ? 'settlement_mismatch'
+        : 'settlement_unverified'
+      : fromStripe === 'managed' || metadataSettlement
+        ? null
+        : 'settlement_unverified'
+  const selected = parseBillingCountry(session.metadata?.billing_country)
+  const reason =
+    legacyReason ??
+    reconciliationReasonFor(
+      { settlement: 'managed', selected_billing_country: selected },
+      session,
+    )
+  const now = new Date().toISOString()
+
   const { error } = await db.from('purchases').upsert(
     {
       event_id: identity.eventId,
@@ -231,8 +340,13 @@ async function recordPaidSession(
       stripe_customer_id: idOf(session.customer),
       amount_minor: session.amount_total,
       currency: session.currency,
+      settlement: 'managed',
+      selected_billing_country: selected,
+      reported_billing_country: reportedCountry(session),
+      reconciliation_reason: reason,
+      reconciliation_flagged_at: reason ? now : null,
       status: 'paid',
-      paid_at: new Date().toISOString(),
+      paid_at: now,
       failed_at: null,
       expired_at: null,
     },
@@ -240,6 +354,16 @@ async function recordPaidSession(
   )
 
   if (error) throw error
+
+  if (reason) {
+    await reportServerIssue(
+      new ReconciliationRequiredError(session.id, reason),
+      {
+        operation: 'checkout_reconciliation',
+        eventId: identity.eventId,
+      },
+    )
+  }
 
   // After the write, never before: this event means the album is unlocked, and
   // reporting it from ahead of the upsert would claim a sale the ledger does
@@ -272,8 +396,15 @@ async function settleRecordedPurchase(
   // A late `completed` must not resurrect a purchase that has been refunded.
   if (purchase.status === 'refunded') return
 
+  // The settlement recorded when the Session was created, never re-derived
+  // from the event's language, the host's profile or anything else that can
+  // change after the sale. Stripe's own record is compared with it below.
   const direct = purchase.settlement === 'direct'
   const paidAt = purchase.paid_at ?? new Date().toISOString()
+  const reported = reportedCountry(session)
+  const reconciliation =
+    (purchase.reconciliation_reason as ReconciliationReason | null) ??
+    reconciliationReasonFor(purchase, session)
 
   // Stripe is the authority on what was charged, and the ledger's amount was
   // written by the host's own client at checkout — so the session's number
@@ -290,7 +421,10 @@ async function settleRecordedPurchase(
     )
   }
 
-  const billing = direct ? billingDetailsFromStripeSession(session) : null
+  // A flagged sale gets no invoice snapshot and no place in the queue: the
+  // snapshot is what an invoice is issued from, and this one is in doubt.
+  const invoiceable = direct && !reconciliation
+  const billing = invoiceable ? billingDetailsFromStripeSession(session) : null
 
   // The only thing that can stop a Hungarian invoice: without a lawful name
   // and Hungarian address there is no document to issue. Not a payment
@@ -303,11 +437,11 @@ async function settleRecordedPurchase(
   // but the invoice is owed under Hungarian law regardless, and withholding
   // it over a missing checkbox would turn a data oddity into a legal one.
   const invoiceBlocker =
-    direct && billing?.success === false
+    invoiceable && billing?.success === false
       ? `Session ${session.id} has invalid billing details: ${billing.error}`
       : null
 
-  const snapshot = direct && billing?.success ? billing.data : null
+  const snapshot = invoiceable && billing?.success ? billing.data : null
 
   const { error } = await db
     .from('purchases')
@@ -320,6 +454,14 @@ async function settleRecordedPurchase(
       paid_at: paidAt,
       failed_at: null,
       expired_at: null,
+      reported_billing_country: reported,
+      ...(reconciliation
+        ? {
+            reconciliation_reason: reconciliation,
+            reconciliation_flagged_at:
+              purchase.reconciliation_flagged_at ?? new Date().toISOString(),
+          }
+        : {}),
       ...(snapshot
         ? {
             billing_type: snapshot.type,
@@ -353,11 +495,13 @@ async function settleRecordedPurchase(
                   session.metadata?.terms_accepted_at ??
                   paidAt)
                 : purchase.early_performance_consent_at,
-            invoice_status: invoiceBlocker
-              ? 'failed'
-              : purchase.invoice_status === 'not_started'
-                ? 'pending'
-                : purchase.invoice_status,
+            invoice_status: reconciliation
+              ? purchase.invoice_status
+              : invoiceBlocker
+                ? 'failed'
+                : purchase.invoice_status === 'not_started'
+                  ? 'pending'
+                  : purchase.invoice_status,
             ...(invoiceBlocker
               ? {
                   invoice_last_error: invoiceBlocker,
@@ -380,6 +524,14 @@ async function settleRecordedPurchase(
     // and the obligation to invoice it both survive that.
     event_deleted: purchase.event_id === null,
   })
+
+  if (reconciliation) {
+    await reportServerIssue(
+      new ReconciliationRequiredError(session.id, reconciliation),
+      { operation: 'checkout_reconciliation', eventId: purchase.event_id },
+    )
+    return
+  }
 
   if (!direct || invoiceBlocker) return
 

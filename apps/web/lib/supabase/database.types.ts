@@ -520,7 +520,11 @@ export type Database = {
           invoicing_started_at: string | null
           owner_id: string | null
           paid_at: string | null
+          reconciliation_flagged_at: string | null
+          reconciliation_reason: string | null
           refunded_at: string | null
+          reported_billing_country: string | null
+          selected_billing_country: string | null
           settlement: string
           status: Database["public"]["Enums"]["purchase_status"]
           stripe_checkout_session_id: string
@@ -560,7 +564,11 @@ export type Database = {
           invoicing_started_at?: string | null
           owner_id?: string | null
           paid_at?: string | null
+          reconciliation_flagged_at?: string | null
+          reconciliation_reason?: string | null
           refunded_at?: string | null
+          reported_billing_country?: string | null
+          selected_billing_country?: string | null
           settlement?: string
           status?: Database["public"]["Enums"]["purchase_status"]
           stripe_checkout_session_id: string
@@ -600,7 +608,11 @@ export type Database = {
           invoicing_started_at?: string | null
           owner_id?: string | null
           paid_at?: string | null
+          reconciliation_flagged_at?: string | null
+          reconciliation_reason?: string | null
           refunded_at?: string | null
+          reported_billing_country?: string | null
+          selected_billing_country?: string | null
           settlement?: string
           status?: Database["public"]["Enums"]["purchase_status"]
           stripe_checkout_session_id?: string

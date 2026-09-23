@@ -1,7 +1,7 @@
 import type { Translations } from '@/lib/content/types'
 import { type Locale, localeLabel } from '@/lib/i18n'
-import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
+import { LocaleSwitchLink } from '@/components/content/locale-switch-link'
 
 /**
  * Links to this article in the other languages it exists in.
@@ -26,10 +26,10 @@ export function LanguageSwitcher({
   return (
     <nav className="mt-4 flex flex-wrap items-center gap-2">
       {others.map((ref) => (
-        <Link
+        <LocaleSwitchLink
           key={ref.locale}
           href={ref.href}
-          hrefLang={ref.locale}
+          locale={ref.locale}
           className={buttonVariants({
             variant: 'secondary',
             size: 'sm',
@@ -37,7 +37,7 @@ export function LanguageSwitcher({
           })}
         >
           {localeLabel[ref.locale]}
-        </Link>
+        </LocaleSwitchLink>
       ))}
     </nav>
   )

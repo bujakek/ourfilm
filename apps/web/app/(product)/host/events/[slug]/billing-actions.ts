@@ -1,8 +1,10 @@
 'use server'
 
 import { getEventQuota } from '@/lib/billing'
+import { checkBillingCountry, eventPricingFor } from '@/lib/billing-country'
 import { getOwnedEventBySlug } from '@/lib/events'
 import { checkoutBlockedReason } from '@/lib/checkout-readiness'
+import { settlementFor } from '@/lib/settlement'
 import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
 import { stripeIsConfigured } from '@/lib/stripe/env'
 import { createClient } from '@/lib/supabase/server'
@@ -38,9 +40,27 @@ export async function startEventCheckout(
 ): Promise<CheckoutState> {
   const slug = String(formData.get('slug') ?? '').trim()
   const en = formData.get('locale') === 'en'
+  // The only commercial input this action accepts. No payment flow, Price,
+  // amount or currency is read from the form: all of them are derived from
+  // this country on the server, after it has been validated against the
+  // supported markets.
+  const country = checkBillingCountry(formData.get('billing_country'))
   if (!slug) {
     await blocked(null, 'no_slug')
     return { error: en ? 'Event not found.' : 'Hiányzó esemény.' }
+  }
+  if (!country.ok) {
+    await blocked(null, country.reason)
+    return {
+      error:
+        country.reason === 'billing_country_missing'
+          ? en
+            ? 'Choose your billing country to continue to payment.'
+            : 'A fizetéshez válaszd ki a számlázási országot.'
+          : en
+            ? 'We cannot take payments from this billing country yet. Contact us and we will help.'
+            : 'Ebből a számlázási országból még nem tudunk fizetést fogadni. Írj nekünk, és segítünk.',
+    }
   }
   if (formData.get('legal_acceptance') !== 'on') {
     await blocked(null, 'terms_not_accepted')
@@ -98,13 +118,13 @@ export async function startEventCheckout(
     }
   }
 
-  // Now that the event has been read, the locale is trustworthy, and with it
-  // which arrangement sells this event. A Hungarian sale is OurFilm's own and
-  // needs Billingo to issue the invoice; an English one settles through Link,
-  // which issues its own document and needs nothing more than Stripe. Offering
-  // a Hungarian host a payment this deployment could take but not invoice
+  // Which arrangement sells this event follows the billing country, not the
+  // event's language. A Hungarian address is OurFilm's own sale and needs
+  // Billingo to issue the invoice; any other supported country settles
+  // through Link, which issues its own document and needs nothing more than
+  // Stripe. Offering a payment this deployment could take but not invoice
   // would be the one failure that cannot be fixed after the fact.
-  const notReady = checkoutBlockedReason(event.locale)
+  const notReady = checkoutBlockedReason(country.country)
   if (notReady) {
     await blocked(event.id, notReady)
     return {
@@ -121,7 +141,9 @@ export async function startEventCheckout(
       slug: event.slug,
       ownerId: user.id,
       ownerEmail: user.email ?? null,
+      // The language of Stripe's page only, as before.
       locale: event.locale,
+      billingCountry: country.country,
       termsAcceptedAt: new Date().toISOString(),
     })
   } catch (e) {
@@ -146,8 +168,9 @@ export async function startEventCheckout(
   await reportServerEvent('checkout_started', {
     event_id: event.id,
     source: 'settings',
-    currency: event.locale === 'en' ? 'usd' : 'huf',
+    currency: eventPricingFor(country.country).currency,
     locale: event.locale === 'en' ? 'en' : 'hu',
+    settlement: settlementFor(country.country),
   })
 
   // Outside the try on purpose: redirect() signals by throwing, so catching

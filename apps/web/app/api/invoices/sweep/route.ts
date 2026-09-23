@@ -51,6 +51,8 @@ export async function POST(request: Request) {
       .from('purchases')
       .select('id, invoice_status')
       .eq('settlement', 'direct')
+      // A sale parked for reconciliation waits for a person, not for this.
+      .is('reconciliation_reason', null)
       .in('invoice_status', [
         'pending',
         'failed',

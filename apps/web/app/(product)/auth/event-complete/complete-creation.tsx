@@ -86,6 +86,7 @@ async function run(): Promise<Outcome> {
       plan: draft.plan,
       guestsCanView: draft.guestsCanView,
       legalAccepted: draft.legalAccepted,
+      billingCountry: draft.billingCountry ?? null,
       creationKey: draft.creationKey,
     })
   } catch {

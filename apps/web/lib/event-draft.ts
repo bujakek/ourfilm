@@ -62,6 +62,11 @@ const draftSchema = z.object({
   /** Required on the final screen. Persisted so the explicit choice survives
    *  the magic-link round trip together with the rest of the draft. */
   legalAccepted: z.boolean(),
+  /** The billing country picked on the paid tile. Optional so drafts saved
+   *  before it existed still restore; validated on the server like every
+   *  other field, and never derived from `locale`. Kept across a language
+   *  switch because the draft is the same object in both languages. */
+  billingCountry: z.string().max(2).nullable().optional(),
   /** Which screen to reopen on. Clamped by the form, not here — the number of
    *  steps is the form's business. */
   step: z.number().int().min(0).max(10),
@@ -102,6 +107,7 @@ export function emptyDraft(
     plan: 'free',
     guestsCanView: true,
     legalAccepted: false,
+    billingCountry: null,
     step: 0,
     creationKey,
     pendingCreate: false,

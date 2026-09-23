@@ -1,6 +1,10 @@
 import 'server-only'
 
-import type { Locale } from '@/lib/i18n'
+import {
+  type BillingCountry,
+  DOMESTIC_BILLING_COUNTRY,
+  isDomesticBillingCountry,
+} from '@/lib/billing-country'
 
 /**
  * Which arrangement sells an event, and therefore who issues the document.
@@ -42,13 +46,34 @@ export function huDirectSalesEnabled(): boolean {
 }
 
 /**
- * Keyed on the same locale that picks the Stripe Price, so the currency and
- * the legal arrangement can never disagree about which sale this is.
+ * Keyed on the confirmed billing country, never on the interface language.
  *
- * English events are never direct: Managed Payments does Apple Pay on USD
- * perfectly well, and Link keeps the tax and documentation burden.
+ * A Hungarian billing address is a direct sale — OurFilm is the seller and
+ * issues the invoice — whichever language the host reads the site in. Every
+ * other supported country settles through Managed Payments, where Link is the
+ * merchant of record and issues its own document.
+ *
+ * While `OURFILM_HU_DIRECT` is off a Hungarian address still settles through
+ * Managed Payments, in HUF, exactly as Hungarian events did before the split.
+ * The reverse never happens: nothing here falls back to a direct sale because
+ * Managed Payments is unavailable. A non-Hungarian buyer is never OurFilm's
+ * own sale, because Billingo can only invoice a Hungarian address.
+ *
+ * Decided once, when the Checkout Session is created, and stored on the
+ * purchase. Every later reader — the webhook, the invoice sweep, a refund —
+ * reads `purchases.settlement` and never calls this again, so neither a
+ * language switch nor an edited profile can reclassify a sale.
  */
-export function settlementFor(locale: Locale): Settlement {
-  if (locale === 'en') return 'managed'
+export function settlementFor(country: BillingCountry): Settlement {
+  if (!isDomesticBillingCountry(country)) return 'managed'
   return huDirectSalesEnabled() ? 'direct' : 'managed'
 }
+
+/** A representative non-domestic country, for "can we sell abroad at all". */
+const ANY_INTERNATIONAL = 'DE' as BillingCountry
+
+/** Both arrangements, for screens that ask before a country is chosen. */
+export const REPRESENTATIVE_COUNTRIES = {
+  domestic: DOMESTIC_BILLING_COUNTRY,
+  international: ANY_INTERNATIONAL,
+} as const
