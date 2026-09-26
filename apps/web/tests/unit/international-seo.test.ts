@@ -5,7 +5,8 @@ import { generateMetadata as privacyMetadata } from '@/app/[locale]/adatvedelem/
 import { generateMetadata as blogMetadata } from '@/app/[locale]/blog/page'
 import { generateMetadata as legalMetadata } from '@/app/[locale]/impresszum/page'
 import sitemap from '@/app/sitemap'
-import { getAllDocs } from '@/lib/content/docs'
+import { getAllDocs, getTranslations } from '@/lib/content/docs'
+import { contentMetadata } from '@/lib/content/metadata'
 import {
   localePath,
   locales,
@@ -162,16 +163,35 @@ describe('international sitemap parity', () => {
 
 describe('content translation identity', () => {
   const docs = getAllDocs()
+  // Independently researched market-specific articles are not translations.
+  // Keep the bilingual contract for every existing pair, and require an
+  // explicit, reviewed exception instead of joining unrelated pages by id.
+  const marketSpecificLocales: Record<string, string[]> = {
+    'how-many-disposable-cameras-wedding': ['en'],
+    'phone-free-wedding-ceremony': ['hu'],
+  }
 
   it.each([...new Set(docs.map((doc) => doc.id))])(
-    '%s has one page in each locale',
+    '%s has exactly its intended locales',
     (id) => {
       expect(
         docs
           .filter((doc) => doc.id === id)
           .map((doc) => doc.locale)
           .sort(),
-      ).toEqual(['en', 'hu'])
+      ).toEqual(marketSpecificLocales[id] ?? ['en', 'hu'])
+    },
+  )
+
+  it.each(Object.entries(marketSpecificLocales))(
+    '%s never advertises an unrelated page as its translation',
+    (id, expectedLocales) => {
+      expect(Object.keys(getTranslations(id)).sort()).toEqual(expectedLocales)
+      const doc = docs.find((candidate) => candidate.id === id)
+      expect(doc).toBeDefined()
+      const alternates = contentMetadata(doc!).alternates
+      expect(alternates?.canonical).toBe(canonicalUrl(doc!.href))
+      expect(alternates?.languages).toEqual({})
     },
   )
 })
