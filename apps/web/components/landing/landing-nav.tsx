@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 
 import { MenuMark } from '@/components/brand/menu-mark'
@@ -43,15 +44,29 @@ const NAV_LABEL = 'text-[13px] font-medium tracking-[0.24em] uppercase'
  * the occasions menu opens upwards out of it. On a phone it is an ordinary
  * top bar whose menu drops down as a sheet of grouped rows.
  *
- * The other marketing pages keep `components/site/navbar.tsx`. This one knows
- * it is on the homepage, so "How it works" and "Questions" are bare fragments
- * rather than `/hu#…` round trips.
+ * The pages around the homepage (pricing, occasions, blog, legal) use it too.
+ * On the homepage "How it works" and "Questions" are bare fragments; anywhere
+ * else they lead back to the same sections on the homepage. The page a
+ * visitor is on is marked with `aria-current` and the sky ink.
  */
 export function LandingNav({ locale }: { locale: Locale }) {
   const copy = landingCopy[locale].nav
   const targetLocale: Locale = locale === 'en' ? 'hu' : 'en'
   const createHref = `${CREATE_EVENT_PATH}?lang=${locale}`
   const demoHref = demoEventUrl(locale)
+  const pathname = usePathname()
+  const homeHref = localePath(locale, '/')
+  const home = pathname === homeHref
+  const nav: NavPlace = {
+    home,
+    homeHref,
+    anchor: (id) => (home ? `#${id}` : `${homeHref}#${id}`),
+    isCurrent: (path) => {
+      const target = localePath(locale, path)
+      return pathname === target || pathname.startsWith(`${target}/`)
+    },
+    occasionsHref: localePath(locale, '/alkalmak'),
+  }
   const occasionLinks = occasions.map((occasion) => ({
     id: occasion.id,
     href: occasionPath(locale, occasion),
@@ -67,6 +82,7 @@ export function LandingNav({ locale }: { locale: Locale }) {
         createHref={createHref}
         demoHref={demoHref}
         occasionLinks={occasionLinks}
+        nav={nav}
       />
       <MobileBar
         locale={locale}
@@ -74,9 +90,21 @@ export function LandingNav({ locale }: { locale: Locale }) {
         createHref={createHref}
         demoHref={demoHref}
         occasionLinks={occasionLinks}
+        nav={nav}
       />
     </>
   )
+}
+
+/** Where the bar is, so it can link home and mark the current page. */
+interface NavPlace {
+  home: boolean
+  homeHref: string
+  /** A homepage section: a fragment at home, a round trip elsewhere. */
+  anchor: (id: string) => string
+  /** A locale-relative path such as `/arak`, matched with its subpages. */
+  isCurrent: (path: string) => boolean
+  occasionsHref: string
 }
 
 interface BarProps {
@@ -85,6 +113,7 @@ interface BarProps {
   createHref: string
   demoHref: string
   occasionLinks: { id: string; href: string; label: string; Icon: LucideIcon }[]
+  nav: NavPlace
 }
 
 export function Brand({ size }: { size: 'lg' | 'sm' }) {
@@ -113,6 +142,7 @@ function DesktopBar({
   createHref,
   demoHref,
   occasionLinks,
+  nav,
 }: BarProps) {
   const copy = landingCopy[locale].nav
   const [menuOpen, setMenuOpen] = useState(false)
@@ -138,8 +168,10 @@ function DesktopBar({
 
   const link = cn(
     NAV_LABEL,
-    'rounded-lg px-1 py-2 text-white transition-colors hover:text-white/70',
+    'rounded-lg px-1 py-2 text-white transition-colors hover:text-white/70 aria-[current=page]:text-site-current',
   )
+  const current = (path: string) =>
+    nav.isCurrent(path) ? ('page' as const) : undefined
 
   return (
     <header className="fixed inset-x-0 bottom-0 z-50 hidden lg:block">
@@ -151,7 +183,7 @@ function DesktopBar({
           className={cn(LANDING_CONTAINER, 'flex h-[51px] items-center gap-6')}
         >
           <Link
-            href="#top"
+            href={nav.home ? '#top' : nav.homeHref}
             aria-label={copy.home}
             className="flex shrink-0 items-center gap-[7px]"
           >
@@ -160,9 +192,9 @@ function DesktopBar({
 
           <ul className="absolute left-1/2 flex -translate-x-1/2 items-center gap-6 whitespace-nowrap xl:gap-[39px]">
             <li>
-              <a href="#how-it-works" className={link}>
+              <Link href={nav.anchor('how-it-works')} className={link}>
                 {copy.howItWorks}
-              </a>
+              </Link>
             </li>
             <li>
               <Link href={demoHref} className={link}>
@@ -170,7 +202,11 @@ function DesktopBar({
               </Link>
             </li>
             <li>
-              <Link href={localePath(locale, '/arak')} className={link}>
+              <Link
+                href={localePath(locale, '/arak')}
+                aria-current={current('/arak')}
+                className={link}
+              >
                 {copy.pricing}
               </Link>
             </li>
@@ -185,6 +221,7 @@ function DesktopBar({
                     link,
                     'flex items-center gap-2 rounded-lg px-2',
                     menuOpen && 'bg-white/6',
+                    nav.isCurrent('/alkalmak') && 'text-site-current',
                   )}
                 >
                   <ChevronDown
@@ -207,11 +244,20 @@ function DesktopBar({
                       : 'pointer-events-none translate-y-1 opacity-0',
                   )}
                 >
-                  {occasionLinks.map(({ id, href, label, Icon }, i) => (
-                    <li
-                      key={id}
-                      className={cn(i > 0 && 'border-t border-white/8')}
+                  <li>
+                    <Link
+                      href={nav.occasionsHref}
+                      onClick={() => setMenuOpen(false)}
+                      className={cn(
+                        NAV_LABEL,
+                        'flex items-center gap-2.5 rounded-lg px-2.5 py-3.5 text-white/60 transition-colors hover:bg-white/5 hover:text-white',
+                      )}
                     >
+                      {copy.allOccasions}
+                    </Link>
+                  </li>
+                  {occasionLinks.map(({ id, href, label, Icon }) => (
+                    <li key={id} className="border-t border-white/8">
                       <Link
                         href={href}
                         onClick={() => setMenuOpen(false)}
@@ -233,7 +279,11 @@ function DesktopBar({
               </div>
             </li>
             <li>
-              <Link href={localePath(locale, '/blog')} className={link}>
+              <Link
+                href={localePath(locale, '/blog')}
+                aria-current={current('/blog')}
+                className={link}
+              >
                 {copy.blog}
               </Link>
             </li>
@@ -244,7 +294,7 @@ function DesktopBar({
               href={`${LOGIN_PATH}?lang=${locale}`}
               className={cn(
                 NAV_LABEL,
-                'hidden text-[12px] text-white/55 transition-colors hover:text-white xl:inline',
+                'hidden text-[12px] text-white/55 transition-colors hover:text-white min-[1440px]:inline',
               )}
             >
               {copy.login}
@@ -257,7 +307,7 @@ function DesktopBar({
               onClick={() => rememberLocalePreference(targetLocale)}
               className={cn(
                 NAV_LABEL,
-                'hidden text-[12px] text-white/55 transition-colors hover:text-white xl:inline',
+                'hidden text-[12px] text-white/55 transition-colors hover:text-white min-[1440px]:inline',
               )}
             >
               {targetLocale.toUpperCase()}
@@ -281,6 +331,7 @@ function MobileBar({
   createHref,
   demoHref,
   occasionLinks,
+  nav,
 }: BarProps) {
   const copy = landingCopy[locale].nav
   const [open, setOpen] = useState(false)
@@ -299,8 +350,10 @@ function MobileBar({
   // would jump a page that is not scrolling and then be undone by the unlock.
   // Close first, and scroll once the page is free again.
   const goTo = (e: MouseEvent<HTMLAnchorElement>, id: string) => {
-    e.preventDefault()
     setOpen(false)
+    // Off the homepage the link is a real navigation; let it happen.
+    if (!nav.home) return
+    e.preventDefault()
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }),
@@ -320,7 +373,7 @@ function MobileBar({
     <header className="lg:hidden">
       <div className="fixed inset-x-0 top-0 z-50 flex h-[70px] items-center justify-between bg-landing/85 px-5 backdrop-blur-md">
         <Link
-          href="#top"
+          href={nav.home ? '#top' : nav.homeHref}
           aria-label={copy.home}
           className="flex items-center gap-[5px]"
         >
@@ -400,13 +453,13 @@ function MobileBar({
           <p className={group}>{copy.explore}</p>
           <ul>
             <li>
-              <a
-                href="#how-it-works"
+              <Link
+                href={nav.anchor('how-it-works')}
                 onClick={(e) => goTo(e, 'how-it-works')}
                 className={plainRow}
               >
                 {copy.howItWorks}
-              </a>
+              </Link>
             </li>
             <li>
               <Link
@@ -427,13 +480,13 @@ function MobileBar({
               </Link>
             </li>
             <li>
-              <a
-                href="#faq"
+              <Link
+                href={nav.anchor('faq')}
                 onClick={(e) => goTo(e, 'faq')}
                 className={plainRow}
               >
                 {copy.faq}
-              </a>
+              </Link>
             </li>
             <li>
               <Link
@@ -452,6 +505,15 @@ function MobileBar({
 
           <p className={group}>{copy.occasions}</p>
           <ul>
+            <li>
+              <Link
+                href={nav.occasionsHref}
+                onClick={() => setOpen(false)}
+                className={plainRow}
+              >
+                {copy.allOccasions}
+              </Link>
+            </li>
             {occasionLinks.map(({ id, href, label, Icon }, i) => (
               <li key={id}>
                 <Link
