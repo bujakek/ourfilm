@@ -4,6 +4,7 @@ import { BackLink } from '@/components/ui/back-link'
 import { CaptureEndCard } from '@/components/host/capture-end-card'
 import { DangerZone } from '@/components/host/danger-zone'
 import { EventNameCard } from '@/components/host/event-name-card'
+import { PostEventUploadsCard } from '@/components/host/post-event-uploads-card'
 import { GuestsToggle } from '@/components/host/guests-toggle'
 import { RevealCard } from '@/components/host/reveal-card'
 import { ShotsCard } from '@/components/host/shots-card'
@@ -160,6 +161,12 @@ export default async function AdminEventSettingsPage({
         <ShotsCard
           slug={event.slug}
           shots={event.shots_per_participant as ShotOption}
+          locale={locale}
+        />
+
+        <PostEventUploadsCard
+          slug={event.slug}
+          enabled={event.post_event_uploads_enabled}
           locale={locale}
         />
 

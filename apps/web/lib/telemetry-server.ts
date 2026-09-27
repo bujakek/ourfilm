@@ -148,6 +148,7 @@ export type ServerEventProperties = {
     plan: string
     shots: number
     reveal_mode: string
+    post_event_uploads_enabled?: boolean
     guests_can_view: boolean
     /** How long the camera is open for, as the host set it up. */
     window_hours: number
@@ -188,9 +189,16 @@ export type ServerEventProperties = {
   photo_deleted: { event_id: string; hidden_before: boolean }
   event_setting_changed: {
     event_id: string
-    setting: 'name' | 'capture_end' | 'reveal' | 'shots' | 'guests_can_view'
+    setting:
+      | 'name'
+      | 'capture_end'
+      | 'reveal'
+      | 'shots'
+      | 'guests_can_view'
+      | 'post_event_uploads_enabled'
     reveal_mode: string | null
     shots: number | null
+    post_event_uploads_enabled?: boolean
     guests_can_view: boolean | null
     /** For `capture_end` only: how far it moved, signed. Negative closes the
      *  camera early, which is the supported way to end a party. */

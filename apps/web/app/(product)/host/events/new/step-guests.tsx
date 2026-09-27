@@ -8,6 +8,7 @@ import { BillingCountryField } from '@/components/host/billing-country-field'
 import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import { ShotsSelector } from '@/components/host/shots-selector'
+import { PostEventUploadsField } from '@/components/host/post-event-uploads-field'
 import { SwitchTrack } from '@/components/ui/switch'
 import { DEFAULT_SHOTS, type ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
@@ -32,6 +33,8 @@ export function guestsScreen({
   setShots,
   guestsCanView,
   setGuestsCanView,
+  postEventUploads,
+  setPostEventUploads,
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
@@ -46,6 +49,8 @@ export function guestsScreen({
   setShots: (value: ShotOption) => void
   guestsCanView: boolean
   setGuestsCanView: (value: boolean) => void
+  postEventUploads: boolean
+  setPostEventUploads: (value: boolean) => void
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   /** Whether Stripe is switched on in this environment. When it is not, the
@@ -91,6 +96,8 @@ export function guestsScreen({
         setShots={setShots}
         guestsCanView={guestsCanView}
         setGuestsCanView={setGuestsCanView}
+        postEventUploads={postEventUploads}
+        setPostEventUploads={setPostEventUploads}
         legalAccepted={legalAccepted}
         setLegalAccepted={setLegalAccepted}
         paymentsEnabled={paymentsEnabled}
@@ -109,6 +116,8 @@ function GuestsFields({
   setShots,
   guestsCanView,
   setGuestsCanView,
+  postEventUploads,
+  setPostEventUploads,
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
@@ -122,6 +131,8 @@ function GuestsFields({
   setShots: (value: ShotOption) => void
   guestsCanView: boolean
   setGuestsCanView: (value: boolean) => void
+  postEventUploads: boolean
+  setPostEventUploads: (value: boolean) => void
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   paymentsEnabled: boolean
@@ -256,6 +267,14 @@ function GuestsFields({
           </span>
           <SwitchTrack checked={guestsCanView} />
         </button>
+      </div>
+
+      <div className="border-t border-border pt-4.5">
+        <PostEventUploadsField
+          enabled={postEventUploads}
+          onChange={setPostEventUploads}
+          locale={locale}
+        />
       </div>
 
       <label className="flex cursor-pointer items-start gap-3 border-t border-border pt-4.5 text-[11.5px] leading-[1.6] text-muted-foreground">

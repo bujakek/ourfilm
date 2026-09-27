@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createAdminClient } from './supabase/admin'
 import { PHOTO_BUCKET } from './storage'
+import type { ShotSource } from './camera'
 import { reservationProgress, type ReservationProgress } from './upload-resume'
 
 /**
@@ -74,6 +75,7 @@ export async function reserveShot({
   tokenHash,
   idempotencyKey,
   captureStartedAt,
+  source = 'camera',
 }: {
   eventId: string
   tokenHash: string
@@ -84,6 +86,7 @@ export async function reserveShot({
    * upload grace window; while capture is live, server time remains truth.
    */
   captureStartedAt: string
+  source?: ShotSource
 }): Promise<ReserveResult> {
   const db = createAdminClient()
 
@@ -93,6 +96,7 @@ export async function reserveShot({
       p_token_hash: tokenHash,
       p_idempotency_key: idempotencyKey,
       p_capture_started_at: captureStartedAt,
+      p_source: source,
     })
     .maybeSingle()
 
@@ -217,11 +221,8 @@ export type CommitShotResult = {
 /**
  * Hand a frame back after a failed upload.
  *
- * Best effort, and never awaited into anything's correctness: the reservation
- * expires on its own after ten minutes, so this only makes the common case
- * immediate. Swallows its own errors for the same reason — a guest whose upload
- * just failed is about to retry, and a second error message about the cleanup
- * of the first helps nobody.
+ * Best effort. A resumable reservation keeps its frame until explicitly
+ * released; time alone cannot refund a frame that may still commit later.
  */
 export async function releaseShot({
   photoId,
@@ -239,4 +240,21 @@ export async function releaseShot({
   } catch (e) {
     console.error('Could not release reserved shot', e)
   }
+}
+
+export async function releaseCapture({
+  eventId,
+  tokenHash,
+  captureId,
+}: {
+  eventId: string
+  tokenHash: string
+  captureId: string
+}): Promise<void> {
+  const { error } = await createAdminClient().rpc('release_shot_by_capture', {
+    p_event_id: eventId,
+    p_token_hash: tokenHash,
+    p_idempotency_key: captureId,
+  })
+  if (error) throw error
 }

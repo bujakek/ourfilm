@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import {
   releaseShot,
   reserveShot,
+  releaseCapture,
   type ShotRefusal,
   type SignedUpload,
 } from '@/lib/capture'
@@ -162,7 +163,10 @@ export async function reserveShotAction(
   eventId: string,
   idempotencyKey: string,
   captureStartedAt: string,
+  source: 'camera' | 'post_event' = 'camera',
 ): Promise<ReserveState> {
+  if (source !== 'camera' && source !== 'post_event')
+    return { ok: false, refusal: 'error' }
   const tokenHash = await readParticipantTokenHash()
   if (!tokenHash) return { ok: false, refusal: 'no_session' }
 
@@ -190,6 +194,7 @@ export async function reserveShotAction(
       tokenHash,
       idempotencyKey,
       captureStartedAt,
+      source,
     })
   } catch (e) {
     // The guest's browser already reports this as an `upload_issue` with a
@@ -230,6 +235,13 @@ export async function reserveShotAction(
  * ever be shown it. `observeCommitShot` reports every ending — arrival,
  * success, each refusal by name, and a throw — without waiting on any of it.
  */
+/** Give back a discarded local capture without ever persisting its photo id. */
+export async function releaseCaptureAction(eventId: string, captureId: string) {
+  const tokenHash = await readParticipantTokenHash()
+  if (!tokenHash) return
+  await releaseCapture({ eventId, tokenHash, captureId })
+}
+
 export async function commitShotAction({
   slug,
   photoId,

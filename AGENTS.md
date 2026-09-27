@@ -371,6 +371,23 @@ genuine failure — and getting it wrong throws nothing and logs nothing, which
 is how it shipped. Both halves are pinned in `apps/web/tests/unit/upload-failure.test.ts`
 and in the queue suite; sabotaging either direction turns them red.
 
+## Optional after-event uploads
+
+`events.post_event_uploads_enabled` defaults to false and can be selected in
+onboarding or changed in event settings. Previously joined guests may select
+photos from their phone after `capture_end_at` and strictly before 24 hours
+later. These consume the original roll and enter the original album; neither
+capture times nor the reveal are extended.
+
+The queue persists `source: 'post_event'` alongside the capture key. Missing
+source means a legacy camera capture. The five-argument `reserve_shot` checks
+the option, server time, server-stamped join time and remaining roll under the
+participant lock. Old overloads retain the camera-grace behavior. Existing
+reservations replay before either admission gate, including after disabling
+the option or crossing the deadline. Gallery selections request admission once
+the raw file is stored, before waiting for sequential compression or uploads.
+The existing retry budget and local 24-hour photo lifetime still apply.
+
 ## The create flow is four full-screen questions (settled)
 
 `/host/events/new` asks four things, one per screen, in a shared shell
@@ -687,9 +704,11 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   concurrent captures — locking the event would serialise every guest at the
   party.
 
-  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes), so
-  a failed upload costs no frame and nothing has to be swept. Retrying with the
-  same `idempotency_key` re-claims the same frame instead of spending another.
+  A `pending` row keeps counting until explicitly released. The former
+  ten-minute accounting TTL allowed a retried old reservation to commit after
+  its frame had been spent again, exceeding the roll. Retrying with the same
+  `idempotency_key` resumes the same frame; a discarded local capture releases
+  its reservation by key without persisting photo IDs or signed URLs.
   Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
   refunding on hide would make hiding a way to shoot forever.
 
@@ -913,7 +932,8 @@ claims are live and load-bearing:
 - **Every participant gets the host's chosen 5/10/16/24/36-shot roll** — paying
   never removes the per-person format
 
-Do not reintroduce anything describing camera-roll upload or unlimited photos.
+Do not advertise unlimited photos. Camera-roll upload is available only for
+events whose host opted into the fixed 24-hour after-event window.
 
 If a change would falsify a claim that is still true, either honor it or update
 the Hungarian copy in the same change.

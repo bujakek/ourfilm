@@ -4,6 +4,7 @@ import { openDB, type IDBPDatabase } from 'idb'
 
 import { track } from '@/lib/telemetry'
 import { failureClass } from '@/lib/upload-failure'
+import type { ShotSource } from '@/lib/camera'
 
 /**
  * Camera files this device still owes the server.
@@ -20,6 +21,8 @@ const BY_EVENT = 'by-event'
 const OPEN_TIMEOUT_MS = 2000
 
 export type StoredShot = {
+  /** Absent on older camera rows. Never infer gallery permission from EXIF. */
+  source?: ShotSource
   /** The capture id. Also the shot's idempotency key and this store's key. */
   id: string
   eventId: string

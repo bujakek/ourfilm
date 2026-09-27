@@ -203,6 +203,9 @@ function OnboardingFlow({
   const [shots, setShots] = useState<ShotOption>(initial.shots)
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
   const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
+  const [postEventUploads, setPostEventUploads] = useState(
+    initial.postEventUploads,
+  )
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
   const [billingCountry, setBillingCountry] = useState<string | null>(
     initial.billingCountry ?? null,
@@ -235,6 +238,7 @@ function OnboardingFlow({
       shots,
       plan,
       guestsCanView,
+      postEventUploads,
       legalAccepted,
       billingCountry,
       step,
@@ -252,6 +256,7 @@ function OnboardingFlow({
       shots,
       plan,
       guestsCanView,
+      postEventUploads,
       legalAccepted,
       billingCountry,
       step,
@@ -302,6 +307,7 @@ function OnboardingFlow({
         shots,
         plan,
         guestsCanView,
+        postEventUploads,
         legalAccepted,
         billingCountry,
         creationKey: initialCreationKey,
@@ -441,7 +447,9 @@ function OnboardingFlow({
               shots,
               setShots,
               guestsCanView,
+              postEventUploads,
               setGuestsCanView,
+              setPostEventUploads,
               legalAccepted,
               setLegalAccepted,
               paymentsEnabled: paymentsAvailable,

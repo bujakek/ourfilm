@@ -34,6 +34,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Full-catalog content/link checks exceed five seconds on a busy laptop.
+    // Keep the same assertions; allow the offline suite to finish its reads.
+    testTimeout: 20_000,
     include:
       process.env.OURFILM_TEST_SUITE === 'db'
         ? ['tests/db/**/*.test.ts']

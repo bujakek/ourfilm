@@ -1,5 +1,6 @@
 import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
 import type { ShotRefusal } from '@/lib/capture'
+import type { ShotSource } from '@/lib/camera'
 import type { CompressedCapture, PreparedPhoto } from '@/lib/image'
 import { isReadable, materializeBlob } from '@/lib/blob-bytes'
 import { prepareStepOf, type PrepareStep } from '@/lib/prepare-error'
@@ -52,6 +53,7 @@ export type UploadQueueDeps = {
   reserve: (
     idempotencyKey: string,
     captureStartedAt: string,
+    source?: ShotSource,
   ) => Promise<ReserveState>
   /**
    * Reduce one capture to the single blob worth keeping. Runs once, right
@@ -81,6 +83,7 @@ export type UploadQueueDeps = {
     refusal?: string
   }>
   release: (photoId: string) => Promise<void>
+  releaseCapture?: (captureId: string) => Promise<void>
   store: UploadStore
   now?: () => number
   /** One id per run of `runCapture`. Injectable so a test can name them. */
@@ -221,11 +224,12 @@ export type InFlightAttempt = {
  * straight to `store.put`, so there is nowhere for memory and disk to drift.
  */
 type QueueItem = {
+  admission?: Promise<ReserveState> | null
   shot: StoredShot
   /**
    * The raw write and the compression that supersedes it. `enqueue` never
    * awaits this — the guest must not wait on a disk write or a decode to watch
-   * their photo start developing — but no server call may overtake it.
+   * their photo start developing — camera uploads await it; gallery admission follows the raw write.
    */
   settled: Promise<void> | null
 }
@@ -252,6 +256,7 @@ export type UploadQueue = {
     file: File,
     capturedAt: number,
     captureStartedAt?: number,
+    source?: ShotSource,
   ): void
   resume(): Promise<void>
   drain(): Promise<void>
@@ -356,11 +361,15 @@ export function createUploadQueue({
     await deps.store.put(item.shot)
   }
 
+  // Multi-select must not decode several 48MP images simultaneously.
+  let compressionTail: Promise<unknown> = Promise.resolve()
+
   function enqueue(
     id: string,
     file: File,
     capturedAt: number,
     captureStartedAt = capturedAt,
+    source: ShotSource = 'camera',
   ) {
     if (stopped || claimed.has(id)) return
     claimed.add(id)
@@ -379,6 +388,7 @@ export function createUploadQueue({
         lastModified: file.lastModified,
         capturedAt,
         captureStartedAt,
+        source,
         attempts: 0,
       },
       settled: null,
@@ -418,7 +428,25 @@ export function createUploadQueue({
       notify(() => handlers.onStored?.(item.shot.id, durable))
       if (stopped) return
 
-      const master = await deps.compress(source)
+      // Admit gallery selections as soon as their raw bytes are safe. Uploads
+      // and compression may take them past the deadline; an accepted key can
+      // still replay then. The promise/URLs stay in memory only.
+      if (item.shot.source === 'post_event') {
+        item.admission = withTimeout(
+          () =>
+            deps.reserve(
+              item.shot.id,
+              new Date(item.shot.capturedAt).toISOString(),
+              'post_event',
+            ),
+          limits.reserve,
+          'Reserving a frame',
+        )
+        void item.admission.catch(() => undefined)
+      }
+      const compression = compressionTail.then(() => deps.compress(source))
+      compressionTail = compression.catch(() => undefined)
+      const master = await compression
       item.shot.blob = master.blob
       item.shot.compressed = true
       item.shot.width = master.width
@@ -518,6 +546,7 @@ export function createUploadQueue({
         const { shot } = pending[i]
         if (at - shot.capturedAt <= MAX_AGE_MS) continue
         pending.splice(i, 1)
+        void deps.releaseCapture?.(shot.id).catch(() => undefined)
         deferred.delete(shot.id)
         if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
         notify(() => handlers.onDropped(shot.id, 'exhausted'))
@@ -532,6 +561,7 @@ export function createUploadQueue({
           discardReason(stored, at) ??
           ((await readable(stored.blob)) ? null : 'unreadable')
         if (discard) {
+          void deps.releaseCapture?.(stored.id).catch(() => undefined)
           await deps.store.remove(stored.id)
           const age = at - stored.capturedAt
           notify(() => handlers.onDiscarded?.(stored.id, discard, age))
@@ -676,8 +706,8 @@ export function createUploadQueue({
   async function runCapture(
     item: QueueItem,
   ): Promise<'done' | 'retry' | 'wait'> {
-    // No server call may overtake the durable write, and none may run against
-    // bytes that are about to be replaced.
+    // Uploading waits for settled bytes. Gallery admission may already have
+    // started after the raw write, before compression and the upload queue.
     if (item.settled) {
       const settled = item.settled
       // Cleared *before* the await: a rejected promise stays rejected, so a
@@ -704,15 +734,28 @@ export function createUploadQueue({
     const step = { attemptId: attempt.attemptId, attempt: attempt.attempt }
 
     try {
-      const reserved = await withTimeout(
-        () =>
-          deps.reserve(
-            shot.id,
-            new Date(shot.captureStartedAt ?? shot.capturedAt).toISOString(),
-          ),
-        limits.reserve,
-        'Reserving a frame',
-      )
+      const admission = item.admission
+      item.admission = null
+      const reserved = await (admission ??
+        withTimeout(
+          () =>
+            shot.source === 'post_event'
+              ? deps.reserve(
+                  shot.id,
+                  new Date(
+                    shot.captureStartedAt ?? shot.capturedAt,
+                  ).toISOString(),
+                  'post_event',
+                )
+              : deps.reserve(
+                  shot.id,
+                  new Date(
+                    shot.captureStartedAt ?? shot.capturedAt,
+                  ).toISOString(),
+                ),
+          limits.reserve,
+          'Reserving a frame',
+        ))
 
       if (!reserved.ok) {
         if (reserved.refusal === 'ended' || reserved.refusal === 'no_shots') {
@@ -958,6 +1001,7 @@ export function createUploadQueue({
         if (await deps.store.remove(shot.id)) claimed.delete(shot.id)
         notify(() => handlers.onDropped(shot.id, 'exhausted'))
         if (photoId) void deps.release(photoId)
+        else void deps.releaseCapture?.(shot.id).catch(() => undefined)
         return 'done'
       }
 

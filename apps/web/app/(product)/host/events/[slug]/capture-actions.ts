@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { releaseShot, reserveShot, type ShotRefusal } from '@/lib/capture'
+import {
+  releaseCapture,
+  releaseShot,
+  reserveShot,
+  type ShotRefusal,
+} from '@/lib/capture'
 import {
   type CommitShotAnswer,
   liveCommitDeps,
@@ -19,7 +24,7 @@ import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
  *
  * The three RPCs underneath are the same ones a guest uses, and the shot
  * accounting is identical — a frame is taken inside the participant row's
- * lock, a `pending` row expires after ten minutes, hidden photos still count.
+ * lock, pending reservations and hidden photos still count.
  * What differs is only who is asking, and how that is established:
  *
  * - a guest presents the httpOnly token in their `/e/<slug>` cookie;
@@ -140,8 +145,7 @@ export async function hostCommitShotAction({
   return result
 }
 
-/** Give a frame back after a failed upload. Best effort; the reservation
- *  expires on its own after ten minutes either way. */
+/** Give a frame back after a failed upload. Best effort. */
 export async function hostReleaseShotAction(
   slug: string,
   photoId: string,
@@ -149,4 +153,17 @@ export async function hostReleaseShotAction(
   const resolved = await resolve(slug)
   if (!resolved) return
   await releaseShot({ photoId, tokenHash: resolved.participant.tokenHash })
+}
+
+export async function hostReleaseCaptureAction(
+  slug: string,
+  captureId: string,
+) {
+  const resolved = await resolve(slug)
+  if (!resolved) return
+  await releaseCapture({
+    eventId: resolved.event.id,
+    tokenHash: resolved.participant.tokenHash,
+    captureId,
+  })
 }
