@@ -46,7 +46,7 @@ describe('occasion routes', () => {
       expect(englishEntry?.alternates?.languages).toEqual({
         en: english,
         'hu-HU': hungarian,
-        'x-default': hungarian,
+        'x-default': english,
       })
       expect(hungarianEntry?.alternates?.languages).toEqual(
         englishEntry?.alternates?.languages,

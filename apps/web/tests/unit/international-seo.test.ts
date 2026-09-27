@@ -36,11 +36,11 @@ describe('international locale targeting', () => {
     expect(localeTag.hu).toBe('hu-HU')
   })
 
-  it('builds one reciprocal alternate cluster with Hungarian as x-default', () => {
+  it('builds one reciprocal alternate cluster with English as x-default', () => {
     expect(localizedPageLanguages('/arak')).toEqual({
       en: canonicalUrl('/en/pricing'),
       'hu-HU': canonicalUrl('/hu/arak'),
-      'x-default': canonicalUrl('/hu/arak'),
+      'x-default': canonicalUrl('/en/pricing'),
     })
     expect(localizedPageAlternates('en', '/arak')).toEqual({
       canonical: canonicalUrl('/en/pricing'),
