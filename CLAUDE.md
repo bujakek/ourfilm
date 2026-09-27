@@ -271,8 +271,21 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   `components/landing/scaled-phone.tsx`. It has its own fonts
   (`components/landing/fonts.ts`: Roboto Serif at `wdth` 125, Inter, Crimson
   Text) standing in for the design's Rosemartin and Pretendard, which are not
-  licensed here and lack Hungarian accents. The other marketing pages still use
-  `components/site/navbar.tsx` and `footer.tsx`. `/` is negotiated per visitor by
+  licensed here and lack Hungarian accents.
+
+  Pricing, the occasions index and its four pages, the blog and every
+  article, about, contact, legal notice, privacy and terms use the same
+  system from `components/pages/*`: `SiteShell` (the landing's fonts and
+  navigation, and the flat `SiteFooter`), `SiteFaq` (native `<details>`),
+  `SiteClosing`, `OccasionPage`, `BlogArticle` and `InfoPage`. Each route
+  still owns its own `generateMetadata` and canonical. Article bodies are the
+  existing MDX, rendered with `proseComponents` and styled by `.site-prose` in
+  `globals.css`; covers come from `lib/content/covers.ts`, not frontmatter,
+  because `image` is the Open Graph image. The contact page's withdrawal and
+  photo-removal forms are the real `submitLegalRequest` forms inside rows that
+  open on `#elallas` / `#kepeltavolitas`. Everything else (alternatives,
+  comparisons, the Early Couple page) still uses `components/site/navbar.tsx`
+  and `footer.tsx`. `/` is negotiated per visitor by
   `apps/web/proxy.ts` (`apps/web/lib/locale-preference.ts`): a saved switcher
   choice (`ourfilm_locale` cookie, written only by a switcher click), then
   `Accept-Language`, then English — a 307 that keeps the query and is
@@ -282,6 +295,7 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   `x-default`, `/llms.txt`, the shared 404 and error screens, and every
   `?lang`-less product page via `resolveLocale()` follow it. Neither decides
   anything about payment.
+
 - **The homepage and `/hu/arak` describe the disposable-camera product.** The
   old upload demo, technical quality comparison, occasions carousel and
   instant-arrival pitch are no longer in the homepage flow. The unused

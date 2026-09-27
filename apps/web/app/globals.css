@@ -3,6 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* 810px is where the pages around the homepage switch from one column to
+   their desktop composition (`tab:`), as the approved designs do. */
+@theme {
+  --breakpoint-tab: 50.625rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-background-secondary: var(--background-secondary);
@@ -33,6 +39,22 @@
   --color-landing-raised: var(--landing-raised);
   --color-landing-sheet: var(--landing-sheet);
   --color-landing-ink: var(--landing-ink);
+  --color-site-surface: var(--site-surface);
+  --color-site-note: var(--site-note);
+  --color-site-hover: var(--site-hover);
+  --color-site-line: var(--site-line);
+  --color-site-muted: var(--site-muted);
+  --color-site-kicker: var(--site-kicker);
+  --color-site-prose: var(--site-prose);
+  --color-site-link: var(--site-link);
+  --color-site-current: var(--site-current);
+  --color-site-soft: var(--site-soft);
+  --color-site-faint: var(--site-faint);
+  --color-site-question: var(--site-question);
+  --color-site-link-soft: var(--site-link-soft);
+  --color-site-term: var(--site-term);
+  --color-site-value: var(--site-value);
+  --color-site-underline: var(--site-underline);
 
   /* Three voices, and the rule for which is which is not a matter of taste:
      Manrope says what the product says, the serif names things, and the mono
@@ -164,6 +186,25 @@
   --landing-raised: #1c1c1c;
   --landing-sheet: #111111;
   --landing-ink: #101010;
+
+  /* The pages around the homepage (pricing, occasions, blog, legal). Same
+     ground as the landing; these are its quieter surfaces and inks. */
+  --site-surface: #1a1a1a;
+  --site-note: #161616;
+  --site-hover: #151515;
+  --site-line: rgba(255, 255, 255, 0.09);
+  --site-muted: #858585;
+  --site-kicker: #777777;
+  --site-prose: #939393;
+  --site-link: #9acde9;
+  --site-current: #b9d7e8;
+  --site-soft: #999999;
+  --site-faint: #555555;
+  --site-question: #aaaaaa;
+  --site-link-soft: #d8d8d8;
+  --site-term: #888888;
+  --site-value: #bdbdbd;
+  --site-underline: #666666;
 
   --radius: 0.875rem;
 }
@@ -499,5 +540,168 @@
   .reveal {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Long-form text on the pages around the homepage: blog articles and the
+   legal and about pages. The bodies are MDX or generated sections, so their
+   elements carry no classes of their own — this is the one place they are
+   styled. Scoped to `.site-prose`; nothing outside it is touched. */
+@layer components {
+  .site-prose {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--site-prose);
+    overflow-wrap: anywhere;
+  }
+  .site-prose > :first-child,
+  .site-prose > section:first-child > h2:first-child {
+    margin-top: 0;
+  }
+  .site-prose p {
+    margin: 16px 0;
+  }
+  .site-prose h2,
+  .site-prose h3 {
+    /* The next/font variable itself: `@theme inline` does not emit
+       `--font-landing-display` as a property, it inlines it into utilities. */
+    font-family: var(--font-roboto-serif), Georgia, serif;
+    font-weight: 340;
+    font-variation-settings: 'wdth' 125;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    overflow-wrap: normal;
+  }
+  .site-prose h2 {
+    font-size: 28px;
+    color: #f0f0f0;
+    margin: 42px 0 16px;
+  }
+  .site-prose h3 {
+    font-size: 23px;
+    color: #dddddd;
+    margin: 28px 0 12px;
+  }
+  .site-prose strong {
+    font-weight: 500;
+    color: #c9c9c9;
+  }
+  .site-prose a {
+    color: var(--site-link);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .site-prose ul,
+  .site-prose ol {
+    padding-left: 22px;
+    margin: 16px 0;
+  }
+  .site-prose ul {
+    list-style: disc;
+  }
+  .site-prose ol {
+    list-style: decimal;
+  }
+  .site-prose li {
+    margin: 8px 0;
+  }
+  .site-prose blockquote {
+    padding: 4px 24px;
+    margin: 28px 0;
+    border-left: 2px solid #777777;
+  }
+  .site-prose aside {
+    margin: 40px 0;
+    padding: 24px;
+    background: #191919;
+    border: 1px solid var(--site-line);
+    border-radius: 18px;
+  }
+  .site-prose aside > div > p:first-child {
+    margin-top: 0;
+  }
+  .site-prose aside a {
+    display: inline-block;
+    margin-top: 10px;
+  }
+  .site-prose .site-prose-table {
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 24px 0;
+  }
+  .site-prose table {
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .site-prose th,
+  .site-prose td {
+    border: 1px solid #333333;
+    text-align: left;
+    vertical-align: top;
+    padding: 10px;
+    min-width: 100px;
+  }
+  .site-prose th {
+    background: #1d1d1d;
+    color: #bbbbbb;
+    font-weight: 400;
+  }
+  .site-prose hr {
+    border: 0;
+    border-top: 1px solid var(--site-line);
+    margin: 44px 0;
+  }
+  .site-prose section + section {
+    margin-top: 44px;
+  }
+  .site-prose dl {
+    margin: 24px 0;
+  }
+  .site-prose dt {
+    color: #dddddd;
+    margin-top: 20px;
+  }
+  .site-prose dd {
+    margin: 4px 0 16px;
+  }
+  .site-prose img {
+    width: 100%;
+    border-radius: 16px;
+    margin: 24px 0;
+  }
+  @media (min-width: 810px) {
+    .site-prose {
+      font-size: 18px;
+    }
+    .site-prose h2 {
+      font-size: 34px;
+      margin-top: 60px;
+    }
+    .site-prose h3 {
+      font-size: 26px;
+      margin-top: 34px;
+    }
+    .site-prose table {
+      font-size: 16px;
+    }
+    .site-prose th,
+    .site-prose td {
+      padding: 12px;
+      min-width: 110px;
+    }
+  }
+  /* Legal and about pages: smaller section headings than an article's. */
+  .site-prose-info h2 {
+    font-size: 24px;
+    margin-top: 32px;
+  }
+  .site-prose-info section + section {
+    margin-top: 0;
+  }
+  @media (min-width: 810px) {
+    .site-prose-info h2 {
+      font-size: 28px;
+      line-height: 1.2;
+    }
   }
 }

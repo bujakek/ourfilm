@@ -1,4 +1,4 @@
-import { ContentArticle } from '@/components/content/content-article'
+import { BlogArticle } from '@/components/pages/blog-article'
 import { hubCopy, homeLabel } from '@/lib/content/copy'
 import { getDocByPath, getDocs } from '@/lib/content/docs'
 import { contentMetadata } from '@/lib/content/metadata'
@@ -49,5 +49,5 @@ export default async function BlogPostPage({ params }: Props) {
     { name: doc.title, path: `/blog/${doc.slug}` },
   ]
 
-  return <ContentArticle doc={doc} crumbs={crumbs} />
+  return <BlogArticle doc={doc} crumbs={crumbs} />
 }
