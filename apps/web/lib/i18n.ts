@@ -18,10 +18,10 @@ export type Locale = (typeof locales)[number]
  *  arrives without `?lang`. **Not** where `/` sends visitors any more: that is
  *  negotiated per visitor in `proxy.ts` (`lib/locale-preference.ts`).
  *
- *  Hungarian for now: the pilot is run in Hungary and the legal pages and
- *  the support address are Hungarian. It never decides how anything is sold —
+ *  English is the fallback for visitors without a supported locale.
+ *  It never decides how anything is sold —
  *  that is the billing country's job (`lib/billing-country.ts`). */
-export const defaultLocale: Locale = 'hu'
+export const defaultLocale: Locale = 'en'
 
 /** Every locale the content model knows about, enabled or not.
  *

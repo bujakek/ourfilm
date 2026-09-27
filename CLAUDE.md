@@ -271,7 +271,7 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   `Accept-Language`, then English — a 307 that keeps the query and is
   `private, no-store` with `Vary: Cookie, Accept-Language`. `next.config.mjs`
   must not grow a `/` redirect again: config redirects run before the proxy.
-  `defaultLocale` in `apps/web/lib/i18n.ts` is separate and still Hungarian:
+  `defaultLocale` in `apps/web/lib/i18n.ts` is separate and defaults to English:
   `x-default`, `/llms.txt`, the shared 404 and error screens, and every
   `?lang`-less product page via `resolveLocale()` follow it. Neither decides
   anything about payment.
