@@ -227,6 +227,13 @@ export async function reserveShotAction(
   }
 }
 
+/** Give back a discarded local capture without ever persisting its photo id. */
+export async function releaseCaptureAction(eventId: string, captureId: string) {
+  const tokenHash = await readParticipantTokenHash()
+  if (!tokenHash) return
+  await releaseCapture({ eventId, tokenHash, captureId })
+}
+
 /**
  * Mark a frame's renders as landed. Returns the authoritative count.
  *
@@ -235,13 +242,6 @@ export async function reserveShotAction(
  * ever be shown it. `observeCommitShot` reports every ending — arrival,
  * success, each refusal by name, and a throw — without waiting on any of it.
  */
-/** Give back a discarded local capture without ever persisting its photo id. */
-export async function releaseCaptureAction(eventId: string, captureId: string) {
-  const tokenHash = await readParticipantTokenHash()
-  if (!tokenHash) return
-  await releaseCapture({ eventId, tokenHash, captureId })
-}
-
 export async function commitShotAction({
   slug,
   photoId,

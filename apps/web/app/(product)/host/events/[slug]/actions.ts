@@ -249,9 +249,8 @@ export async function deletePhoto(slug: string, photoId: string) {
   revalidatePath(`/e/${slug}`)
 }
 
-/** Let guests open the developed gallery, or keep it to the host alone.
- *  Capture is unaffected either way — guests keep shooting into an album they
- *  cannot browse, which is a legitimate way to run a wedding. */
+/** Allow gallery uploads for 24 hours after the close. The rules live in
+ *  `reserve_shot`; this only flips the column, under the owner's RLS. */
 export async function setPostEventUploads(slug: string, enabled: boolean) {
   if (typeof enabled !== 'boolean') throw new Error('Invalid upload setting')
   const supabase = await createClient()
@@ -269,6 +268,9 @@ export async function setPostEventUploads(slug: string, enabled: boolean) {
   revalidateEvent(slug)
 }
 
+/** Let guests open the developed gallery, or keep it to the host alone.
+ *  Capture is unaffected either way — guests keep shooting into an album they
+ *  cannot browse, which is a legitimate way to run a wedding. */
 export async function setGuestsCanView(slug: string, canView: boolean) {
   const supabase = await createClient()
 

@@ -716,6 +716,41 @@ genuine failure — and getting it wrong throws nothing and logs nothing, which
 is how it shipped. Both halves are pinned in `apps/web/tests/unit/upload-failure.test.ts`
 and in the queue suite; sabotaging either direction turns them red.
 
+## Optional after-event uploads
+
+A host can let guests add photos **from their phone's gallery** for 24 hours
+after `capture_end_at`: `events.post_event_uploads_enabled`, off by default,
+offered on the last onboarding screen and in settings
+(`post-event-uploads-card.tsx`). It is not a second roll and not an extension
+of the event — those photos spend the same fixed roll, land in the same album,
+and neither `capture_end_at` nor `reveal_at` moves.
+
+- **`reserve_shot` has a fifth argument, `p_source`** (`camera` |
+  `post_event`), and it is the whole gate. A `post_event` reservation needs the
+  option on, server time after `capture_end_at` and strictly before 24 hours
+  later, and a participant whose server-stamped `joined_at` is not after the
+  close — all checked under the participant lock, beside the roll count. The
+  device's own timestamps play no part. The four-argument overload is a
+  wrapper that passes `camera`, so the existing camera grace above is
+  unchanged and independent of the option.
+- **An existing reservation replays before either gate**, exactly as for the
+  camera: turning the option off, or crossing the deadline, never strands a
+  photo the server already accepted.
+- **Gallery picks are admitted early.** The queue persists
+  `source: 'post_event'` on the stored row (absent means a legacy camera row —
+  never infer it from EXIF), and requests the reservation as soon as the raw file is
+  in IndexedDB, before compression. A guest who picks ten photos at 23:58
+  should not lose them to a sequential decode queue. Compression of a
+  multi-select is serialised (`compressionTail`) so a phone never holds
+  several 48MP bitmaps at once.
+- **`postEventUploadsAreOpen` in `apps/web/lib/camera.ts` is a display
+  predicate only** — it decides whether the guest page shows the gallery
+  button; the RPC decides what is accepted.
+
+This is a deliberate, host-chosen exception to "no preview, no retakes": a
+guest choosing from their own gallery is choosing which shots to keep. It is
+off unless the host turns it on, and the landing page does not advertise it.
+
 ## The create flow is four full-screen questions (settled)
 
 `/host/events/new` asks four things, one per screen, in a shared shell
@@ -1001,7 +1036,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   name, stored beside the UTC instants because an offset is not a zone),
   `reveal_mode` (`instant | event_end | custom`), `reveal_at`,
   `shots_per_participant` (`5 | 10 | 16 | 24 | 36`, default 24, enforced by a
-  check constraint), `guests_can_view`, `owner_id` (→ `auth.users`),
+  check constraint), `guests_can_view`, `post_event_uploads_enabled`
+  (default false — see Optional after-event uploads), `owner_id` (→ `auth.users`),
   `creation_key` (nullable uuid; unique per owner where present — the create
   flow's idempotency key, see below), `created_at`, `updated_at`
 
@@ -1088,9 +1124,19 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   concurrent captures — locking the event would serialise every guest at the
   party.
 
-  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes), so
-  a failed upload costs no frame and nothing has to be swept. Retrying with the
-  same `idempotency_key` re-claims the same frame instead of spending another.
+  **A `pending` row counts until it is released, not until time passes.** It
+  used to stop counting after `shot_reservation_ttl()` (10 minutes), and that
+  let the roll overflow: a resumed upload older than ten minutes could still
+  commit after its frame had been spent again. `participant_shots_used` now
+  counts every row (`20260927171746`), and a frame comes back only through
+  `release_shot` (by photo id, after a failed attempt) or
+  `release_shot_by_capture` (by capture id, when the queue discards a stored
+  shot — the device never persists photo ids). The cost is a frame lost for
+  good when a shot vanishes with nothing left to release it — a reservation
+  held only in memory, because IndexedDB was unavailable (private mode), dies
+  with the tab. `shot_reservation_ttl()`
+  still exists and nothing reads it. Retrying with the same `idempotency_key`
+  re-claims the same frame instead of spending another.
   Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
   refunding on hide would make hiding a way to shoot forever.
 
@@ -1470,7 +1516,9 @@ claims are live and load-bearing:
 - **No app and no sign-up for guests** (`hero.tsx`, the join ticket) — the guest
   flow is one name field and an httpOnly cookie; there is no account to make
 
-Do not reintroduce anything describing camera-roll upload or unlimited photos.
+Do not advertise unlimited photos or camera-roll upload. Gallery upload
+exists only as the host's opt-in 24-hour after-event window, spends the same
+roll, and is not a marketing claim.
 
 If a change would falsify a claim that is still true, either honor it or update
 the Hungarian copy in the same change.
