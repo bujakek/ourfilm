@@ -1,16 +1,13 @@
-import { PageGrain } from '@/components/site/page-grain'
-import { Faq } from '@/components/site/faq'
-import { FinalCta } from '@/components/site/final-cta'
-import { Footer } from '@/components/site/footer'
-import { Hero } from '@/components/site/hero'
-import { HowItWorks } from '@/components/site/how-it-works'
-import { Navbar } from '@/components/site/navbar'
-import { OccasionPrints } from '@/components/site/occasion-prints'
-import { PhotoReveal } from '@/components/site/photo-reveal'
-import { Problem } from '@/components/site/problem'
-import { QrPreview } from '@/components/site/qr-preview'
-import { Testimonials } from '@/components/site/testimonials'
-import { TryCameraCard } from '@/components/site/try-camera-card'
+import { landingFontClass } from '@/components/landing/fonts'
+import { LandingFaq } from '@/components/landing/landing-faq'
+import { LandingFinal } from '@/components/landing/landing-final'
+import { LandingFooter } from '@/components/landing/landing-footer'
+import { LandingHero } from '@/components/landing/landing-hero'
+import { LandingHow } from '@/components/landing/landing-how'
+import { LandingNav } from '@/components/landing/landing-nav'
+import { LandingOccasions } from '@/components/landing/landing-occasions'
+import { LandingProof } from '@/components/landing/landing-proof'
+import { LandingTryCard } from '@/components/landing/landing-try-card'
 import { isLocale, localeOgTag } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -20,14 +17,14 @@ type Props = { params: Promise<{ locale: string }> }
 
 const metadataCopy = {
   en: {
-    title: 'OurFilm | Your Wedding, Through Their Eyes',
+    title: 'OurFilm | Your days, through everyone’s eyes',
     description:
-      'Give every wedding guest their own digital roll with one QR code. No app, no accounts and no chasing photos after the wedding.',
+      'One shared digital disposable camera for weddings, birthdays, trips and parties. Guests scan a QR code and shoot — no app, no accounts, every photo in one album.',
   },
   hu: {
-    title: 'OurFilm | Az esküvőtök, a vendégeitek szemével',
+    title: 'OurFilm | A ti napotok, mindenki szemével',
     description:
-      'A vendégek QR-kóddal nyitják meg a saját digitális tekercsüket. Nincs app, nincs előnézet, a képek pedig akkor jelennek meg, amikor ti szeretnétek.',
+      'Egy közös digitális eldobható kamera esküvőre, születésnapra, utazásra és bulira. A vendégek QR-kóddal fotóznak — nincs app, nincs regisztráció, minden kép egy albumban.',
   },
 } as const
 
@@ -54,32 +51,20 @@ export default async function Page({ params }: Props) {
   if (!isLocale(locale)) notFound()
 
   return (
-    <div className="relative min-h-screen">
-      <PageGrain />
-      <Navbar locale={locale} />
-      <main className="relative z-10">
-        {/* <Stats /> is deliberately not rendered. It only ever held invented
-            numbers, and the pilot has no verified ones to put in their place.
-
-            <Benefits /> joins them, for a different reason: it was one heading
-            and one sentence, the heading is `footer.tagline` word for word,
-            and the sentence is now the supporting line of the step section it
-            sat above. Nothing it said has left the page. */}
-        <Hero locale={locale} />
-        <Testimonials locale={locale} />
-        <Problem locale={locale} />
-        <HowItWorks locale={locale} />
-        <QrPreview locale={locale} />
-        <OccasionPrints locale={locale} />
-        <PhotoReveal locale={locale} />
-        <Faq locale={locale} />
-        <FinalCta locale={locale} />
+    <div
+      className={`${landingFontClass} min-h-screen bg-landing font-landing-sans text-white lg:pb-[120px]`}
+    >
+      <LandingNav locale={locale} />
+      <main>
+        <LandingHero locale={locale} />
+        <LandingProof locale={locale} />
+        <LandingOccasions locale={locale} />
+        <LandingHow locale={locale} />
+        <LandingFaq locale={locale} />
+        <LandingFinal locale={locale} />
       </main>
-      <Footer locale={locale} />
-      {/* Outside `<main>`: it is an offer that follows the reader down the
-          page, not a part of the document's outline. Desktop only — see the
-          component. */}
-      <TryCameraCard locale={locale} />
+      <LandingFooter locale={locale} />
+      <LandingTryCard locale={locale} />
     </div>
   )
 }
