@@ -173,6 +173,20 @@ export type ServerEventProperties = {
    * forged claim shows. A replay of an existing reservation is not counted.
    * `capture_id` is the reservation's own idempotency key.
    */
+  /**
+   * An after-event gallery reservation, admitted or refused by name. Replays
+   * are not counted. `late_seconds` is how long after the close it arrived;
+   * `joined_after_close` is the guest who never scanned at the party, the
+   * case the window was opened to late joiners for. Both only when admitted.
+   */
+  after_event_reserve: {
+    event_id: string
+    capture_id: string
+    outcome: string
+    late_seconds: number | null
+    shots_remaining: number | null
+    joined_after_close: boolean | null
+  }
   shot_reserved_in_grace: {
     event_id: string
     capture_id: string

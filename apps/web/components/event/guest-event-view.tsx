@@ -744,19 +744,28 @@ export function GuestEventView({
       const id = crypto.randomUUID()
       const now = Date.now()
       startedAt.current.set(id, now)
-      const opened = cameraOpenedAt.current
-      cameraOpenedAt.current = null
-      track('shutter_pressed', {
-        event_id: eventId,
-        capture_id: id,
-        shots_remaining: remaining,
-        outstanding,
-        // How long the OS camera had the screen. Long enough, and iOS has
-        // probably reclaimed the tab — the number every retry rule guesses at.
-        away_ms: opened === null ? null : now - opened,
-        input_bytes: file.size,
-        heic: isHeic(file),
-      })
+      const opened = source === 'camera' ? cameraOpenedAt.current : null
+      if (source === 'camera') {
+        cameraOpenedAt.current = null
+        track('shutter_pressed', {
+          event_id: eventId,
+          capture_id: id,
+          shots_remaining: remaining,
+          outstanding,
+          // How long the OS camera had the screen. Long enough, and iOS has
+          // probably reclaimed the tab — the number every retry rule guesses at.
+          away_ms: opened === null ? null : now - opened,
+          input_bytes: file.size,
+          heic: isHeic(file),
+        })
+      } else {
+        track('photo_chosen', {
+          event_id: eventId,
+          capture_id: id,
+          input_bytes: file.size,
+          heic: isHeic(file),
+        })
+      }
       setFlash(null)
       if (!online) {
         setOfflineBacklog((n) => n + 1)
@@ -909,6 +918,10 @@ export function GuestEventView({
           type="button"
           onClick={() => {
             if (canAddPhotos) {
+              track('upload_picker_opened', {
+                event_id: eventId,
+                frames_left: framesLeft,
+              })
               galleryInputRef.current?.click()
               return
             }
@@ -986,7 +999,13 @@ export function GuestEventView({
           onChange={(event) => {
             const files = Array.from(event.target.files ?? [])
             event.target.value = ''
-            if (!canAddPhotos) return
+            if (!canAddPhotos || files.length === 0) return
+            track('photos_chosen', {
+              event_id: eventId,
+              count: files.length,
+              frames_left: framesLeft,
+              accepted: files.length <= framesLeft,
+            })
             if (files.length > framesLeft) {
               setFlash(
                 en

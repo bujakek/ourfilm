@@ -131,7 +131,11 @@ describe('after-event uploads', () => {
       const before = await state(event.slug, session)
       const shot = await late(event.id, session)
       expect(shot.refusal).toBeNull()
-      expect(shot.late_seconds).toBeNull() // Not a recovered camera capture.
+      // How late it is, for telemetry — but no device claim: this is not a
+      // recovered camera capture, and `capture.ts` keeps it out of the grace
+      // report by the source it sent.
+      expect(shot.late_seconds).toBeGreaterThanOrEqual(3600)
+      expect(shot.claimed_lead_seconds).toBeNull()
       await commitShot(shot.photo_id, session)
       const after = await state(event.slug, session)
       expect(after.participant_id).toBe(before.participant_id)
@@ -198,9 +202,17 @@ describe('after-event uploads', () => {
       // the camera grace still is not.
       const latecomer = newSession()
       await joinEvent(event.slug, 'Másnap', latecomer)
-      const admitted = await late(event.id, latecomer)
+      const lateKey = randomUUID()
+      const admitted = await late(event.id, latecomer, lateKey)
       expect(admitted.refusal).toBeNull()
       expect(admitted.shots_remaining).toBe(35)
+      // A new gallery reservation says how late it is and makes no device
+      // claim; its replay says neither, so telemetry counts it once.
+      expect(admitted.late_seconds).toBeGreaterThanOrEqual(3600)
+      expect(admitted.claimed_lead_seconds).toBeNull()
+      const replayed = await late(event.id, latecomer, lateKey)
+      expect(replayed.photo_id).toBe(admitted.photo_id)
+      expect(replayed.late_seconds).toBeNull()
       expect(
         (await reserveShot(
           event.id,

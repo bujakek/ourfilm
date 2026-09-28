@@ -24,6 +24,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLocale } from '@/lib/i18n'
 import { reportGraceReservation } from '@/lib/grace-telemetry'
+import { reportAfterEventReservation } from '@/lib/after-event-telemetry'
 import { reportServerIssue } from '@/lib/telemetry-server'
 import type { ReservationProgress } from '@/lib/upload-resume'
 
@@ -208,6 +209,14 @@ export async function reserveShotAction(
       routeType: 'action',
     })
     throw e
+  }
+  if (source === 'post_event') {
+    reportAfterEventReservation({
+      eventId,
+      captureId: idempotencyKey,
+      tokenHash,
+      result,
+    })
   }
   if (!result.ok) return { ok: false, refusal: result.refusal }
 

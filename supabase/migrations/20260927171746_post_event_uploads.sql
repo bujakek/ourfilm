@@ -178,9 +178,14 @@ begin
   end if;
 
   -- Past this point after the close, the grace is what let the shot in.
-  if p_source = 'camera' and now() > v_event.capture_end_at then
+  -- A gallery upload reports how late it is too, with no device claim: the
+  -- caller tells the two apart by the source it sent, and a null
+  -- `late_seconds` still means a replay (or a camera shot while open).
+  if now() > v_event.capture_end_at then
     v_late := floor(extract(epoch from now() - v_event.capture_end_at))::integer;
-    v_lead := floor(extract(epoch from v_event.capture_end_at - p_capture_started_at))::integer;
+    if p_source = 'camera' then
+      v_lead := floor(extract(epoch from v_event.capture_end_at - p_capture_started_at))::integer;
+    end if;
   end if;
 
   v_photo_id := gen_random_uuid();

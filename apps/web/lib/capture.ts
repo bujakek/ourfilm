@@ -45,6 +45,13 @@ export type ReservedShot = {
    */
   grace: { lateSeconds: number; claimedLeadSeconds: number | null } | null
   /**
+   * Set only when this call created an after-event gallery reservation: how
+   * long after the close it arrived. Null for a replay. Kept apart from
+   * `grace`, which measures the camera's recovery window and nothing else.
+   * See `lib/after-event-telemetry.ts`.
+   */
+  afterEvent: { lateSeconds: number } | null
+  /**
    * How far an earlier attempt at this reservation got: the row's status and
    * the renders already in Storage. Null from a database that predates the
    * report, which the queue reads as "start from the beginning".
@@ -125,12 +132,20 @@ export async function reserveShot({
       photoId: data.photo_id as string,
       shotsRemaining: data.shots_remaining,
       grace:
-        data.late_seconds === null || data.late_seconds === undefined
+        source !== 'camera' ||
+        data.late_seconds === null ||
+        data.late_seconds === undefined
           ? null
           : {
               lateSeconds: data.late_seconds,
               claimedLeadSeconds: data.claimed_lead_seconds ?? null,
             },
+      afterEvent:
+        source !== 'post_event' ||
+        data.late_seconds === null ||
+        data.late_seconds === undefined
+          ? null
+          : { lateSeconds: data.late_seconds },
       progress: reservationProgress(data),
       uploads: { full, view, thumb },
     },

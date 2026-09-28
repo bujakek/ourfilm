@@ -400,6 +400,9 @@ this wedding lose a photo" has an answer. The guest path, in order:
 | `guest_join_refused`         | Cap reached vs. a bug — a refusal on an open camera is the latter              |
 | `camera_opened`              | The denominator for the OS camera hand-off                                     |
 | `shutter_pressed`            | A file came back; `away_ms` is how long the OS had the screen                  |
+| `upload_picker_opened`       | "Choose photos" tapped in the after-event window, with frames left             |
+| `photos_chosen`              | A selection came back: how many, and `accepted: false` if it exceeded the roll |
+| `photo_chosen`               | One picked photo queued — the gallery's `shutter_pressed`, with its capture id |
 | `capture_preparation_slow`   | Successful preparation over five seconds, with safe size metadata              |
 | `upload_issue`               | One deduplicated issue: stage, class, attempt and whether terminal             |
 | `upload_renders_uploaded`    | Every render sent answered; `upload_ms`, `renders_sent`, keyed by `attempt_id` |
@@ -417,6 +420,10 @@ this wedding lose a photo" has an answer. The guest path, in order:
 | `invite_shared`              | The link left the page, or the clipboard refused and it did not                |
 | `client_error`               | A rendered error boundary, with redacted stack locations                       |
 | `server_error`               | An unhandled or critical handled server failure by operation                   |
+
+Gallery picks never fire `shutter_pressed` — they are `photo_chosen` — so the
+camera funnel below stays about the camera. Cancelled pickers are
+`upload_picker_opened` minus `photos_chosen`.
 
 Cancelled camera hand-offs are `camera_opened` minus `shutter_pressed`; there
 is no reliable client-side signal for a cancel, so none is invented. How often
@@ -461,6 +468,7 @@ are separate promises: every property is reduced to a bounded scalar, and
 | `event_created`                | The row exists, with the shape the host chose and whether it was a repeat     |
 | `event_deleted`                | The one destructive path, with the album's size and age                       |
 | `shot_reserved_in_grace`       | A frame reserved after the close through the 24 h upload grace, and how late  |
+| `after_event_reserve`          | A gallery upload admitted or refused by name; how late, and if a late joiner  |
 | `photo_deleted`                | A frame destroyed, and whether it was already hidden when they did it         |
 | `event_setting_changed`        | What hosts adjust on a running camera, and how far they move the end          |
 | `album_export_queued`          | A large album was asked for; a job row exists and nothing is built yet        |

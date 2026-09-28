@@ -48,6 +48,27 @@ export type TelemetryEventProperties = {
     input_bytes: number
     heic: boolean
   }
+  /** "Choose photos" tapped in the after-event window. The denominator for
+   *  the gallery picker, as `camera_opened` is for the OS camera. */
+  upload_picker_opened: { event_id: string; frames_left: number }
+  /** One selection came back from the picker. `accepted` is false when it
+   *  held more photos than frames left and nothing was queued. Opened minus
+   *  chosen is pickers closed without a selection. */
+  photos_chosen: {
+    event_id: string
+    count: number
+    frames_left: number
+    accepted: boolean
+  }
+  /** One picked photo entered the queue: the gallery counterpart of
+   *  `shutter_pressed`, carrying the capture id every later upload event
+   *  uses. Kept separate so picks never count as camera shutter presses. */
+  photo_chosen: {
+    event_id: string
+    capture_id: string
+    input_bytes: number
+    heic: boolean
+  }
   capture_preparation_slow: {
     event_id: string
     capture_id: string
