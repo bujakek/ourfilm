@@ -83,7 +83,13 @@ export default async function EventPage({ params }: Props) {
         revealMode={event.reveal_mode}
         captureEndAt={event.capture_end_at}
         timeZone={event.time_zone}
-        stateLabel={joinStateLabel(timing, event.shots_per_participant, locale)}
+        stateLabel={joinStateLabel(
+          timing,
+          event.shots_per_participant,
+          locale,
+          event.post_event_uploads_enabled,
+        )}
+        revealed={now >= timing.revealAt}
         // `can_capture` requires a participant and there is none yet, so the
         // button's label comes from the window itself.
         canCapture={captureWindowState(timing) === 'open'}

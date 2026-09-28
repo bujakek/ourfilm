@@ -1,4 +1,9 @@
-import { captureWindowState, guestGalleryIsOpen } from './camera'
+import {
+  captureWindowState,
+  guestGalleryIsOpen,
+  POST_EVENT_UPLOAD_MS,
+  postEventUploadsAreOpen,
+} from './camera'
 import { formatDeadline } from './format'
 import type { Locale } from './i18n'
 
@@ -57,11 +62,15 @@ export function captureStateDetail(timing: EventTiming): string | null {
   }
 }
 
-/** One line summarising the event for the join screen. */
+/** One line summarising the event for the join screen. After the close it
+ *  names the after-event upload window when the host opened one: "Shooting
+ *  has ended" alone reads as "nothing left to do here", and a guest who
+ *  never scanned at the party would close the tab without joining. */
 export function joinStateLabel(
   timing: EventTiming,
   shotsPerParticipant: number,
   locale: Locale = 'hu',
+  postEventUploads = false,
 ): string {
   const state = captureWindowState(timing)
   if (state === 'before') {
@@ -75,6 +84,24 @@ export function joinStateLabel(
       : `A fotózás ${deadline}-kor kezdődik. Addig is csatlakozhatsz.`
   }
   if (state === 'after') {
+    if (
+      postEventUploadsAreOpen({
+        now: timing.now,
+        captureEndAt: timing.captureEndAt,
+        enabled: postEventUploads,
+      })
+    ) {
+      const deadline = formatDeadline(
+        new Date(
+          timing.captureEndAt.getTime() + POST_EVENT_UPLOAD_MS,
+        ).toISOString(),
+        timing.timeZone,
+        locale,
+      )
+      return locale === 'en'
+        ? `Shooting has ended. You can still add photos from your phone until ${deadline}.`
+        : `A fotózás véget ért. ${deadline}-ig még hozzáadhatsz képeket a telefonodról.`
+    }
     return locale === 'en' ? 'Shooting has ended.' : 'A fotózás véget ért.'
   }
   return locale === 'en'
