@@ -312,6 +312,7 @@ export type Database = {
           id: string
           locale: string
           owner_id: string
+          post_event_uploads_enabled: boolean
           reveal_at: string
           reveal_mode: Database["public"]["Enums"]["reveal_mode"]
           shots_per_participant: number
@@ -330,6 +331,7 @@ export type Database = {
           id?: string
           locale?: string
           owner_id: string
+          post_event_uploads_enabled?: boolean
           reveal_at: string
           reveal_mode?: Database["public"]["Enums"]["reveal_mode"]
           shots_per_participant?: number
@@ -348,6 +350,7 @@ export type Database = {
           id?: string
           locale?: string
           owner_id?: string
+          post_event_uploads_enabled?: boolean
           reveal_at?: string
           reveal_mode?: Database["public"]["Enums"]["reveal_mode"]
           shots_per_participant?: number
@@ -407,6 +410,7 @@ export type Database = {
           idempotency_key: string | null
           mime_type: string | null
           participant_id: string
+          reserved_at: string | null
           status: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at: string | null
@@ -425,6 +429,7 @@ export type Database = {
           idempotency_key?: string | null
           mime_type?: string | null
           participant_id: string
+          reserved_at?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at?: string | null
@@ -443,6 +448,7 @@ export type Database = {
           idempotency_key?: string | null
           mime_type?: string | null
           participant_id?: string
+          reserved_at?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
           storage_path?: string
           taken_at?: string | null
@@ -827,6 +833,7 @@ export type Database = {
         }
         Returns: {
           committed: boolean
+          refusal: string
           shots_remaining: number
         }[]
       }
@@ -913,6 +920,7 @@ export type Database = {
           participant_id: string
           participant_limit_reached: boolean
           photo_count: number
+          post_event_uploads_enabled: boolean
           reveal_at: string
           reveal_mode: Database["public"]["Enums"]["reveal_mode"]
           shots_per_participant: number
@@ -1054,6 +1062,14 @@ export type Database = {
         Args: { p_photo_id: string; p_token_hash: string }
         Returns: undefined
       }
+      release_shot_by_capture: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_token_hash: string
+        }
+        Returns: undefined
+      }
       request_album_export: {
         Args: {
           p_estimated_bytes: number
@@ -1124,6 +1140,29 @@ export type Database = {
               p_capture_started_at: string
               p_event_id: string
               p_idempotency_key: string
+              p_token_hash: string
+            }
+            Returns: {
+              claimed_lead_seconds: number
+              full_bytes: number
+              late_seconds: number
+              photo_id: string
+              photo_status: string
+              refusal: string
+              shots_remaining: number
+              storage_path: string
+              thumb_bytes: number
+              thumb_path: string
+              view_bytes: number
+              view_path: string
+            }[]
+          }
+        | {
+            Args: {
+              p_capture_started_at: string
+              p_event_id: string
+              p_idempotency_key: string
+              p_source: string
               p_token_hash: string
             }
             Returns: {

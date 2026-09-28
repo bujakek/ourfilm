@@ -44,6 +44,7 @@ export type CommitRefusal =
   | 'not_owner'
   | 'no_participant'
   | 'not_matched'
+  | 'no_shots'
   | 'empty_response'
 
 export type CommitShotAnswer = {

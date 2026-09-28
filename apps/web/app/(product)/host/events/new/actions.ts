@@ -31,6 +31,7 @@ export type EventDraftInput = {
   shots: number
   plan: string
   guestsCanView: boolean
+  postEventUploads?: boolean
   legalAccepted: boolean
   /** The billing country chosen on the paid tile. Only read when `plan` is
    *  `full`, validated like everything else here, and the only thing that
@@ -222,6 +223,7 @@ export async function createEventFromDraft(
       shots,
       reveal_mode: revealModeRaw,
       guests_can_view: guestsCanView,
+      post_event_uploads_enabled: input.postEventUploads === true,
       window_hours:
         Math.round(
           ((captureEndAt.getTime() - captureStartAt.getTime()) / 3_600_000) *
@@ -279,6 +281,7 @@ export async function createEventFromDraft(
         reveal_at: revealAt,
         shots_per_participant: shots,
         guests_can_view: guestsCanView,
+        post_event_uploads_enabled: input.postEventUploads === true,
         creation_key: creationKey,
       })
       .select('id, slug')

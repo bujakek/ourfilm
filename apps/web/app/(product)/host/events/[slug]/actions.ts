@@ -249,6 +249,25 @@ export async function deletePhoto(slug: string, photoId: string) {
   revalidatePath(`/e/${slug}`)
 }
 
+/** Allow gallery uploads for 24 hours after the close. The rules live in
+ *  `reserve_shot`; this only flips the column, under the owner's RLS. */
+export async function setPostEventUploads(slug: string, enabled: boolean) {
+  if (typeof enabled !== 'boolean') throw new Error('Invalid upload setting')
+  const supabase = await createClient()
+  // The authenticated client enforces ownership through the existing RLS.
+  const { data, error } = await supabase
+    .from('events')
+    .update({ post_event_uploads_enabled: enabled })
+    .eq('slug', slug)
+    .select('id')
+  if (error) throw await refused(error, 'post_event_uploads_enabled')
+  if (!data?.length) throw new Error('Az esemény nem módosult.')
+  await changed(data[0].id, 'post_event_uploads_enabled', {
+    post_event_uploads_enabled: enabled,
+  })
+  revalidateEvent(slug)
+}
+
 /** Let guests open the developed gallery, or keep it to the host alone.
  *  Capture is unaffected either way — guests keep shooting into an album they
  *  cannot browse, which is a legitimate way to run a wedding. */

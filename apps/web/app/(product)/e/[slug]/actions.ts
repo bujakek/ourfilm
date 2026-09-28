@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import {
   releaseShot,
   reserveShot,
+  releaseCapture,
   type ShotRefusal,
   type SignedUpload,
 } from '@/lib/capture'
@@ -23,6 +24,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLocale } from '@/lib/i18n'
 import { reportGraceReservation } from '@/lib/grace-telemetry'
+import { reportAfterEventReservation } from '@/lib/after-event-telemetry'
 import { reportServerIssue } from '@/lib/telemetry-server'
 import type { ReservationProgress } from '@/lib/upload-resume'
 
@@ -162,7 +164,10 @@ export async function reserveShotAction(
   eventId: string,
   idempotencyKey: string,
   captureStartedAt: string,
+  source: 'camera' | 'post_event' = 'camera',
 ): Promise<ReserveState> {
+  if (source !== 'camera' && source !== 'post_event')
+    return { ok: false, refusal: 'error' }
   const tokenHash = await readParticipantTokenHash()
   if (!tokenHash) return { ok: false, refusal: 'no_session' }
 
@@ -190,6 +195,7 @@ export async function reserveShotAction(
       tokenHash,
       idempotencyKey,
       captureStartedAt,
+      source,
     })
   } catch (e) {
     // The guest's browser already reports this as an `upload_issue` with a
@@ -203,6 +209,14 @@ export async function reserveShotAction(
       routeType: 'action',
     })
     throw e
+  }
+  if (source === 'post_event') {
+    reportAfterEventReservation({
+      eventId,
+      captureId: idempotencyKey,
+      tokenHash,
+      result,
+    })
   }
   if (!result.ok) return { ok: false, refusal: result.refusal }
 
@@ -220,6 +234,13 @@ export async function reserveShotAction(
     uploads: result.shot.uploads,
     progress: result.shot.progress,
   }
+}
+
+/** Give back a discarded local capture without ever persisting its photo id. */
+export async function releaseCaptureAction(eventId: string, captureId: string) {
+  const tokenHash = await readParticipantTokenHash()
+  if (!tokenHash) return
+  await releaseCapture({ eventId, tokenHash, captureId })
 }
 
 /**

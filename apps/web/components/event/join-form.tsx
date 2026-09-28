@@ -50,6 +50,7 @@ export function JoinForm({
   captureEndAt,
   timeZone,
   stateLabel,
+  revealed,
   canCapture,
   locale,
 }: {
@@ -64,6 +65,9 @@ export function JoinForm({
   timeZone: string
   /** What the event is doing right now — before, during, or after. */
   stateLabel: string
+  /** The reveal has passed. The ticket stops promising a development that
+   *  already happened. */
+  revealed: boolean
   canCapture: boolean
   locale: Locale
 }) {
@@ -164,10 +168,20 @@ export function JoinForm({
             </div>
             <div className="text-right">
               <p className="paper-muted font-mono text-[9px] font-medium tracking-[0.16em]">
-                {en ? 'DEVELOPING' : 'ELŐHÍVÁS'}
+                {revealed
+                  ? en
+                    ? 'PHOTOS'
+                    : 'A KÉPEK'
+                  : en
+                    ? 'DEVELOPING'
+                    : 'ELŐHÍVÁS'}
               </p>
               <p className="mt-1 font-mono text-[12px] leading-[1.4] font-medium">
-                {revealSummary(revealMode, locale)}
+                {revealed
+                  ? en
+                    ? 'DEVELOPED'
+                    : 'ELŐHÍVVA'
+                  : revealSummary(revealMode, locale)}
               </p>
             </div>
           </div>
@@ -259,19 +273,21 @@ export function JoinForm({
         </p>
 
         <p className="mt-4.5 text-center text-[11px] leading-[1.6] text-pretty text-foreground/42">
-          A csatlakozással elfogadod az{' '}
+          {en ? 'By joining you accept the ' : 'A csatlakozással elfogadod az '}
           <Link
-            href="/hu/aszf"
+            href={en ? '/en/terms' : '/hu/aszf'}
             className="underline underline-offset-2 hover:text-foreground"
           >
-            ÁSZF vendégekre vonatkozó szabályait
+            {en
+              ? 'guest rules in the Terms of service'
+              : 'ÁSZF vendégekre vonatkozó szabályait'}
           </Link>
-          , és tudomásul veszed az{' '}
+          {en ? ' and acknowledge the ' : ', és tudomásul veszed az '}
           <Link
-            href="/hu/adatvedelem"
+            href={en ? '/en/privacy' : '/hu/adatvedelem'}
             className="underline underline-offset-2 hover:text-foreground"
           >
-            adatkezelési tájékoztatót
+            {en ? 'Privacy notice' : 'adatkezelési tájékoztatót'}
           </Link>
           .
         </p>

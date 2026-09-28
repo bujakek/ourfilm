@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { releaseShot, reserveShot, type ShotRefusal } from '@/lib/capture'
+import {
+  releaseCapture,
+  releaseShot,
+  reserveShot,
+  type ShotRefusal,
+} from '@/lib/capture'
 import {
   type CommitShotAnswer,
   liveCommitDeps,
@@ -149,4 +154,17 @@ export async function hostReleaseShotAction(
   const resolved = await resolve(slug)
   if (!resolved) return
   await releaseShot({ photoId, tokenHash: resolved.participant.tokenHash })
+}
+
+export async function hostReleaseCaptureAction(
+  slug: string,
+  captureId: string,
+) {
+  const resolved = await resolve(slug)
+  if (!resolved) return
+  await releaseCapture({
+    eventId: resolved.event.id,
+    tokenHash: resolved.participant.tokenHash,
+    captureId,
+  })
 }

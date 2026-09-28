@@ -371,6 +371,24 @@ genuine failure — and getting it wrong throws nothing and logs nothing, which
 is how it shipped. Both halves are pinned in `apps/web/tests/unit/upload-failure.test.ts`
 and in the queue suite; sabotaging either direction turns them red.
 
+## Optional after-event uploads
+
+`events.post_event_uploads_enabled` defaults to false and can be selected in
+onboarding or changed in event settings. Any joined guest — including one who first
+joins after the close — may select
+photos from their phone after `capture_end_at` and strictly before 24 hours
+later. These consume the original roll and enter the original album; neither
+capture times nor the reveal are extended.
+
+The queue persists `source: 'post_event'` alongside the capture key. Missing
+source means a legacy camera capture. The five-argument `reserve_shot` checks
+the option, server time and remaining roll (not the join time) under the
+participant lock. Old overloads retain the camera-grace behavior. Existing
+reservations replay before either admission gate, including after disabling
+the option or crossing the deadline. Gallery selections request admission once
+the raw file is stored, before waiting for sequential compression or uploads.
+The existing retry budget and local 24-hour photo lifetime still apply.
+
 ## The create flow is four full-screen questions (settled)
 
 `/host/events/new` asks four things, one per screen, in a shared shell
@@ -676,7 +694,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   (`pending | ready`), `idempotency_key` (unique per participant),
   `storage_path`, `thumb_path`, `view_path`, `hidden_at` (soft delete for
   moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type`,
-  `taken_at`, `created_at`
+  `taken_at`, `reserved_at` (nullable; set when an expired reservation is
+  re-claimed), `created_at`
 
   **The shot limit is atomic, and this is how.** `reserve_shot` takes
   `for update` on the _participant_ row, checks the window and the count, and
@@ -687,9 +706,21 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   concurrent captures — locking the event would serialise every guest at the
   party.
 
-  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes), so
-  a failed upload costs no frame and nothing has to be swept. Retrying with the
+  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes)
+  — measured from `reserved_at`, or `created_at` when that is null — so a
+  failed upload costs no frame and nothing has to be swept. Retrying with the
   same `idempotency_key` re-claims the same frame instead of spending another.
+
+  **An expired reservation is re-checked before it goes any further**
+  (`20260927171746`). It used to be able to commit after its frame had been
+  spent again, so a guest who waited out the TTL could keep reserving past the
+  roll. Now both doors check: `reserve_shot`, replaying an expired row,
+  refuses `no_shots` if the roll is full and otherwise stamps `reserved_at` so
+  the row holds a frame again; `commit_shot` takes the same participant lock
+  and refuses an expired pending row the same way, for a caller who skips the
+  replay. `created_at` is never bumped — it is the export's sort fallback for
+  a photo without EXIF. `release_shot_by_capture` hands a frame back at once
+  when the queue discards a stored shot, which holds only its capture id.
   Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
   refunding on hide would make hiding a way to shoot forever.
 
@@ -913,7 +944,8 @@ claims are live and load-bearing:
 - **Every participant gets the host's chosen 5/10/16/24/36-shot roll** — paying
   never removes the per-person format
 
-Do not reintroduce anything describing camera-roll upload or unlimited photos.
+Do not advertise unlimited photos. Camera-roll upload is available only for
+events whose host opted into the fixed 24-hour after-event window.
 
 If a change would falsify a claim that is still true, either honor it or update
 the Hungarian copy in the same change.

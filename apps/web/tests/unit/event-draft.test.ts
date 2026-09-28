@@ -55,6 +55,7 @@ describe('saving and reading a draft', () => {
       shots: 36,
       plan: 'full',
       guestsCanView: false,
+      postEventUploads: true,
       legalAccepted: true,
       step: 3,
     })
@@ -69,6 +70,7 @@ describe('saving and reading a draft', () => {
       shots: 36,
       plan: 'full',
       guestsCanView: false,
+      postEventUploads: true,
       legalAccepted: true,
       step: 3,
       creationKey: KEY,
@@ -210,4 +212,11 @@ describe('whether a draft is worth offering back', () => {
   it('does not count whitespace as a name', () => {
     expect(draftHasAnswers(draft({ name: '   ' }))).toBe(false)
   })
+})
+
+it('restores older drafts with after-event uploads disabled', () => {
+  const legacy = { ...draft(), postEventUploads: undefined }
+  storage.setItem(DRAFT_KEY, JSON.stringify(legacy))
+  expect(loadDraft(NOW)?.postEventUploads).toBe(false)
+  expect(emptyDraft(NOW, 'Europe/Budapest', KEY).postEventUploads).toBe(false)
 })

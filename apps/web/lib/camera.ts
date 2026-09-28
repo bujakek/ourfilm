@@ -75,6 +75,28 @@ export function resolveRevealAt({
 
 export type CaptureWindowState = 'before' | 'open' | 'after'
 
+export type ShotSource = 'camera' | 'post_event'
+export const POST_EVENT_UPLOAD_MS = 24 * 60 * 60 * 1000
+
+/** Display predicate only; reserve_shot enforces these rules under its lock.
+ *  Any participant qualifies, including one who first joined after the close —
+ *  the guest page is only ever drawn for somebody who has joined. */
+export function postEventUploadsAreOpen({
+  now,
+  captureEndAt,
+  enabled,
+}: {
+  now: Date
+  captureEndAt: Date
+  enabled: boolean
+}): boolean {
+  return (
+    enabled &&
+    now > captureEndAt &&
+    now.getTime() < captureEndAt.getTime() + POST_EVENT_UPLOAD_MS
+  )
+}
+
 export function captureWindowState({
   now,
   captureStartAt,

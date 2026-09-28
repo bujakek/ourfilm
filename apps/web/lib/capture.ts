@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createAdminClient } from './supabase/admin'
 import { PHOTO_BUCKET } from './storage'
+import type { ShotSource } from './camera'
 import { reservationProgress, type ReservationProgress } from './upload-resume'
 
 /**
@@ -44,6 +45,13 @@ export type ReservedShot = {
    */
   grace: { lateSeconds: number; claimedLeadSeconds: number | null } | null
   /**
+   * Set only when this call created an after-event gallery reservation: how
+   * long after the close it arrived. Null for a replay. Kept apart from
+   * `grace`, which measures the camera's recovery window and nothing else.
+   * See `lib/after-event-telemetry.ts`.
+   */
+  afterEvent: { lateSeconds: number } | null
+  /**
    * How far an earlier attempt at this reservation got: the row's status and
    * the renders already in Storage. Null from a database that predates the
    * report, which the queue reads as "start from the beginning".
@@ -74,6 +82,7 @@ export async function reserveShot({
   tokenHash,
   idempotencyKey,
   captureStartedAt,
+  source = 'camera',
 }: {
   eventId: string
   tokenHash: string
@@ -84,6 +93,7 @@ export async function reserveShot({
    * upload grace window; while capture is live, server time remains truth.
    */
   captureStartedAt: string
+  source?: ShotSource
 }): Promise<ReserveResult> {
   const db = createAdminClient()
 
@@ -93,6 +103,7 @@ export async function reserveShot({
       p_token_hash: tokenHash,
       p_idempotency_key: idempotencyKey,
       p_capture_started_at: captureStartedAt,
+      p_source: source,
     })
     .maybeSingle()
 
@@ -121,12 +132,20 @@ export async function reserveShot({
       photoId: data.photo_id as string,
       shotsRemaining: data.shots_remaining,
       grace:
-        data.late_seconds === null || data.late_seconds === undefined
+        source !== 'camera' ||
+        data.late_seconds === null ||
+        data.late_seconds === undefined
           ? null
           : {
               lateSeconds: data.late_seconds,
               claimedLeadSeconds: data.claimed_lead_seconds ?? null,
             },
+      afterEvent:
+        source !== 'post_event' ||
+        data.late_seconds === null ||
+        data.late_seconds === undefined
+          ? null
+          : { lateSeconds: data.late_seconds },
       progress: reservationProgress(data),
       uploads: { full, view, thumb },
     },
@@ -190,17 +209,17 @@ export async function commitShot({
     .maybeSingle()
 
   if (error) throw error
-  // Two different refusals that used to be one `false`. The function always
-  // returns a row, so no row at all is PostgREST or the client misbehaving;
-  // `committed: false` is the RPC's own answer — no photo with that id whose
-  // participant holds this token hash.
+  // The function always returns a row, so no row at all is PostgREST or the
+  // client misbehaving. `committed: false` is the RPC's own answer: no photo
+  // with that id whose participant holds this token hash, or an expired
+  // reservation whose frame was spent while it waited (`no_shots`).
   if (!data)
     return { committed: false, shotsRemaining: 0, refusal: 'empty_response' }
   if (!data.committed) {
     return {
       committed: false,
       shotsRemaining: data.shots_remaining,
-      refusal: 'not_matched',
+      refusal: data.refusal === 'no_shots' ? 'no_shots' : 'not_matched',
     }
   }
 
@@ -211,7 +230,7 @@ export type CommitShotResult = {
   committed: boolean
   shotsRemaining: number
   /** Only when `committed` is false. */
-  refusal?: 'not_matched' | 'empty_response'
+  refusal?: 'not_matched' | 'no_shots' | 'empty_response'
 }
 
 /**
@@ -239,4 +258,23 @@ export async function releaseShot({
   } catch (e) {
     console.error('Could not release reserved shot', e)
   }
+}
+
+export async function releaseCapture({
+  eventId,
+  tokenHash,
+  captureId,
+}: {
+  eventId: string
+  tokenHash: string
+  captureId: string
+}): Promise<void> {
+  // The queue's own counterpart to `releaseShot` for a stored shot it throws
+  // away: it holds only the capture id, never a photo id.
+  const { error } = await createAdminClient().rpc('release_shot_by_capture', {
+    p_event_id: eventId,
+    p_token_hash: tokenHash,
+    p_idempotency_key: captureId,
+  })
+  if (error) throw error
 }

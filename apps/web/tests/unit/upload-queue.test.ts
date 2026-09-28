@@ -1745,3 +1745,82 @@ describe('a retry that picks up where the last attempt stopped', () => {
     )
   })
 })
+
+describe('gallery uploads share camera recovery', () => {
+  it('persists the source and admits every selected image before sequential compression', async () => {
+    const hold = deferred<typeof master>()
+    const h = harness({ compress: vi.fn(() => hold.promise) })
+    const q = queueFor(h)
+    for (let i = 0; i < 10; i++)
+      q.enqueue(`gallery-${i}`, file(), NOW, NOW, 'post_event')
+    await until(() => called(h.deps.reserve) === 10)
+    expect(called(h.deps.compress)).toBe(1)
+    const rows = await uploadStore.listByEvent(EVENT)
+    expect(rows).toHaveLength(10)
+    expect(rows.every((row) => row.source === 'post_event')).toBe(true)
+    expect(rows.every((row) => !row.compressed)).toBe(true)
+    expect(
+      vi
+        .mocked(h.deps.reserve)
+        .mock.calls.every((args) => args[2] === 'post_event'),
+    ).toBe(true)
+    hold.resolve(master)
+    await q.drain()
+    expect(called(h.deps.commit)).toBe(10)
+    expect(called(h.deps.reserve)).toBe(10)
+    expect(await stored()).toEqual([])
+    q.stop()
+  })
+
+  it('restores a gallery selection using its source and original idempotency key', async () => {
+    const saved = await orphan({ source: 'post_event' })
+    const h = harness()
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+    expect(h.deps.reserve).toHaveBeenCalledWith(
+      saved.id,
+      new Date(NOW).toISOString(),
+      'post_event',
+    )
+    expect(called(h.deps.compress)).toBe(0)
+    expect(h.handlers.onConfirmed).toHaveBeenCalledWith(saved.id, 23)
+    q.stop()
+  })
+
+  it('does not turn a refused gallery selection into a camera-grace upload', async () => {
+    const h = harness({
+      reserve: vi.fn(async () => ({
+        ok: false as const,
+        refusal: 'ended' as const,
+      })),
+    })
+    const q = queueFor(h)
+    q.enqueue('late', file(), NOW, NOW - 3600_000, 'post_event')
+    await q.drain()
+    expect(called(h.deps.upload)).toBe(0)
+    expect(h.handlers.onDropped).toHaveBeenCalledWith('late', 'refused')
+    expect(
+      vi
+        .mocked(h.deps.reserve)
+        .mock.calls.every((args) => args[2] === 'post_event'),
+    ).toBe(true)
+    expect(await stored()).toEqual([])
+    q.stop()
+  })
+
+  it('gives a discarded persisted capture back by key without reserving it again', async () => {
+    const saved = await orphan({
+      source: 'post_event',
+      capturedAt: NOW - MAX_AGE_MS - 1,
+    })
+    const h = harness({ releaseCapture: vi.fn(async () => undefined) })
+    const q = queueFor(h)
+    await q.resume()
+    await q.drain()
+    expect(h.deps.releaseCapture).toHaveBeenCalledWith(saved.id)
+    expect(h.deps.reserve).not.toHaveBeenCalled()
+    expect(await stored()).toEqual([])
+    q.stop()
+  })
+})

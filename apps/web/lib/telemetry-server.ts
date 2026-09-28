@@ -148,6 +148,7 @@ export type ServerEventProperties = {
     plan: string
     shots: number
     reveal_mode: string
+    post_event_uploads_enabled?: boolean
     guests_can_view: boolean
     /** How long the camera is open for, as the host set it up. */
     window_hours: number
@@ -172,6 +173,20 @@ export type ServerEventProperties = {
    * forged claim shows. A replay of an existing reservation is not counted.
    * `capture_id` is the reservation's own idempotency key.
    */
+  /**
+   * An after-event gallery reservation, admitted or refused by name. Replays
+   * are not counted. `late_seconds` is how long after the close it arrived;
+   * `joined_after_close` is the guest who never scanned at the party, the
+   * case the window was opened to late joiners for. Both only when admitted.
+   */
+  after_event_reserve: {
+    event_id: string
+    capture_id: string
+    outcome: string
+    late_seconds: number | null
+    shots_remaining: number | null
+    joined_after_close: boolean | null
+  }
   shot_reserved_in_grace: {
     event_id: string
     capture_id: string
@@ -188,9 +203,16 @@ export type ServerEventProperties = {
   photo_deleted: { event_id: string; hidden_before: boolean }
   event_setting_changed: {
     event_id: string
-    setting: 'name' | 'capture_end' | 'reveal' | 'shots' | 'guests_can_view'
+    setting:
+      | 'name'
+      | 'capture_end'
+      | 'reveal'
+      | 'shots'
+      | 'guests_can_view'
+      | 'post_event_uploads_enabled'
     reveal_mode: string | null
     shots: number | null
+    post_event_uploads_enabled?: boolean
     guests_can_view: boolean | null
     /** For `capture_end` only: how far it moved, signed. Negative closes the
      *  camera early, which is the supported way to end a party. */

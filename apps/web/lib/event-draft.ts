@@ -59,6 +59,7 @@ const draftSchema = z.object({
   ),
   plan: z.enum(['free', 'full']),
   guestsCanView: z.boolean(),
+  postEventUploads: z.boolean().default(false),
   /** Required on the final screen. Persisted so the explicit choice survives
    *  the magic-link round trip together with the rest of the draft. */
   legalAccepted: z.boolean(),
@@ -106,6 +107,7 @@ export function emptyDraft(
     shots: DEFAULT_SHOTS,
     plan: 'free',
     guestsCanView: true,
+    postEventUploads: false,
     legalAccepted: false,
     billingCountry: null,
     step: 0,

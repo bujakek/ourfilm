@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   hostCommitShotAction,
   hostReleaseShotAction,
+  hostReleaseCaptureAction,
   hostReserveShotAction,
 } from '@/app/(product)/host/events/[slug]/capture-actions'
 import { QrSheetButton } from '@/components/host/qr-sheet'
@@ -83,6 +84,8 @@ export function HostCamera({
         upload: uploadShotRenders,
         commit: (args) => hostCommitShotAction({ slug, ...args }),
         release: (photoId) => hostReleaseShotAction(slug, photoId),
+        releaseCapture: (captureId) =>
+          hostReleaseCaptureAction(slug, captureId),
         store: uploadStore,
       },
       handlers: {
