@@ -918,7 +918,6 @@ export type Database = {
           id: string
           locale: string
           participant_id: string
-          participant_joined_at: string
           participant_limit_reached: boolean
           photo_count: number
           post_event_uploads_enabled: boolean

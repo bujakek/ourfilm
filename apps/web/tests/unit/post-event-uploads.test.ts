@@ -5,7 +5,6 @@ const end = new Date('2026-09-26T20:00:00Z')
 const base = {
   enabled: true,
   captureEndAt: end,
-  joinedAt: new Date(end.getTime() - 1),
 }
 describe('post-event upload display window', () => {
   it.each([
@@ -23,14 +22,10 @@ describe('post-event upload display window', () => {
       }),
     ).toBe(expected)
   })
-  it('requires opt-in and an existing participant', () => {
+  it('requires the host to opt in', () => {
     const now = new Date(end.getTime() + 1)
     expect(postEventUploadsAreOpen({ ...base, now, enabled: false })).toBe(
       false,
     )
-    expect(postEventUploadsAreOpen({ ...base, now, joinedAt: null })).toBe(
-      false,
-    )
-    expect(postEventUploadsAreOpen({ ...base, now, joinedAt: now })).toBe(false)
   })
 })

@@ -125,7 +125,6 @@ export default async function EventPage({ params }: Props) {
       captureStartAt={event.capture_start_at}
       captureEndAt={event.capture_end_at}
       postEventUploadsEnabled={event.post_event_uploads_enabled}
-      participantJoinedAt={event.participant_joined_at}
       timeZone={event.time_zone}
       initialNow={now.getTime()}
       initialCanCapture={event.can_capture}

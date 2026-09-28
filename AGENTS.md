@@ -374,14 +374,15 @@ and in the queue suite; sabotaging either direction turns them red.
 ## Optional after-event uploads
 
 `events.post_event_uploads_enabled` defaults to false and can be selected in
-onboarding or changed in event settings. Previously joined guests may select
+onboarding or changed in event settings. Any joined guest — including one who first
+joins after the close — may select
 photos from their phone after `capture_end_at` and strictly before 24 hours
 later. These consume the original roll and enter the original album; neither
 capture times nor the reveal are extended.
 
 The queue persists `source: 'post_event'` alongside the capture key. Missing
 source means a legacy camera capture. The five-argument `reserve_shot` checks
-the option, server time, server-stamped join time and remaining roll under the
+the option, server time and remaining roll (not the join time) under the
 participant lock. Old overloads retain the camera-grace behavior. Existing
 reservations replay before either admission gate, including after disabling
 the option or crossing the deadline. Gallery selections request admission once

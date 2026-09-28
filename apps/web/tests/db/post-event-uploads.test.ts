@@ -191,12 +191,24 @@ describe('after-event uploads', () => {
     },
   )
 
-  it('refuses newly joined guests, strangers and direct API callers', async () => {
-    const { event, session } = await fixture()
+  it('admits a guest who first joins after the close, and refuses strangers and direct API callers', async () => {
+    const { event, session, end } = await fixture()
     try {
+      // Never scanned at the party: the gallery window is for them too, but
+      // the camera grace still is not.
       const latecomer = newSession()
       await joinEvent(event.slug, 'Másnap', latecomer)
-      expect((await late(event.id, latecomer)).refusal).toBe('ended')
+      const admitted = await late(event.id, latecomer)
+      expect(admitted.refusal).toBeNull()
+      expect(admitted.shots_remaining).toBe(35)
+      expect(
+        (await reserveShot(
+          event.id,
+          latecomer,
+          randomUUID(),
+          new Date(end.getTime() - 60_000),
+        ))!.refusal,
+      ).toBe('ended')
       expect((await late(event.id, newSession())).refusal).toBe('no_session')
       for (const client of [anonClient(), userClient(host.accessToken)]) {
         const { error } = await client.rpc('reserve_shot', {

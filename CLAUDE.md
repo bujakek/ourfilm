@@ -727,10 +727,15 @@ and neither `capture_end_at` nor `reveal_at` moves.
 
 - **`reserve_shot` has a fifth argument, `p_source`** (`camera` |
   `post_event`), and it is the whole gate. A `post_event` reservation needs the
-  option on, server time after `capture_end_at` and strictly before 24 hours
-  later, and a participant whose server-stamped `joined_at` is not after the
-  close — all checked under the participant lock, beside the roll count. The
-  device's own timestamps play no part. The four-argument overload is a
+  option on and server time after `capture_end_at` and strictly before 24 hours
+  later — checked under the participant lock, beside the roll count. The
+  device's own timestamps play no part.
+- **A guest who first joins after the close qualifies.** The guest who never
+  scanned the QR code at the party and still has photos on their phone is
+  exactly who the window is for, so `joined_at` is deliberately not checked
+  (unlike the camera grace, which still requires joining before the close).
+  What bounds a late joiner is what bounds everyone: `join_event`'s
+  participant cap on a free event, the host's roll, and moderation. The four-argument overload is a
   wrapper that passes `camera`, so the existing camera grace above is
   unchanged and independent of the option.
 - **An existing reservation replays before either gate**, exactly as for the

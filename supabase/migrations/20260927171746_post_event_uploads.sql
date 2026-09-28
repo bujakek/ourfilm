@@ -138,11 +138,13 @@ begin
 
   -- Only a server-accepted reservation grants a late upload. The device's
   -- capture time is never an extension of the gallery-upload deadline.
+  -- Joining after the close does not disqualify: the guest who never scanned
+  -- the QR code at the party is exactly who this window is for. The roll and
+  -- `join_event`'s participant cap still apply to them.
   if p_source = 'post_event' then
     if not v_event.post_event_uploads_enabled
       or now() <= v_event.capture_end_at
       or now() >= v_event.capture_end_at + interval '24 hours'
-      or v_participant.joined_at > v_event.capture_end_at
     then
       return query select null::uuid, null::text, null::text, null::text, 0, 'ended', null::integer, null::integer,
         null::text, null::bigint, null::bigint, null::bigint;
@@ -324,7 +326,7 @@ returns table (
   guests_can_view boolean, participant_id uuid, display_name text,
   can_capture boolean, can_guest_view_gallery boolean,
   shots_remaining integer, participant_limit_reached boolean,
-  photo_count integer, post_event_uploads_enabled boolean, participant_joined_at timestamptz
+  photo_count integer, post_event_uploads_enabled boolean
 )
 language sql stable security definer set search_path = '' as $$
   select e.id, e.slug, e.event_name, e.cover_path,
@@ -338,7 +340,7 @@ language sql stable security definer set search_path = '' as $$
     (p.id is null and not public.event_is_full_plan(e.id)
       and public.event_participant_count_capped(e.id, public.free_participant_limit())
         >= public.free_participant_limit()),
-    coalesce(c.photo_count, 0)::integer, e.post_event_uploads_enabled, p.joined_at
+    coalesce(c.photo_count, 0)::integer, e.post_event_uploads_enabled
   from public.events e
   join auth.users u on u.id = e.owner_id
   left join public.participants p

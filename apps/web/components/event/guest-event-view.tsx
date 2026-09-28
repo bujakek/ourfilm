@@ -121,7 +121,6 @@ export function GuestEventView({
   captureStartAt,
   captureEndAt,
   postEventUploadsEnabled,
-  participantJoinedAt,
   timeZone,
   initialNow,
   initialCanCapture,
@@ -142,7 +141,6 @@ export function GuestEventView({
   captureStartAt: string
   captureEndAt: string
   postEventUploadsEnabled: boolean
-  participantJoinedAt: string | null
   timeZone: string
   initialNow: number
   initialCanCapture: boolean
@@ -286,7 +284,6 @@ export function GuestEventView({
   const lateUploadsOpen = postEventUploadsAreOpen({
     now: new Date(now),
     captureEndAt: new Date(captureEndAt),
-    joinedAt: participantJoinedAt ? new Date(participantJoinedAt) : null,
     enabled: postEventUploadsEnabled,
   })
   const deadline = new Intl.DateTimeFormat(localeTag[locale], {
@@ -878,7 +875,7 @@ export function GuestEventView({
         />
       </motion.div>
 
-      {lateUploadsOpen ? (
+      {canAddPhotos ? (
         <div className="mt-6" aria-live="polite">
           <h2 className="text-lg font-semibold tracking-tight text-balance">
             {en
@@ -887,7 +884,7 @@ export function GuestEventView({
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
             {en
-              ? `Add your moments from the event to the shared album. You can upload ${framesLeft} more photos until ${deadline}.`
+              ? `Add your moments from the event to the shared album. You can upload ${framesLeft} more ${framesLeft === 1 ? 'photo' : 'photos'} until ${deadline}.`
               : `Adj hozzá az esemény pillanataiból a közös albumhoz. Még ${framesLeft} képet tölthetsz fel, ${deadline}-ig.`}
           </p>
         </div>
@@ -911,7 +908,7 @@ export function GuestEventView({
         <motion.button
           type="button"
           onClick={() => {
-            if (lateUploadsOpen) {
+            if (canAddPhotos) {
               galleryInputRef.current?.click()
               return
             }
@@ -937,7 +934,7 @@ export function GuestEventView({
           transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
           className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-lg text-[15px] font-semibold disabled:pointer-events-none"
         >
-          {lateUploadsOpen ? (
+          {canAddPhotos ? (
             <Images className="size-[19px]" aria-hidden="true" />
           ) : (
             <Camera
@@ -946,7 +943,7 @@ export function GuestEventView({
               aria-hidden="true"
             />
           )}
-          {lateUploadsOpen && canAddPhotos
+          {canAddPhotos
             ? en
               ? 'Choose photos'
               : 'Képek kiválasztása'
@@ -993,7 +990,7 @@ export function GuestEventView({
             if (files.length > framesLeft) {
               setFlash(
                 en
-                  ? `Choose at most ${framesLeft} photos.`
+                  ? `Choose at most ${framesLeft} ${framesLeft === 1 ? 'photo' : 'photos'}.`
                   : `Legfeljebb ${framesLeft} képet válassz.`,
               )
               return
@@ -1103,7 +1100,7 @@ export function GuestEventView({
           </div>
         ) : photos.length === 0 ? (
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            {lateUploadsOpen
+            {canAddPhotos
               ? en
                 ? 'No photos yet. Add the first moments from your phone.'
                 : 'Még nincs kép. Add hozzá az első pillanatokat a telefonodról.'
