@@ -194,17 +194,17 @@ export async function commitShot({
     .maybeSingle()
 
   if (error) throw error
-  // Two different refusals that used to be one `false`. The function always
-  // returns a row, so no row at all is PostgREST or the client misbehaving;
-  // `committed: false` is the RPC's own answer — no photo with that id whose
-  // participant holds this token hash.
+  // The function always returns a row, so no row at all is PostgREST or the
+  // client misbehaving. `committed: false` is the RPC's own answer: no photo
+  // with that id whose participant holds this token hash, or an expired
+  // reservation whose frame was spent while it waited (`no_shots`).
   if (!data)
     return { committed: false, shotsRemaining: 0, refusal: 'empty_response' }
   if (!data.committed) {
     return {
       committed: false,
       shotsRemaining: data.shots_remaining,
-      refusal: 'not_matched',
+      refusal: data.refusal === 'no_shots' ? 'no_shots' : 'not_matched',
     }
   }
 
@@ -215,14 +215,17 @@ export type CommitShotResult = {
   committed: boolean
   shotsRemaining: number
   /** Only when `committed` is false. */
-  refusal?: 'not_matched' | 'empty_response'
+  refusal?: 'not_matched' | 'no_shots' | 'empty_response'
 }
 
 /**
  * Hand a frame back after a failed upload.
  *
- * Best effort. A resumable reservation keeps its frame until explicitly
- * released; time alone cannot refund a frame that may still commit later.
+ * Best effort, and never awaited into anything's correctness: the reservation
+ * expires on its own after ten minutes, so this only makes the common case
+ * immediate. Swallows its own errors for the same reason — a guest whose upload
+ * just failed is about to retry, and a second error message about the cleanup
+ * of the first helps nobody.
  */
 export async function releaseShot({
   photoId,
@@ -251,6 +254,8 @@ export async function releaseCapture({
   tokenHash: string
   captureId: string
 }): Promise<void> {
+  // The queue's own counterpart to `releaseShot` for a stored shot it throws
+  // away: it holds only the capture id, never a photo id.
   const { error } = await createAdminClient().rpc('release_shot_by_capture', {
     p_event_id: eventId,
     p_token_hash: tokenHash,

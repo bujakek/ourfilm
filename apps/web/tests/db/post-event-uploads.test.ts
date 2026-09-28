@@ -25,13 +25,13 @@ afterAll(async () => {
   if (host) await deleteUser(host.id)
 })
 
-async function fixture(enabled = true, hoursSinceEnd = 1) {
+async function fixture(enabled = true, hoursSinceEnd = 1, shots = 36) {
   const end = new Date(Date.now() - hoursSinceEnd * HOUR)
   const event = await createEvent({
     ownerId: host.id,
     captureStartAt: new Date(end.getTime() - 4 * HOUR),
     captureEndAt: end,
-    shotsPerParticipant: 36,
+    shotsPerParticipant: shots,
     revealMode: 'event_end',
   })
   const session = newSession()
@@ -70,6 +70,18 @@ async function late(
     .single()
   if (error) throw error
   return data
+}
+
+/** Push reservations past `shot_reservation_ttl()` without waiting it out. */
+async function expire(ids: string[]) {
+  const { error } = await serviceClient()
+    .from('photos')
+    .update({
+      created_at: new Date(Date.now() - HOUR).toISOString(),
+      reserved_at: null,
+    })
+    .in('id', ids)
+  if (error) throw error
 }
 
 async function state(slug: string, session: ReturnType<typeof newSession>) {
@@ -210,7 +222,7 @@ describe('after-event uploads', () => {
     }
   })
 
-  it('admits only eight more after 28 shots, even with stale reservations and concurrent retries', async () => {
+  it('admits only eight more after 28 shots, and an expired reservation cannot overtake them', async () => {
     const { event, session, end } = await fixture()
     try {
       for (let i = 0; i < 27; i++) {
@@ -222,16 +234,15 @@ describe('after-event uploads', () => {
         )
         await commitShot(shot!.photo_id, session)
       }
-      const pending = await reserveShot(
+      const staleKey = randomUUID()
+      const stale = await reserveShot(
         event.id,
         session,
-        randomUUID(),
+        staleKey,
         new Date(end.getTime() - 60_000),
       )
-      await serviceClient()
-        .from('photos')
-        .update({ created_at: new Date(Date.now() - HOUR).toISOString() })
-        .eq('id', pending!.photo_id)
+      await expire([stale!.photo_id])
+      // Expired, so it holds no frame: 27 used.
       const key = randomUUID()
       const duplicate = await Promise.all(
         Array.from({ length: 6 }, () => late(event.id, session, key)),
@@ -240,11 +251,16 @@ describe('after-event uploads', () => {
       const more = await Promise.all(
         Array.from({ length: 12 }, () => late(event.id, session)),
       )
-      expect(more.filter((row) => !row.refusal)).toHaveLength(7)
-      expect(more.filter((row) => row.refusal === 'no_shots')).toHaveLength(5)
+      expect(more.filter((row) => !row.refusal)).toHaveLength(8)
+      expect(more.filter((row) => row.refusal === 'no_shots')).toHaveLength(4)
+
+      // The roll is full, so the expired row can come back by neither door.
+      expect((await late(event.id, session, staleKey)).refusal).toBe('no_shots')
+      const direct = await commitShot(stale!.photo_id, session)
+      expect(direct).toMatchObject({ committed: false, refusal: 'no_shots' })
+
       await Promise.all(
         [
-          pending!.photo_id,
           duplicate[0].photo_id,
           ...more.filter((row) => !row.refusal).map((row) => row.photo_id),
         ].map((id) => commitShot(id, session)),
@@ -255,6 +271,62 @@ describe('after-event uploads', () => {
       await deleteEvent(event.id)
     }
   }, 60_000)
+
+  it('lets an expired reservation re-claim a free frame on replay, and holds it again', async () => {
+    const { event, session } = await fixture()
+    try {
+      const key = randomUUID()
+      const shot = await late(event.id, session, key)
+      await expire([shot.photo_id])
+      expect((await state(event.slug, session)).shots_remaining).toBe(36)
+
+      const replay = await late(event.id, session, key)
+      expect(replay.photo_id).toBe(shot.photo_id)
+      expect(replay.refusal).toBeNull()
+      expect((await state(event.slug, session)).shots_remaining).toBe(35)
+
+      // `created_at` is the export's sort fallback; a resume must not move it.
+      const { data } = await serviceClient()
+        .from('photos')
+        .select('created_at, reserved_at')
+        .eq('id', shot.photo_id)
+        .single()
+      expect(Date.parse(data!.created_at)).toBeLessThan(Date.now() - HOUR / 2)
+      expect(data!.reserved_at).not.toBeNull()
+
+      expect(await commitShot(shot.photo_id, session)).toMatchObject({
+        committed: true,
+        shots_remaining: 35,
+      })
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
+
+  it('never lets a waited-out roll commit twice over', async () => {
+    const { event, session } = await fixture(true, 1, 5)
+    try {
+      const first = await Promise.all(
+        Array.from({ length: 5 }, () => late(event.id, session)),
+      )
+      await expire(first.map((row) => row.photo_id))
+      const second = await Promise.all(
+        Array.from({ length: 5 }, () => late(event.id, session)),
+      )
+      expect(second.every((row) => !row.refusal)).toBe(true)
+
+      const commits = await Promise.all(
+        [...first, ...second].map((row) => commitShot(row.photo_id, session)),
+      )
+      expect(commits.filter((row) => row!.committed)).toHaveLength(5)
+      expect(commits.filter((row) => row!.refusal === 'no_shots')).toHaveLength(
+        5,
+      )
+      expect(await countPhotos(event.id, 'ready')).toBe(5)
+    } finally {
+      await deleteEvent(event.id)
+    }
+  })
 
   it('finishes accepted keys after disable and expiry, without changing a delayed reveal', async () => {
     const { event, session } = await fixture()

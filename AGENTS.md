@@ -693,7 +693,8 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   (`pending | ready`), `idempotency_key` (unique per participant),
   `storage_path`, `thumb_path`, `view_path`, `hidden_at` (soft delete for
   moderation; never hard-delete), `width`, `height`, `byte_size`, `mime_type`,
-  `taken_at`, `created_at`
+  `taken_at`, `reserved_at` (nullable; set when an expired reservation is
+  re-claimed), `created_at`
 
   **The shot limit is atomic, and this is how.** `reserve_shot` takes
   `for update` on the _participant_ row, checks the window and the count, and
@@ -704,11 +705,21 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   concurrent captures — locking the event would serialise every guest at the
   party.
 
-  A `pending` row keeps counting until explicitly released. The former
-  ten-minute accounting TTL allowed a retried old reservation to commit after
-  its frame had been spent again, exceeding the roll. Retrying with the same
-  `idempotency_key` resumes the same frame; a discarded local capture releases
-  its reservation by key without persisting photo IDs or signed URLs.
+  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes)
+  — measured from `reserved_at`, or `created_at` when that is null — so a
+  failed upload costs no frame and nothing has to be swept. Retrying with the
+  same `idempotency_key` re-claims the same frame instead of spending another.
+
+  **An expired reservation is re-checked before it goes any further**
+  (`20260927171746`). It used to be able to commit after its frame had been
+  spent again, so a guest who waited out the TTL could keep reserving past the
+  roll. Now both doors check: `reserve_shot`, replaying an expired row,
+  refuses `no_shots` if the roll is full and otherwise stamps `reserved_at` so
+  the row holds a frame again; `commit_shot` takes the same participant lock
+  and refuses an expired pending row the same way, for a caller who skips the
+  replay. `created_at` is never bumped — it is the export's sort fallback for
+  a photo without EXIF. `release_shot_by_capture` hands a frame back at once
+  when the queue discards a stored shot, which holds only its capture id.
   Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
   refunding on hide would make hiding a way to shoot forever.
 

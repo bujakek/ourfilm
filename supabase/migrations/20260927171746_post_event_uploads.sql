@@ -3,13 +3,29 @@
 alter table public.events
   add column post_event_uploads_enabled boolean not null default false;
 
--- A resumable reservation must keep its frame. Excluding a pending row after
--- ten minutes, then allowing it to commit, permits more photos than the roll.
--- Only an explicit release gives the frame back; elapsed time is not release.
+-- An expired reservation stops counting, so a stalled upload costs no frame.
+-- Until now it could also still commit after its frame had been spent again,
+-- which let a guest who waited out the TTL keep reserving past the roll. Both
+-- `reserve_shot` (on replay) and `commit_shot` now re-check the roll before an
+-- expired row goes any further, and a replay that passes stamps `reserved_at`
+-- so the row counts again. `created_at` is left alone: it is the export's sort
+-- fallback for a photo without EXIF, and a resume must not move the photo.
+alter table public.photos add column reserved_at timestamptz;
+
 create or replace function public.participant_shots_used(p_participant_id uuid)
-returns integer language sql stable security definer set search_path = '' as $$
-  select count(*)::integer from public.photos p
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select count(*)::integer
+  from public.photos p
   where p.participant_id = p_participant_id
+    and (
+      p.status = 'ready'
+      or coalesce(p.reserved_at, p.created_at) > now() - public.shot_reservation_ttl()
+    )
 $$;
 
 create function public.reserve_shot(
@@ -73,6 +89,21 @@ begin
     and p.idempotency_key = p_idempotency_key;
 
   if found then
+    -- An expired reservation is no longer holding a frame, so it may only
+    -- come back if the roll still has one. `participant_shots_used` already
+    -- excludes this row, which is exactly the count to compare.
+    if v_existing.status::text = 'pending'
+      and coalesce(v_existing.reserved_at, v_existing.created_at)
+        <= now() - public.shot_reservation_ttl()
+    then
+      if public.participant_shots_used(v_participant.id) >= v_event.shots_per_participant then
+        return query select null::uuid, null::text, null::text, null::text, 0, 'no_shots', null::integer, null::integer,
+          null::text, null::bigint, null::bigint, null::bigint;
+        return;
+      end if;
+      update public.photos p set reserved_at = now() where p.id = v_existing.id;
+    end if;
+
     if v_existing.status::text = 'pending' then
       -- `size` is whatever Storage's own trigger wrote, not something this
       -- function controls, so it is read defensively: a cast that raises turns
@@ -169,7 +200,6 @@ begin
 end;
 $$;
 
-
 revoke all on function public.reserve_shot(uuid, text, text, timestamptz, text) from public, anon, authenticated;
 grant execute on function public.reserve_shot(uuid, text, text, timestamptz, text) to service_role;
 
@@ -189,6 +219,80 @@ language sql volatile security definer set search_path = '' as $$
 $$;
 revoke all on function public.reserve_shot(uuid, text, text, timestamptz) from public, anon, authenticated;
 grant execute on function public.reserve_shot(uuid, text, text, timestamptz) to service_role;
+
+-- The same check at the other end. A caller who skips the replay and commits
+-- an expired row directly must not get past the roll either, so the commit
+-- takes the participant lock `reserve_shot` takes and refuses an expired
+-- pending row whose frame has been spent since. A ready row stays idempotent.
+-- The return type gains `refusal`, so this is a drop rather than a replace.
+drop function public.commit_shot(uuid, text, integer, integer, integer, timestamptz);
+
+create function public.commit_shot(
+  p_photo_id   uuid,
+  p_token_hash text,
+  p_width      integer,
+  p_height     integer,
+  p_byte_size  integer,
+  p_taken_at   timestamptz
+)
+returns table (shots_remaining integer, committed boolean, refusal text)
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_photo public.photos%rowtype;
+  v_shots smallint;
+begin
+  select p.* into v_photo
+  from public.photos p
+  join public.participants pa on pa.id = p.participant_id
+  where p.id = p_photo_id
+    and pa.session_token_hash = p_token_hash;
+
+  if not found then
+    return query select 0, false, 'not_matched'::text;
+    return;
+  end if;
+
+  perform 1 from public.participants pa where pa.id = v_photo.participant_id for update;
+
+  select e.shots_per_participant into v_shots
+  from public.events e where e.id = v_photo.event_id;
+
+  -- Re-read under the lock: a concurrent commit of the same row may have
+  -- finished while this one waited.
+  select p.* into v_photo from public.photos p where p.id = p_photo_id;
+
+  if v_photo.status::text = 'pending'
+    and coalesce(v_photo.reserved_at, v_photo.created_at)
+      <= now() - public.shot_reservation_ttl()
+    and public.participant_shots_used(v_photo.participant_id) >= v_shots
+  then
+    return query select 0, false, 'no_shots'::text;
+    return;
+  end if;
+
+  update public.photos p
+     set status    = 'ready',
+         width     = p_width,
+         height    = p_height,
+         byte_size = p_byte_size,
+         taken_at  = p_taken_at
+   where p.id = p_photo_id;
+
+  return query select
+    greatest(v_shots - public.participant_shots_used(v_photo.participant_id), 0),
+    true,
+    null::text;
+end;
+$$;
+
+revoke all on function public.commit_shot(uuid, text, integer, integer, integer, timestamptz)
+  from public, anon, authenticated;
+grant execute on function public.commit_shot(uuid, text, integer, integer, integer, timestamptz)
+  to service_role;
 
 -- A discarded local row only has its capture key, never a persisted photo id.
 -- Release under the same participant lock as reserve so concurrent retries

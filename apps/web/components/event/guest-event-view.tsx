@@ -165,6 +165,7 @@ export function GuestEventView({
   // Timing for telemetry, keyed by capture id. Refs, not state: none of it is
   // drawn, and a re-render per timestamp would be a re-render per photo.
   const startedAt = useRef(new Map<string, number>())
+  const reservedCaptures = useRef(new Set<string>())
   const reportedIssues = useRef(new Set<string>())
   const cameraOpenedAt = useRef<number | null>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
@@ -296,8 +297,9 @@ export function GuestEventView({
     timeZone,
   }).format(new Date(captureEnd + POST_EVENT_UPLOAD_MS))
   const uploading = outstanding > 0
-  // The server already counts pending reservations. Compare against the local
-  // strip instead of subtracting restored/admitted photos from it a second time.
+  // `remaining` already excludes this device's live reservations, so the
+  // local strip is compared against it rather than subtracted from it a
+  // second time — a restored or admitted shot would otherwise count twice.
   const framesLeft = Math.max(
     0,
     Math.min(
@@ -479,6 +481,7 @@ export function GuestEventView({
           )
         },
         onReserved(id, photoId) {
+          reservedCaptures.current.add(id)
           setCaptures((current) =>
             current.map((c) =>
               c.id === id ? { ...c, photoId, receipt: 'uploading' } : c,
@@ -510,6 +513,7 @@ export function GuestEventView({
             // already walked away from the screen.
             elapsed_ms: started === undefined ? null : now - started,
           })
+          reservedCaptures.current.delete(id)
           setRemaining(shotsRemaining)
           setCaptures((current) =>
             current.map((c) =>
@@ -526,6 +530,7 @@ export function GuestEventView({
           router.refresh()
         },
         onDropped(id, reason) {
+          const frameWasReserved = reservedCaptures.current.delete(id)
           setCaptures((current) =>
             current.map((c) =>
               c.id === id
@@ -544,9 +549,13 @@ export function GuestEventView({
           setOfflineBacklog((n) => Math.max(0, n - 1))
           if (reason === 'refused') return
           setFlash(
-            en
-              ? 'This photo could not be saved.'
-              : 'Ezt a képet nem sikerült megőrizni.',
+            frameWasReserved
+              ? en
+                ? 'This photo could not be saved. Its frame returns within 10 minutes.'
+                : 'Ezt a képet nem sikerült megőrizni. A képkocka legfeljebb 10 percen belül visszakerül.'
+              : en
+                ? 'This photo could not be saved. No frame was used.'
+                : 'Ezt a képet nem sikerült megőrizni. Nem használtunk el képkockát.',
           )
         },
         onRefusal(refusal) {
@@ -1166,16 +1175,16 @@ function discardedMessage(reason: string, locale: Locale): string {
   switch (reason) {
     case 'expired':
       return en
-        ? 'A photo saved on this phone expired before it reached the album.'
-        : 'Egy ezen a telefonon tárolt kép lejárt, mielőtt az albumba került volna.'
+        ? 'A photo saved on this phone expired before it reached the album. Its frame is available again within 10 minutes.'
+        : 'Egy ezen a telefonon tárolt kép lejárt, mielőtt az albumba került volna. A képkocka legfeljebb 10 percen belül újra elérhető.'
     case 'empty':
     case 'unreadable':
       return en
-        ? 'A saved photo became unreadable and did not reach the album.'
-        : 'Egy mentett kép olvashatatlanná vált, ezért nem került az albumba.'
+        ? 'A saved photo became unreadable and did not reach the album. Its frame is available again within 10 minutes.'
+        : 'Egy mentett kép olvashatatlanná vált, ezért nem került az albumba. A képkocka legfeljebb 10 percen belül újra elérhető.'
     default:
       return en
-        ? 'A saved photo could not reach the album.'
-        : 'Egy mentett kép nem jutott el az albumba.'
+        ? 'A saved photo could not reach the album. Its frame is available again within 10 minutes.'
+        : 'Egy mentett kép nem jutott el az albumba. A képkocka legfeljebb 10 percen belül újra elérhető.'
   }
 }

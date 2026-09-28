@@ -1096,6 +1096,7 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   (`pending | ready`), `idempotency_key` (unique per participant),
   `storage_path`, `thumb_path`, `view_path`, `hidden_at` (moderation),
   `deleted_at`, `width`, `height`, `byte_size`, `mime_type`, `taken_at`,
+  `reserved_at` (nullable; set when an expired reservation is re-claimed),
   `created_at`
 
   **A photo row is never hard-deleted, and `deleted_at` is why that rule
@@ -1124,19 +1125,21 @@ Details, DDL, and RLS live in `.cursor/skills/ourfilm-supabase/SKILL.md`. Shape:
   concurrent captures — locking the event would serialise every guest at the
   party.
 
-  **A `pending` row counts until it is released, not until time passes.** It
-  used to stop counting after `shot_reservation_ttl()` (10 minutes), and that
-  let the roll overflow: a resumed upload older than ten minutes could still
-  commit after its frame had been spent again. `participant_shots_used` now
-  counts every row (`20260927171746`), and a frame comes back only through
-  `release_shot` (by photo id, after a failed attempt) or
-  `release_shot_by_capture` (by capture id, when the queue discards a stored
-  shot — the device never persists photo ids). The cost is a frame lost for
-  good when a shot vanishes with nothing left to release it — a reservation
-  held only in memory, because IndexedDB was unavailable (private mode), dies
-  with the tab. `shot_reservation_ttl()`
-  still exists and nothing reads it. Retrying with the same `idempotency_key`
-  re-claims the same frame instead of spending another.
+  A `pending` row stops counting after `shot_reservation_ttl()` (10 minutes)
+  — measured from `reserved_at`, or `created_at` when that is null — so a
+  failed upload costs no frame and nothing has to be swept. Retrying with the
+  same `idempotency_key` re-claims the same frame instead of spending another.
+
+  **An expired reservation is re-checked before it goes any further**
+  (`20260927171746`). It used to be able to commit after its frame had been
+  spent again, so a guest who waited out the TTL could keep reserving past the
+  roll. Now both doors check: `reserve_shot`, replaying an expired row,
+  refuses `no_shots` if the roll is full and otherwise stamps `reserved_at` so
+  the row holds a frame again; `commit_shot` takes the same participant lock
+  and refuses an expired pending row the same way, for a caller who skips the
+  replay. `created_at` is never bumped — it is the export's sort fallback for
+  a photo without EXIF. `release_shot_by_capture` hands a frame back at once
+  when the queue discards a stored shot, which holds only its capture id.
   Hidden photos **do** count: `hidden_at` is moderation, not deletion, so
   refunding on hide would make hiding a way to shoot forever.
 

@@ -24,7 +24,7 @@ import type { ReserveState } from '@/app/(product)/e/[slug]/actions'
  *
  * The three RPCs underneath are the same ones a guest uses, and the shot
  * accounting is identical — a frame is taken inside the participant row's
- * lock, pending reservations and hidden photos still count.
+ * lock, a `pending` row expires after ten minutes, hidden photos still count.
  * What differs is only who is asking, and how that is established:
  *
  * - a guest presents the httpOnly token in their `/e/<slug>` cookie;
@@ -145,7 +145,8 @@ export async function hostCommitShotAction({
   return result
 }
 
-/** Give a frame back after a failed upload. Best effort. */
+/** Give a frame back after a failed upload. Best effort; the reservation
+ *  expires on its own after ten minutes either way. */
 export async function hostReleaseShotAction(
   slug: string,
   photoId: string,

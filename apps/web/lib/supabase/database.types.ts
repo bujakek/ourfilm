@@ -410,6 +410,7 @@ export type Database = {
           idempotency_key: string | null
           mime_type: string | null
           participant_id: string
+          reserved_at: string | null
           status: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at: string | null
@@ -428,6 +429,7 @@ export type Database = {
           idempotency_key?: string | null
           mime_type?: string | null
           participant_id: string
+          reserved_at?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at?: string | null
@@ -446,6 +448,7 @@ export type Database = {
           idempotency_key?: string | null
           mime_type?: string | null
           participant_id?: string
+          reserved_at?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
           storage_path?: string
           taken_at?: string | null
@@ -830,6 +833,7 @@ export type Database = {
         }
         Returns: {
           committed: boolean
+          refusal: string
           shots_remaining: number
         }[]
       }
