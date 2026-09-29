@@ -4,6 +4,7 @@ import { hubKinds, hubs, kindDefinitions } from '@/lib/content/kinds'
 import { hasDocContentLoader } from '@/lib/content/mdx'
 import type { ContentDoc } from '@/lib/content/types'
 import { localePath, locales } from '@/lib/i18n'
+import { occasionPath, occasions } from '@/lib/occasions'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
@@ -28,6 +29,7 @@ const servedPaths = new Set<string>([
     ...['/arak', '/alkalmak', '/rolunk', '/kapcsolat'].map((path) =>
       localePath(locale, path),
     ),
+    ...occasions.map((occasion) => occasionPath(locale, occasion)),
     ...hubs.map((hub) => localePath(locale, `/${hub}`)),
   ]),
   localePath('hu', '/aszf'),
@@ -51,15 +53,15 @@ function internalLinks(doc: ContentDoc): string[] {
 
 describe('the content pack', () => {
   it('serves every published page in both content packs', () => {
-    expect(getDocs('hu')).toHaveLength(71)
-    expect(getDocs('en')).toHaveLength(71)
+    expect(getDocs('hu')).toHaveLength(72)
+    expect(getDocs('en')).toHaveLength(72)
     expect(docs.filter((doc) => doc.draft)).toHaveLength(0)
   })
 
   it('puts each kind where the kind map says', () => {
     const counts = {
       pages: 16,
-      blog: 86,
+      blog: 88,
       alternatives: 16,
       vs: 14,
       compare: 10,
