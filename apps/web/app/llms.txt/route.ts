@@ -82,8 +82,10 @@ instantly, or at the end of the event. There is no preview and no retake. The
 number of guests is not capped, the film stays private, and the finished album
 downloads as one archive.
 
-It is not a camera-roll upload album: guests shoot into the shared camera at the
-event rather than uploading afterwards.
+Guests shoot into the shared camera during the event. If the host enables
+after-event uploads, guests can add saved photos only during the 24 hours after
+the event ends, using remaining frames in their original roll. This option is
+off by default; it does not provide a second roll or accept videos.
 
 The site is published in English and Hungarian, and the two are separate URLs
 rather than one page with a language switch: every section below lists both.

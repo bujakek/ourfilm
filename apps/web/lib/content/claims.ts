@@ -4,8 +4,9 @@
  * OurFilm used to be an upload album with a five-photo free tier and an
  * unlimited paid one. It is now a shared digital disposable camera: the cap is
  * on *participants*, every guest gets a fixed roll, and guests shoot into the
- * camera at the event rather than uploading a camera roll afterwards. Copy
- * that says otherwise is not a typo — it is a promise the product cannot keep,
+ * camera at the event. Optional host-enabled saved-photo uploads are limited
+ * to the 24 hours after the event ends and spend the same roll; no videos. Copy
+ * promising unrestricted uploads is a promise the product cannot keep,
  * and it survives in a repository precisely because nobody re-reads sixty-nine
  * pages looking for it.
  *
@@ -41,11 +42,12 @@ const STALE_CLAIMS: StaleClaim[] = [
   {
     pattern: /kameratekercs|camera\s*roll/i,
     reason:
-      'guests shoot into the event camera; there is no camera-roll upload',
+      'saved-photo uploads require host opt-in, the 24-hour after-event window and remaining frames in the same roll; no videos',
   },
   {
     pattern: /utólag(?:os)?\s+(?:tölt|feltölt)/i,
-    reason: 'guests shoot during the capture window, not afterwards',
+    reason:
+      'after-event photo uploads require host opt-in, are limited to 24 hours after the event ends and spend the same roll',
   },
 ]
 
