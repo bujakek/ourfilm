@@ -1,9 +1,7 @@
 import { DraftNotice } from '@/components/site/draft-notice'
-import {
-  LegalSections,
-  type LegalSection,
-} from '@/components/site/legal-sections'
-import { PageShell } from '@/components/site/page-shell'
+import type { LegalSection } from '@/components/site/legal-sections'
+import { InfoPage, InfoSections } from '@/components/pages/info-page'
+import { SiteShell } from '@/components/pages/site-shell'
 import {
   COMPANY,
   REGISTRY,
@@ -204,20 +202,20 @@ export default async function AszfPage({ params }: Props) {
   if (!isLocale(locale)) notFound()
 
   return (
-    <PageShell
-      locale={locale}
-      eyebrow={locale === 'en' ? 'TERMS' : 'ÁSZF'}
-      title={
-        locale === 'en' ? 'Terms of Service' : 'Általános szerződési feltételek'
-      }
-      lead={
-        locale === 'en'
-          ? 'The terms for creating and joining an OurFilm event, including payment, cancellation and fair use.'
-          : 'Röviden és a mostani termékhez igazítva: mit nyújt az OurFilm, hogyan fizetsz, és miért felelnek a résztvevők.'
-      }
-    >
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
+    <SiteShell locale={locale}>
+      <InfoPage
+        title={
+          locale === 'en'
+            ? 'Terms of Service'
+            : 'Általános szerződési feltételek'
+        }
+        intro={
+          locale === 'en'
+            ? 'The terms for creating and joining an OurFilm event, including payment, cancellation and fair use.'
+            : 'Röviden és a mostani termékhez igazítva: mit nyújt az OurFilm, hogyan fizetsz, és miért felelnek a résztvevők.'
+        }
+      >
+        <>
           {hasRealCompanyDetails ? null : (
             <DraftNotice>
               <strong className="font-semibold text-foreground">
@@ -228,16 +226,16 @@ export default async function AszfPage({ params }: Props) {
             </DraftNotice>
           )}
 
-          <LegalSections
+          <InfoSections
             sections={locale === 'en' ? englishSections : sections}
           />
 
-          <p className="mt-12 text-sm text-muted-foreground">
+          <p>
             {locale === 'en' ? 'Last updated' : 'Utolsó frissítés'}:{' '}
             {TERMS_LAST_UPDATED[locale]}
           </p>
-        </div>
-      </section>
-    </PageShell>
+        </>
+      </InfoPage>
+    </SiteShell>
   )
 }

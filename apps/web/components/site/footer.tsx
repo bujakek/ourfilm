@@ -37,8 +37,7 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
       heading: 'Product',
       links: [
         { label: 'How it works', href: '/#how-it-works' },
-        { label: 'QR code', href: '/#qr-code' },
-        { label: 'Photo reveal', href: '/#photo-reveal' },
+        { label: 'Questions', href: '/#faq' },
         ...(OCCASIONS_ARE_DRAFT
           ? []
           : [{ label: 'Occasions', href: '/alkalmak' }]),
@@ -69,8 +68,7 @@ const columnsByLocale: Record<Locale, FooterColumn[]> = {
       heading: 'A termék',
       links: [
         { label: 'Hogyan működik', href: '/#how-it-works' },
-        { label: 'QR-kód', href: '/#qr-code' },
-        { label: 'A képek előhívása', href: '/#photo-reveal' },
+        { label: 'Kérdések', href: '/#faq' },
         ...(OCCASIONS_ARE_DRAFT
           ? []
           : [{ label: 'Alkalmak', href: '/alkalmak' }]),

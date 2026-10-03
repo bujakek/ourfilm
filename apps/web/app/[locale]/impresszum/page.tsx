@@ -1,9 +1,7 @@
 import { DraftNotice } from '@/components/site/draft-notice'
-import {
-  LegalSections,
-  type LegalSection,
-} from '@/components/site/legal-sections'
-import { PageShell } from '@/components/site/page-shell'
+import type { LegalSection } from '@/components/site/legal-sections'
+import { InfoPage, InfoSections } from '@/components/pages/info-page'
+import { SiteShell } from '@/components/pages/site-shell'
 import {
   COMPANY,
   REGISTRY,
@@ -79,20 +77,18 @@ export default async function ImpresszumPage({ params }: Props) {
   if (!isLocale(locale)) notFound()
 
   return (
-    <PageShell
-      locale={locale}
-      eyebrow={locale === 'en' ? 'LEGAL NOTICE' : 'IMPRESSZUM'}
-      title={
-        locale === 'en' ? 'Service provider details' : 'Szolgáltatói adatok'
-      }
-      lead={
-        locale === 'en'
-          ? 'Identity and contact details of the operator of OurFilm.'
-          : 'Az OurFilm üzemeltetőjének azonosító és kapcsolattartási adatai.'
-      }
-    >
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
+    <SiteShell locale={locale}>
+      <InfoPage
+        title={
+          locale === 'en' ? 'Service provider details' : 'Szolgáltatói adatok'
+        }
+        intro={
+          locale === 'en'
+            ? 'Identity and contact details of the operator of OurFilm.'
+            : 'Az OurFilm üzemeltetőjének azonosító és kapcsolattartási adatai.'
+        }
+      >
+        <>
           {hasRealCompanyDetails ? null : (
             <DraftNotice>
               <strong className="font-semibold text-foreground">
@@ -102,15 +98,15 @@ export default async function ImpresszumPage({ params }: Props) {
               adatokra kell cserélni az indulás előtt.
             </DraftNotice>
           )}
-          <LegalSections
+          <InfoSections
             sections={locale === 'en' ? englishSections : sections}
           />
-          <p className="mt-12 text-sm text-muted-foreground">
+          <p>
             {locale === 'en' ? 'Last updated' : 'Utolsó frissítés'}:{' '}
             {LAST_UPDATED}
           </p>
-        </div>
-      </section>
-    </PageShell>
+        </>
+      </InfoPage>
+    </SiteShell>
   )
 }
