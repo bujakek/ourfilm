@@ -262,10 +262,17 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   it describes a product that no longer exists. Read it for the decisions that
   still hold (slug shape, region, ownership scoping, self-serve delete) and
   ignore the phase list.
-- **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the disposable
-  camera story from `apps/web/components/site/*`: hero, benefits, how-it-works,
-  qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
-  camera story for `/en` and `/hu`. `/` is negotiated per visitor by
+- **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the
+  homepage for `/en` and `/hu` from `apps/web/components/landing/*`: a bottom
+  navigation bar on desktop (top bar on phones), hero, proof and reviews,
+  occasion tabs, three steps, FAQ, closing CTA, footer card and a desktop QR
+  card. Its copy is `apps/web/lib/landing-copy.ts`; the phones are the
+  `components/site/phone-mock.tsx` screens drawn at scale by
+  `components/landing/scaled-phone.tsx`. It has its own fonts
+  (`components/landing/fonts.ts`: Roboto Serif at `wdth` 125, Inter, Crimson
+  Text) standing in for the design's Rosemartin and Pretendard, which are not
+  licensed here and lack Hungarian accents. The other marketing pages still use
+  `components/site/navbar.tsx` and `footer.tsx`. `/` is negotiated per visitor by
   `apps/web/proxy.ts` (`apps/web/lib/locale-preference.ts`): a saved switcher
   choice (`ourfilm_locale` cookie, written only by a switcher click), then
   `Accept-Language`, then English — a 307 that keeps the query and is
@@ -935,7 +942,7 @@ Plus one machine endpoint: `POST /api/stripe/webhook`, which is the only thing
 that marks a purchase paid. Under `/api/` rather than the Hungarian namespace
 because no human navigates to it and the URL is pasted into Stripe's dashboard.
 
-The `/e/` prefix is what the landing page already advertises in `qr-preview.tsx` and `how-it-works.tsx`, and it keeps the root namespace free for marketing pages.
+The `/e/` prefix is what the landing page's phone mocks and demo QR card already show, and it keeps the root namespace free for marketing pages.
 
 ## Locales and the blog (settled)
 
@@ -1515,11 +1522,11 @@ claims are live and load-bearing:
 - **Host can hide unwanted photos** (FAQ) — `hidden_at`
 
 - **Up to five participants are free; the paid event admits unlimited
-  participants** (`/hu/arak`, and now the hero's claim row) — enforced in
+  participants** (`/hu/arak`, and the homepage's counting row and FAQ) — enforced in
   `join_event`
 - **Every participant gets the host's chosen 5/10/16/24/36-shot roll** — paying
   never removes the per-person format
-- **No preview and no retakes** (`hero.tsx`'s claim row, the guest event page's
+- **No preview and no retakes** (the homepage FAQ and phone mocks, the guest event page's
   format line, the join ticket) — this is the format rather than a feature, and
   it is true in the sense a guest reads it: there is no preview surface, and
   `reserve_shot` spends a frame per shutter press whatever anyone does with a
@@ -1529,7 +1536,7 @@ claims are live and load-bearing:
   invite it. It moved onto the landing page in the "Ticket & Roll" pass; it had
   always been what the product does and was never stated where someone
   deciding whether to use it would read it.
-- **No app and no sign-up for guests** (`hero.tsx`, the join ticket) — the guest
+- **No app and no sign-up for guests** (the homepage hero, the join ticket) — the guest
   flow is one name field and an httpOnly cookie; there is no account to make
 
 Do not advertise unlimited photos or camera-roll upload. Gallery upload
