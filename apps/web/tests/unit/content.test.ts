@@ -53,15 +53,15 @@ function internalLinks(doc: ContentDoc): string[] {
 
 describe('the content pack', () => {
   it('serves every published page in both content packs', () => {
-    expect(getDocs('hu')).toHaveLength(76)
-    expect(getDocs('en')).toHaveLength(76)
+    expect(getDocs('hu')).toHaveLength(77)
+    expect(getDocs('en')).toHaveLength(77)
     expect(docs.filter((doc) => doc.draft)).toHaveLength(0)
   })
 
   it('puts each kind where the kind map says', () => {
     const counts = {
       pages: 16,
-      blog: 96,
+      blog: 98,
       alternatives: 16,
       vs: 14,
       compare: 10,
