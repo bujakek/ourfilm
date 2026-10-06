@@ -164,7 +164,10 @@ describe('internal linking', () => {
         doc.filePath,
       ).not.toContain(doc.id)
     }
-  })
+    // Ranks every page against every other, so it grows with the content
+    // pack rather than with the code, and crossed the default 5s inside a
+    // full `pnpm verify` as articles kept landing.
+  }, 20_000)
 
   it('leaves no page orphaned', () => {
     // Inbound from a body link, from someone's `related`, or from the hub that
