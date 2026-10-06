@@ -1,15 +1,45 @@
-import { DocList } from '@/components/content/doc-list'
-import { HubLinks } from '@/components/content/hub-links'
-import { PageHeader } from '@/components/site/page-header'
+import {
+  SITE_BUTTON,
+  SITE_CONTAINER,
+  SITE_HEADING,
+  SITE_KICKER,
+} from '@/components/pages/layout'
+import { PostByline } from '@/components/pages/post-byline'
 import { hubCopy } from '@/lib/content/copy'
-import { getDocsByTopic } from '@/lib/content/docs'
-import { topicLabel, topicOrder } from '@/lib/content/topics'
+import { coverFor } from '@/lib/content/covers'
+import { getDocs } from '@/lib/content/docs'
 import { isLocale, localePath } from '@/lib/i18n'
+import { CREATE_EVENT_PATH } from '@/lib/routes'
 import { canonicalUrl, localizedPageAlternates } from '@/lib/seo'
+import { siteCopy } from '@/lib/site-copy'
+import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
+import Image from 'next/image'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 type Props = { params: Promise<{ locale: string }> }
+
+const intro = {
+  en: {
+    kicker: 'Blog',
+    headingLines: ['Moments become', 'memories.'],
+    leadLines: [
+      'Ideas and guides for shooting together.',
+      'So the best moments end up in one place.',
+    ],
+    empty: 'No articles yet. Check back soon.',
+  },
+  hu: {
+    kicker: 'Blog',
+    headingLines: ['A pillanatokból', 'emlékek lesznek.'],
+    leadLines: [
+      'Ötletek és útmutatók a közös fotózáshoz.',
+      'Hogy a legjobb pillanatok egy helyre kerüljenek.',
+    ],
+    empty: 'Még nincs bejegyzés. Hamarosan.',
+  },
+} as const
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
@@ -31,51 +61,84 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Shelved by topic rather than listed by date.
- *
- * Forty-odd guides in one reverse-chronological column is a column nobody
- * reads past the fold of, and the newest article is rarely the one a reader
- * arrived for. The shelves come from each article's own `topic`, so the index
- * needs no registry — see `lib/content/topics.ts`.
+ * Every article, newest first, beside an introduction that stays put while
+ * the cards scroll past it. On a phone it is one column.
  */
 export default async function BlogIndexPage({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
 
-  const shelves = getDocsByTopic(locale)
-  const copy = hubCopy[locale].blog
+  const docs = getDocs(locale, ['blog'])
+  const copy = intro[locale]
 
   return (
-    <>
-      <PageHeader eyebrow={copy.eyebrow} title={copy.title} lead={copy.lead} />
+    <section
+      className={cn(
+        SITE_CONTAINER,
+        'pt-25 pb-[70px] tab:grid tab:grid-cols-2 tab:items-start tab:gap-9 tab:pb-[120px] xl:gap-15',
+      )}
+    >
+      <div className="mb-10 text-center tab:sticky tab:top-25 tab:mb-0 tab:text-left">
+        <p className={cn(SITE_KICKER, 'mb-5 tab:mb-10')}>{copy.kicker}</p>
+        <h1 className={SITE_HEADING}>
+          {copy.headingLines.map((line) => (
+            <span key={line} className="block">
+              {line}
+            </span>
+          ))}
+        </h1>
+        <p className="mt-3.5 mb-[26px] text-[16px] leading-[1.6] text-site-muted tab:mt-2.5 tab:mb-10 tab:text-[18px]">
+          {copy.leadLines.map((line) => (
+            <span key={line} className="tab:block">
+              {line}{' '}
+            </span>
+          ))}
+        </p>
+        <Link
+          href={`${CREATE_EVENT_PATH}?lang=${locale}`}
+          className={SITE_BUTTON}
+        >
+          {siteCopy[locale].create}
+        </Link>
+      </div>
 
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
-          {shelves.size === 0 ? (
-            <p className="mt-12 leading-relaxed text-muted-foreground">
-              {locale === 'en'
-                ? 'No articles yet. Check back soon.'
-                : 'Még nincs bejegyzés. Hamarosan.'}
-            </p>
-          ) : (
-            topicOrder
-              .filter((topic) => shelves.has(topic))
-              .map((topic) => (
-                <section key={topic} className="mt-14 first:mt-8">
-                  <h2 className="text-2xl font-semibold tracking-tight text-balance">
-                    {topicLabel[locale][topic].title}
+      {docs.length === 0 ? (
+        <p className="text-site-muted">{copy.empty}</p>
+      ) : (
+        <ul className="flex flex-col gap-5">
+          {docs.map((doc, i) => (
+            <li key={doc.id}>
+              <Link
+                href={doc.href}
+                className="block rounded-[28px] border border-site-line bg-site-surface p-2.5 transition-colors hover:border-white/16 tab:p-3"
+              >
+                <span className="relative block aspect-[1.57] overflow-hidden rounded-[18px]">
+                  <Image
+                    src={coverFor(doc.id, locale)}
+                    alt=""
+                    fill
+                    priority={i === 0}
+                    sizes="(min-width: 810px) 45vw, 90vw"
+                    className="object-cover"
+                  />
+                </span>
+                <span className="block px-2.5 pt-5 pb-2.5 tab:pt-[18px] tab:pb-2">
+                  <h2 className="landing-serif mb-3 font-landing-display text-[26px] leading-[1.2] text-white">
+                    {doc.title}
                   </h2>
-                  <p className="mt-2 leading-relaxed text-pretty text-muted-foreground">
-                    {topicLabel[locale][topic].lead}
-                  </p>
-                  <DocList docs={shelves.get(topic) ?? []} locale={locale} />
-                </section>
-              ))
-          )}
-
-          <HubLinks locale={locale} current="blog" />
-        </div>
-      </section>
-    </>
+                  <span className="mb-5 block text-[14px] leading-[1.4] text-site-muted tab:leading-[1.25]">
+                    {doc.description}
+                  </span>
+                  <PostByline
+                    doc={doc}
+                    className="border-t border-site-line pt-[18px]"
+                  />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
