@@ -43,12 +43,10 @@ export function endScreen({
   const en = locale === 'en'
   return {
     eyebrow: en ? 'SHOOTING ENDS' : 'A FOTÓZÁS VÉGE',
-    title: en
-      ? 'When should the camera close?'
-      : 'Mikor érjen véget az esemény?',
+    title: en ? 'When should shooting end?' : 'Meddig lehessen fotózni?',
     detail: en
-      ? 'The camera opens now. Guests can keep shooting until this time.'
-      : 'A film most indul, a vendégek pedig a megadott időpontig készíthetnek képeket.',
+      ? 'The camera opens when you create the event.'
+      : 'A kamera létrehozáskor megnyílik.',
     cta: en ? 'Continue' : 'Tovább',
     ctaDisabled: !canAdvance,
     content: (
@@ -100,11 +98,6 @@ function EndFields({
         onClose={() => setCalendarOpen(false)}
         closeLabel={en ? 'Close date picker' : 'Dátumválasztó bezárása'}
         title={en ? 'Choose a date' : 'Válassz dátumot'}
-        detail={
-          en
-            ? 'Guests can shoot until this date and time.'
-            : 'Eddig az időpontig készíthetnek képeket a vendégeid.'
-        }
       >
         <MonthCalendar
           value={day}

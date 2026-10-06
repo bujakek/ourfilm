@@ -30,9 +30,8 @@ import { guestsScreen } from './step-guests'
 import { nameScreen } from './step-name'
 import { revealScreen } from './step-reveal'
 
-/** Four questions: name, end, reveal, and the party's size — guests, roll
- *  length and who may look, which share the last screen. The dots at the bottom
- *  count these, so anything added here is a dot a host sees. */
+/** Four questions: name, end, reveal, and guest count. Roll length and gallery
+ *  access are optional settings on the last screen. */
 const STEP_COUNT = 4
 const LAST_STEP = STEP_COUNT - 1
 const END_STEP = 1

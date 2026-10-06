@@ -37,9 +37,6 @@ export function nameScreen({
     title: en
       ? 'What should we call your event?'
       : 'Mi legyen az esemény neve?',
-    detail: en
-      ? 'Give your camera a name. This is what your guests will see.'
-      : 'Adj nevet a filmednek. Ezt látják majd a vendégeid.',
     cta: en ? 'Continue' : 'Tovább',
     ctaDisabled: !canAdvance,
     content: (

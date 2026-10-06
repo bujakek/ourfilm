@@ -85,7 +85,7 @@ export function OnboardingShell({
   /** Names the thing being decided, in mono caps. The one lilac on the screen. */
   eyebrow: string
   title: string
-  /** Optional: the last screen carries three controls and drops it for room. */
+  /** Optional supporting copy below the question. */
   detail?: string
   step: number
   stepCount: number
@@ -97,7 +97,7 @@ export function OnboardingShell({
   onNext?: () => void
   error?: string | null
   note?: ReactNode
-  /** Sets the question at 34px instead of 40px. See `detail` above. */
+  /** Sets the question at 34px instead of 40px. */
   compact?: boolean
   children: ReactNode
   locale?: Locale
