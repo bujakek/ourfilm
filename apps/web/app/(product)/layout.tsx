@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/next'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
 import { PostHogLoader } from '@/components/analytics/posthog-loader'
@@ -40,7 +41,25 @@ import '../globals.css'
  * auth proxy), so the search-engine half of the problem does not arise here.
  * This is a screen-reader and `:lang()` concern only.
  */
-export const metadata = siteMetadata
+export const metadata: Metadata = {
+  ...siteMetadata,
+  // Nothing outside React may rewrite these pages. Browser translation swaps
+  // text nodes for `<font>` elements and iOS data detectors wrap digit runs
+  // such as "12 900 FT" in links; React still holds the original nodes, and
+  // the next commit that removes or moves one throws `NotFoundError`. That
+  // took down the create flow's last screen four times for one host on
+  // Chrome for iOS in October 2026. The product is already rendered in the
+  // reader's language, so translation has nothing to add here; the marketing
+  // site keeps both.
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+    url: false,
+  },
+  other: { google: 'notranslate' },
+}
 export const viewport = siteViewport
 
 export default function ProductRootLayout({
@@ -49,7 +68,11 @@ export default function ProductRootLayout({
   children: ReactNode
 }) {
   return (
-    <html lang={localeTag[defaultLocale]} className="bg-background">
+    <html
+      lang={localeTag[defaultLocale]}
+      translate="no"
+      className="bg-background"
+    >
       <body className={bodyClassName}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

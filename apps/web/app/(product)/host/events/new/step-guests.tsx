@@ -293,7 +293,10 @@ function GuestsFields({
             // for, which is the whole point of asking.
             <PaidTermsAcceptance locale={locale} />
           ) : (
-            <>
+            // One element, not a fragment of bare text nodes: swapping
+            // plans then replaces a single node React owns outright, rather
+            // than removing text nodes something else may have rewritten.
+            <span>
               {en ? 'I accept the ' : 'Elfogadom az '}
               <Link
                 href={localePath(locale, '/aszf')}
@@ -313,7 +316,7 @@ function GuestsFields({
               {en
                 ? 'explains how personal data is handled.'
                 : 'ismerteti az adatok kezelését.'}
-            </>
+            </span>
           )}
         </span>
       </label>
