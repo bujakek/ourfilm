@@ -21,26 +21,32 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * nothing on record, or to a read that failed: a language is never worth an
  * error screen.
  */
-export const getHostLocale = cache(
-  async (fallback?: unknown): Promise<Locale> => {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return resolveLocale(fallback)
+export async function getHostLocale(fallback?: unknown): Promise<Locale> {
+  return (await profileLocale()) ?? resolveLocale(fallback)
+}
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('locale')
-      .eq('id', user.id)
-      .maybeSingle()
+/**
+ * The signed-in host's profile language, or null. Cached without arguments
+ * so the product root layout (which reads it for `<html lang>`) and the page
+ * under it share one session check and one query per request, whatever
+ * fallback each passes.
+ */
+const profileLocale = cache(async (): Promise<Locale | null> => {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
 
-    if (error) return resolveLocale(fallback)
-    return data?.locale && isLocale(data.locale)
-      ? data.locale
-      : resolveLocale(fallback)
-  },
-)
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('locale')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (error) return null
+  return data?.locale && isLocale(data.locale) ? data.locale : null
+})
 
 /** The same answer for a host with no session: a mail the server sends. */
 export async function hostLocaleFor(

@@ -1012,9 +1012,13 @@ JS function.
    `apps/web/app/layout.tsx` any more. Two root layouts render their own
    `<html>`/`<body>`: `apps/web/app/[locale]/layout.tsx` for the public site, which sets
    `lang` from its own segment, and `apps/web/app/(product)/layout.tsx` for `/e/`,
-   `/host` and `/auth`, which cannot (no locale segment, and a layout gets
-   `params` but never `searchParams`). The product pages mark their own subtree
-   with `lang` instead.
+   `/host` and `/auth`, which has no locale segment and never gets
+   `searchParams`. `proxy.ts` passes it the route kind and `?lang` in request
+   headers (`apps/web/lib/document-locale.ts`), and it repeats the page's own
+   decision: a guest's saved choice or `Accept-Language`, a host's profile
+   language through `getHostLocale`, whose profile read the page shares. The
+   product pages still mark their own subtree with `lang` as well, for the
+   few that decide differently (the create flow and login go by `?lang`).
 
    What it cost, and what not to undo:
 
