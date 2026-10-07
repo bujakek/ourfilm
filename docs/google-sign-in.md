@@ -1,7 +1,7 @@
 # Google sign-in
 
 The second way into `/host`, beside the magic link. One button on
-`/host/login` and one in the onboarding `AuthDialog`; both end at the same
+`/host/login` and one on the onboarding `SaveEventScreen`; both end at the same
 `/auth/callback`, redeem the same way, and land on the same `next`.
 
 Nothing about it is switched on by an environment variable, and that is worth
@@ -113,4 +113,6 @@ URL makes, and it is worth an alert for the same reason
 was offered a way in that the deployment cannot honor.
 
 None of the three carries an email address, a provider identifier or an error
-message. The method is the whole of what is reported.
+message. Onboarding starts and blocks also carry the draft's `creation_key`,
+which joins them to `onboarding_save_viewed` and the server's `event_created`.
+The save screen follows the four questions; already signed-in hosts skip it.

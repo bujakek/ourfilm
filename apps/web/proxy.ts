@@ -1,3 +1,4 @@
+import { markDocumentLocale } from '@/lib/document-locale'
 import { isLocale } from '@/lib/i18n'
 import { LOCALE_PREFERENCE_COOKIE, rootLocale } from '@/lib/locale-preference'
 import { publicSupabaseEnv } from '@/lib/supabase/env'
@@ -72,11 +73,20 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(target, 308)
   }
 
+  // Tells the product root layout which language to declare on `<html>`.
+  // Set on the request itself, so the host gate's `NextResponse.next({
+  // request })` below forwards it the same way it forwards refreshed cookies.
+  markDocumentLocale(
+    request.headers,
+    path,
+    request.nextUrl.searchParams.get('lang'),
+  )
+
   // Everything below is the host gate. The trailing-slash matcher also brings
   // marketing and guest URLs here, and those must pass through untouched — an
   // auth check on `/hu/` would be the exact failure the matcher note above
   // warns about.
-  if (!path.startsWith('/host')) return NextResponse.next()
+  if (!path.startsWith('/host')) return NextResponse.next({ request })
 
   const { url, anonKey } = publicSupabaseEnv()
 
@@ -176,8 +186,10 @@ function redirectWithin(request: NextRequest, pathname: string) {
 
 export const config = {
   // `/` is the language redirect. `/host/:path*` is the auth gate.
-  // `/:path*/` is every URL with a trailing slash, for the redirect at the top
-  // of `proxy` — and nothing else, so a signed-out visitor on `/hu` still gets
-  // a 200 and never meets the host gate.
-  matcher: ['/', '/host/:path*', '/:path*/'],
+  // `/e/:path*` and `/auth/:path*` only pick up the document-language headers
+  // (`lib/document-locale.ts`) and pass through. `/:path*/` is every URL with
+  // a trailing slash, for the redirect at the top of `proxy` — and nothing
+  // else, so a signed-out visitor on `/hu` still gets a 200 and never meets
+  // the host gate.
+  matcher: ['/', '/host/:path*', '/e/:path*', '/auth/:path*', '/:path*/'],
 }

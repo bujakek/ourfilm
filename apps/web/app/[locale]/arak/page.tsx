@@ -16,27 +16,23 @@ const copy = {
     eyebrow: 'PRICING',
     heading: 'One wedding. One camera. One price.',
     lead: 'No subscription and no per-guest fee. Pay once and invite everyone.',
-    plan: 'FULL EVENT',
+    plan: 'All your guest photos in one place',
+    perEvent: '/ event',
     price: EVENT_PRICE_LABELS.en,
-    paymentLine: 'ONE-TIME PAYMENT · UNLIMITED GUESTS',
+    paymentLine: 'ONE-TIME PAYMENT · NO SUBSCRIPTION',
     vatNote:
       'The final price and any applicable tax are shown in Stripe Checkout before you pay, and Link sends the invoice or receipt.',
-    body: 'Every guest gets their own roll. Reveal the photos right away or wait until the event ends.',
+    body: 'Your wedding, through the eyes of everyone you love.',
     create: 'Create your camera',
     helper: 'No app. No guest accounts.',
     includedHeading: 'Everything you need for the day.',
-    /**
-     * A receipt lists values; a checklist only lists that things exist. Each
-     * row is what you get and how much of it — which is the question the
-     * sentence "A personal roll for every guest" made a reader work out.
-     */
-    specs: [
-      ['Guests', 'UNLIMITED'],
-      ['Roll per guest', '5–36 SHOTS'],
-      ['QR code & invite link', 'YOUR OWN'],
-      ['Developing', 'INSTANT / AT THE END'],
-      ['Gallery', 'PRIVATE'],
-      ['Album download', 'FULL, PRINT-READY'],
+    benefits: [
+      'Unlimited guests',
+      '5–36 photos per guest',
+      'Your own QR code',
+      'No app needed for guests',
+      'A shared gallery',
+      'One-time payment, no subscription',
     ],
     tryHeading: 'Try it before you pay.',
     tryBody: `Use every feature free with up to ${FREE_PARTICIPANT_LIMIT} guests. If more people join, one payment unlocks the full event.`,
@@ -52,26 +48,27 @@ const copy = {
     eyebrow: 'ÁRAK',
     heading: 'Egy esküvő. Egy kamera. Egy ár.',
     lead: 'Nincs előfizetés és nincs vendégenkénti díj. Egyszer fizettek, az egész násznép fotózhat.',
-    plan: 'TELJES ESEMÉNY',
+    plan: 'Az összes vendégfotó egy helyen',
+    perEvent: '/ esemény',
     price: EVENT_PRICE_LABEL,
-    paymentLine: 'EGYSZERI FIZETÉS · KORLÁTLAN SZÁMÚ VENDÉG',
+    paymentLine: 'EGYSZERI DÍJ · NINCS ELŐFIZETÉS',
     // Alanyi adómentes, so the figure above is the whole of it. A host who
     // reads a price and then meets a different total at checkout is the one
     // thing a price page must never do — and an áfás vevő has to know before
     // paying that there is no VAT here to reclaim.
     vatNote:
       'A feltüntetett ár a fizetendő végösszeg. A szolgáltató alanyi adómentes, ezért az összeg nem tartalmaz áfát, és áfa nem vonható le belőle. A számlát fizetés után e-mailben küldjük.',
-    body: 'Minden vendég saját tekercset kap. A képeket pedig azonnal vagy az este végén nézhetitek meg együtt.',
+    body: 'Az esküvőtök pillanatai, a násznép szemszögéből.',
     create: 'Hozzátok létre ingyen',
     helper: 'Nincs app. Nincs vendégregisztráció.',
     includedHeading: 'Minden benne van, ami a naphoz kell.',
-    specs: [
-      ['Vendégek', 'NINCS KORLÁT'],
-      ['Tekercs vendégenként', '5–36 KÉP'],
-      ['QR-kód és meghívólink', 'EGYEDI'],
-      ['Előhívás', 'AZONNAL / VÉGÉN'],
-      ['Galéria', 'PRIVÁT'],
-      ['Album letöltése', 'EGYBEN, ZIP-BEN'],
+    benefits: [
+      'Korlátlan vendég',
+      '5–36 fotó vendégenként',
+      'Saját QR-kód',
+      'A vendégeknek nem kell app',
+      'Közös galéria',
+      'Egyszeri díj, nincs előfizetés',
     ],
     tryHeading: 'Előbb próbáld ki.',
     tryBody: `Legfeljebb ${FREE_PARTICIPANT_LIMIT} vendéggel teljesen ingyen használhatjátok. Ha többen csatlakoznának, egyetlen fizetéssel megszüntethetitek a vendégkorlátot.`,
@@ -119,9 +116,9 @@ export default async function ArakPage({ params }: Props) {
           <article className="paper overflow-hidden rounded-2xl">
             <div className="grid gap-10 p-7 sm:p-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:p-12">
               <div className="flex flex-col">
-                <p className="paper-muted font-mono text-[9.5px] font-medium tracking-[0.2em]">
+                <h2 className="font-display text-[30px] leading-tight tracking-tight text-balance sm:text-[34px]">
                   {current.plan}
-                </p>
+                </h2>
 
                 {/* `word-spacing` because Martian Mono's word space is very
                     wide, and "12 900" is one number rather than two. The
@@ -129,20 +126,19 @@ export default async function ArakPage({ params }: Props) {
                     counting voice is what the rest of the product now reads it
                     in. `EVENT_PRICE_LABELS` stays the only source. */}
                 <p className="mt-5 flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-mono text-[62px] leading-none font-medium tracking-[-0.055em] [word-spacing:-0.3em]">
+                  <span className="font-mono text-[52px] leading-none font-medium tracking-[-0.055em] whitespace-nowrap [word-spacing:-0.3em] sm:text-[62px]">
                     {priceAmount(current.price)}
                   </span>
                   <span className="font-mono text-[26px] font-medium tracking-[-0.04em]">
                     {priceUnit(current.price)}
                   </span>
+                  <span className="paper-muted text-sm whitespace-nowrap">
+                    {current.perEvent}
+                  </span>
                 </p>
 
                 <p className="paper-muted mt-4 font-mono text-[9.5px] font-medium tracking-[0.16em]">
                   {current.paymentLine}
-                </p>
-
-                <p className="paper-muted mt-3 max-w-md text-[12.5px] leading-relaxed text-pretty">
-                  {current.vatNote}
                 </p>
 
                 <p className="paper-muted mt-5 max-w-md text-[14.5px] leading-relaxed text-pretty">
@@ -164,22 +160,22 @@ export default async function ArakPage({ params }: Props) {
               </div>
 
               <div className="paper-rule border-t pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-14">
-                <h2 className="font-display text-[24px] leading-tight">
+                <h3 className="font-display text-[24px] leading-tight">
                   {current.includedHeading}
-                </h2>
-                <dl className="mt-6">
-                  {current.specs.map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="paper-rule flex items-baseline justify-between gap-5 border-b py-3"
+                </h3>
+                <ul className="mt-6">
+                  {current.benefits.map((benefit) => (
+                    <li
+                      key={benefit}
+                      className="paper-rule border-b py-3 text-[14.5px]"
                     >
-                      <dt className="text-[14.5px]">{label}</dt>
-                      <dd className="text-right font-mono text-[12px] font-medium tracking-[0.06em]">
-                        {value}
-                      </dd>
-                    </div>
+                      {benefit}
+                    </li>
                   ))}
-                </dl>
+                </ul>
+                <p className="paper-muted mt-5 text-[12.5px] leading-relaxed text-pretty">
+                  {current.vatNote}
+                </p>
               </div>
             </div>
 

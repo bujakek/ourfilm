@@ -75,12 +75,8 @@ export default function NewEventPage() {
       // Reads environment variables only — no await, so the segment still does
       // not suspend. See the note above.
       //
-      // Both sides of the billing-country boundary, because the host picks
-      // the country on the last screen: a Hungarian address is a direct sale
-      // OurFilm has to invoice through Billingo, any other settles through
-      // Link. A deployment can be able to take one and not the other, and the
-      // tile must say so honestly. No IP suggestion here: reading headers
-      // would make this page async, which the note above forbids.
+      // Offer the paid plan when at least one market is enabled. The billing
+      // country is confirmed on the saved event's checkout screen.
       readiness={checkoutReadiness()}
       // Minted here rather than in a state initializer: it is rendered into the
       // draft, and `crypto.randomUUID()` on both sides of hydration would give

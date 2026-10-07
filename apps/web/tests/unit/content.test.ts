@@ -53,15 +53,15 @@ function internalLinks(doc: ContentDoc): string[] {
 
 describe('the content pack', () => {
   it('serves every published page in both content packs', () => {
-    expect(getDocs('hu')).toHaveLength(78)
-    expect(getDocs('en')).toHaveLength(78)
+    expect(getDocs('hu')).toHaveLength(79)
+    expect(getDocs('en')).toHaveLength(79)
     expect(docs.filter((doc) => doc.draft)).toHaveLength(0)
   })
 
   it('puts each kind where the kind map says', () => {
     const counts = {
       pages: 16,
-      blog: 100,
+      blog: 102,
       alternatives: 16,
       vs: 14,
       compare: 10,
@@ -164,7 +164,10 @@ describe('internal linking', () => {
         doc.filePath,
       ).not.toContain(doc.id)
     }
-  })
+    // Ranks every page against every other, so it grows with the content
+    // pack rather than with the code, and crossed the default 5s inside a
+    // full `pnpm verify` as articles kept landing.
+  }, 20_000)
 
   it('leaves no page orphaned', () => {
     // Inbound from a body link, from someone's `related`, or from the hub that

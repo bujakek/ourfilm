@@ -23,7 +23,7 @@ const UNIQUE_VIOLATION = '23505'
  * host to.
  *
  * Shared by the two places a host can start paying: the billing card in
- * settings, and the plan choice on the last onboarding screen. It lives here
+ * settings, and the saved event payment screen after onboarding. It lives here
  * rather than in either of them because everything it sets is the kind of
  * detail that is silently wrong when it drifts — which metadata the webhook
  * reads, which URL Stripe returns to, whether the PaymentIntent carries the

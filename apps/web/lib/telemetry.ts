@@ -199,6 +199,11 @@ export type TelemetryEventProperties = {
     outcome: 'created' | 'auth_required' | 'stale_end' | 'error'
     source: 'flow' | 'magic_link'
   }
+  /** The dedicated save screen, after the server confirmed auth is required. */
+  onboarding_save_viewed: {
+    creation_key: string
+    plan: 'free' | 'full'
+  }
   draft_restored: { creation_key: string; step: number; age_ms: number | null }
   draft_discarded: { creation_key: string; step: number }
   /**
@@ -265,16 +270,16 @@ export type TelemetryEventProperties = {
   /**
    * A host committed to one of the two ways in, and from which screen.
    *
-   * There is no row and no session yet, so there is nothing to key this on —
-   * it is a count, not a funnel join. Its counterpart is the server's
+   * Onboarding supplies its draft key so starts can join to event_created.
+   * Ordinary login has no draft and reports only the method. The server's
    * `sign_in_settled`: a `google` start with no settle is somebody who
    * reached Google's consent screen and turned back, which is the only part
-   * of this path neither end can see on its own. No email address, ever —
-   * the method is the whole of what is reported.
+   * of this path neither end can see on its own. No email address, ever.
    */
   sign_in_started: {
     method: 'google' | 'email'
     surface: 'login' | 'onboarding'
+    creation_key?: string
   }
   /** …and the hand-off never began: the provider SDK refused, or the network
    *  did. Reported because the alternative reading of a missing settle —
@@ -283,6 +288,7 @@ export type TelemetryEventProperties = {
   sign_in_blocked: {
     method: 'google' | 'email'
     surface: 'login' | 'onboarding'
+    creation_key?: string
   }
 }
 

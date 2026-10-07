@@ -21,8 +21,8 @@ export type CheckoutState = { error: string | null }
 /**
  * Sends the host to Stripe Checkout to lift the free cap on one event.
  *
- * The session itself is built by `createEventCheckoutUrl`, shared with the last
- * onboarding screen. What stays here is the guarding: whether payments are on,
+ * The session itself is built by `createEventCheckoutUrl`, used by both
+ * the saved event payment screen and settings. What stays here is the guarding: whether payments are on,
  * whether this host owns the event, and whether there is anything left to buy.
  *
  * Hosted Checkout rather than an embedded card form, and not for want of
@@ -41,6 +41,13 @@ export async function startEventCheckout(
 ): Promise<CheckoutState> {
   const slug = String(formData.get('slug') ?? '').trim()
   const en = formData.get('locale') === 'en'
+  const source =
+    formData.get('source') === 'onboarding' ? 'onboarding' : 'settings'
+  const blocked = (
+    eventId: string | null,
+    reason: ServerEventProperties['checkout_blocked']['reason'],
+  ) =>
+    reportServerEvent('checkout_blocked', { event_id: eventId, source, reason })
   // The only commercial input this action accepts. No payment flow, Price,
   // amount or currency is read from the form: all of them are derived from
   // this country on the server, after it has been validated against the
@@ -164,11 +171,10 @@ export async function startEventCheckout(
 
   // Reported here rather than from the browser, which is one redirect away
   // from a different origin and would lose a buffered event on the way. This
-  // and its twin in the create flow are the only things that distinguish the
-  // two entry points — Stripe sees one kind of session from both.
+  // source distinguishes onboarding from a later upgrade in settings.
   await reportServerEvent('checkout_started', {
     event_id: event.id,
-    source: 'settings',
+    source,
     currency: eventPricingFor(country.country).currency,
     locale: await getHostLocale(event.locale),
     settlement: settlementFor(country.country),
@@ -177,16 +183,4 @@ export async function startEventCheckout(
   // Outside the try on purpose: redirect() signals by throwing, so catching
   // around it would swallow the navigation and report a failure instead.
   redirect(checkoutUrl)
-}
-
-/** Every way this action can end without a Checkout Session existing. */
-function blocked(
-  eventId: string | null,
-  reason: ServerEventProperties['checkout_blocked']['reason'],
-) {
-  return reportServerEvent('checkout_blocked', {
-    event_id: eventId,
-    source: 'settings',
-    reason,
-  })
 }

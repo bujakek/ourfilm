@@ -440,6 +440,7 @@ onboarding screens, and `event_id` from the moment there is a row.
 | `onboarding_step_completed`     | Which of the four questions a host stops at. No row exists yet                 |
 | `onboarding_plan_chosen`        | Free or unlimited, and whether the paid tile was even offered                  |
 | `onboarding_create_attempted`   | The last CTA and what came back; `auth_required` is the email round trip       |
+| `onboarding_save_viewed`        | The save screen opened after `auth_required`, and for which plan               |
 | `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once           |
 | `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost              |
 | `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it                |
@@ -451,6 +452,11 @@ onboarding screens, and `event_id` from the moment there is a row.
 | `create_own_album_clicked`      | The guest-to-host loop, from the bar under a revealed album's grid             |
 | `sign_in_started`               | Which way in a host chose — Google or an email link — and from which screen    |
 | `sign_in_blocked`               | …and the hand-off never began, so no settle is coming and they are still here  |
+
+The two `sign_in_*` events carry the draft's `creation_key` when they come
+from the save screen, so an onboarding sign-in joins to
+`onboarding_save_viewed` and the server's `event_created`. A sign-in from
+`/host/login` has no draft and reports the method alone.
 
 **And the server reports what the browser cannot see honestly** — a payment
 Stripe confirmed rather than a browser that reached a success URL, a stream
@@ -800,21 +806,26 @@ does it need. Neither of the other two depends on the first being answered.
   the free tier is `free_participant_limit()` distinct participants enforced
   inside `join_event`'s row lock, and only a paid `purchases` row lifts it. So
   picking **Korlátlan** on the last screen only changes where the host lands —
-  Stripe Checkout instead of their new event — and an abandoned checkout leaves
-  an ordinary free event, which is what the ledger's `pending` row already
-  describes. `FREE_PARTICIPANT_LIMIT` in `apps/web/lib/onboarding.ts` mirrors the
+  the saved event's checkout screen instead of the event itself — and an
+  abandoned checkout leaves an ordinary free event, which is what the
+  ledger's `pending` row already describes. `FREE_PARTICIPANT_LIMIT` in `apps/web/lib/onboarding.ts` mirrors the
   database function so the screen can name the limit before the row exists.
-- **Onboarding can start a checkout, and the guest cap still cannot.** The paid
-  tier is offered to the _host_, at the one moment they are thinking about how
-  many people are coming. A guest turned away mid-party is still shown no
-  checkout — that rule is about who is holding the phone, not about where the
-  button lives. When `stripeIsConfigured()` is false the paid tile is disabled
+- **Onboarding offers the paid tier; creating the event never starts a
+  payment.** The paid tier is offered to the _host_, at the one moment they
+  are thinking about how many people are coming, and a guest turned away
+  mid-party is still shown no checkout — that rule is about who is holding the
+  phone, not about where the button lives. `createEventFromDraft` only saves:
+  a `full` draft lands on `/host/events/<slug>/checkout`, where the billing
+  country is confirmed and Stripe is started by the same `startEventCheckout`
+  action as the settings card (`source: 'onboarding'`). A repeat of the create
+  request lands there too. When no market is ready the paid tile is disabled
   and reads "Hamarosan" rather than a price, the same honesty
   `apps/web/components/host/billing-card.tsx` keeps.
-- **`createEventCheckoutUrl` (`apps/web/lib/stripe/checkout.ts`) is shared** by the
-  billing card and the create action. Session metadata, the success and cancel
-  URLs and the `pending` ledger row all live in one place, because every one of
-  them is silently wrong when two copies drift.
+- **`createEventCheckoutUrl` (`apps/web/lib/stripe/checkout.ts`) is reached
+  only through `startEventCheckout`**, from the checkout screen and from the
+  billing card in settings. Session metadata, the success and cancel URLs and
+  the `pending` ledger row all live in one place, because every one of them is
+  silently wrong when two copies drift.
 - **There is no cover picker in the flow any more**, and nothing else offers
   one. `cover_path` stays nullable and every surface already renders an event
   without a cover; the upload branch in `createEvent` still works and is waiting
@@ -828,8 +839,9 @@ does it need. Neither of the other two depends on the first being answered.
 ### It is filled in signed out (settled)
 
 Nobody is asked for an account before they have seen what they are signing up
-for. The whole flow is a form; the account is asked for on the last screen, when
-there is finally something to save.
+for. The whole flow is a form; the account is asked for after the last
+question, on a save screen of its own (`save-event-screen.tsx`), when there is
+finally something to save. A host who is already signed in never sees it.
 
 - **`/host/events/new` is in `PUBLIC_ADMIN_PATHS`** (`apps/web/proxy.ts`), matched
   exactly — never by prefix, because it is one segment away from routes that
@@ -857,6 +869,10 @@ there is finally something to save.
   saw it exist. That is why `createEventFromDraft` returns a destination instead
   of redirecting — a `redirect()` would navigate away before the browser could
   clear the one copy of those answers.
+- **`pendingCreate` outlives the save screen.** It turns on when the server
+  answers `auth_required` and only `/auth/event-complete` turns it off. Back
+  from the save screen must not clear it: a link already in the host's inbox
+  would otherwise open onto `not_pending` and create nothing.
 
 ## Optimistic updates (settled)
 
@@ -910,6 +926,7 @@ caught up.
 | `/e/[slug]/camera`                                                                         | Legacy URL. Redirects to the unified event page                                                                                                                                                               |
 | `/e/[slug]/gallery`                                                                        | Legacy URL. Redirects to the unified event page                                                                                                                                                               |
 | `/host`                                                                                    | The host's own area, Supabase Auth — magic link or Google. `/admin/*` 308s here                                                                                                                               |
+| `/host/events/[slug]/checkout`                                                             | Where a paid draft lands once saved: confirm the billing country, then Stripe. Redirects to the event when already unlimited                                                                                  |
 | `/host/events/[slug]/export`                                                               | JSON: what happens to this album. Up to 20 photos, a manifest the browser zips itself; above, where the prepared archive is                                                                                   |
 | `/host/events/[slug]/export/stream`                                                        | The large-album path for now: the whole ZIP streamed through a function. Retired by the export worker                                                                                                         |
 
@@ -995,9 +1012,13 @@ JS function.
    `apps/web/app/layout.tsx` any more. Two root layouts render their own
    `<html>`/`<body>`: `apps/web/app/[locale]/layout.tsx` for the public site, which sets
    `lang` from its own segment, and `apps/web/app/(product)/layout.tsx` for `/e/`,
-   `/host` and `/auth`, which cannot (no locale segment, and a layout gets
-   `params` but never `searchParams`). The product pages mark their own subtree
-   with `lang` instead.
+   `/host` and `/auth`, which has no locale segment and never gets
+   `searchParams`. `proxy.ts` passes it the route kind and `?lang` in request
+   headers (`apps/web/lib/document-locale.ts`), and it repeats the page's own
+   decision: a guest's saved choice or `Accept-Language`, a host's profile
+   language through `getHostLocale`, whose profile read the page shares. The
+   product pages still mark their own subtree with `lang` as well, for the
+   few that decide differently (the create flow and login go by `?lang`).
 
    What it cost, and what not to undo:
 
@@ -1266,10 +1287,18 @@ Both downscales exist because of measured cost on a phone, not tidiness. Tiling 
 
 **One-time purchase per event: 12 900 Ft to a Hungarian billing address, 39 USD
 to any other supported one.** No subscription, no per-guest fee. The host
-confirms a billing country on the billing card or the paid onboarding tile;
+confirms a billing country on the billing card or the post-save checkout screen;
 the server validates it (`checkBillingCountry`) and derives both the Stripe
 Price and the settlement from it. The interface language, `events.locale`, IP
 and anything else the browser sends decide neither.
+
+What the field _starts on_ is a separate, smaller question with one answer,
+`initialBillingCountry` in `apps/web/lib/billing-country.ts`: a country the
+host confirmed before, otherwise Hungary only when the profile language is
+Hungarian **and** the request comes from a Hungarian IP, otherwise empty.
+Either signal alone guesses wrong across the settlement boundary — a
+Hungarian on a VPN, a visitor to Budapest — so neither preselects anything by
+itself, and an IP never preselects another country.
 
 - **Supported markets** are Hungary plus Managed Payments' cross-border
   tax-coverage list (`MANAGED_PAYMENTS_COUNTRIES`), not every country Link can
@@ -1298,8 +1327,9 @@ and anything else the browser sends decide neither.
   résztvevői keretet" and are told to ask the organizer. A wedding guest holding
   a phone cannot fix this, and asking them to pay for the couple's album is the
   wrong sentence to put in front of them. The upgrade is the host's, and they
-  reach it in two places: the billing card in settings, and the plan choice on
-  the last onboarding screen. Both go through `createEventCheckoutUrl`.
+  reach it in two places: the billing card in settings, and the checkout screen
+  a paid draft lands on after saving. Both go through `startEventCheckout` and
+  `createEventCheckoutUrl`.
 - **Checkout is a redirect** to Stripe's hosted page (`mode: 'payment'`). No card
   data touches this app — the difference between SAQ A and a compliance project.
 - **Only the webhook marks a purchase paid.** `?checkout=success` proves nothing:
@@ -1396,7 +1426,8 @@ points and both settlements), `apps/web/lib/billing.ts`, `apps/web/lib/pricing.t
 (the displayed price, in one place), `apps/web/lib/checkout-readiness.ts`,
 `apps/web/lib/roles.ts`, `apps/web/app/api/stripe/webhook/route.ts`,
 `apps/web/app/host/events/[slug]/billing-actions.ts`,
-`apps/web/components/host/billing-card.tsx`, `apps/web/app/host/events/new/step-guests.tsx`.
+`apps/web/components/host/billing-card.tsx`,
+`apps/web/app/(product)/host/events/[slug]/checkout/page.tsx`.
 
 Invoicing: `apps/web/lib/billingo/*` (`env.ts`, `client.ts` over the v3 REST API,
 `invoicing.ts` for the state machine), `apps/web/lib/billing-details.ts` (the zod

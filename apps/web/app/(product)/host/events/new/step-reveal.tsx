@@ -44,9 +44,6 @@ export function revealScreen({
     title: en
       ? 'When should the photos appear?'
       : 'Mikor jelenjenek meg a képek?',
-    detail: en
-      ? 'Keep them hidden while everyone shoots, or reveal them as they arrive. You decide.'
-      : 'A képek alapból rejtve maradnak az esemény alatt. Te döntöd el, mikor nyíljon meg a galéria.',
     cta: en ? 'Continue' : 'Tovább',
     content: (
       <>

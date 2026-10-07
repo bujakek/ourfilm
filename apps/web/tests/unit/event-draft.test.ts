@@ -47,6 +47,42 @@ function draft(overrides: Partial<EventDraft> = {}): EventDraft {
 }
 
 describe('saving and reading a draft', () => {
+  it('preserves old paid drafts but requires the new explicit declaration', () => {
+    saveDraft(
+      draft({
+        name: 'Our wedding',
+        plan: 'full',
+        legalAccepted: true,
+        pendingCreate: true,
+        paidConsentVersion: undefined,
+      }),
+      NOW,
+    )
+    expect(loadDraft(NOW)).toMatchObject({
+      name: 'Our wedding',
+      plan: 'full',
+      creationKey: KEY,
+      legalAccepted: false,
+      pendingCreate: false,
+    })
+  })
+
+  it('preserves the unchanged acceptance in old free drafts', () => {
+    saveDraft(
+      draft({
+        plan: 'free',
+        legalAccepted: true,
+        pendingCreate: true,
+        paidConsentVersion: undefined,
+      }),
+      NOW,
+    )
+    expect(loadDraft(NOW)).toMatchObject({
+      legalAccepted: true,
+      pendingCreate: true,
+    })
+  })
+
   it('round-trips every answer', () => {
     const original = draft({
       name: 'Az esküvőnk',

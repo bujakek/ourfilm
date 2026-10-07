@@ -1,30 +1,28 @@
 'use client'
 
+import { ChevronDown } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 
-import { AccountNotice } from '@/components/host/onboarding/account-notice'
-import { BillingCountryField } from '@/components/host/billing-country-field'
-import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
+import {
+  LegalDetails,
+  PaidTermsAcceptance,
+} from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import { ShotsSelector } from '@/components/host/shots-selector'
 import { PostEventUploadsField } from '@/components/host/post-event-uploads-field'
 import { SwitchTrack } from '@/components/ui/switch'
-import { DEFAULT_SHOTS, type ShotOption } from '@/lib/camera'
+import type { ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
-import { type BillingCountry, parseBillingCountry } from '@/lib/billing-country'
-import { eventPriceLabelFor } from '@/lib/pricing'
+import { eventPriceLabel } from '@/lib/pricing'
 import { localePath, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
 /**
- * The last question, and the one that was eight glass surfaces on one 390px
- * screen. The fix is mostly subtraction: two bordered cards, one segmented
- * control, one switch with a real label, and the legal checkbox — with ruled
- * dividers doing the grouping that eight separate materials were doing badly.
- *
- * Three controls rather than three screens because they are the same decision
- * from three sides: how big is this party and how much film does it need.
+ * Guest count is the last decision. Roll length and gallery access keep their
+ * draft defaults unless the host opens the optional settings. Both remain
+ * editable after creation, so neither needs an answer before saving an event.
  */
 export function guestsScreen({
   plan,
@@ -38,10 +36,9 @@ export function guestsScreen({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
-  billingCountry,
-  setBillingCountry,
   pending,
   locale,
+  signedIn,
 }: {
   plan: EventPlan
   setPlan: (value: EventPlan) => void
@@ -57,37 +54,32 @@ export function guestsScreen({
    *  paid tier is not offered — a price on a button that cannot charge is a
    *  worse answer than not showing the button. */
   paymentsEnabled: boolean
-  /** Asked only on the paid tile, on this same screen — no extra step. */
-  billingCountry: string | null
-  setBillingCountry: (value: BillingCountry | null) => void
   pending: boolean
   locale: Locale
+  signedIn: boolean | null
 }): StepScreen {
   const en = locale === 'en'
-  const country = parseBillingCountry(billingCountry)
-  // The paid path cannot continue to Stripe without a country. One this
-  // deployment cannot sell to still creates the event and lands on the
-  // billing card, which says why. The free path never asks.
-  const countryMissing = plan === 'full' && !country
 
   return {
     compact: true,
     eyebrow: en ? 'THE GUESTS' : 'A VENDÉGEK',
-    title: en ? 'How many guests are coming?' : 'Hány vendéged lesz?',
-    // No `detail` here, unlike the other three screens: this one carries
-    // three controls and a legal checkbox, and the room is worth more than
-    // the sentence.
+    title: en
+      ? 'How many guests are you expecting?'
+      : 'Hány vendégre számítasz?',
     cta:
-      plan === 'full'
+      signedIn !== true
         ? en
-          ? 'Continue to payment'
-          : 'Tovább a fizetéshez'
-        : en
-          ? 'Create event'
-          : 'Létrehozás',
-    ctaDisabled: !legalAccepted || countryMissing,
+          ? 'Continue to save'
+          : 'Tovább a mentéshez'
+        : plan === 'full'
+          ? en
+            ? 'Continue to save'
+            : 'Tovább a mentéshez'
+          : en
+            ? 'Create event'
+            : 'Létrehozás',
+    ctaDisabled: !legalAccepted,
     ctaPending: pending,
-    note: <AccountNotice locale={locale} />,
     content: (
       <GuestsFields
         plan={plan}
@@ -101,8 +93,6 @@ export function guestsScreen({
         legalAccepted={legalAccepted}
         setLegalAccepted={setLegalAccepted}
         paymentsEnabled={paymentsEnabled}
-        billingCountry={country}
-        setBillingCountry={setBillingCountry}
         locale={locale}
       />
     ),
@@ -121,8 +111,6 @@ function GuestsFields({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
-  billingCountry,
-  setBillingCountry,
   locale,
 }: {
   plan: EventPlan
@@ -136,8 +124,6 @@ function GuestsFields({
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   paymentsEnabled: boolean
-  billingCountry: BillingCountry | null
-  setBillingCountry: (value: BillingCountry | null) => void
   locale: Locale
 }) {
   const reduceMotion = useReducedMotion()
@@ -149,150 +135,145 @@ function GuestsFields({
         <legend className="sr-only">
           {en ? 'How many guests can join' : 'Hány vendég csatlakozhat'}
         </legend>
-        {/* The number first. A host choosing between tiers is comparing two
-              quantities, and "Legfeljebb 5" set in body copy buried the only
-              part of the tile that answers the question. */}
+        {/* The exact checkout price follows the country confirmed after saving. */}
         <div className="grid grid-cols-2 gap-2.5">
           <PlanTile
             value="free"
             plan={plan}
             setPlan={setPlan}
-            figure={String(FREE_PARTICIPANT_LIMIT)}
-            label={en ? 'GUESTS · FREE' : 'VENDÉGIG · INGYENES'}
+            figure={en ? 'Free event' : 'Ingyenes esemény'}
+            label={`${FREE_PARTICIPANT_LIMIT} ${en ? 'guests' : 'vendég'}`}
+            price={en ? '0 USD' : '0 Ft'}
             reduceMotion={reduceMotion}
           />
           <PlanTile
             value="full"
             plan={plan}
             setPlan={setPlan}
-            figure="∞"
-            label={`${en ? 'UNLIMITED' : 'KORLÁTLAN'} · ${
+            figure={en ? 'Unlimited event' : 'Korlátlan esemény'}
+            label={en ? 'Unlimited guests' : 'Korlátlan vendég'}
+            price={
               paymentsEnabled
-                ? // The price follows the billing country, so it appears once
-                  // one is chosen. Non-breaking spaces inside it: Martian Mono
-                  // is wide enough that this label wraps in a 134px card, and
-                  // the one place it must never wrap is between the thousands
-                  // and the hundreds — "12 / 900 FT" reads as two numbers.
-                  billingCountry
-                  ? eventPriceLabelFor(billingCountry)
-                      .toUpperCase()
-                      .replace(/ /g, '\u00a0')
-                  : en
-                    ? 'PAID'
-                    : 'FIZETŐS'
+                ? eventPriceLabel(locale).replace(/ /g, '\u00a0')
                 : en
-                  ? 'COMING\u00a0SOON'
-                  : 'HAMAROSAN'
-            }`}
+                  ? 'Coming soon'
+                  : 'Hamarosan'
+            }
+            offer={
+              paymentsEnabled ? (
+                <>
+                  <span className="block text-xs text-muted-foreground">
+                    {en ? 'one-time payment' : 'egyszeri díj'}
+                  </span>
+                  <span className="mt-2 block text-xs leading-relaxed text-muted-foreground">
+                    {en
+                      ? 'No app • no subscription'
+                      : 'Nincs app • nincs előfizetés'}
+                  </span>
+                </>
+              ) : null
+            }
             disabled={!paymentsEnabled}
             reduceMotion={reduceMotion}
           />
         </div>
-        {plan === 'full' && paymentsEnabled ? (
-          <BillingCountryField
-            locale={locale}
-            value={billingCountry}
-            onChange={setBillingCountry}
-            suggested={null}
-            className="mt-3.5"
-          />
-        ) : null}
       </fieldset>
 
-      <fieldset className="border-t border-border pt-4.5">
-        <SectionLabel>{en ? 'ROLL LENGTH' : 'TEKERCS HOSSZA'}</SectionLabel>
-        <legend className="sr-only">
-          {en ? 'Shots per guest' : 'Képek száma vendégenként'}
-        </legend>
-        <div className="mt-3">
-          <ShotsSelector
-            value={shots}
-            onChange={setShots}
-            name="shots_choice"
-            locale={locale}
+      <details className="group border-t border-border">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-3 text-[13.5px] font-medium [&::-webkit-details-marker]:hidden">
+          {en ? 'More settings' : 'További beállítások'}
+          <ChevronDown
+            className="size-4 shrink-0 transition-transform group-open:rotate-180"
+            aria-hidden="true"
           />
-        </div>
-        {/* Says what the number means, which five bare numerals cannot. */}
-        <p className="mt-2.5 text-[12px] leading-[1.5] text-muted-foreground">
-          {en
-            ? `Every guest gets ${shots} shots.`
-            : `Minden vendég ${shots} képet kap.`}
-          {shots === DEFAULT_SHOTS
-            ? en
-              ? ' That is the classic roll length.'
-              : ' Ez a klasszikus tekercshossz.'
-            : ''}
-        </p>
-      </fieldset>
+        </summary>
+        <div className="flex flex-col gap-4.5 pt-1">
+          <p className="text-[12px] leading-[1.5] text-muted-foreground">
+            {en ? 'You can change these later.' : 'Később is módosítható.'}
+          </p>
+          <fieldset>
+            <legend className="sr-only">
+              {en ? 'Shots per guest' : 'Képek száma vendégenként'}
+            </legend>
+            <SectionLabel>
+              {en ? 'PHOTOS PER GUEST' : 'FOTÓK VENDÉGENKÉNT'}
+            </SectionLabel>
+            <div className="mt-3">
+              <ShotsSelector
+                value={shots}
+                onChange={setShots}
+                name="shots_choice"
+                locale={locale}
+              />
+            </div>
+          </fieldset>
 
-      <div className="border-t border-border pt-4.5">
-        {/* A real label pair, with the switch to the right of it. The switch
+          <div className="border-t border-border pt-4.5">
+            {/* A real label pair, with the switch to the right of it. The switch
               used to sit first with a single sentence beside it that changed
               underneath — which meant the control had no stable name, only a
               description of its current state. */}
-        <button
-          type="button"
-          role="switch"
-          aria-checked={guestsCanView}
-          onClick={() => setGuestsCanView(!guestsCanView)}
-          className="flex w-full items-center justify-between gap-4 text-left"
-        >
-          <span className="min-w-0">
-            <span className="block text-[13.5px] font-medium">
-              {en
-                ? 'Guests can see the gallery'
-                : 'A vendégek látják a galériát'}
-            </span>
-            {/* Still optimistic, still on the label rather than the track:
+            <button
+              type="button"
+              role="switch"
+              aria-checked={guestsCanView}
+              onClick={() => setGuestsCanView(!guestsCanView)}
+              className="flex min-h-11 w-full items-center justify-between gap-4 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-[13.5px] font-medium">
+                  {en
+                    ? 'Guests can see the gallery'
+                    : 'A vendégek látják a galériát'}
+                </span>
+                {/* Still optimistic, still on the label rather than the track:
                   a switch that sits still for a round trip is one a host taps
                   twice. */}
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={guestsCanView ? 'visible' : 'private'}
-                initial={reduceMotion ? false : { opacity: 0, y: 3 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
-                transition={reduceMotion ? still : T.settle}
-                className="mt-0.5 block text-[12px] leading-snug text-pretty text-muted-foreground"
-              >
-                {guestsCanView
-                  ? en
-                    ? 'Turn off and only you see the photos.'
-                    : 'Kikapcsolva csak te látod a képeket.'
-                  : en
-                    ? 'Only you can see the photos.'
-                    : 'Most csak te látod a képeket.'}
-              </motion.span>
-            </AnimatePresence>
-          </span>
-          <SwitchTrack checked={guestsCanView} />
-        </button>
-      </div>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={guestsCanView ? 'visible' : 'private'}
+                    initial={reduceMotion ? false : { opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
+                    transition={reduceMotion ? still : T.settle}
+                    className="mt-0.5 block text-[12px] leading-snug text-pretty text-muted-foreground"
+                  >
+                    {guestsCanView
+                      ? en
+                        ? 'Turn off and only you see the photos.'
+                        : 'Kikapcsolva csak te látod a képeket.'
+                      : en
+                        ? 'Only you can see the photos.'
+                        : 'Most csak te látod a képeket.'}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+              <SwitchTrack checked={guestsCanView} />
+            </button>
+          </div>
+
+          <div className="border-t border-border pt-4.5">
+            <PostEventUploadsField
+              enabled={postEventUploads}
+              onChange={setPostEventUploads}
+              locale={locale}
+            />
+          </div>
+        </div>
+      </details>
 
       <div className="border-t border-border pt-4.5">
-        <PostEventUploadsField
-          enabled={postEventUploads}
-          onChange={setPostEventUploads}
-          locale={locale}
-        />
-      </div>
-
-      <label className="flex cursor-pointer items-start gap-3 border-t border-border pt-4.5 text-[11.5px] leading-[1.6] text-muted-foreground">
-        <input
-          type="checkbox"
-          checked={legalAccepted}
-          onChange={(event) => setLegalAccepted(event.target.checked)}
-          className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
-        />
-        <span>
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[13px] leading-[1.6] text-foreground/80">
+          <input
+            type="checkbox"
+            checked={legalAccepted}
+            onChange={(event) => setLegalAccepted(event.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+          />
           {plan === 'full' ? (
-            // The paid declaration, shared with the billing card so the two
-            // cannot drift: it is the record that the ÁSZF was accepted and
-            // that performance inside the 14-day period was expressly asked
-            // for, which is the whole point of asking.
             <PaidTermsAcceptance locale={locale} />
           ) : (
-            <>
+            <span>
               {en ? 'I accept the ' : 'Elfogadom az '}
               <Link
                 href={localePath(locale, '/aszf')}
@@ -301,35 +282,28 @@ function GuestsFields({
               >
                 {en ? 'Terms' : 'ÁSZF-et'}
               </Link>
-              {en ? '. The ' : '. Az '}
-              <Link
-                href={localePath(locale, '/adatvedelem')}
-                target="_blank"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                {en ? 'Privacy Notice' : 'adatkezelési tájékoztató'}
-              </Link>{' '}
-              {en
-                ? 'explains how personal data is handled.'
-                : 'ismerteti az adatok kezelését.'}
-            </>
+              .
+            </span>
           )}
-        </span>
-      </label>
+        </label>
+        <div className="ml-7">
+          <LegalDetails key={plan} locale={locale} paid={plan === 'full'} />
+        </div>
+      </div>
     </div>
   )
 }
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <p className="font-mono text-[9.5px] font-medium tracking-[0.2em] text-foreground/38">
+    <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground">
       {children}
     </p>
   )
 }
 
 /**
- * One tier, led by its number.
+ * One tier, with a compact offer for the paid option.
  *
  * Selection is a 1.5px lilac border and a faint lilac wash rather than a tick:
  * the border is the thing the eye already uses to tell the two cards apart, so
@@ -342,6 +316,8 @@ function PlanTile({
   setPlan,
   figure,
   label,
+  price,
+  offer,
   disabled = false,
   reduceMotion,
 }: {
@@ -350,15 +326,17 @@ function PlanTile({
   setPlan: (value: EventPlan) => void
   figure: string
   label: string
+  price: string
+  offer?: ReactNode
   disabled?: boolean
   reduceMotion: boolean | null
 }) {
   const active = plan === value
   return (
     <label
-      className={`relative flex flex-col justify-between rounded-lg px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+      className={`relative flex flex-col rounded-lg px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
         active
-          ? 'border-[1.5px] border-transparent text-accent'
+          ? 'border border-transparent text-accent'
           : 'border border-white/13'
       } ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
     >
@@ -379,16 +357,22 @@ function PlanTile({
         onChange={() => setPlan(value)}
         className="sr-only"
       />
-      <span className="relative z-10 font-mono text-[26px] leading-none font-medium tracking-[-0.04em]">
+      <span className="relative z-10 min-h-[2.75em] text-[15px] leading-snug font-semibold">
         {figure}
       </span>
       <span
-        className={`relative z-10 mt-2 font-mono text-[9px] font-medium tracking-[0.14em] ${
-          active ? 'text-accent' : 'text-foreground/55'
+        className={`relative z-10 mt-2 text-xs leading-relaxed ${
+          active ? 'text-accent' : 'text-muted-foreground'
         }`}
       >
         {label}
       </span>
+      <span
+        className={`relative z-10 mt-3 font-semibold tabular-nums ${disabled ? 'text-sm' : 'text-lg min-[375px]:text-xl'}`}
+      >
+        {price}
+      </span>
+      {offer ? <span className="relative z-10 mt-0.5">{offer}</span> : null}
     </label>
   )
 }

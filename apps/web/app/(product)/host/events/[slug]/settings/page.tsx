@@ -275,8 +275,9 @@ async function EventBilling({
       planNote={planNote(quota.planSource, locale, receipt || null)}
       readiness={checkoutReadiness()}
       savedBillingCountry={savedCountry}
-      // Vercel's edge geolocation. Floated to the top of the list and never
-      // selected on the host's behalf — see `suggestedBillingCountry`.
+      // Vercel's edge geolocation. Floated to the top of the list, and it
+      // preselects Hungary only together with a Hungarian profile language —
+      // see `initialBillingCountry`.
       suggestedBillingCountry={suggestedBillingCountry(
         (await headers()).get('x-vercel-ip-country'),
       )}
