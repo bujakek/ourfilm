@@ -3,7 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
-import { AuthDialog } from '@/components/host/onboarding/auth-dialog'
+import { SaveEventScreen } from '@/components/host/onboarding/save-event-screen'
+import { useHostSignedIn } from '@/components/host/onboarding/use-host-signed-in'
 import { DraftRestoreDialog } from '@/components/host/onboarding/draft-restore-dialog'
 import { OnboardingShell } from '@/components/host/onboarding/onboarding-shell'
 import { useBrowserTimeZone } from '@/components/host/onboarding/use-browser-time-zone'
@@ -191,9 +192,16 @@ function OnboardingFlow({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [authOpen, setAuthOpen] = useState(false)
+  // Whether a save has been asked for, which outlives the save screen: Back
+  // only closes the screen, and a link already sent must still create the
+  // event when it is opened. Cleared by `/auth/event-complete` once the row
+  // exists. Seeded from the stored draft so an edit after a reload does not
+  // cancel an outstanding link either.
+  const [saveRequested, setSaveRequested] = useState(initial.pendingCreate)
+  const signedIn = useHostSignedIn()
 
   // Whether the paid tier can be offered at all. Which arrangement sells it
-  // is decided by the billing country chosen on the last screen.
+  // is decided by the billing country confirmed after saving.
   const paymentsAvailable = readiness.domestic || readiness.international
 
   const [step, setStep] = useState(Math.min(LAST_STEP, Math.max(0, startStep)))
@@ -206,9 +214,6 @@ function OnboardingFlow({
     initial.postEventUploads,
   )
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
-  const [billingCountry, setBillingCountry] = useState<string | null>(
-    initial.billingCountry ?? null,
-  )
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
   // apart between the calendar and the time pill. Null means "not chosen yet",
@@ -239,10 +244,10 @@ function OnboardingFlow({
       guestsCanView,
       postEventUploads,
       legalAccepted,
-      billingCountry,
+      paidConsentVersion: 1,
       step,
       creationKey: initialCreationKey,
-      pendingCreate: false,
+      pendingCreate: saveRequested,
       createdAt: initial.createdAt,
       updatedAt: initial.updatedAt,
     }),
@@ -257,9 +262,9 @@ function OnboardingFlow({
       guestsCanView,
       postEventUploads,
       legalAccepted,
-      billingCountry,
       step,
       initialCreationKey,
+      saveRequested,
       initial.createdAt,
       initial.updatedAt,
     ],
@@ -308,7 +313,6 @@ function OnboardingFlow({
         guestsCanView,
         postEventUploads,
         legalAccepted,
-        billingCountry,
         creationKey: initialCreationKey,
       })
 
@@ -345,6 +349,11 @@ function OnboardingFlow({
         // Remembered across the round trip: the mail client is a different app,
         // and what comes back is a fresh page load with nothing but this.
         saveDraft({ ...draft, pendingCreate: true }, new Date())
+        track('onboarding_save_viewed', {
+          creation_key: initialCreationKey,
+          plan,
+        })
+        setSaveRequested(true)
         setAuthOpen(true)
         return
       }
@@ -427,6 +436,7 @@ function OnboardingFlow({
             })
           : guestsScreen({
               locale,
+              signedIn,
               plan,
               setPlan: (value) => {
                 setPlan(value)
@@ -439,8 +449,7 @@ function OnboardingFlow({
                   plan: value,
                   payments_enabled: paymentsAvailable,
                 })
-                // The paid wording also contains the early-performance
-                // request, so changing plan requires a fresh, explicit choice.
+                // Changing the offer requires a fresh acceptance.
                 setLegalAccepted(false)
               },
               shots,
@@ -452,43 +461,43 @@ function OnboardingFlow({
               legalAccepted,
               setLegalAccepted,
               paymentsEnabled: paymentsAvailable,
-              billingCountry,
-              setBillingCountry,
               pending,
             })
 
-  return (
-    <>
-      <OnboardingShell
-        {...screen}
+  if (authOpen) {
+    return (
+      <SaveEventScreen
         locale={locale}
-        step={step}
-        stepCount={STEP_COUNT}
-        backHref={step === 0 ? '/host' : undefined}
-        onBack={step === 0 ? undefined : () => setStep((s) => s - 1)}
-        onNext={
-          step === LAST_STEP
-            ? () => {
-                track('onboarding_step_completed', {
-                  creation_key: initialCreationKey,
-                  step: STEP_NAMES[LAST_STEP],
-                  index: LAST_STEP,
-                })
-                create()
-              }
-            : advance
-        }
-        error={error}
-      >
-        {content}
-      </OnboardingShell>
-
-      <AuthDialog
-        locale={locale}
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
+        creationKey={initialCreationKey}
+        onBack={() => setAuthOpen(false)}
         returnTo="/auth/event-complete"
       />
-    </>
+    )
+  }
+
+  return (
+    <OnboardingShell
+      {...screen}
+      locale={locale}
+      step={step}
+      stepCount={STEP_COUNT}
+      backHref={step === 0 ? '/host' : undefined}
+      onBack={step === 0 ? undefined : () => setStep((s) => s - 1)}
+      onNext={
+        step === LAST_STEP
+          ? () => {
+              track('onboarding_step_completed', {
+                creation_key: initialCreationKey,
+                step: STEP_NAMES[LAST_STEP],
+                index: LAST_STEP,
+              })
+              create()
+            }
+          : advance
+      }
+      error={error}
+    >
+      {content}
+    </OnboardingShell>
   )
 }

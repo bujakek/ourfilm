@@ -7,7 +7,7 @@ export type SendLinkResult =
 
 /**
  * Sends the magic link, from the browser, for both places that ask for an
- * account: `/host/login` and the create flow's auth sheet.
+ * account: `/host/login` and the create flow's save screen.
  *
  * One function because the two callers must not drift: the callback URL is
  * what carries the locale into the Send Email Hook (`lang`), and

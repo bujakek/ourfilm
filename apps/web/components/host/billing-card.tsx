@@ -16,7 +16,10 @@ import { CreditCard, Loader2, Users } from 'lucide-react'
 import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { BillingCountryField } from '@/components/host/billing-country-field'
-import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
+import {
+  LegalDetails,
+  PaidTermsAcceptance,
+} from '@/components/host/paid-terms-acceptance'
 import { useSettlePolling } from '@/components/host/use-settle-polling'
 
 const INITIAL: CheckoutState = { error: null }
@@ -38,9 +41,10 @@ export type BillingCardProps = {
   readiness: CheckoutReadiness
   /** The country this host confirmed on an earlier attempt, if any. */
   savedBillingCountry: string | null
-  /** A location-based hint, listed first and never preselected. */
+  /** A suggested default on the checkout screen; always editable. */
   suggestedBillingCountry: BillingCountry | null
   checkout: 'success' | 'cancelled' | null
+  presentation?: 'settings' | 'checkout'
 }
 
 /**
@@ -64,16 +68,20 @@ export function BillingCard({
   savedBillingCountry,
   suggestedBillingCountry,
   checkout,
+  presentation = 'settings',
 }: BillingCardProps) {
   const en = locale === 'en'
+  const standalone = presentation === 'checkout'
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
   const stripeReady = readiness.domestic || readiness.international
   // Controlled, so the price on the button follows the choice before
   // anything is submitted. Prefilled from a country the host confirmed
   // before; otherwise the Hungarian page starts on Hungary, which the host
-  // can see and change before paying. The IP suggestion never preselects.
+  // can see and change before paying. On checkout, geolocation may suggest a
+  // default too; only the submitted field determines the actual sale.
   const [country, setCountry] = useState<BillingCountry | null>(
     parseBillingCountry(savedBillingCountry) ??
+      (standalone ? suggestedBillingCountry : null) ??
       (en ? null : DOMESTIC_BILLING_COUNTRY),
   )
 
@@ -111,46 +119,52 @@ export function BillingCard({
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
-      <div className="flex items-baseline justify-between gap-4">
-        <p className="font-medium">{en ? 'Free event' : 'Ingyenes esemény'}</p>
-        <p
-          className={cn(
-            'text-sm tabular-nums',
-            full ? 'text-destructive' : 'text-muted-foreground',
-          )}
-        >
-          {participantCount} / {participantLimit} {en ? 'guests' : 'vendég'}
-        </p>
-      </div>
+      {!standalone ? (
+        <>
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="font-medium">
+              {en ? 'Free event' : 'Ingyenes esemény'}
+            </p>
+            <p
+              className={cn(
+                'text-sm tabular-nums',
+                full ? 'text-destructive' : 'text-muted-foreground',
+              )}
+            >
+              {participantCount} / {participantLimit} {en ? 'guests' : 'vendég'}
+            </p>
+          </div>
 
-      <div
-        className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
-        role="progressbar"
-        aria-valuenow={used}
-        aria-valuemin={0}
-        aria-valuemax={participantLimit}
-        aria-label={en ? 'Guest allowance used' : 'Csatlakozott vendégek'}
-      >
-        <div
-          className={cn(
-            'h-full rounded-full transition-[width]',
-            full ? 'bg-destructive' : 'bg-accent',
-          )}
-          style={{
-            width: `${Math.min((used / participantLimit) * 100, 100)}%`,
-          }}
-        />
-      </div>
+          <div
+            className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-valuenow={used}
+            aria-valuemin={0}
+            aria-valuemax={participantLimit}
+            aria-label={en ? 'Guest allowance used' : 'Csatlakozott vendégek'}
+          >
+            <div
+              className={cn(
+                'h-full rounded-full transition-[width]',
+                full ? 'bg-destructive' : 'bg-accent',
+              )}
+              style={{
+                width: `${Math.min((used / participantLimit) * 100, 100)}%`,
+              }}
+            />
+          </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-        {full
-          ? en
-            ? 'The allowance is full. Existing guests can still take photos.'
-            : 'Betelt a vendégkeret. Új vendég egyelőre nem tud csatlakozni, aki pedig már csatlakozott, továbbra is fotózhat.'
-          : en
-            ? `${left} more guests can join before you need to unlock the event.`
-            : `Még ${left} vendég csatlakozhat. Ezután csak akkor csatlakozhat új vendég, ha megszünteted a vendégkorlátot.`}
-      </p>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            {full
+              ? en
+                ? 'The allowance is full. Existing guests can still take photos.'
+                : 'Betelt a vendégkeret. Új vendég egyelőre nem tud csatlakozni, aki pedig már csatlakozott, továbbra is fotózhat.'
+              : en
+                ? `${left} more guests can join before you need to unlock the event.`
+                : `Még ${left} vendég csatlakozhat az ingyenes csomagban.`}
+          </p>
+        </>
+      ) : null}
 
       {settling ? (
         <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -170,18 +184,51 @@ export function BillingCard({
       ) : null}
 
       {stripeReady ? (
-        <form action={submit} className="mt-4">
+        <form action={submit} className={standalone ? '' : 'mt-4'}>
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="locale" value={locale} />
+          <input
+            type="hidden"
+            name="source"
+            value={standalone ? 'onboarding' : 'settings'}
+          />
+          <div
+            className={cn('mb-5', !standalone && 'border-t border-border pt-5')}
+          >
+            <h3 className="text-lg leading-snug font-semibold text-balance">
+              {en
+                ? 'Activate your unlimited OurFilm event'
+                : 'Aktiváld a korlátlan OurFilm eseményt'}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+              {en
+                ? 'Everyone can join, and you can collect all your guest photos in one place.'
+                : 'Minden vendég csatlakozhat, és egy helyen gyűjthetitek össze az összes fotót.'}
+            </p>
+          </div>
           <BillingCountryField
             locale={locale}
             name="billing_country"
             value={country}
             onChange={setCountry}
             suggested={suggestedBillingCountry}
+            compact={standalone}
             className="mb-4"
           />
-          <label className="mb-4 flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
+          {country ? (
+            <p
+              aria-live="polite"
+              className="mb-5 flex flex-wrap items-baseline gap-x-2"
+            >
+              <span className="text-2xl font-semibold whitespace-nowrap tabular-nums">
+                {eventPriceLabelFor(country)}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {en ? 'one-time payment' : 'egyszeri díj'}
+              </span>
+            </p>
+          ) : null}
+          <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
             <input
               type="checkbox"
               name="legal_acceptance"
@@ -190,13 +237,16 @@ export function BillingCard({
             />
             <PaidTermsAcceptance locale={locale} />
           </label>
+          <div className="mt-2 mb-2 ml-7">
+            <LegalDetails locale={locale} />
+          </div>
           <Button
             type="submit"
             // A country the deployment cannot sell to is refused by the
             // action with a sentence, which is the explanation the host needs.
             disabled={pending || !country}
             aria-busy={pending}
-            className="w-full"
+            className="min-h-11 w-full whitespace-normal"
           >
             {pending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -211,14 +261,18 @@ export function BillingCard({
               ? en
                 ? 'Redirecting…'
                 : 'Átirányítás…'
-              : en
-                ? `Unlock full event${country ? ` – ${eventPriceLabelFor(country)}` : ''}`
-                : `Vendégkorlát megszüntetése${country ? ` · ${eventPriceLabelFor(country)}` : ''}`}
+              : standalone
+                ? en
+                  ? 'Continue to payment'
+                  : 'Tovább a fizetéshez'
+                : en
+                  ? 'Activate unlimited event'
+                  : 'Korlátlan esemény aktiválása'}
           </Button>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {en
-              ? 'Unlimited guests with one payment.'
-              : 'Korlátlan számú vendég, egyszeri fizetéssel.'}
+              ? 'No subscription. No app for guests.'
+              : 'Nincs előfizetés. A vendégeknek nem kell app.'}
           </p>
         </form>
       ) : (

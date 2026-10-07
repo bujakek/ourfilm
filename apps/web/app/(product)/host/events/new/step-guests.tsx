@@ -3,18 +3,19 @@
 import { ChevronDown } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 
-import { AccountNotice } from '@/components/host/onboarding/account-notice'
-import { BillingCountryField } from '@/components/host/billing-country-field'
-import { PaidTermsAcceptance } from '@/components/host/paid-terms-acceptance'
+import {
+  LegalDetails,
+  PaidTermsAcceptance,
+} from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import { ShotsSelector } from '@/components/host/shots-selector'
 import { PostEventUploadsField } from '@/components/host/post-event-uploads-field'
 import { SwitchTrack } from '@/components/ui/switch'
 import type { ShotOption } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
-import { type BillingCountry, parseBillingCountry } from '@/lib/billing-country'
-import { eventPriceLabelFor } from '@/lib/pricing'
+import { eventPriceLabel } from '@/lib/pricing'
 import { localePath, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
@@ -35,10 +36,9 @@ export function guestsScreen({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
-  billingCountry,
-  setBillingCountry,
   pending,
   locale,
+  signedIn,
 }: {
   plan: EventPlan
   setPlan: (value: EventPlan) => void
@@ -54,18 +54,11 @@ export function guestsScreen({
    *  paid tier is not offered — a price on a button that cannot charge is a
    *  worse answer than not showing the button. */
   paymentsEnabled: boolean
-  /** Asked only on the paid tile, on this same screen — no extra step. */
-  billingCountry: string | null
-  setBillingCountry: (value: BillingCountry | null) => void
   pending: boolean
   locale: Locale
+  signedIn: boolean | null
 }): StepScreen {
   const en = locale === 'en'
-  const country = parseBillingCountry(billingCountry)
-  // The paid path cannot continue to Stripe without a country. One this
-  // deployment cannot sell to still creates the event and lands on the
-  // billing card, which says why. The free path never asks.
-  const countryMissing = plan === 'full' && !country
 
   return {
     compact: true,
@@ -74,16 +67,19 @@ export function guestsScreen({
       ? 'How many guests are you expecting?'
       : 'Hány vendégre számítasz?',
     cta:
-      plan === 'full'
+      signedIn !== true
         ? en
-          ? 'Continue to payment'
-          : 'Tovább a fizetéshez'
-        : en
-          ? 'Create event'
-          : 'Létrehozás',
-    ctaDisabled: !legalAccepted || countryMissing,
+          ? 'Continue to save'
+          : 'Tovább a mentéshez'
+        : plan === 'full'
+          ? en
+            ? 'Continue to save'
+            : 'Tovább a mentéshez'
+          : en
+            ? 'Create event'
+            : 'Létrehozás',
+    ctaDisabled: !legalAccepted,
     ctaPending: pending,
-    note: <AccountNotice locale={locale} />,
     content: (
       <GuestsFields
         plan={plan}
@@ -97,8 +93,6 @@ export function guestsScreen({
         legalAccepted={legalAccepted}
         setLegalAccepted={setLegalAccepted}
         paymentsEnabled={paymentsEnabled}
-        billingCountry={country}
-        setBillingCountry={setBillingCountry}
         locale={locale}
       />
     ),
@@ -117,8 +111,6 @@ function GuestsFields({
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
-  billingCountry,
-  setBillingCountry,
   locale,
 }: {
   plan: EventPlan
@@ -132,8 +124,6 @@ function GuestsFields({
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   paymentsEnabled: boolean
-  billingCountry: BillingCountry | null
-  setBillingCountry: (value: BillingCountry | null) => void
   locale: Locale
 }) {
   const reduceMotion = useReducedMotion()
@@ -145,9 +135,7 @@ function GuestsFields({
         <legend className="sr-only">
           {en ? 'How many guests can join' : 'Hány vendég csatlakozhat'}
         </legend>
-        {/* The number first. A host choosing between tiers is comparing two
-              quantities, and "Legfeljebb 5" set in body copy buried the only
-              part of the tile that answers the question. */}
+        {/* The exact checkout price follows the country confirmed after saving. */}
         <div className="grid grid-cols-2 gap-2.5">
           <PlanTile
             value="free"
@@ -161,38 +149,33 @@ function GuestsFields({
             value="full"
             plan={plan}
             setPlan={setPlan}
-            figure="∞"
-            label={`${en ? 'UNLIMITED' : 'KORLÁTLAN'} · ${
-              paymentsEnabled
-                ? // The price follows the billing country, so it appears once
-                  // one is chosen. Non-breaking spaces inside it: Martian Mono
-                  // is wide enough that this label wraps in a 134px card, and
-                  // the one place it must never wrap is between the thousands
-                  // and the hundreds — "12 / 900 FT" reads as two numbers.
-                  billingCountry
-                  ? eventPriceLabelFor(billingCountry)
-                      .toUpperCase()
-                      .replace(/ /g, '\u00a0')
-                  : en
-                    ? 'PAID'
-                    : 'FIZETŐS'
-                : en
-                  ? 'COMING\u00a0SOON'
-                  : 'HAMAROSAN'
-            }`}
+            figure={en ? 'Unlimited event' : 'Korlátlan esemény'}
+            label={en ? 'Unlimited guests' : 'Korlátlan vendég'}
+            offer={
+              paymentsEnabled ? (
+                <>
+                  <span className="block text-[15px] font-semibold tabular-nums">
+                    {eventPriceLabel(locale).replace(/ /g, '\u00a0')}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {en ? 'one-time payment' : 'egyszeri díj'}
+                  </span>
+                  <span className="mt-2 block text-[11px] leading-relaxed text-muted-foreground">
+                    {en
+                      ? 'No app • no subscription'
+                      : 'Nincs app • nincs előfizetés'}
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs">
+                  {en ? 'Coming soon' : 'Hamarosan'}
+                </span>
+              )
+            }
             disabled={!paymentsEnabled}
             reduceMotion={reduceMotion}
           />
         </div>
-        {plan === 'full' && paymentsEnabled ? (
-          <BillingCountryField
-            locale={locale}
-            value={billingCountry}
-            onChange={setBillingCountry}
-            suggested={null}
-            className="mt-3.5"
-          />
-        ) : null}
       </fieldset>
 
       <details className="group border-t border-border">
@@ -278,24 +261,17 @@ function GuestsFields({
         </div>
       </details>
 
-      <label className="flex min-h-11 cursor-pointer items-start gap-3 border-t border-border pt-4.5 text-[11.5px] leading-[1.6] text-muted-foreground">
-        <input
-          type="checkbox"
-          checked={legalAccepted}
-          onChange={(event) => setLegalAccepted(event.target.checked)}
-          className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
-        />
-        <span>
+      <div className="border-t border-border pt-4.5">
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[11.5px] leading-[1.6] text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={legalAccepted}
+            onChange={(event) => setLegalAccepted(event.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+          />
           {plan === 'full' ? (
-            // The paid declaration, shared with the billing card so the two
-            // cannot drift: it is the record that the ÁSZF was accepted and
-            // that performance inside the 14-day period was expressly asked
-            // for, which is the whole point of asking.
             <PaidTermsAcceptance locale={locale} />
           ) : (
-            // One element, not a fragment of bare text nodes: swapping
-            // plans then replaces a single node React owns outright, rather
-            // than removing text nodes something else may have rewritten.
             <span>
               {en ? 'I accept the ' : 'Elfogadom az '}
               <Link
@@ -305,21 +281,14 @@ function GuestsFields({
               >
                 {en ? 'Terms' : 'ÁSZF-et'}
               </Link>
-              {en ? '. The ' : '. Az '}
-              <Link
-                href={localePath(locale, '/adatvedelem')}
-                target="_blank"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                {en ? 'Privacy Notice' : 'adatkezelési tájékoztató'}
-              </Link>{' '}
-              {en
-                ? 'explains how personal data is handled.'
-                : 'ismerteti az adatok kezelését.'}
+              .
             </span>
           )}
-        </span>
-      </label>
+        </label>
+        <div className="mt-2 ml-7">
+          <LegalDetails key={plan} locale={locale} paid={plan === 'full'} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -333,7 +302,7 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 /**
- * One tier, led by its number.
+ * One tier, with a compact offer for the paid option.
  *
  * Selection is a 1.5px lilac border and a faint lilac wash rather than a tick:
  * the border is the thing the eye already uses to tell the two cards apart, so
@@ -346,6 +315,7 @@ function PlanTile({
   setPlan,
   figure,
   label,
+  offer,
   disabled = false,
   reduceMotion,
 }: {
@@ -354,13 +324,14 @@ function PlanTile({
   setPlan: (value: EventPlan) => void
   figure: string
   label: string
+  offer?: ReactNode
   disabled?: boolean
   reduceMotion: boolean | null
 }) {
   const active = plan === value
   return (
     <label
-      className={`relative flex flex-col justify-between rounded-lg px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+      className={`relative flex flex-col rounded-lg px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
         active
           ? 'border-[1.5px] border-transparent text-accent'
           : 'border border-white/13'
@@ -383,16 +354,19 @@ function PlanTile({
         onChange={() => setPlan(value)}
         className="sr-only"
       />
-      <span className="relative z-10 font-mono text-[26px] leading-none font-medium tracking-[-0.04em]">
+      <span
+        className={`relative z-10 ${offer ? 'text-[15px] leading-snug font-semibold' : 'font-mono text-[26px] leading-none font-medium tracking-[-0.04em]'}`}
+      >
         {figure}
       </span>
       <span
-        className={`relative z-10 mt-2 font-mono text-[9px] font-medium tracking-[0.14em] ${
+        className={`relative z-10 mt-2 ${offer ? 'text-xs leading-relaxed' : 'font-mono text-[9px] font-medium tracking-[0.14em]'} ${
           active ? 'text-accent' : 'text-foreground/55'
         }`}
       >
         {label}
       </span>
+      {offer ? <span className="relative z-10 mt-3">{offer}</span> : null}
     </label>
   )
 }

@@ -1,7 +1,5 @@
 'use server'
 
-import { getEventQuota } from '@/lib/billing'
-import { checkBillingCountry, eventPricingFor } from '@/lib/billing-country'
 import {
   isRevealChoice,
   isShotOption,
@@ -13,9 +11,6 @@ import { isEventPlan } from '@/lib/onboarding'
 import { type Locale, resolveLocale } from '@/lib/i18n'
 import { generateEventSlug } from '@/lib/slug'
 import { reportServerEvent, reportServerIssue } from '@/lib/telemetry-server'
-import { createEventCheckoutUrl } from '@/lib/stripe/checkout'
-import { checkoutBlockedReason } from '@/lib/checkout-readiness'
-import { settlementFor } from '@/lib/settlement'
 import { coverStoragePath, PHOTO_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 
@@ -33,10 +28,6 @@ export type EventDraftInput = {
   guestsCanView: boolean
   postEventUploads?: boolean
   legalAccepted: boolean
-  /** The billing country chosen on the paid tile. Only read when `plan` is
-   *  `full`, validated like everything else here, and the only thing that
-   *  decides how the event is sold — never `locale`. */
-  billingCountry?: string | null
   /** Per-draft uuid. Makes a repeat attempt land on the event the first one
    *  created instead of a second one. Optional: a flow with no draft behind it
    *  has nothing to be idempotent about. */
@@ -250,7 +241,7 @@ export async function createEventFromDraft(
       await reportCreated(existing.id, true)
       return {
         ok: true,
-        destination: `/host/events/${existing.slug}?lang=${locale}`,
+        destination: savedEventDestination(existing.slug, locale, planRaw),
       }
     }
   }
@@ -308,7 +299,7 @@ export async function createEventFromDraft(
           await reportCreated(raced.id, true)
           return {
             ok: true,
-            destination: `/host/events/${raced.slug}?lang=${locale}`,
+            destination: savedEventDestination(raced.slug, locale, planRaw),
           }
         }
         return { ok: false, error: copy.retry }
@@ -337,85 +328,13 @@ export async function createEventFromDraft(
 
   await reportCreated(eventId, false)
 
-  // Where the host lands, which is the only thing the plan choice decides.
-  //
-  // `full` is not a column and nothing about the row above is different for
-  // it: the free tier is a participant cap enforced inside `join_event`, and
-  // only a paid `purchases` row lifts it. So the paid choice means "and now go
-  // pay" — a draft that says `full` buys nothing on its own, and an abandoned
-  // checkout leaves an ordinary free event.
-  let destination = `/host/events/${slug}?lang=${locale}`
+  // Creation never starts a payment. The saved event has its own country and
+  // checkout confirmation screen, including when this request is retried.
+  return { ok: true, destination: savedEventDestination(slug, locale, planRaw) }
+}
 
-  if (planRaw === 'full') {
-    // Settings, not the event page, whenever the payment cannot be started
-    // here: that is where the billing card is, and it explains the situation —
-    // payments not switched on, or try again — better than a silent landing on
-    // the QR code would.
-    destination = `/host/events/${slug}/settings?lang=${locale}`
-    // The draft's country is client-side JSON like the rest of it. A missing
-    // or unsupported one does not stop the event being created — the host
-    // lands on the billing card, which asks again. A Hungarian address is a
-    // direct sale that OurFilm has to invoice, so it also needs Billingo; any
-    // other supported country settles through Link and does not.
-    const country = checkBillingCountry(input.billingCountry)
-    const notReady = country.ok
-      ? checkoutBlockedReason(country.country)
-      : country.reason
-    if (notReady || !country.ok) {
-      // The host picked the paid tier on a deployment that cannot complete it.
-      // The tile reads "Hamarosan" there, so this should be rare — and if it
-      // is not rare in production, that is the incident.
-      await reportServerEvent('checkout_blocked', {
-        event_id: eventId,
-        source: 'onboarding',
-        reason: notReady ?? 'billing_country_missing',
-      })
-    } else {
-      try {
-        // An admin's own events are already unlimited, so there is nothing to
-        // sell them. Same predicate the billing card reads.
-        const quota = await getEventQuota(eventId)
-        if (quota.unlimited) {
-          destination = `/host/events/${slug}?lang=${locale}`
-          await reportServerEvent('checkout_blocked', {
-            event_id: eventId,
-            source: 'onboarding',
-            reason: 'already_unlimited',
-          })
-        } else {
-          destination = await createEventCheckoutUrl({
-            eventId,
-            slug,
-            ownerId: user.id,
-            ownerEmail: user.email ?? null,
-            locale,
-            billingCountry: country.country,
-            termsAcceptedAt: new Date().toISOString(),
-          })
-          await reportServerEvent('checkout_started', {
-            event_id: eventId,
-            source: 'onboarding',
-            currency: eventPricingFor(country.country).currency,
-            locale,
-            settlement: settlementFor(country.country),
-          })
-        }
-      } catch (e) {
-        // The event exists and works. Failing to start a checkout is not a
-        // reason to lose it, so this is logged and the host lands on the card
-        // that can retry.
-        console.error('Could not start checkout for a new event', e)
-        await reportServerIssue(e, {
-          operation: 'checkout_start',
-          eventId,
-          route: '/host/events/new',
-          routeType: 'action',
-        })
-      }
-    }
-  }
-
-  return { ok: true, destination }
+function savedEventDestination(slug: string, locale: Locale, plan: string) {
+  return `/host/events/${slug}${plan === 'full' ? '/checkout' : ''}?lang=${locale}`
 }
 
 /**

@@ -1,10 +1,11 @@
 'use client'
 
-import { useId } from 'react'
+import { useId, useState } from 'react'
 
 import {
   type BillingCountry,
   billingCountryOptions,
+  billingCountryName,
   parseBillingCountry,
 } from '@/lib/billing-country'
 import type { Locale } from '@/lib/i18n'
@@ -17,11 +18,9 @@ import { cn } from '@/lib/utils'
  * A native `<select>`: on a phone it opens the OS picker, which is the only
  * way to choose from ~90 countries at 390px without a search box.
  *
- * Starts on whatever the caller passes (a confirmed country, or Hungary on the
- * Hungarian settings page) and otherwise empty. A location-based
- * guess is floated to the top of the list but never selected for them — an IP
- * says where a phone is, not where its owner is billed, and a preselected
- * guess is a guess the host confirms without reading.
+ * Starts on the caller's saved or suggested country. Compact checkout shows
+ * the value beside a Change button; continuing confirms the displayed value.
+ * The server validates that submitted value independently of any suggestion.
  *
  * No explanation underneath: the price follows the choice on the button, and
  * a country this deployment cannot sell to is explained by the action's
@@ -35,6 +34,7 @@ export function BillingCountryField({
   suggested,
   name,
   className,
+  compact = false,
 }: {
   locale: Locale
   value: string | null
@@ -43,13 +43,41 @@ export function BillingCountryField({
   /** Set when the field posts in a `<form>`. */
   name?: string
   className?: string
+  compact?: boolean
 }) {
   const id = useId()
+  const [editing, setEditing] = useState(false)
   const en = locale === 'en'
   const country = parseBillingCountry(value)
   const options = billingCountryOptions(locale)
   const top = suggested ? options.filter((o) => o.code === suggested) : []
   const rest = suggested ? options.filter((o) => o.code !== suggested) : options
+
+  if (compact && country && !editing) {
+    return (
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-x-3 text-sm',
+          className,
+        )}
+      >
+        <input type="hidden" name={name} value={country} />
+        <p>
+          <span className="text-muted-foreground">
+            {en ? 'Billing country: ' : 'Számlázási ország: '}
+          </span>
+          {billingCountryName(country, locale)}
+        </p>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="min-h-11 text-accent underline underline-offset-4"
+        >
+          {en ? 'Change' : 'Módosítás'}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className={className}>
@@ -64,7 +92,9 @@ export function BillingCountryField({
         name={name}
         required
         value={country ?? ''}
-        onChange={(event) => onChange(parseBillingCountry(event.target.value))}
+        onChange={(event) => {
+          onChange(parseBillingCountry(event.target.value))
+        }}
         className={cn(
           'mt-1.5 h-11 w-full rounded-lg border border-white/13 bg-transparent px-3 text-[14px] text-foreground',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',

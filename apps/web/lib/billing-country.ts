@@ -171,9 +171,8 @@ export function billingCountryOptions(
 /**
  * A country to put at the top of the list, from a request header.
  *
- * Only ever a suggestion. The select still starts empty unless the host has
- * confirmed a country before; an IP address says where a phone is, not where
- * its owner is billed.
+ * Only ever an editable suggestion, never a settlement decision. Checkout
+ * submits the displayed country explicitly; the server validates it again.
  */
 export function suggestedBillingCountry(
   ipCountry: string | null | undefined,

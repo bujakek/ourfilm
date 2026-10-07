@@ -25,12 +25,14 @@ export function GoogleSignIn({
   next,
   disabled,
   onPendingChange,
+  creationKey,
 }: {
   locale: Locale
   surface: 'login' | 'onboarding'
   next: string
   disabled: boolean
   onPendingChange: (pending: boolean) => void
+  creationKey?: string
 }) {
   const en = locale === 'en'
   const [pending, setPending] = useState(false)
@@ -58,7 +60,12 @@ export function GoogleSignIn({
     // Urgent: the next thing this tab does is leave for accounts.google.com,
     // and a batched event would go with it. The server's `sign_in_settled` is
     // the other end — a start with no settle is a host who turned back.
-    track('sign_in_started', { method: 'google', surface }, { urgent: true })
+    const context = {
+      method: 'google' as const,
+      surface,
+      ...(creationKey ? { creation_key: creationKey } : {}),
+    }
+    track('sign_in_started', context, { urgent: true })
     const result = await signInWithGoogle({ next, locale })
     if (result.status === 'error') {
       started.current = false
@@ -69,7 +76,7 @@ export function GoogleSignIn({
       // host is still here reading this. Distinguishes "Google refused us"
       // from "the host changed their mind at Google", which the gap alone
       // cannot.
-      track('sign_in_blocked', { method: 'google', surface })
+      track('sign_in_blocked', context)
     }
   }
 

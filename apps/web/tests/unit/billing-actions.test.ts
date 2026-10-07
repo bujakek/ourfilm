@@ -108,6 +108,35 @@ describe('startEventCheckout', () => {
     )
   })
 
+  it('records the onboarding source after the saved event confirms its country', async () => {
+    await expect(
+      startEventCheckout(
+        { error: null },
+        form({
+          slug: 'k3f9x7ab2m',
+          locale: 'hu',
+          legal_acceptance: 'on',
+          billing_country: 'DE',
+          source: 'onboarding',
+        }),
+      ),
+    ).rejects.toThrow('NEXT_REDIRECT')
+    expect(mocks.createEventCheckoutUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        billingCountry: 'DE',
+        locale: 'en',
+      }),
+    )
+    expect(mocks.reportServerEvent).toHaveBeenCalledWith(
+      'checkout_started',
+      expect.objectContaining({
+        source: 'onboarding',
+        currency: 'usd',
+        settlement: 'managed',
+      }),
+    )
+  })
+
   it('requires a country before anything reaches Stripe', async () => {
     const state = await startEventCheckout(
       { error: null },

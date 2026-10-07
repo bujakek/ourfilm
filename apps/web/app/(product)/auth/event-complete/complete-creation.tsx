@@ -87,7 +87,6 @@ async function run(): Promise<Outcome> {
       guestsCanView: draft.guestsCanView,
       postEventUploads: draft.postEventUploads,
       legalAccepted: draft.legalAccepted,
-      billingCountry: draft.billingCountry ?? null,
       creationKey: draft.creationKey,
     })
   } catch {
@@ -123,7 +122,7 @@ async function run(): Promise<Outcome> {
     clearDraft()
     // A full navigation rather than a client push: the session is new, and
     // every server component downstream should be rendered against it. It also
-    // covers the Stripe case, which is a different origin entirely.
+    // reaches the saved event or its payment confirmation screen.
     window.location.replace(result.destination)
     return { kind: 'working' }
   }
