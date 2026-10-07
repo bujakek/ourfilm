@@ -136,18 +136,26 @@ export const getEventPurchase = cache(
 /**
  * The billing country this host confirmed last time, to prefill the select.
  *
- * Read from the host's own purchase attempts (RLS scopes the query to them),
- * newest first — which is also what brings a country back after a cancelled
- * Checkout. A prefill only: the select stays visible and editable, and the
+ * Read from the host's own purchase attempts, newest first — which is also
+ * what brings a country back after a cancelled Checkout. The query filters on
+ * `owner_id` itself rather than leaving it to RLS: an admin's policy reads
+ * every purchase, so without it the operator's select started on whichever
+ * country the last customer to open a Checkout had chosen. A prefill only: the select stays visible and editable, and the
  * country that counts is the one submitted with the next checkout. Stored
  * sales are never re-read through here, so editing it reclassifies nothing.
  */
 export const getSavedBillingCountry = cache(
   async (): Promise<BillingCountry | null> => {
     const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return null
+
     const { data, error } = await supabase
       .from('purchases')
       .select('selected_billing_country')
+      .eq('owner_id', user.id)
       .not('selected_billing_country', 'is', null)
       .order('created_at', { ascending: false })
       .limit(1)
