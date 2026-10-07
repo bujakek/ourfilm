@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown } from 'lucide-react'
 import { useId, useState } from 'react'
 
 import { localePath, type Locale } from '@/lib/i18n'
+
+const detailsButtonClassName =
+  'min-h-11 underline underline-offset-2 hover:text-foreground'
 
 /**
  * Shared early-performance declaration for onboarding and billing.
@@ -43,7 +45,7 @@ export function LegalDetails({
 
   if (paid) {
     return (
-      <div className="text-[11px] leading-relaxed text-muted-foreground">
+      <div className="text-xs leading-relaxed text-muted-foreground">
         <div className="flex flex-wrap items-center gap-x-1.5">
           <Link
             href={localePath(locale, '/aszf')}
@@ -59,7 +61,7 @@ export function LegalDetails({
             aria-expanded={open}
             aria-controls={detailsId}
             onClick={() => setOpen(!open)}
-            className="min-h-11 underline underline-offset-2 hover:text-foreground"
+            className={detailsButtonClassName}
           >
             {en ? 'Details' : 'Részletek'}
           </button>
@@ -83,15 +85,17 @@ export function LegalDetails({
   }
 
   return (
-    <details className="group text-xs leading-relaxed text-muted-foreground">
-      <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-1.5 hover:text-foreground [&::-webkit-details-marker]:hidden">
+    <div className="text-xs leading-relaxed text-muted-foreground">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={detailsId}
+        onClick={() => setOpen(!open)}
+        className={detailsButtonClassName}
+      >
         {en ? 'Details' : 'Részletek'}
-        <ChevronDown
-          className="size-3.5 transition-transform group-open:rotate-180"
-          aria-hidden="true"
-        />
-      </summary>
-      <div className="space-y-2 pb-3">
+      </button>
+      <div id={detailsId} hidden={!open} className="pb-3">
         <Link
           href={localePath(locale, '/adatvedelem')}
           target="_blank"
@@ -101,6 +105,6 @@ export function LegalDetails({
           {en ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
         </Link>
       </div>
-    </details>
+    </div>
   )
 }

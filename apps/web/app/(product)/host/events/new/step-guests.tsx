@@ -141,8 +141,9 @@ function GuestsFields({
             value="free"
             plan={plan}
             setPlan={setPlan}
-            figure={String(FREE_PARTICIPANT_LIMIT)}
-            label={en ? 'GUESTS · FREE' : 'VENDÉGIG · INGYENES'}
+            figure={en ? 'Free event' : 'Ingyenes esemény'}
+            label={`${FREE_PARTICIPANT_LIMIT} ${en ? 'guests' : 'vendég'}`}
+            price={en ? '0 USD' : '0 Ft'}
             reduceMotion={reduceMotion}
           />
           <PlanTile
@@ -151,26 +152,26 @@ function GuestsFields({
             setPlan={setPlan}
             figure={en ? 'Unlimited event' : 'Korlátlan esemény'}
             label={en ? 'Unlimited guests' : 'Korlátlan vendég'}
+            price={
+              paymentsEnabled
+                ? eventPriceLabel(locale).replace(/ /g, '\u00a0')
+                : en
+                  ? 'Coming soon'
+                  : 'Hamarosan'
+            }
             offer={
               paymentsEnabled ? (
                 <>
-                  <span className="block text-[15px] font-semibold tabular-nums">
-                    {eventPriceLabel(locale).replace(/ /g, '\u00a0')}
-                  </span>
                   <span className="block text-xs text-muted-foreground">
                     {en ? 'one-time payment' : 'egyszeri díj'}
                   </span>
-                  <span className="mt-2 block text-[11px] leading-relaxed text-muted-foreground">
+                  <span className="mt-2 block text-xs leading-relaxed text-muted-foreground">
                     {en
                       ? 'No app • no subscription'
                       : 'Nincs app • nincs előfizetés'}
                   </span>
                 </>
-              ) : (
-                <span className="text-xs">
-                  {en ? 'Coming soon' : 'Hamarosan'}
-                </span>
-              )
+              ) : null
             }
             disabled={!paymentsEnabled}
             reduceMotion={reduceMotion}
@@ -262,7 +263,7 @@ function GuestsFields({
       </details>
 
       <div className="border-t border-border pt-4.5">
-        <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[11.5px] leading-[1.6] text-muted-foreground">
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[13px] leading-[1.6] text-foreground/80">
           <input
             type="checkbox"
             checked={legalAccepted}
@@ -285,7 +286,7 @@ function GuestsFields({
             </span>
           )}
         </label>
-        <div className="mt-2 ml-7">
+        <div className="ml-7">
           <LegalDetails key={plan} locale={locale} paid={plan === 'full'} />
         </div>
       </div>
@@ -295,7 +296,7 @@ function GuestsFields({
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <p className="font-mono text-[9.5px] font-medium tracking-[0.2em] text-foreground/38">
+    <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground">
       {children}
     </p>
   )
@@ -315,6 +316,7 @@ function PlanTile({
   setPlan,
   figure,
   label,
+  price,
   offer,
   disabled = false,
   reduceMotion,
@@ -324,6 +326,7 @@ function PlanTile({
   setPlan: (value: EventPlan) => void
   figure: string
   label: string
+  price: string
   offer?: ReactNode
   disabled?: boolean
   reduceMotion: boolean | null
@@ -333,7 +336,7 @@ function PlanTile({
     <label
       className={`relative flex flex-col rounded-lg px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
         active
-          ? 'border-[1.5px] border-transparent text-accent'
+          ? 'border border-transparent text-accent'
           : 'border border-white/13'
       } ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
     >
@@ -354,19 +357,22 @@ function PlanTile({
         onChange={() => setPlan(value)}
         className="sr-only"
       />
-      <span
-        className={`relative z-10 ${offer ? 'text-[15px] leading-snug font-semibold' : 'font-mono text-[26px] leading-none font-medium tracking-[-0.04em]'}`}
-      >
+      <span className="relative z-10 min-h-[2.75em] text-[15px] leading-snug font-semibold">
         {figure}
       </span>
       <span
-        className={`relative z-10 mt-2 ${offer ? 'text-xs leading-relaxed' : 'font-mono text-[9px] font-medium tracking-[0.14em]'} ${
-          active ? 'text-accent' : 'text-foreground/55'
+        className={`relative z-10 mt-2 text-xs leading-relaxed ${
+          active ? 'text-accent' : 'text-muted-foreground'
         }`}
       >
         {label}
       </span>
-      {offer ? <span className="relative z-10 mt-3">{offer}</span> : null}
+      <span
+        className={`relative z-10 mt-3 font-semibold tabular-nums ${disabled ? 'text-sm' : 'text-lg min-[375px]:text-xl'}`}
+      >
+        {price}
+      </span>
+      {offer ? <span className="relative z-10 mt-0.5">{offer}</span> : null}
     </label>
   )
 }
