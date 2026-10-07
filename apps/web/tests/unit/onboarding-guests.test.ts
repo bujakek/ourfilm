@@ -9,6 +9,8 @@ const base = {
   setShots: vi.fn(),
   guestsCanView: true,
   setGuestsCanView: vi.fn(),
+  postEventUploads: false,
+  setPostEventUploads: vi.fn(),
   legalAccepted: true,
   setLegalAccepted: vi.fn(),
   paymentsEnabled: true,
