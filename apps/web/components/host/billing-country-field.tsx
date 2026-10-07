@@ -18,9 +18,11 @@ import { cn } from '@/lib/utils'
  * A native `<select>`: on a phone it opens the OS picker, which is the only
  * way to choose from ~90 countries at 390px without a search box.
  *
- * Starts on the caller's saved or suggested country. Compact checkout shows
- * the value beside a Change button; continuing confirms the displayed value.
- * The server validates that submitted value independently of any suggestion.
+ * Starts on whatever the caller passes — `initialBillingCountry` decides
+ * that — and otherwise empty. The IP-based `suggested` country is floated to
+ * the top of the list but never selected by this field. Compact checkout
+ * shows a chosen value beside a Change button; continuing confirms the
+ * displayed value, and the server validates it again.
  *
  * No explanation underneath: the price follows the choice on the button, and
  * a country this deployment cannot sell to is explained by the action's

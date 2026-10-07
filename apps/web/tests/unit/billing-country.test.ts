@@ -6,6 +6,7 @@ import {
   eventPricingFor,
   MANAGED_PAYMENTS_COUNTRIES,
   parseBillingCountry,
+  initialBillingCountry,
   suggestedBillingCountry,
 } from '@/lib/billing-country'
 import { eventPriceLabelFor } from '@/lib/pricing'
@@ -81,5 +82,26 @@ describe('billing country', () => {
     expect(suggestedBillingCountry('hu')).toBe('HU')
     expect(suggestedBillingCountry('RU')).toBeNull()
     expect(suggestedBillingCountry(null)).toBeNull()
+  })
+
+  it('preselects Hungary only when the language and the IP both say so', () => {
+    const start = (locale: 'hu' | 'en', ipCountry: string | null) =>
+      initialBillingCountry({ saved: null, locale, ipCountry })
+    expect(start('hu', 'HU')).toBe('HU')
+    // Either signal alone is a guess that crosses the settlement boundary.
+    expect(start('hu', 'AT')).toBeNull()
+    expect(start('hu', null)).toBeNull()
+    expect(start('en', 'HU')).toBeNull()
+    // And an IP never preselects any other country.
+    expect(start('en', 'DE')).toBeNull()
+  })
+
+  it('starts on a country the host confirmed before, whatever the signals', () => {
+    expect(
+      initialBillingCountry({ saved: 'DE', locale: 'hu', ipCountry: 'HU' }),
+    ).toBe('DE')
+    expect(
+      initialBillingCountry({ saved: 'XX', locale: 'en', ipCountry: null }),
+    ).toBeNull()
   })
 })

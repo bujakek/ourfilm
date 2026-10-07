@@ -171,11 +171,41 @@ export function billingCountryOptions(
 /**
  * A country to put at the top of the list, from a request header.
  *
- * Only ever an editable suggestion, never a settlement decision. Checkout
- * submits the displayed country explicitly; the server validates it again.
+ * Only a suggestion: it floats to the top of the select and is never chosen
+ * on the host's behalf by itself — an IP says where a phone is, not where its
+ * owner is billed. `initialBillingCountry` is the one place it counts at all.
  */
 export function suggestedBillingCountry(
   ipCountry: string | null | undefined,
 ): BillingCountry | null {
   return parseBillingCountry(ipCountry)
+}
+
+/**
+ * What the country field starts on.
+ *
+ * A country the host confirmed before, if any. Otherwise Hungary, but only
+ * when two independent signals agree: the host reads OurFilm in Hungarian
+ * (their profile language) and the request comes from a Hungarian IP. Either
+ * alone is the wrong guess often enough — a Hungarian on a VPN or abroad, a
+ * visitor to Budapest — and a wrong guess across that border changes who
+ * sells the event and whether OurFilm invoices it. Every other case starts
+ * empty and the host chooses. The submitted field is still what the server
+ * validates; this only decides what is already selected.
+ */
+export function initialBillingCountry({
+  saved,
+  locale,
+  ipCountry,
+}: {
+  saved: string | null | undefined
+  locale: Locale
+  ipCountry: string | null | undefined
+}): BillingCountry | null {
+  const confirmed = parseBillingCountry(saved)
+  if (confirmed) return confirmed
+  return locale === 'hu' &&
+    parseBillingCountry(ipCountry) === DOMESTIC_BILLING_COUNTRY
+    ? DOMESTIC_BILLING_COUNTRY
+    : null
 }

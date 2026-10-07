@@ -8,6 +8,8 @@ import { getEventQuota, getSavedBillingCountry } from '@/lib/billing'
 import { suggestedBillingCountry } from '@/lib/billing-country'
 import { checkoutReadiness } from '@/lib/checkout-readiness'
 import { getOwnedEventBySlug } from '@/lib/events'
+import { getHostLocale } from '@/lib/host-locale'
+import { localeTag } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
@@ -24,7 +26,9 @@ export default async function EventCheckoutPage({
   // The authenticated client's ownership RLS applies before any billing read.
   const event = await getOwnedEventBySlug(slug)
   if (!event) notFound()
-  const locale = event.locale
+  // A host screen, so the host's profile language — the same one Stripe's
+  // page will be in — and never the event's.
+  const locale = await getHostLocale(event.locale)
   const en = locale === 'en'
   const quota = await getEventQuota(event.id)
   if (quota.unlimited) redirect(`/host/events/${slug}?lang=${locale}`)
@@ -34,7 +38,10 @@ export default async function EventCheckoutPage({
   )
 
   return (
-    <main lang={locale} className="mx-auto max-w-lg px-6 py-8 sm:py-12">
+    <main
+      lang={localeTag[locale]}
+      className="mx-auto max-w-lg px-6 py-8 sm:py-12"
+    >
       <BackLink href={`/host/events/${slug}?lang=${locale}`}>
         {event.event_name}
       </BackLink>

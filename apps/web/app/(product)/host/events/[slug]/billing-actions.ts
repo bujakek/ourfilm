@@ -150,10 +150,7 @@ export async function startEventCheckout(
       ownerId: user.id,
       ownerEmail: user.email ?? null,
       // The language of Stripe's page: the host's, from their profile.
-      locale:
-        source === 'onboarding'
-          ? event.locale
-          : await getHostLocale(event.locale),
+      locale: await getHostLocale(event.locale),
       billingCountry: country.country,
       termsAcceptedAt: new Date().toISOString(),
     })
@@ -179,10 +176,7 @@ export async function startEventCheckout(
     event_id: event.id,
     source,
     currency: eventPricingFor(country.country).currency,
-    locale:
-      source === 'onboarding'
-        ? event.locale
-        : await getHostLocale(event.locale),
+    locale: await getHostLocale(event.locale),
     settlement: settlementFor(country.country),
   })
 

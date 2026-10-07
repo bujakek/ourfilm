@@ -1288,6 +1288,14 @@ the server validates it (`checkBillingCountry`) and derives both the Stripe
 Price and the settlement from it. The interface language, `events.locale`, IP
 and anything else the browser sends decide neither.
 
+What the field _starts on_ is a separate, smaller question with one answer,
+`initialBillingCountry` in `apps/web/lib/billing-country.ts`: a country the
+host confirmed before, otherwise Hungary only when the profile language is
+Hungarian **and** the request comes from a Hungarian IP, otherwise empty.
+Either signal alone guesses wrong across the settlement boundary — a
+Hungarian on a VPN, a visitor to Budapest — so neither preselects anything by
+itself, and an IP never preselects another country.
+
 - **Supported markets** are Hungary plus Managed Payments' cross-border
   tax-coverage list (`MANAGED_PAYMENTS_COUNTRIES`), not every country Link can
   take a card from. Another country is refused before Checkout.

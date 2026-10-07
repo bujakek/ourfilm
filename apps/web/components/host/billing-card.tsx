@@ -7,8 +7,7 @@ import {
 import {
   type BillingCountry,
   type CheckoutReadiness,
-  DOMESTIC_BILLING_COUNTRY,
-  parseBillingCountry,
+  initialBillingCountry,
 } from '@/lib/billing-country'
 import { eventPriceLabelFor } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
@@ -75,14 +74,14 @@ export function BillingCard({
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
   const stripeReady = readiness.domestic || readiness.international
   // Controlled, so the price on the button follows the choice before
-  // anything is submitted. Prefilled from a country the host confirmed
-  // before; otherwise the Hungarian page starts on Hungary, which the host
-  // can see and change before paying. On checkout, geolocation may suggest a
-  // default too; only the submitted field determines the actual sale.
-  const [country, setCountry] = useState<BillingCountry | null>(
-    parseBillingCountry(savedBillingCountry) ??
-      (standalone ? suggestedBillingCountry : null) ??
-      (en ? null : DOMESTIC_BILLING_COUNTRY),
+  // anything is submitted. Where it starts is `initialBillingCountry`'s
+  // decision, the same on the checkout screen and in settings.
+  const [country, setCountry] = useState<BillingCountry | null>(() =>
+    initialBillingCountry({
+      saved: savedBillingCountry,
+      locale,
+      ipCountry: suggestedBillingCountry,
+    }),
   )
 
   // Stripe's redirect lands before the webhook does; `useSettlePolling` says
