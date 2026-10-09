@@ -27,6 +27,12 @@
   --color-paper: var(--paper);
   --color-paper-foreground: var(--paper-foreground);
   --color-film: var(--film);
+  --color-landing: var(--landing);
+  --color-landing-sky: var(--landing-sky);
+  --color-landing-link: var(--landing-link);
+  --color-landing-raised: var(--landing-raised);
+  --color-landing-sheet: var(--landing-sheet);
+  --color-landing-ink: var(--landing-ink);
 
   /* Three voices, and the rule for which is which is not a matter of taste:
      Manrope says what the product says, the serif names things, and the mono
@@ -54,6 +60,16 @@
     var(--font-instrument-serif), 'Instrument Serif Fallback', Georgia, serif;
   --font-mono:
     var(--font-martian-mono), 'Martian Mono Fallback', ui-monospace, monospace;
+
+  /* The homepage's own three faces (`components/landing/fonts.ts`). They are
+     loaded by that page alone, so outside it these resolve to the fallbacks
+     — which is why nothing but `components/landing/*` may use them. */
+  --font-landing-display:
+    var(--font-roboto-serif), 'Roboto Serif Fallback', Georgia, serif;
+  --font-landing-sans:
+    var(--font-inter), 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-landing-quote:
+    var(--font-crimson-text), 'Crimson Text Fallback', Georgia, serif;
 
   /* One ascending scale, and it has to stay ascending. The previous block
      overrode `sm`-`2xl` but left `--radius-3xl` at Tailwind's default 1.5rem,
@@ -135,6 +151,19 @@
   --paper: #fbfaf7;
   --paper-foreground: #141312;
   --film: #101012;
+
+  /* The homepage. A lifted near-black rather than `--background`, because the
+     landing's surfaces are white washes over the page (4–10%) and they need a
+     ground that is not quite black to read as layers at all. Sky is the final
+     call to action and the guest-demo link, and nothing else. */
+  --landing: #0d0d0d;
+  --landing-sky: #87c7f2;
+  --landing-link: #79c5f7;
+  /* The open occasions menu, the phone menu sheet, an opened question, and
+     the near-black set on the landing's white buttons. */
+  --landing-raised: #1c1c1c;
+  --landing-sheet: #111111;
+  --landing-ink: #101010;
 
   --radius: 0.875rem;
 }
@@ -220,6 +249,15 @@
   }
   .film-perf {
     background: rgba(255, 255, 255, 0.13);
+  }
+
+  /* The homepage's display voice: Roboto Serif opened out to the width of the
+     face the design was drawn in (see `components/landing/fonts.ts`). Paired
+     with `font-landing-display`, never used on its own. */
+  .landing-serif {
+    font-weight: 340;
+    font-variation-settings: 'wdth' 125;
+    letter-spacing: -0.01em;
   }
 
   /* Liquid glass surface.

@@ -7,7 +7,7 @@ import { EVENT_PRICE_LABELS } from './pricing'
  * The one definition of an occasion.
  *
  * Read by four places that must not drift: the homepage wall of prints
- * (`components/site/occasion-prints.tsx`), the `/alkalmak` routes, the footer,
+ * (`components/landing/landing-occasions.tsx`), the `/alkalmak` routes, the footer,
  * and `app/sitemap.ts`. Adding an occasion here gives it a page and a sitemap
  * entry with no other edit.
  *
