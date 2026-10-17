@@ -137,6 +137,11 @@ export async function createEventCheckoutUrl({
           // invoice, not a Stripe receipt.
         }),
     line_items: [{ price: eventPriceId, quantity: 1 }],
+    // Codes are handed out by hand (OFF20), and Stripe is where they are
+    // entered, limited and expired. What a code takes off reaches the ledger
+    // only through the webhook: `amount_total` here is still the full price,
+    // because nobody has typed anything yet.
+    allow_promotion_codes: true,
     expires_at: Math.floor(new Date(attempt.expires_at).getTime() / 1_000),
     // Two different destinations, because the two outcomes are different
     // sentences. A payment gets its own screen: the only thing a host needs to

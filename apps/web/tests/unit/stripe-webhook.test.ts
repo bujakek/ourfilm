@@ -834,6 +834,34 @@ describe('Stripe webhook', () => {
     expect(mocks.ensureBillingoInvoice).toHaveBeenCalled()
   })
 
+  it('invoices what was paid after a promotion code, without an alert', async () => {
+    const { db, updates } = database({ purchase: directPurchase() })
+    mocks.createAdminClient.mockReturnValue(db)
+    mocks.constructEventAsync.mockResolvedValue(
+      event(
+        'checkout.session.completed',
+        directSession({
+          amount_total: 1_032_000,
+          total_details: { amount_discount: 258_000 },
+        }),
+      ),
+    )
+
+    expect((await POST(request())).status).toBe(200)
+    // The ledger row was written before the code was typed, so it still says
+    // 12 900 Ft. The discount explains the difference; the invoice carries
+    // what the host actually paid.
+    expect(updates.find((w) => w.table === 'purchases')?.values).toMatchObject({
+      amount_minor: 1_032_000,
+      invoice_status: 'pending',
+    })
+    expect(mocks.reportServerIssue).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ operation: 'checkout_amount_mismatch' }),
+    )
+    expect(mocks.ensureBillingoInvoice).toHaveBeenCalled()
+  })
+
   it('cancels the invoice when a direct sale is refunded', async () => {
     const { db, updates } = database({
       purchase: directPurchase({ status: 'paid', invoice_status: 'issued' }),

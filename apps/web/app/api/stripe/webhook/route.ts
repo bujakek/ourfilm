@@ -409,10 +409,13 @@ async function settleRecordedPurchase(
   // Stripe is the authority on what was charged, and the ledger's amount was
   // written by the host's own client at checkout — so the session's number
   // wins and is what reaches the invoice. A disagreement is still worth
-  // reporting: nothing ordinary produces one.
+  // reporting: nothing ordinary produces one. A promotion code is ordinary:
+  // it is typed on Stripe's page after the ledger row was written, so the
+  // row is compared with the price before the discount.
+  const discount = session.total_details?.amount_discount ?? 0
   if (
     session.amount_total !== null &&
-    (purchase.amount_minor !== session.amount_total ||
+    (purchase.amount_minor !== session.amount_total + discount ||
       purchase.currency?.toLowerCase() !== session.currency?.toLowerCase())
   ) {
     await reportServerIssue(

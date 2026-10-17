@@ -254,6 +254,7 @@ describe('Stripe Checkout creation', () => {
     expect(params.managed_payments).toBeUndefined()
     expect(params.billing_address_collection).toBe('required')
     expect(params.customer_creation).toBe('always')
+    expect(params.allow_promotion_codes).toBe(true)
     // No second terms box. The declaration is accepted on our own page —
     // `billing-actions` refuses to run without it — and asking again here
     // would gate the submit, wallet buttons included, which is most of what
@@ -284,6 +285,7 @@ describe('Stripe Checkout creation', () => {
     // no invoice to raise and no reason to ask for a billing address.
     expect(params.managed_payments).toEqual({ enabled: true })
     expect(params.billing_address_collection).toBeUndefined()
+    expect(params.allow_promotion_codes).toBe(true)
     expect(params.consent_collection).toBeUndefined()
     expect(params.metadata.settlement).toBe('managed')
   })
