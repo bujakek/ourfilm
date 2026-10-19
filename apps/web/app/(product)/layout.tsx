@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { cookies, headers } from 'next/headers'
 import type { ReactNode } from 'react'
 
+import { landingFontClass } from '@/components/landing/fonts'
 import { PostHogLoader } from '@/components/analytics/posthog-loader'
 import { bodyClassName, siteMetadata, siteViewport } from '@/lib/document'
 import {
@@ -97,7 +98,7 @@ export default async function ProductRootLayout({
       translate="no"
       className="bg-background"
     >
-      <body className={bodyClassName}>
+      <body className={`${bodyClassName} ${landingFontClass}`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
         {/* Product analytics — see lib/telemetry.ts. Loads only where

@@ -39,6 +39,14 @@
   --color-landing-raised: var(--landing-raised);
   --color-landing-sheet: var(--landing-sheet);
   --color-landing-ink: var(--landing-ink);
+  --color-host-panel: var(--host-panel);
+  --color-host-tile: var(--host-tile);
+  --color-host-sheet: var(--host-sheet);
+  --color-host-warn: var(--host-warn);
+  --color-host-warn-fill: var(--host-warn-fill);
+  --color-host-danger: var(--host-danger);
+  --color-host-danger-fill: var(--host-danger-fill);
+  --shadow-host-sheet: 0 24px 60px -20px rgba(0, 0, 0, 0.95);
   --color-site-surface: var(--site-surface);
   --color-site-note: var(--site-note);
   --color-site-hover: var(--site-hover);
@@ -187,6 +195,17 @@
   --landing-sheet: #111111;
   --landing-ink: #101010;
 
+  /* The host app in the landing's look (DESIGN v5): panels and tiles are
+     white washes over the landing ground, sheets are the raised grey, and
+     warning and destructive are an ink on a tinted fill. */
+  --host-panel: rgba(255, 255, 255, 0.04);
+  --host-tile: rgba(255, 255, 255, 0.06);
+  --host-sheet: #1c1c1c;
+  --host-warn: #e8c07a;
+  --host-warn-fill: rgba(232, 192, 122, 0.1);
+  --host-danger: #ff9d9d;
+  --host-danger-fill: rgba(255, 138, 138, 0.1);
+
   /* The pages around the homepage (pricing, occasions, blog, legal). Same
      ground as the landing; these are its quieter surfaces and inks. */
   --site-surface: #1a1a1a;
@@ -299,6 +318,13 @@
     font-weight: 340;
     font-variation-settings: 'wdth' 125;
     letter-spacing: -0.01em;
+  }
+
+  /* Figures and counters on host screens: Crimson Text italic. */
+  .host-figure {
+    font-family: var(--font-landing-quote);
+    font-style: italic;
+    font-weight: 600;
   }
 
   /* Liquid glass surface.

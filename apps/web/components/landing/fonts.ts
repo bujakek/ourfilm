@@ -1,7 +1,7 @@
 import { Crimson_Text, Inter, Roboto_Serif } from 'next/font/google'
 
 /**
- * The homepage's three faces, loaded by the homepage alone.
+ * The homepage's three faces, loaded by the homepage and the product.
  *
  * The approved landing design was set in Rosemartin and Pretendard. Neither
  * ships here: Rosemartin is a commercial face with no licence for this site,
@@ -16,9 +16,10 @@ import { Crimson_Text, Inter, Roboto_Serif } from 'next/font/google'
  * - **Crimson Text** is the design's own face for the review titles and the
  *   counting row, and it is already open.
  *
- * Scoped to the landing rather than added to `lib/document.ts`: every other
- * surface stays on Manrope and Instrument Serif, and this keeps three more font
- * files off the guest page a QR code opens.
+ * Scoped here rather than added to `lib/document.ts`, so the legacy faces
+ * stay out of the marketing tree. The product root layout adds this class too:
+ * the host app moved onto the landing look, and the guest states are restyled
+ * with it, so the guest page a QR code opens now loads these three files.
  */
 const landingDisplay = Roboto_Serif({
   subsets: ['latin', 'latin-ext'],

@@ -16,14 +16,19 @@ import { cn } from '@/lib/utils'
  * shades are theme variables and only opacity interpolates reliably between
  * them.
  */
+export type SwitchTone = 'default' | 'host'
+
 export function SwitchTrack({
   checked,
   disabled = false,
   className,
+  tone = 'default',
 }: {
   checked: boolean
   disabled?: boolean
   className?: string
+  /** `host` is the landing look: a white track, a near-black knob. */
+  tone?: SwitchTone
 }) {
   const reduceMotion = useReducedMotion()
 
@@ -31,19 +36,30 @@ export function SwitchTrack({
     <span
       aria-hidden="true"
       className={cn(
-        'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full bg-foreground/10',
+        'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full',
+        tone === 'host' ? 'bg-white/14' : 'bg-foreground/10',
         disabled && 'opacity-50',
         className,
       )}
     >
       <motion.span
-        className="absolute inset-0 rounded-full bg-accent/70"
+        className={cn(
+          'absolute inset-0 rounded-full',
+          tone === 'host' ? 'bg-white' : 'bg-accent/70',
+        )}
         initial={false}
         animate={{ opacity: checked ? 1 : 0 }}
         transition={reduceMotion ? still : T.settle}
       />
       <motion.span
-        className="absolute size-6 rounded-full bg-foreground"
+        className={cn(
+          'absolute size-6 rounded-full',
+          tone === 'host'
+            ? checked
+              ? 'bg-landing'
+              : 'bg-white'
+            : 'bg-foreground',
+        )}
         initial={false}
         animate={{ x: checked ? 28 : 4 }}
         transition={reduceMotion ? still : T.snap}
@@ -57,7 +73,9 @@ export function Switch({
   onCheckedChange,
   disabled = false,
   label,
+  tone = 'default',
 }: {
+  tone?: SwitchTone
   checked: boolean
   onCheckedChange: (checked: boolean) => void
   disabled?: boolean
@@ -73,7 +91,7 @@ export function Switch({
       onClick={() => onCheckedChange(!checked)}
       className="inline-flex size-14 shrink-0 items-center justify-center rounded-full disabled:opacity-50"
     >
-      <SwitchTrack checked={checked} />
+      <SwitchTrack checked={checked} tone={tone} />
     </button>
   )
 }

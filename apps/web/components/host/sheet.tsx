@@ -112,7 +112,7 @@ export function Sheet({
                 : { opacity: 0, y: 28, scale: 0.985 }
           }
           transition={reduceMotion ? still : panelVisible ? T.snap : T.exit}
-          className="glass-overlay pointer-events-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-t-2xl sm:rounded-2xl"
+          className="pointer-events-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-t-[28px] bg-host-sheet text-white shadow-host-sheet sm:rounded-[28px]"
         >
           {/* The body scrolls, not the panel, so a footer can sit outside it.
               With no footer the padding is exactly what it was before this
@@ -129,12 +129,12 @@ export function Sheet({
                 {icon ? <div className="mb-3">{icon}</div> : null}
                 <h2
                   id={titleId}
-                  className="font-display text-xl tracking-tight text-balance"
+                  className="landing-serif font-landing-display text-xl text-balance"
                 >
                   {title}
                 </h2>
                 {detail ? (
-                  <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                  <p className="mt-2 text-sm leading-relaxed text-pretty text-white/65">
                     {detail}
                   </p>
                 ) : null}
@@ -148,7 +148,7 @@ export function Sheet({
                     !busy && !reduceMotion ? { scale: 0.92 } : undefined
                   }
                   aria-label={closeLabel}
-                  className="glass -mt-1 flex size-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50"
+                  className="-mt-1 flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile disabled:opacity-50"
                 >
                   <X className="size-4" aria-hidden="true" />
                 </motion.button>
