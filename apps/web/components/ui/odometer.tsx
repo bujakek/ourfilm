@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
  * month — which is the whole argument of `lib/motion.ts`, applied to a
  * component instead of a curve.
  *
- * Three details are load-bearing:
+ * Four details are load-bearing:
  *
  * - **`initial={false}`.** The number must not roll on first paint. A counter
  *   that animates from nothing on arrival is claiming something changed when
@@ -30,6 +30,11 @@ import { cn } from '@/lib/utils'
  *   `AnimatePresence mode="popLayout"` would otherwise be for; doing it in CSS
  *   means the box is measured by something that is not either of the two
  *   values mid-swap, which is the only way the width can stay still.
+ *
+ * - **Clipped vertically only.** The roll travels on the y axis, and the
+ *   figures are Crimson italic, whose glyphs lean past their advance width.
+ *   `overflow-hidden` sheared the right edge off every digit; `overflow-y:
+ *   clip` keeps the roll masked without touching the overhang.
  *
  * `dir` is the direction the value travels, not the direction of the motion:
  * a decrementing count is `'down'`, and its digits enter from above the way a
@@ -64,7 +69,7 @@ export function Odometer({
   return (
     <span
       className={cn(
-        'relative inline-block overflow-hidden text-center tabular-nums',
+        'relative inline-block overflow-y-clip text-center tabular-nums',
         className,
       )}
     >
