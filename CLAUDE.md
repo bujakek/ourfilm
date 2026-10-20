@@ -102,11 +102,11 @@ written from the repository root.
 
 Project skills live in `.cursor/skills/`. Read the relevant one _before_ writing code in that area:
 
-| Skill              | Load when                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| `ourfilm-ui`       | Building or restyling any page or component (glass surfaces, tokens, Hungarian copy conventions) |
-| `ourfilm-supabase` | Touching the database, migrations, RLS, storage buckets, or auth                                 |
-| `ourfilm-upload`   | Working on the photo upload pipeline (HEIC, compression, direct-to-Storage)                      |
+| Skill              | Load when                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `ourfilm-ui`       | Building or restyling any page, component or email (the landing look, tokens, class modules, Hungarian copy) |
+| `ourfilm-supabase` | Touching the database, migrations, RLS, storage buckets, or auth                                             |
+| `ourfilm-upload`   | Working on the photo upload pipeline (HEIC, compression, direct-to-Storage)                                  |
 
 ## Tech stack
 
