@@ -1,7 +1,9 @@
 import { Cake, GlassWater, Heart, Plane } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { shotRollList } from './camera'
 import { type Locale, localePath } from './i18n'
-import { EVENT_PRICE_LABELS } from './pricing'
+import { FREE_PARTICIPANT_LIMIT } from './onboarding'
+import { EVENT_PRICE_LABEL, EVENT_PRICE_LABELS } from './pricing'
 
 /**
  * The one definition of an occasion.
@@ -115,8 +117,7 @@ export type OccasionCopy = Pick<
 export const OCCASIONS_ARE_DRAFT = false
 
 /** The same free-trial line closes every occasion page. */
-const OCCASION_CTA_HELPER =
-  '5 vendégig ingyenes, bankkártya nélkül. A teljes esemény egyszeri 12 900 Ft.'
+const OCCASION_CTA_HELPER = `${FREE_PARTICIPANT_LIMIT} vendégig ingyenes, bankkártya nélkül. A teljes esemény egyszeri ${EVENT_PRICE_LABEL}.`
 
 export const occasions: Occasion[] = [
   {
@@ -155,7 +156,7 @@ export const occasions: Occasion[] = [
         },
         {
           title: 'Mindenkinek ugyanannyi kép jut',
-          text: 'Ti választjátok ki, hány képkockát kap egy vendég: 5, 10, 16, 24 vagy 36.',
+          text: `Ti választjátok ki, hány képkockát kap egy vendég: ${shotRollList('vagy')}.`,
         },
         {
           title: 'Nyomtatható felbontásban',
@@ -186,7 +187,7 @@ export const occasions: Occasion[] = [
       ],
       [
         'Mennyibe kerül?',
-        `5 vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu} az egész esküvőre, korlátlan vendéggel.`,
+        `${FREE_PARTICIPANT_LIMIT} vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu} az egész esküvőre, korlátlan vendéggel.`,
       ],
     ],
     posts: [
@@ -243,7 +244,7 @@ export const occasions: Occasion[] = [
         },
         {
           title: 'Mindenki ugyanannyit kap',
-          text: 'Te választod ki: 5, 10, 16, 24 vagy 36 képkocka jut egy vendégre.',
+          text: `Te választod ki: ${shotRollList('vagy')} képkocka jut egy vendégre.`,
         },
         {
           title: 'Nincs előnézet, nincs újrafotózás',
@@ -270,7 +271,7 @@ export const occasions: Occasion[] = [
       ],
       [
         'Mennyibe kerül?',
-        `5 vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan vendéggel.`,
+        `${FREE_PARTICIPANT_LIMIT} vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan vendéggel.`,
       ],
     ],
     cta: {
@@ -349,7 +350,7 @@ export const occasions: Occasion[] = [
       ],
       [
         'Mennyibe kerül?',
-        `5 résztvevőig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan résztvevővel.`,
+        `${FREE_PARTICIPANT_LIMIT} résztvevőig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan résztvevővel.`,
       ],
     ],
     cta: {
@@ -428,7 +429,7 @@ export const occasions: Occasion[] = [
       ],
       [
         'Mennyibe kerül?',
-        `5 vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan vendéggel.`,
+        `${FREE_PARTICIPANT_LIMIT} vendégig ingyenes. Efölött egyszeri ${EVENT_PRICE_LABELS.hu}, korlátlan vendéggel.`,
       ],
     ],
     cta: {
@@ -487,7 +488,7 @@ const englishOccasions: Record<OccasionId, OccasionCopy> = {
         },
         {
           title: 'Everyone gets the same roll',
-          text: 'You choose how many frames each guest gets: 5, 10, 16, 24 or 36.',
+          text: `You choose how many frames each guest gets: ${shotRollList('or')}.`,
         },
         {
           title: 'Print-ready resolution',
@@ -518,7 +519,7 @@ const englishOccasions: Record<OccasionId, OccasionCopy> = {
       ],
       [
         'What does it cost?',
-        `Free for up to 5 guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en} for the whole wedding, with unlimited guests.`,
+        `Free for up to ${FREE_PARTICIPANT_LIMIT} guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en} for the whole wedding, with unlimited guests.`,
       ],
     ],
     posts: ['wedding-photo-sharing'],
@@ -526,7 +527,7 @@ const englishOccasions: Record<OccasionId, OccasionCopy> = {
       heading: 'See the day through your guests’ eyes.',
       body: 'Create your camera, choose the roll length and decide when the photos should be revealed.',
       button: 'Create your camera',
-      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
+      helper: `Free for up to ${FREE_PARTICIPANT_LIMIT} guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Wedding Guest Camera – OurFilm',
@@ -567,7 +568,7 @@ const englishOccasions: Record<OccasionId, OccasionCopy> = {
         },
         {
           title: 'Everyone gets the same roll',
-          text: 'You choose it: 5, 10, 16, 24 or 36 frames each.',
+          text: `You choose it: ${shotRollList('or')} frames each.`,
         },
         {
           title: 'No preview, no retakes',
@@ -594,14 +595,14 @@ const englishOccasions: Record<OccasionId, OccasionCopy> = {
       ],
       [
         'What does it cost?',
-        `Free for up to 5 guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited guests.`,
+        `Free for up to ${FREE_PARTICIPANT_LIMIT} guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited guests.`,
       ],
     ],
     cta: {
       heading: 'Turn the whole birthday into one shared roll.',
       body: 'Create the event, choose the number of shots and decide when the gallery opens.',
       button: 'Create your camera',
-      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
+      helper: `Free for up to ${FREE_PARTICIPANT_LIMIT} guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Digital Guest Camera for Birthdays – OurFilm',
@@ -669,14 +670,14 @@ const englishOccasions: Record<OccasionId, OccasionCopy> = {
       ],
       [
         'What does it cost?',
-        `Free for up to 5 people. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited people.`,
+        `Free for up to ${FREE_PARTICIPANT_LIMIT} people. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited people.`,
       ],
     ],
     cta: {
       heading: 'Relive the trip together.',
       body: 'Create your shared camera, send it to the group and choose when the photos are revealed.',
       button: 'Create your camera',
-      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
+      helper: `Free for up to ${FREE_PARTICIPANT_LIMIT} guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Shared Digital Camera for Group Trips – OurFilm',
@@ -744,14 +745,14 @@ const englishOccasions: Record<OccasionId, OccasionCopy> = {
       ],
       [
         'What does it cost?',
-        `Free for up to 5 guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited guests.`,
+        `Free for up to ${FREE_PARTICIPANT_LIMIT} guests. Above that it is a one-off ${EVENT_PRICE_LABELS.en}, with unlimited guests.`,
       ],
     ],
     cta: {
       heading: 'See the party from every angle.',
       body: 'Create your camera, choose the roll length and decide when the gallery opens.',
       button: 'Create your camera',
-      helper: `Free for up to 5 guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
+      helper: `Free for up to ${FREE_PARTICIPANT_LIMIT} guests. No card required. The full event costs ${EVENT_PRICE_LABELS.en} once.`,
     },
     meta: {
       title: 'Digital Guest Camera for Parties – OurFilm',

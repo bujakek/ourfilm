@@ -1,3 +1,4 @@
+import { shotRollList } from '@/lib/camera'
 import { getDocs } from '@/lib/content/docs'
 import type { ContentKind } from '@/lib/content/kinds'
 import { type Locale, localePath, locales } from '@/lib/i18n'
@@ -77,7 +78,7 @@ export function GET() {
 OurFilm is a shared digital disposable camera for events. The host creates one
 camera per event; guests scan a QR code or open a link, give a name, and get a
 fixed roll of shots — no app to install and no account to create. The host picks
-5, 10, 16, 24 or 36 shots per guest, and decides when the photos are developed:
+${shotRollList('or')} shots per guest, and decides when the photos are developed:
 instantly, or at the end of the event. There is no preview and no retake. The
 number of guests is not capped, the film stays private, and the finished album
 downloads as one archive.

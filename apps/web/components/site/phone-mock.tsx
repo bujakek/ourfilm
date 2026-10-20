@@ -18,6 +18,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { createContext, useContext, type ReactNode } from 'react'
 
 import type { Locale } from '@/lib/i18n'
+import { DEFAULT_SHOTS } from '@/lib/camera'
+import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import { EXAMPLE_SLUG } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
 
@@ -304,7 +306,7 @@ export function ScreenReveal({ locale }: { locale: Locale }) {
             Icon: Hourglass,
             label: en ? 'Right away' : 'Azonnal',
             detail: en
-              ? 'Photos appear while the event is happening.'
+              ? 'Photos appear during the event.'
               : 'A képek már az esemény alatt megjelennek.',
             active: false,
           },
@@ -378,8 +380,8 @@ export function ScreenTicket({
 
   const figures: [string, string][] = [
     ['84', en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'],
-    ['12', en ? 'GUESTS' : 'VENDÉG'],
-    ['24', en ? 'SHOTS EACH' : 'KÉP FEJENKÉNT'],
+    [String(FREE_PARTICIPANT_LIMIT - 1), en ? 'GUESTS' : 'VENDÉG'],
+    [String(DEFAULT_SHOTS), en ? 'SHOTS EACH' : 'KÉP / FŐ'],
   ]
 
   // Everything in this row is `whitespace-nowrap`: on a phone it is one line,
@@ -428,7 +430,7 @@ export function ScreenTicket({
             key={label}
             className={`py-1.5 ${i > 0 ? 'border-l border-border px-3' : 'pr-3'}`}
           >
-            <span className="block font-mono text-[19px] leading-none font-medium tracking-[-0.05em]">
+            <span className="host-figure block text-[19px] leading-none">
               {value}
             </span>
             <span

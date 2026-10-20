@@ -19,6 +19,11 @@ export const SHOT_OPTIONS = [5, 10, 16, 24, 36] as const
 
 export type ShotOption = (typeof SHOT_OPTIONS)[number]
 
+/** `5, 10, 16, 24 or 36` — the options as copy, `or` being the locale's word. */
+export function shotRollList(or: string): string {
+  return `${SHOT_OPTIONS.slice(0, -1).join(', ')} ${or} ${SHOT_OPTIONS.at(-1)}`
+}
+
 /** What the create form pre-selects and labels "Ajánlott". Long enough that a
  *  guest shoots without rationing, short enough to still feel like film. */
 export const DEFAULT_SHOTS: ShotOption = 24
