@@ -22,9 +22,6 @@ const BANNED = [
   'ring-accent',
 ]
 
-/** Files still on the old look. Each task removes its own; Task 8 empties it. */
-export const PENDING: string[] = []
-
 function walk(path: string): string[] {
   if (statSync(path).isFile()) return path.endsWith('.tsx') ? [path] : []
   return readdirSync(path).flatMap((name) => walk(join(path, name)))
@@ -60,21 +57,11 @@ describe('host style guard', () => {
     expect(files.length).toBeGreaterThan(10)
   })
 
-  it('no file outside PENDING uses the old look', () => {
+  it('no host file uses the old look', () => {
     const bad = files
-      .filter((f) => !PENDING.includes(f))
       .map((f) => [f, offences(readFileSync(join(ROOT, f), 'utf8'))] as const)
       .filter(([, o]) => o.length > 0)
     expect(bad).toEqual([])
-  })
-
-  it('every PENDING entry still offends', () => {
-    const stale = PENDING.filter(
-      (f) =>
-        !files.includes(f) ||
-        offences(readFileSync(join(ROOT, f), 'utf8')).length === 0,
-    )
-    expect(stale).toEqual([])
   })
 
   it('matcher catches prefixed paper and glass, ignores prose', () => {

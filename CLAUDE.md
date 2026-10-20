@@ -925,7 +925,11 @@ revert on their own — none carries hand-written rollback code.
 **Settings autosave, and has no Save button.** Every control reports to
 `SettingsSaveProvider` (`apps/web/components/host/settings-save.tsx`): a landed
 save flashes "✓ Mentve" in the header, a failed one shows the "Újra" toast,
-whose retry sends the same value again. The event name saves on blur and Enter
+whose retry sends the same value again. That toast is the host's one toast
+(`HostToastProvider`, `apps/web/components/host/ui/toast.tsx`): one at a time,
+held open while a pointer or focus is on it, and rendered inside a modal
+dialog that registers with `useToastLayer` (the photo viewer, a sheet) so it
+stays visible and tappable. The event name saves on blur and Enter
 and is not optimistic — the field already shows the new name — so a failure
 restores the stored one.
 
