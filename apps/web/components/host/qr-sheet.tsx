@@ -4,6 +4,11 @@ import { Check, Download, QrCode, Share2 } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { useRef, useState } from 'react'
 
+import {
+  HOST_KICKER,
+  HOST_SECONDARY,
+  HOST_TILE,
+} from '@/components/host/ui/classes'
 import { Sheet } from '@/components/host/sheet'
 import type { Locale } from '@/lib/i18n'
 import { downloadQrCanvas } from '@/lib/qr-file'
@@ -13,7 +18,7 @@ import { track } from '@/lib/telemetry'
 /**
  * The QR code, one tap from the host's camera.
  *
- * It sits where the guest's share button sits — a 58px square beside the
+ * It sits where the guest's share button sits — a 56px square beside the
  * shutter — because the two screens are the same screen with different
  * privileges, and a host who has just taken a photo of the room is one tap
  * from the thing that gets everybody else shooting.
@@ -69,7 +74,7 @@ export function QrSheetButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={en ? 'QR code and link' : 'QR-kód és link'}
-        className="flex size-[58px] shrink-0 items-center justify-center rounded-lg border border-white/15 text-foreground/60 transition-colors hover:border-white/30 hover:text-foreground"
+        className="flex size-14 shrink-0 items-center justify-center rounded-[16px] bg-host-tile text-white transition-colors hover:bg-white/10"
       >
         <QrCode className="size-[19px]" strokeWidth={1.8} aria-hidden="true" />
       </button>
@@ -86,7 +91,7 @@ export function QrSheetButton({
             <button
               type="button"
               onClick={() => downloadQrCanvas(canvas.current, name)}
-              className="hover:border-strong flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold transition-colors"
+              className={`${HOST_SECONDARY} flex-1 gap-2 text-sm`}
             >
               <Download className="size-4" aria-hidden="true" />
               {en ? 'Save QR code' : 'QR-kód mentése'}
@@ -94,7 +99,7 @@ export function QrSheetButton({
             <button
               type="button"
               onClick={share}
-              className="hover:border-strong flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold transition-colors"
+              className={`${HOST_SECONDARY} flex-1 gap-2 text-sm`}
             >
               {copied ? (
                 <Check className="size-4" aria-hidden="true" />
@@ -112,16 +117,17 @@ export function QrSheetButton({
           </div>
         }
       >
-        <div className="paper rounded-2xl p-6 text-center">
-          <p className="font-display text-[24px] leading-[1.1] text-balance">
+        <div className={`${HOST_TILE} p-6 text-center`}>
+          <p className="landing-serif font-landing-display text-[24px] leading-[1.15] text-balance [overflow-wrap:anywhere] text-white">
             {name}
           </p>
-          <p className="paper-muted mt-1.5 font-mono text-[9px] font-medium tracking-[0.22em]">
-            {en ? 'DISPOSABLE CAMERA' : 'ELDOBHATÓ KAMERA'}
+          <p className={`mt-2 ${HOST_KICKER}`}>
+            {en ? 'Disposable camera' : 'Eldobható kamera'}
           </p>
 
+          {/* White square: scanners need the contrast. */}
           <div className="my-5 flex justify-center">
-            <div className="rounded-sm bg-white p-4 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.4)]">
+            <div className="rounded-[16px] bg-white p-4">
               <QRCodeCanvas
                 ref={canvas}
                 value={url}
@@ -135,7 +141,7 @@ export function QrSheetButton({
             </div>
           </div>
 
-          <p className="paper-muted mx-auto max-w-[15rem] text-[13px] leading-relaxed">
+          <p className="mx-auto max-w-[15rem] text-[14px] leading-relaxed text-white/70">
             {en
               ? `Scan the QR code and take ${shots} photos — no app or account needed.`
               : `Olvasd be a QR-kódot, és készíts akár ${shots} képet. Nem kell hozzá app vagy regisztráció.`}
@@ -144,11 +150,9 @@ export function QrSheetButton({
           {/* Wrapping, not truncating. This is the address a guest types when
               the camera will not scan, so an ellipsis in the middle of it
               defeats the one job the code has. */}
-          <div className="paper-rule mt-4 border-t pt-3">
-            <p className="paper-muted font-mono text-[10px] leading-snug break-all">
-              {url.replace('https://', '')}
-            </p>
-          </div>
+          <p className="mt-4 text-[12px] leading-snug break-all text-white/65">
+            {url.replace('https://', '')}
+          </p>
         </div>
       </Sheet>
     </>

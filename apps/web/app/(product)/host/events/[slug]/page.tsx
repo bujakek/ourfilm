@@ -4,7 +4,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { HOST_ICON_BUTTON } from '@/components/host/ui/classes'
+import {
+  HOST_ICON_BUTTON,
+  HOST_KICKER,
+  HOST_KICKER_DOT,
+  HOST_PANEL,
+  HOST_TILE,
+  HOST_TITLE,
+} from '@/components/host/ui/classes'
 import { HostBlock } from '@/components/host/host-block'
 import { ModerationGrid } from '@/components/host/moderation-grid'
 import { exportAnswer, exportNote } from '@/lib/exports/answer'
@@ -144,29 +151,20 @@ export default async function AdminEventPage({ params }: Props) {
       </HostBlock>
 
       <HostBlock index={1} className="mt-6 min-w-0">
-        <CapturePill
+        <CaptureKicker
           state={windowState}
           captureEndAt={event.capture_end_at}
           now={now}
           locale={locale}
         />
 
-        <h1 className="mt-4 font-display text-[40px] leading-none tracking-[-0.012em] text-balance sm:text-[52px]">
+        <h1 className={`mt-4 [overflow-wrap:anywhere] ${HOST_TITLE}`}>
           {event.event_name}
         </h1>
 
-        {/* Three figures on one ruled row, replacing the three-row `<dl>`.
-              Each is a number a host actually watches, and each was previously
-              a sentence weighted exactly like the other two. */}
-        {/* A grid rather than a wrapping row: with `flex-wrap` the third
-              figure dropped to a second line still carrying its left divider,
-              which reads as a broken table. Three columns share the width and
-              a long label wraps inside its own cell instead. */}
-        <div className="mt-6 grid grid-cols-3 border-y border-border">
-          <Figure
-            value={photos.length}
-            label={en ? 'Photos taken' : 'Kép készült'}
-          />
+        {/* Three tiles share the width; a long label wraps inside its own. */}
+        <div className="mt-6 grid grid-cols-3 gap-2">
+          <Figure value={photos.length} label={en ? 'photos' : 'kép'} />
           {quota ? (
             <Figure
               value={quota.participantCount}
@@ -174,26 +172,22 @@ export default async function AdminEventPage({ params }: Props) {
               label={
                 overQuota
                   ? en
-                    ? 'Guest cap full'
-                    : 'Betelt a keret'
+                    ? 'cap full'
+                    : 'betelt'
                   : en
-                    ? 'Guests'
-                    : 'Vendég'
+                    ? 'guests'
+                    : 'vendég'
               }
               alarming={overQuota}
-              divided
             />
           ) : null}
           <Figure
             value={event.shots_per_participant}
-            label={en ? 'Shots each' : 'Kép vendégenként'}
-            divided
+            label={en ? 'photos / guest' : 'kép / fő'}
           />
         </div>
 
-        {/* The host's own roll, in the guest's own shape. Directly under
-              the figures because those are what it changes: a photo taken
-              here lands in the grid below and moves "KÉP KÉSZÜLT" above. */}
+        {/* The host's own roll, in the guest's own shape. */}
         <HostCamera
           slug={event.slug}
           eventId={event.id}
@@ -216,14 +210,14 @@ export default async function AdminEventPage({ params }: Props) {
       </HostBlock>
 
       <HostBlock index={2}>
-        <section className="print-hidden mt-9 border-t border-border pt-5">
+        <section className={`print-hidden mt-6 p-5 ${HOST_PANEL}`}>
           <ModerationGrid
             photos={tiles}
             slug={event.slug}
             eventId={event.id}
             locale={locale}
             timeZone={event.time_zone}
-            title={en ? 'Photos' : 'Elkészült képek'}
+            title={en ? 'Photos' : 'Képek'}
             exportEndpoint={
               photos.length > 0 ? `/host/events/${event.slug}/export` : null
             }
@@ -236,8 +230,8 @@ export default async function AdminEventPage({ params }: Props) {
   )
 }
 
-/** The capture window as a state, in the one colour that means it is running. */
-function CapturePill({
+/** The capture window as a kicker; the sky dot marks the live state. */
+function CaptureKicker({
   state,
   captureEndAt,
   now,
@@ -249,72 +243,58 @@ function CapturePill({
   locale: 'en' | 'hu'
 }) {
   const en = locale === 'en'
-  if (state === 'open') {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-accent/35 px-3 py-1.5 text-xs font-medium text-accent">
-        <span
-          aria-hidden="true"
-          className="size-[5px] rounded-full bg-accent"
-        />
-        {en ? 'Camera open' : 'Lehet fotózni'} ·{' '}
-        {shortTimeRemaining(new Date(captureEndAt), now, locale)}
-      </span>
-    )
-  }
   return (
-    <span className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground/55">
-      {state === 'before'
-        ? en
-          ? 'Not open yet'
-          : 'Még nem lehet fotózni'
-        : en
-          ? 'Shooting ended'
-          : 'Véget ért a fotózás'}
-    </span>
+    <p className={`flex items-center gap-2 ${HOST_KICKER}`}>
+      {state === 'open' ? (
+        <>
+          <span aria-hidden="true" className={HOST_KICKER_DOT} />
+          {en ? 'Open' : 'Nyitva'} ·{' '}
+          {shortTimeRemaining(new Date(captureEndAt), now, locale)}
+        </>
+      ) : state === 'before' ? (
+        en ? (
+          'Not open yet'
+        ) : (
+          'Még nem lehet fotózni'
+        )
+      ) : en ? (
+        'Shooting ended'
+      ) : (
+        'Véget ért a fotózás'
+      )}
+    </p>
   )
 }
 
 /**
- * One number a host watches.
- *
- * It rolls, and nothing else on the page responds — no toast, no highlighted
- * row. A figure that changes while the host is looking elsewhere should be
- * correct when he looks back, not something that demanded he look now.
- *
- * The numeral is Martian Mono and its label is not, which is the whole of the
- * v2 type rule on this page: the mono counts, and anything read as words is
- * Manrope in sentence case. The label used to be 9px of tracked-out caps,
- * putting a second voice directly above an album whose tile captions had
- * already moved to the first one.
+ * One number a host watches. It rolls, and nothing else on the page responds:
+ * a figure that changes while the host is looking elsewhere should be correct
+ * when they look back, not something that demanded they look now.
  */
 function Figure({
   value,
   of = null,
   label,
   alarming = false,
-  divided = false,
 }: {
   value: number
   /** The cap this figure is measured against, when it has one. */
   of?: number | null
   label: string
   alarming?: boolean
-  divided?: boolean
 }) {
   return (
-    <div className={`py-4 ${divided ? 'border-l border-border px-5' : 'pr-5'}`}>
+    <div className={`min-w-0 px-3 py-4 ${HOST_TILE}`}>
       <p
-        className={`flex items-baseline font-mono text-[30px] leading-none font-medium tracking-[-0.05em] ${
-          alarming ? 'text-destructive' : ''
+        className={`host-figure flex items-baseline text-[38px] leading-none ${
+          alarming ? 'text-host-danger' : 'text-white'
         }`}
       >
         <Odometer value={value} dir="up" />
         {of === null ? null : <span>/{of}</span>}
       </p>
       <p
-        className={`mt-1.5 text-xs leading-[1.35] font-medium ${
-          alarming ? 'text-destructive' : 'text-foreground/55'
-        }`}
+        className={`mt-2 ${HOST_KICKER} ${alarming ? 'text-host-danger' : ''}`}
       >
         {label}
       </p>

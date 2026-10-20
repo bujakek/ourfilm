@@ -8,16 +8,3 @@ export function EventListSkeleton() {
     </div>
   )
 }
-
-export function ModerationGridSkeleton() {
-  return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-hidden="true">
-      {Array.from({ length: 6 }, (_, i) => (
-        <li
-          key={i}
-          className="skeleton aspect-square animate-pulse rounded-sm"
-        />
-      ))}
-    </ul>
-  )
-}

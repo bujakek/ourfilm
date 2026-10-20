@@ -94,7 +94,10 @@ export function ModerationGrid({
           many photos the event has, and two counts of the same thing on one
           screen is one of them being wrong at some point. */}
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
-        <h2 className="font-display text-[26px] leading-none">{title}</h2>
+        <h2 className="flex items-baseline gap-2.5 font-landing-display text-[22px] leading-none text-white">
+          {title}
+          <span className="host-figure text-[26px]">{items.length}</span>
+        </h2>
 
         {exportEndpoint ? (
           <AlbumDownload
@@ -108,15 +111,15 @@ export function ModerationGrid({
       </div>
 
       {exportNote ? (
-        <p className="mt-2 text-xs text-muted-foreground">{exportNote}</p>
+        <p className="mt-2 text-xs text-white/65">{exportNote}</p>
       ) : null}
 
       {items.length === 0 ? (
-        <p className="mt-4.5 rounded-2xl border border-border px-5 py-6 text-center text-sm text-muted-foreground">
+        <p className="mt-4.5 rounded-[20px] bg-host-tile px-5 py-6 text-center text-sm text-white/65">
           {en ? 'No photos yet.' : 'Még nem érkezett kép.'}
         </p>
       ) : (
-        <ul className="mt-4.5 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+        <ul className="mt-4.5 grid grid-cols-3 gap-2">
           {items.map((photo, index) => (
             <Tile
               key={photo.id}
@@ -178,7 +181,7 @@ function Tile({
         onClick={onOpen}
         whileTap={reduceMotion ? undefined : { scale: 0.975 }}
         transition={reduceMotion ? still : T.snap}
-        className="group relative block aspect-square w-full overflow-hidden rounded-sm"
+        className="group relative block aspect-square w-full overflow-hidden rounded-[12px]"
       >
         {/* Grayscale as well as dimmed: opacity alone on a bright wedding
             photo still reads as "in the album, slightly faded". Draining the
@@ -229,7 +232,7 @@ function Tile({
           </motion.span>
         </motion.span>
 
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 rounded-b-sm bg-gradient-to-t from-black/80 to-transparent px-2 pt-6 pb-1.5 text-left">
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 rounded-b-[12px] bg-gradient-to-t from-black/80 to-transparent px-2 pt-6 pb-1.5 text-left">
           <span className="truncate text-[11.5px] font-semibold text-white/92">
             {photo.uploaderName ?? ''}
           </span>
