@@ -58,3 +58,8 @@ export const HOST_ROW_QUESTION =
 /** The sentence under a settings row's question. */
 export const HOST_ROW_DETAIL =
   'text-[14px] leading-[1.5] text-white/65 text-pretty'
+
+/** An inline text link, such as the terms lines: white and underlined. Sky
+ *  is kept for payment and live or selected state. */
+export const HOST_LINK =
+  'text-white underline underline-offset-[3px] transition-colors hover:text-white/80'

@@ -3,7 +3,14 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
-import { useCallback, useEffect, useRef, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
+import { useToastLayer } from '@/components/host/ui/toast'
 import type { Locale } from '@/lib/i18n'
 import { T } from '@/lib/motion'
 import { useScrollLock } from '@/lib/use-scroll-lock'
@@ -71,6 +78,10 @@ export function Lightbox<Photo extends ViewablePhoto>({
   // page is held for exactly as long as a photo is over it.
   useScrollLock(true)
   const dialogRef = useRef<HTMLDialogElement>(null)
+  // The dialog is modal, so host toasts (hide, undo, delete) must render
+  // inside it to be seen and tapped. Nothing happens on the guest side, which
+  // has no toast provider.
+  useToastLayer(dialogRef)
   const touchStartX = useRef<number | null>(null)
   const photo = photos[index]
 
@@ -171,6 +182,13 @@ export function Lightbox<Photo extends ViewablePhoto>({
       ref={dialogRef}
       aria-label={locale === 'en' ? 'Photo viewer' : 'Fotó nagyban'}
       className="max-h-none max-w-none bg-transparent backdrop:bg-black/90 backdrop:backdrop-blur-sm"
+      // Host toasts render in here (see `useToastLayer`); this lifts them
+      // above the footer bar instead of over its buttons.
+      style={
+        host
+          ? ({ '--host-toast-offset': '6.5rem' } as CSSProperties)
+          : undefined
+      }
       onClose={onClose}
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0]?.clientX ?? null

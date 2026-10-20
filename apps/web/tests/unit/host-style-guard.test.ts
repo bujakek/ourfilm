@@ -4,7 +4,12 @@ import { describe, expect, it } from 'vitest'
 
 const ROOT = join(__dirname, '..', '..')
 
-const SCOPE = ['app/(product)/host', 'app/(product)/auth', 'components/host']
+const SCOPE = [
+  'app/(product)/host',
+  'app/(product)/auth',
+  'components/host',
+  'components/event/lightbox.tsx',
+]
 
 const BANNED = [
   'font-display',

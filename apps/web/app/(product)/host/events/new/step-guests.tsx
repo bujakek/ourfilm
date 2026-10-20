@@ -9,7 +9,7 @@ import {
   PaidTermsAcceptance,
 } from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
-import { HOST_KICKER_BASE } from '@/components/host/ui/classes'
+import { HOST_KICKER_BASE, HOST_LINK } from '@/components/host/ui/classes'
 import { DEFAULT_SHOTS } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { localePath, type Locale } from '@/lib/i18n'
@@ -176,7 +176,6 @@ function GuestsFields({
 /** The free path's whole consent: pressing the button is the acceptance, and
  *  this line under it says so. */
 function FreeTermsLine({ locale }: { locale: Locale }) {
-  const link = 'text-white underline underline-offset-[3px] hover:text-white/80'
   return (
     <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-pretty text-white/65">
       {locale === 'en' ? (
@@ -186,7 +185,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/aszf')}
             target="_blank"
             rel="noopener noreferrer"
-            className={link}
+            className={HOST_LINK}
           >
             Terms
           </Link>{' '}
@@ -195,7 +194,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/adatvedelem')}
             target="_blank"
             rel="noopener noreferrer"
-            className={link}
+            className={HOST_LINK}
           >
             Privacy Notice
           </Link>
@@ -208,7 +207,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/aszf')}
             target="_blank"
             rel="noopener noreferrer"
-            className={link}
+            className={HOST_LINK}
           >
             ÁSZF
           </Link>
@@ -217,7 +216,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/adatvedelem')}
             target="_blank"
             rel="noopener noreferrer"
-            className={link}
+            className={HOST_LINK}
           >
             adatkezelési tájékoztatót
           </Link>

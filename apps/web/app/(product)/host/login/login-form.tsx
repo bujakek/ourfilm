@@ -77,16 +77,22 @@ export function LoginForm({
   const [editing, setEditing] = useState<LoginState['sent']>(null)
   const sent = state.sent !== null && state.sent !== editing ? state.sent : null
 
-  // Ticks only while the confirmation is up. Zero until the first tick, which
-  // `resendSecondsLeft` reads as the full cooldown.
+  // Ticks from the last send, on the confirmation and after "Másik
+  // e-mail-cím" alike: going back to the form is not a way round the
+  // cooldown. Zero until the first tick, which `resendSecondsLeft` reads as
+  // the full cooldown.
   const [now, setNow] = useState(0)
-  const sentAt = sent?.sentAt
+  const sentAt = state.sent?.sentAt
   useEffect(() => {
     if (sentAt === undefined) return
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [sentAt])
-  const wait = sent ? resendSecondsLeft(sent.sentAt, now) : 0
+  const wait = state.sent ? resendSecondsLeft(state.sent.sentAt, now) : 0
+  // Only the address the last link went to waits; another one sends at once.
+  const sameAddress = (address: string, last: LoginState['sent']) =>
+    last !== null && address.trim().toLowerCase() === last.email.toLowerCase()
+  const formWait = sameAddress(email, state.sent) ? wait : 0
 
   const headingRef = useRef<HTMLHeadingElement>(null)
   const hasSent = sent !== null
@@ -102,6 +108,14 @@ export function LoginForm({
     if (!address) return previous
 
     if (sendingRef.current || googlePending) return previous
+    // The same check as the disabled button, for an Enter that beats it.
+    if (
+      previous.sent &&
+      sameAddress(address, previous.sent) &&
+      resendSecondsLeft(previous.sent.sentAt, Date.now()) > 0
+    ) {
+      return previous
+    }
     sendingRef.current = true
 
     const context = { method: 'email' as const, surface: 'login' as const }
@@ -226,7 +240,7 @@ export function LoginForm({
       {errorLine}
       <button
         type="submit"
-        disabled={pending || googlePending}
+        disabled={pending || googlePending || formWait > 0}
         aria-busy={pending}
         className={`${HOST_PRIMARY} mt-3 w-full gap-2`}
       >
@@ -244,7 +258,10 @@ export function LoginForm({
             : en
               ? 'Send me the link'
               : 'Küldjétek a linket'}
-        {pending || expired ? null : (
+        {formWait > 0 && !pending ? (
+          <span className="tabular-nums">· {countdown(formWait)}</span>
+        ) : null}
+        {pending || expired || formWait > 0 ? null : (
           <ArrowRight
             className="size-[18px]"
             strokeWidth={2}
