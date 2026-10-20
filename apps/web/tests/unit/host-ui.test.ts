@@ -12,6 +12,8 @@ import {
   RESEND_COOLDOWN_S,
   resendSecondsLeft,
   SIGN_IN_LINK_TTL_MINUTES,
+  TOAST_MS,
+  toastExpiry,
   toastReducer,
 } from '@/lib/host-ui'
 
@@ -53,6 +55,36 @@ describe('toastReducer', () => {
     const again = show(dismissed, 'b')
     expect(again.toast?.id).toBe(2)
     expect(toastReducer(again, { type: 'expire', id: 1 })).toBe(again)
+  })
+})
+
+describe('toastExpiry', () => {
+  const toast = { id: 3, text: 'a', action: { label: 'Undo' } }
+
+  it('runs the full timer when nobody holds the toast', () => {
+    expect(toastExpiry(toast, null)).toBe(TOAST_MS)
+    expect(toastExpiry(toast, { id: 3, pointer: false, focus: false })).toBe(
+      TOAST_MS,
+    )
+  })
+
+  it('pauses while a pointer is over it or focus is inside it', () => {
+    expect(
+      toastExpiry(toast, { id: 3, pointer: true, focus: false }),
+    ).toBeNull()
+    expect(
+      toastExpiry(toast, { id: 3, pointer: false, focus: true }),
+    ).toBeNull()
+  })
+
+  it('a hold on an earlier toast does not pause its successor', () => {
+    expect(toastExpiry(toast, { id: 2, pointer: true, focus: true })).toBe(
+      TOAST_MS,
+    )
+  })
+
+  it('has nothing to time without a toast', () => {
+    expect(toastExpiry(null, null)).toBeNull()
   })
 })
 

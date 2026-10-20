@@ -15,8 +15,15 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 
-import { initialToastState, TOAST_MS, toastReducer } from '@/lib/host-ui'
+import {
+  initialToastState,
+  toastExpiry,
+  toastReducer,
+  type ToastHold,
+} from '@/lib/host-ui'
 import { T, still } from '@/lib/motion'
+
+import { HOST_FOCUS } from './classes'
 
 type ToastAction = { label: string; onAction: () => void }
 
@@ -76,15 +83,30 @@ export function HostToastProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // A pointer over the toast or focus inside it holds it open; see
+  // `toastExpiry`. Keyed by id, so a hold dies with the toast it was on.
+  const [hold, setHold] = useState<ToastHold | null>(null)
+  const holdBy = useCallback(
+    (id: number, by: 'pointer' | 'focus', on: boolean) =>
+      setHold((current) => ({
+        ...(current?.id === id
+          ? current
+          : { id, pointer: false, focus: false }),
+        [by]: on,
+      })),
+    [],
+  )
+
   const id = toast?.id
+  const expiresIn = toastExpiry(toast, hold)
   useEffect(() => {
-    if (id === undefined) return
+    if (id === undefined || expiresIn === null) return
     const timer = window.setTimeout(
       () => dispatch({ type: 'expire', id }),
-      TOAST_MS,
+      expiresIn,
     )
     return () => window.clearTimeout(timer)
-  }, [id])
+  }, [id, expiresIn])
 
   const value = useMemo(() => ({ show }), [show])
 
@@ -110,6 +132,13 @@ export function HostToastProvider({ children }: { children: ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
             transition={reduceMotion ? still : T.settle}
+            onPointerEnter={() => holdBy(toast.id, 'pointer', true)}
+            onPointerLeave={() => holdBy(toast.id, 'pointer', false)}
+            onFocus={() => holdBy(toast.id, 'focus', true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+                holdBy(toast.id, 'focus', false)
+            }}
             className="pointer-events-auto flex min-h-12 w-full max-w-md items-center gap-3 rounded-[16px] bg-host-sheet py-2 pr-2 pl-4 text-[15px] text-white shadow-host-sheet"
           >
             <span className="min-w-0 flex-1 text-pretty">{toast.text}</span>
@@ -122,7 +151,7 @@ export function HostToastProvider({ children }: { children: ReactNode }) {
                   dispatch({ type: 'dismiss' })
                   run?.()
                 }}
-                className="h-11 shrink-0 rounded-[12px] px-3 font-medium text-white underline underline-offset-4"
+                className={`h-11 shrink-0 rounded-[12px] px-3 font-medium text-white underline underline-offset-4 ${HOST_FOCUS}`}
               >
                 {toast.action.label}
               </button>

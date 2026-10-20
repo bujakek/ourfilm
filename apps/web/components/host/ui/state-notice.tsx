@@ -16,6 +16,7 @@ export function StateNotice({
   body,
   actions,
   figure,
+  headingLevel = 2,
 }: {
   tone: keyof typeof TONE
   kicker?: ReactNode
@@ -23,8 +24,11 @@ export function StateNotice({
   body: string
   actions?: ReactNode
   figure?: ReactNode
+  /** 3 when the notice sits under another section's h2. */
+  headingLevel?: 2 | 3
 }) {
   const t = TONE[tone]
+  const Heading = headingLevel === 3 ? 'h3' : 'h2'
   return (
     <section
       role={tone === 'danger' ? 'status' : undefined}
@@ -34,11 +38,11 @@ export function StateNotice({
         <div className="host-figure mb-3 text-[40px]">{figure}</div>
       ) : null}
       {kicker ? <p className={`mb-2 ${HOST_KICKER}`}>{kicker}</p> : null}
-      <h2
+      <Heading
         className={`landing-serif font-landing-display text-[24px] leading-[1.2] text-balance ${t.title}`}
       >
         {title}
-      </h2>
+      </Heading>
       <p className="mt-2 text-[15px] leading-[1.6] text-pretty text-white/70">
         {body}
       </p>

@@ -47,6 +47,27 @@ export function toastReducer(
   }
 }
 
+/** Who is holding a toast open: a pointer over it, or focus inside it. Keyed
+ *  by the toast's id, so a hold never carries over to the toast that
+ *  replaces it. */
+export type ToastHold = { id: number; pointer: boolean; focus: boolean }
+
+/**
+ * How long the current toast has left, or `null` when nothing should expire
+ * it. A held toast waits (WCAG 2.2.1): an undo must not vanish from under the
+ * finger or the keyboard reaching for it. Letting go starts a full timer again
+ * rather than the remainder, so the text can still be read after the hand
+ * moves away.
+ */
+export function toastExpiry(
+  toast: Toast | null,
+  hold: ToastHold | null,
+): number | null {
+  if (!toast) return null
+  if (hold?.id === toast.id && (hold.pointer || hold.focus)) return null
+  return TOAST_MS
+}
+
 /**
  * When the free cap deserves a banner on the event page: one seat from it, or
  * at it. Quiet otherwise, and always quiet on a paid or granted event.

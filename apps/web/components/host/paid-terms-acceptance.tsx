@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { useId, useState } from 'react'
 
+import { HOST_FOCUS } from '@/components/host/ui/classes'
+
 import { localePath, type Locale } from '@/lib/i18n'
 
-const detailsButtonClassName =
-  'min-h-11 underline underline-offset-2 hover:text-white'
+const detailsButtonClassName = `min-h-11 underline underline-offset-2 hover:text-white ${HOST_FOCUS}`
 
 /**
  * Shared early-performance declaration for onboarding and billing.
@@ -51,7 +52,7 @@ export function LegalDetails({
             href={localePath(locale, '/aszf')}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white"
+            className={`inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white ${HOST_FOCUS}`}
           >
             {en ? 'Terms' : 'ÁSZF'}
           </Link>
@@ -70,7 +71,7 @@ export function LegalDetails({
             href={localePath(locale, '/adatvedelem')}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white"
+            className={`inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white ${HOST_FOCUS}`}
           >
             {en ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
           </Link>
@@ -100,7 +101,7 @@ export function LegalDetails({
           href={localePath(locale, '/adatvedelem')}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white"
+          className={`inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white ${HOST_FOCUS}`}
         >
           {en ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
         </Link>

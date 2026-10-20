@@ -2,6 +2,8 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+
+import { HOST_FOCUS } from '@/components/host/ui/classes'
 import type { Locale } from '@/lib/i18n'
 
 import {
@@ -100,7 +102,7 @@ export function MonthCalendar({
           onClick={() => step(-1)}
           disabled={!canGoBack}
           aria-label={locale === 'en' ? 'Previous month' : 'Előző hónap'}
-          className="flex size-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:text-white disabled:opacity-40"
+          className={`flex size-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:text-white disabled:opacity-40 ${HOST_FOCUS}`}
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
@@ -116,7 +118,7 @@ export function MonthCalendar({
           type="button"
           onClick={() => step(1)}
           aria-label={locale === 'en' ? 'Next month' : 'Következő hónap'}
-          className="flex size-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:text-white"
+          className={`flex size-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:text-white ${HOST_FOCUS}`}
         >
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>
@@ -167,7 +169,7 @@ export function MonthCalendar({
                 className={[
                   // Fluid width, so seven of them fit a phone-width panel at
                   // 130% text; the height keeps the 44px tap target.
-                  'flex h-11 w-full max-w-11 items-center justify-center rounded-[12px] text-[14px] font-medium transition-colors',
+                  `flex h-11 w-full max-w-11 items-center justify-center rounded-[12px] text-[14px] font-medium transition-colors ${HOST_FOCUS}`,
                   // Two signals, not one: the selected day is the only white
                   // cell, and the only one in ink.
                   selected

@@ -4,6 +4,8 @@ import { X } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
+import { HOST_FOCUS } from '@/components/host/ui/classes'
+import { useToastLayer } from '@/components/host/ui/toast'
 import { T, still } from '@/lib/motion'
 import { useScrollLock } from '@/lib/use-scroll-lock'
 
@@ -46,6 +48,10 @@ export function Sheet({
 }) {
   useScrollLock(open)
   const ref = useRef<HTMLDialogElement>(null)
+  // A modal dialog makes the page under it inert, so a toast shown while the
+  // sheet is open has to render inside it, as in the photo viewer. Only while
+  // open: the element stays mounted when closed.
+  useToastLayer(ref, open)
   const closeTimer = useRef<number | null>(null)
   const titleId = useId()
   const reduceMotion = useReducedMotion()
@@ -148,7 +154,7 @@ export function Sheet({
                     !busy && !reduceMotion ? { scale: 0.92 } : undefined
                   }
                   aria-label={closeLabel}
-                  className="-mt-1 flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile disabled:opacity-50"
+                  className={`-mt-1 flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile disabled:opacity-50 ${HOST_FOCUS}`}
                 >
                   <X className="size-4" aria-hidden="true" />
                 </motion.button>

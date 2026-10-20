@@ -170,6 +170,7 @@ export function ModerationGrid({
         <div className="mt-4.5">
           <StateNotice
             tone="neutral"
+            headingLevel={3}
             title={en ? 'No photos yet' : 'Még nem érkezett kép'}
             body={
               qr

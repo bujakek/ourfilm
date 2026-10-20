@@ -4,11 +4,11 @@
  * in `app/globals.css`; the rules they follow are in DESIGN v5.
  */
 
-/** Small tracked capitals above a heading. Keep it to one to three words. */
 /** The kicker without its colour, for a kicker that wears another one. */
 export const HOST_KICKER_BASE =
   'text-[11px] leading-[1.3] font-medium tracking-[0.24em] uppercase'
 
+/** Small tracked capitals above a heading. Keep it to one to three words. */
 export const HOST_KICKER = `${HOST_KICKER_BASE} text-white/65`
 
 /** The live dot that may lead a kicker: `<span className={HOST_KICKER_DOT} />`
@@ -31,21 +31,28 @@ export const HOST_PANEL = `${HOST_PANEL_SHAPE} bg-host-panel`
 /** A tile or well inside a panel. */
 export const HOST_TILE = 'rounded-[20px] bg-host-tile'
 
+/** A hover or press cross-fade. CSS cannot read `lib/motion.ts`, so these are
+ *  `T.settle`'s values (280ms, cubic-bezier(0.16, 1, 0.3, 1)) written out;
+ *  change them together. */
+const SETTLE = 'duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)]'
+
+/** The keyboard's mark on every host control: a white outline held off the
+ *  control by a gap, so it shows on the white primary as well as on the
+ *  ground and on a panel. */
+export const HOST_FOCUS =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+
 /** The one white action on a screen. */
-export const HOST_PRIMARY =
-  'inline-flex h-14 items-center justify-center rounded-[16px] bg-white px-6 text-[16px] font-medium text-landing-ink transition-colors hover:bg-white/90 disabled:opacity-40'
+export const HOST_PRIMARY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-white px-6 text-[16px] font-medium text-landing-ink transition-colors ${SETTLE} hover:bg-white/90 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** Everything that is not the one primary. */
-export const HOST_SECONDARY =
-  'inline-flex h-14 items-center justify-center rounded-[16px] bg-white/8 px-6 text-[16px] font-medium text-white transition-colors hover:bg-white/12 disabled:opacity-40'
+export const HOST_SECONDARY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-white/8 px-6 text-[16px] font-medium text-white transition-colors ${SETTLE} hover:bg-white/12 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** Sky is for payment, and nothing else is allowed to wear it as a button. */
-export const HOST_PAY =
-  'inline-flex h-14 items-center justify-center rounded-[16px] bg-landing-sky px-6 text-[16px] font-medium text-black transition-opacity hover:opacity-90 disabled:opacity-40'
+export const HOST_PAY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-landing-sky px-6 text-[16px] font-medium text-black transition-opacity ${SETTLE} hover:opacity-90 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** 44px, the minimum tap target. */
-export const HOST_ICON_BUTTON =
-  'inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile text-white transition-colors hover:bg-white/10 disabled:opacity-40'
+export const HOST_ICON_BUTTON = `inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile text-white transition-colors ${SETTLE} hover:bg-white/10 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** Text inputs and selects. */
 export const HOST_FIELD =
@@ -61,5 +68,4 @@ export const HOST_ROW_DETAIL =
 
 /** An inline text link, such as the terms lines: white and underlined. Sky
  *  is kept for payment and live or selected state. */
-export const HOST_LINK =
-  'text-white underline underline-offset-[3px] transition-colors hover:text-white/80'
+export const HOST_LINK = `text-white underline underline-offset-[3px] transition-colors ${SETTLE} hover:text-white/80 ${HOST_FOCUS}`

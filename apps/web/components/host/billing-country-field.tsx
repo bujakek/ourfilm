@@ -3,7 +3,7 @@
 import { ChevronDown } from 'lucide-react'
 import { useId, useState } from 'react'
 
-import { HOST_FIELD } from '@/components/host/ui/classes'
+import { HOST_FIELD, HOST_FOCUS } from '@/components/host/ui/classes'
 
 import {
   type BillingCountry,
@@ -76,7 +76,7 @@ export function BillingCountryField({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="min-h-11 font-medium text-white underline underline-offset-4"
+          className={`min-h-11 font-medium text-white underline underline-offset-4 ${HOST_FOCUS}`}
         >
           {en ? 'Change' : 'Módosítás'}
         </button>

@@ -1,5 +1,6 @@
 import { HostBlock } from '@/components/host/host-block'
 import {
+  HOST_FOCUS,
   HOST_KICKER,
   HOST_KICKER_BASE,
   HOST_PRIMARY,
@@ -144,7 +145,7 @@ function EventRow({
       <HostBlock index={index}>
         <Link
           href={`/host/events/${event.slug}?lang=${locale}`}
-          className={`block overflow-hidden rounded-lg border transition-colors ${
+          className={`block overflow-hidden rounded-lg border transition-colors ${HOST_FOCUS} ${
             open
               ? 'border-white/12 hover:border-white/25'
               : 'border-white/9 hover:border-white/20'
