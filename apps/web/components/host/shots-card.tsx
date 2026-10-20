@@ -5,6 +5,11 @@ import { useOptimistic, useTransition } from 'react'
 import { setShotsPerParticipant } from '@/app/(product)/host/events/[slug]/actions'
 import { useSettingsSave } from '@/components/host/settings-save'
 import { ShotsSelector } from '@/components/host/shots-selector'
+import {
+  HOST_PANEL,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+} from '@/components/host/ui/classes'
 import type { ShotOption } from '@/lib/camera'
 
 /**
@@ -46,28 +51,26 @@ export function ShotsCard({
     })
 
   return (
-    <div className="glass rounded-2xl px-5 py-4">
-      <p className="font-medium">
-        {en ? 'Photos per guest' : 'Képek vendégenként'}
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        {en
-          ? 'The limit applies separately to each guest. Lowering it never deletes existing photos.'
-          : 'A limit minden vendégnél külön számít. A csökkentés nem töröl képeket — aki már többet készített, megtartja őket, de újat nem tud.'}
-      </p>
-
-      <fieldset className="mt-4">
-        <legend className="sr-only">
-          {en ? 'Photos per guest' : 'Képek száma vendégenként'}
+    <section className={`${HOST_PANEL} p-5`}>
+      <fieldset>
+        <legend className={HOST_ROW_QUESTION}>
+          {en ? 'Photos per guest' : 'Képek vendégenként'}
         </legend>
-        <ShotsSelector
-          value={optimisticShots}
-          onChange={apply}
-          name="shots_setting"
-          locale={locale}
-          disabled={pending}
-        />
+        <p className={HOST_ROW_DETAIL}>
+          {en
+            ? 'Lowering it never deletes photos already taken.'
+            : 'A csökkentés nem töröl képeket: aki már többet készített, megtartja őket.'}
+        </p>
+        <div className="mt-3">
+          <ShotsSelector
+            value={optimisticShots}
+            onChange={apply}
+            name="shots_setting"
+            locale={locale}
+            disabled={pending}
+          />
+        </div>
       </fieldset>
-    </div>
+    </section>
   )
 }

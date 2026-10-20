@@ -5,6 +5,7 @@ import { useOptimistic, useTransition } from 'react'
 import { setReveal } from '@/app/(product)/host/events/[slug]/actions'
 import { RevealSelector } from '@/components/host/reveal-selector'
 import { useSettingsSave } from '@/components/host/settings-save'
+import { HOST_PANEL, HOST_ROW_QUESTION } from '@/components/host/ui/classes'
 import type { RevealChoice } from '@/lib/camera'
 
 /**
@@ -44,23 +45,23 @@ export function RevealCard({
     })
 
   return (
-    <div className="glass rounded-2xl px-5 py-4">
-      <p className="font-medium">{en ? 'Photo reveal' : 'Képek megjelenése'}</p>
-
-      <fieldset className="mt-4">
-        <legend className="sr-only">
-          {en ? 'Photo reveal time' : 'Leleplezés időpontja'}
+    <section className={`${HOST_PANEL} p-5`}>
+      <fieldset>
+        <legend className={HOST_ROW_QUESTION}>
+          {en ? 'When should photos appear?' : 'Mikor jelenjenek meg a képek?'}
         </legend>
-        <RevealSelector
-          value={optimisticMode}
-          onChange={(value) => {
-            if (value !== optimisticMode) apply(value)
-          }}
-          name="reveal_mode_setting"
-          locale={locale}
-          disabled={pending}
-        />
+        <div className="mt-3">
+          <RevealSelector
+            value={optimisticMode}
+            onChange={(value) => {
+              if (value !== optimisticMode) apply(value)
+            }}
+            name="reveal_mode_setting"
+            locale={locale}
+            disabled={pending}
+          />
+        </div>
       </fieldset>
-    </div>
+    </section>
   )
 }

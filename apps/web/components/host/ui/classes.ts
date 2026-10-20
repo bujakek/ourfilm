@@ -50,3 +50,11 @@ export const HOST_ICON_BUTTON =
 /** Text inputs and selects. */
 export const HOST_FIELD =
   'h-14 w-full rounded-[16px] bg-host-tile px-4 text-[16px] text-white placeholder:text-white/55 outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+
+/** A settings row's question: sentence case, never a kicker. */
+export const HOST_ROW_QUESTION =
+  'text-[16px] leading-[1.5] font-medium text-white text-pretty'
+
+/** The sentence under a settings row's question. */
+export const HOST_ROW_DETAIL =
+  'text-[14px] leading-[1.5] text-white/65 text-pretty'

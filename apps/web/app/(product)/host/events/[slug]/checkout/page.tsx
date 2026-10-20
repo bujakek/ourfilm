@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 
 import { BillingCard } from '@/components/host/billing-card'
+import { HOST_KICKER, HOST_TITLE } from '@/components/host/ui/classes'
 import { BackLink } from '@/components/ui/back-link'
 import { getEventQuota, getSavedBillingCountry } from '@/lib/billing'
 import { suggestedBillingCountry } from '@/lib/billing-country'
@@ -40,18 +41,14 @@ export default async function EventCheckoutPage({
   return (
     <main
       lang={localeTag[locale]}
-      className="mx-auto max-w-lg px-6 py-8 sm:py-12"
+      className="mx-auto w-full max-w-lg px-5 pt-7 pb-11 sm:px-7"
     >
       <BackLink href={`/host/events/${slug}?lang=${locale}`}>
         {event.event_name}
       </BackLink>
-      <header className="mt-6 mb-6">
-        <p className="text-sm text-muted-foreground">
-          {en ? 'Your event is saved' : 'Az eseményed elmentve'}
-        </p>
-        <h1 className="mt-2 font-display text-4xl tracking-tight">
-          {en ? 'Payment' : 'Fizetés'}
-        </h1>
+      <header className="mt-6 mb-7">
+        <p className={HOST_KICKER}>{en ? 'Event saved' : 'Esemény elmentve'}</p>
+        <h1 className={`mt-3 ${HOST_TITLE}`}>{en ? 'Payment' : 'Fizetés'}</h1>
       </header>
       <BillingCard
         presentation="checkout"

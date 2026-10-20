@@ -2,6 +2,11 @@
 
 import { setGuestsCanView } from '@/app/(product)/host/events/[slug]/actions'
 import { useSettingsSave } from '@/components/host/settings-save'
+import {
+  HOST_PANEL,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+} from '@/components/host/ui/classes'
 import { Switch } from '@/components/ui/switch'
 import { useOptimistic, useTransition } from 'react'
 
@@ -49,13 +54,13 @@ export function GuestsToggle({
     })
 
   return (
-    <div className="glass rounded-2xl px-5 py-4">
-      <div className="flex items-center justify-between gap-4">
+    <section className={`${HOST_PANEL} px-5 py-2`}>
+      <div className="flex min-h-[72px] items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-medium">
-            {en ? 'Guest gallery access' : 'Vendégek galéria-hozzáférése'}
+          <p className={HOST_ROW_QUESTION}>
+            {en ? 'Guests can see the gallery' : 'Vendégek látják a galériát'}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          <p className={HOST_ROW_DETAIL}>
             {optimisticCanView
               ? en
                 ? 'Guests can open the gallery after the reveal.'
@@ -68,11 +73,14 @@ export function GuestsToggle({
 
         <Switch
           checked={optimisticCanView}
-          label={en ? 'Guest gallery access' : 'Vendégek galéria-hozzáférése'}
+          label={
+            en ? 'Guests can see the gallery' : 'Vendégek látják a galériát'
+          }
           disabled={pending}
           onCheckedChange={apply}
+          tone="host"
         />
       </div>
-    </div>
+    </section>
   )
 }

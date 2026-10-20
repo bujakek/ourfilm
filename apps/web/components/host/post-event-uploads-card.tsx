@@ -3,6 +3,7 @@
 import { useOptimistic, useTransition } from 'react'
 import { setPostEventUploads } from '@/app/(product)/host/events/[slug]/actions'
 import { useSettingsSave } from '@/components/host/settings-save'
+import { HOST_PANEL } from '@/components/host/ui/classes'
 import { PostEventUploadsField } from './post-event-uploads-field'
 import type { Locale } from '@/lib/i18n'
 
@@ -30,13 +31,14 @@ export function PostEventUploadsCard({
       }
     })
   return (
-    <div className="glass rounded-2xl px-5 py-4">
+    <section className={`${HOST_PANEL} px-5 py-2`}>
       <PostEventUploadsField
         enabled={optimistic}
         locale={locale}
         disabled={pending}
         onChange={apply}
+        tone="host"
       />
-    </div>
+    </section>
   )
 }

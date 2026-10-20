@@ -4,7 +4,13 @@ import { deleteEvent } from '@/app/(product)/host/events/[slug]/actions'
 import { Sheet } from '@/components/host/sheet'
 import { Loader2, Trash2, TriangleAlert } from 'lucide-react'
 import { useState, useTransition } from 'react'
-import { Button } from '@/components/ui/button'
+
+import {
+  HOST_PANEL,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+  HOST_SECONDARY,
+} from '@/components/host/ui/classes'
 
 /**
  * Permanent deletion, behind a confirmation sheet.
@@ -55,33 +61,54 @@ export function DangerZone({
       }
     })
 
+  const danger =
+    'inline-flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-host-danger-fill px-6 text-[15px] font-medium text-host-danger transition-colors hover:bg-host-danger-fill/80 disabled:opacity-40'
+
   return (
-    <section className="print-hidden mt-12 rounded-2xl border border-destructive/30 px-5 py-4">
-      <h2 className="font-semibold text-destructive">
+    <section className={`print-hidden ${HOST_PANEL} p-5`}>
+      <h2 className={HOST_ROW_QUESTION}>
         {en ? 'Delete event' : 'Esemény törlése'}
       </h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        {photoCount > 0
-          ? en
-            ? `Permanently deletes the event and all ${photoCount} uploaded photos. This cannot be undone.`
-            : `Véglegesen törli az eseményt és mind a ${photoCount} feltöltött képet. Ez a művelet nem vonható vissza.`
-          : en
-            ? 'Permanently deletes the event and all uploaded photos. This cannot be undone.'
-            : 'Véglegesen törli az eseményt és az összes feltöltött képet. Ez a művelet nem vonható vissza.'}
+      <p className={HOST_ROW_DETAIL}>
+        {photoCount > 0 ? (
+          en ? (
+            <>
+              The event and its{' '}
+              <span className="host-figure text-[18px] text-white">
+                {photoCount}
+              </span>{' '}
+              uploaded {photoCount === 1 ? 'photo' : 'photos'} are deleted for
+              good. This cannot be undone.
+            </>
+          ) : (
+            <>
+              Az eseménnyel együtt{' '}
+              <span className="host-figure text-[18px] text-white">
+                {photoCount}
+              </span>{' '}
+              feltöltött kép is véglegesen törlődik. Nem vonható vissza.
+            </>
+          )
+        ) : en ? (
+          'The event is deleted for good. This cannot be undone.'
+        ) : (
+          'Az esemény véglegesen törlődik. Nem vonható vissza.'
+        )}
       </p>
 
-      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="mt-3 text-[14px] text-host-danger">
+          {error}
+        </p>
+      ) : null}
 
-      <Button
+      <button
         type="button"
         onClick={() => setOpen(true)}
-        variant="destructive-outline"
-        size="sm"
-        className="mt-4"
+        className={`mt-4 ${danger}`}
       >
-        <Trash2 className="size-4" />
-        {en ? 'Permanently delete event' : 'Esemény végleges törlése'}
-      </Button>
+        {en ? 'Delete event' : 'Esemény törlése'}
+      </button>
 
       <Sheet
         open={open}
@@ -92,37 +119,36 @@ export function DangerZone({
         detail={
           photoCount > 0
             ? en
-              ? `“${eventName}” and all ${photoCount} uploaded photos will be permanently deleted.`
-              : `Az „${eventName}” esemény és mind a ${photoCount} feltöltött kép véglegesen törlődik. Ezt később nem lehet visszavonni.`
+              ? `“${eventName}” and its ${photoCount} uploaded ${photoCount === 1 ? 'photo' : 'photos'} will be permanently deleted.`
+              : `Az „${eventName}” esemény és ${photoCount} feltöltött kép véglegesen törlődik. Ezt később nem lehet visszavonni.`
             : en
               ? `“${eventName}” will be permanently deleted.`
               : `Az „${eventName}” esemény véglegesen törlődik. Ezt később nem lehet visszavonni.`
         }
         icon={
-          <span className="flex size-12 items-center justify-center rounded-full bg-destructive/15">
+          <span className="flex size-12 items-center justify-center rounded-full bg-host-danger-fill">
             <TriangleAlert
-              className="size-6 text-destructive"
+              className="size-6 text-host-danger"
               strokeWidth={2}
             />
           </span>
         }
       >
         <div className="flex flex-col gap-2">
-          <Button
+          <button
             type="button"
             disabled={pending}
             onClick={confirmDelete}
-            variant="destructive"
-            className="w-full"
+            className={danger}
           >
             {pending ? (
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Trash2 className="size-4" />
+              <Trash2 className="size-4" aria-hidden="true" />
             )}
             {en ? 'Yes, delete permanently' : 'Igen, végleg törlöm'}
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
             disabled={pending}
             // Enter must never be the delete. `autoFocus` asks for this
@@ -131,11 +157,10 @@ export function DangerZone({
             // neither of them is "Igen, végleg törlöm".
             autoFocus
             onClick={() => setOpen(false)}
-            variant="secondary"
-            className="w-full"
+            className={`${HOST_SECONDARY} w-full`}
           >
             {en ? 'Cancel' : 'Mégse'}
-          </Button>
+          </button>
         </div>
       </Sheet>
     </section>

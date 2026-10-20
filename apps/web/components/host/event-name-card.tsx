@@ -4,7 +4,12 @@ import { useRef, useState, useTransition } from 'react'
 
 import { renameEvent } from '@/app/(product)/host/events/[slug]/actions'
 import { useSettingsSave } from '@/components/host/settings-save'
-import { inputClassName } from '@/components/ui/input'
+import {
+  HOST_FIELD,
+  HOST_PANEL,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+} from '@/components/host/ui/classes'
 import { EVENT_NAME_MAX_LENGTH, eventNameProblem } from '@/lib/camera'
 
 /**
@@ -76,11 +81,11 @@ export function EventNameCard({
   }
 
   return (
-    <div className="glass rounded-2xl px-5 py-4">
-      <label htmlFor="event-name" className="font-medium">
+    <section className={`${HOST_PANEL} p-5`}>
+      <label htmlFor="event-name" className={`block ${HOST_ROW_QUESTION}`}>
         {en ? 'Event name' : 'Az esemény neve'}
       </label>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+      <p id="event-name-detail" className={HOST_ROW_DETAIL}>
         {en
           ? 'What your guests see on the camera and in the gallery. The link and the QR code stay the same, so anything already printed keeps working.'
           : 'Ezt látják a vendégeid a kamerán és a galériában. A link és a QR-kód nem változik, így a már kinyomtatott kódok továbbra is működnek.'}
@@ -93,6 +98,7 @@ export function EventNameCard({
         maxLength={EVENT_NAME_MAX_LENGTH}
         autoCapitalize="sentences"
         enterKeyHint="done"
+        aria-describedby="event-name-detail"
         onChange={(event) => setValue(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -103,14 +109,14 @@ export function EventNameCard({
             event.currentTarget.blur()
           }
         }}
-        className={`mt-4 ${inputClassName}`}
+        className={`mt-3 ${HOST_FIELD}`}
       />
 
       {problem === 'required' ? (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-[13px] text-white/65">
           {en ? 'Give your event a name.' : 'Adj nevet az eseménynek.'}
         </p>
       ) : null}
-    </div>
+    </section>
   )
 }

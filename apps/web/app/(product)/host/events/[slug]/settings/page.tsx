@@ -1,4 +1,10 @@
 import { BillingCard } from '@/components/host/billing-card'
+import {
+  HOST_PANEL,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+  HOST_TITLE,
+} from '@/components/host/ui/classes'
 import { getHostLocale } from '@/lib/host-locale'
 import { BackLink } from '@/components/ui/back-link'
 import { CaptureEndCard } from '@/components/host/capture-end-card'
@@ -62,8 +68,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * here, where the decision was made; a paid one gets its own screen at
  * `checkout/success` and links back to this card for the receipt.
  *
- * Each card carries its own heading, so this page deliberately has no section
- * headings of its own — a second title above every card would only repeat it.
+ * Each panel carries its own question, so this page deliberately has no
+ * section headings of its own. Nothing here has a Save button: every control
+ * autosaves and reports to `SettingsSaveProvider`, which owns the header's
+ * "✓ Mentve" and the "Újra" toast.
  */
 export default async function AdminEventSettingsPage({
   params,
@@ -128,22 +136,26 @@ export default async function AdminEventSettingsPage({
           </BackLink>
         }
       >
-        <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance">
+        <h1 className={`mt-3 ${HOST_TITLE}`}>
           {en ? 'Settings' : 'Beállítások'}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {en
-            ? 'Change the name, when shooting ends, when photos appear, each guest’s roll, gallery access, billing and deletion.'
-            : 'Itt állíthatod be az esemény nevét, meddig lehet fotózni, mikor jelenjenek meg a képek, hányat készíthet egy vendég — és itt törölheted az eseményt.'}
-        </p>
 
-        <div className="mt-8 flex flex-col gap-4">
-          {/* First, and with no boundary around it: it needs nothing but the row
-            this page already has, and it is the likeliest reason a host opened
-            these settings at all — a name typed on a phone in a hurry. */}
-          <EventNameCard
+        {/* The mockup's order: what guests see first, then the camera's own
+            rules, then money and deletion. The name and the after-event
+            uploads are not in the mockup; they are shipped settings and sit
+            where they read naturally, in the same row style. */}
+        <div className="mt-7 flex flex-col gap-3">
+          <GuestsToggle
             slug={event.slug}
-            name={event.event_name}
+            canView={event.guests_can_view}
+            locale={locale}
+          />
+
+          <RevealCard slug={event.slug} mode={revealChoice} locale={locale} />
+
+          <ShotsCard
+            slug={event.slug}
+            shots={event.shots_per_participant as ShotOption}
             locale={locale}
           />
 
@@ -165,28 +177,21 @@ export default async function AdminEventSettingsPage({
             locale={locale}
           />
 
-          <RevealCard slug={event.slug} mode={revealChoice} locale={locale} />
-
-          <ShotsCard
-            slug={event.slug}
-            shots={event.shots_per_participant as ShotOption}
-            locale={locale}
-          />
-
           <PostEventUploadsCard
             slug={event.slug}
             enabled={event.post_event_uploads_enabled}
             locale={locale}
           />
 
-          <GuestsToggle
+          <EventNameCard
             slug={event.slug}
-            canView={event.guests_can_view}
+            name={event.event_name}
             locale={locale}
           />
 
           {/* The event page's quota banner links straight here — the unlock has
-            to be reached with its consumer-law checkbox, not around it. */}
+            to be reached with its consumer-law checkbox, not around it. The
+            card opens itself when the hash is `#billing`. */}
           <div id="billing" className="scroll-mt-6">
             <Suspense fallback={<BillingCardSkeleton />}>
               <EventBilling
@@ -197,16 +202,16 @@ export default async function AdminEventSettingsPage({
               />
             </Suspense>
           </div>
-        </div>
 
-        <Suspense fallback={null}>
-          <EventDangerZone
-            slug={event.slug}
-            eventName={event.event_name}
-            eventId={event.id}
-            locale={locale}
-          />
-        </Suspense>
+          <Suspense fallback={null}>
+            <EventDangerZone
+              slug={event.slug}
+              eventName={event.event_name}
+              eventId={event.id}
+              locale={locale}
+            />
+          </Suspense>
+        </div>
       </SettingsSaveProvider>
     </main>
   )
@@ -214,10 +219,7 @@ export default async function AdminEventSettingsPage({
 
 function BillingCardSkeleton() {
   return (
-    <div
-      className="skeleton h-32 animate-pulse rounded-2xl"
-      aria-hidden="true"
-    />
+    <div className={`h-24 animate-pulse ${HOST_PANEL}`} aria-hidden="true" />
   )
 }
 
@@ -248,16 +250,16 @@ async function EventBilling({
   } catch (e) {
     console.error('Could not read billing state', e)
     return (
-      <div className="glass rounded-2xl px-5 py-4">
-        <p className="font-medium">
+      <section className={`${HOST_PANEL} p-5`}>
+        <p className={HOST_ROW_QUESTION}>
           {locale === 'en' ? 'Guest allowance' : 'Résztvevői keret'}
         </p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        <p className={HOST_ROW_DETAIL}>
           {locale === 'en'
             ? 'We cannot load it right now. The camera and gallery still work.'
             : 'Most nem tudjuk lekérdezni. A kamera és a galéria ettől változatlanul működik.'}
         </p>
-      </div>
+      </section>
     )
   }
 

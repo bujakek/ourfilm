@@ -1,11 +1,19 @@
 'use client'
 
-import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
 import { formatEventDate } from '@/lib/format'
 import type { Locale } from '@/lib/i18n'
 
+/**
+ * The end of the event as two tiles: a day button and a native time field.
+ *
+ * The day is ours, because iOS draws a native date control from a shadow tree
+ * that ignores the box it sits in. The time is the browser's own
+ * `type="time"` — a fixed-width `HH:mm` that lies flat — with no custom
+ * stepper beside it.
+ */
 export function EventEndFields({
   day,
   time,
@@ -34,7 +42,7 @@ export function EventEndFields({
   timeStep?: number
   /** Set when the day button opens a panel rather than a dialog. */
   dayExpanded?: boolean
-  /** 7e: the server refused the value; both fields are outlined. */
+  /** 7e: the server refused the value; both tiles are outlined. */
   error?: boolean
 }) {
   const en = locale === 'en'
@@ -53,63 +61,41 @@ export function EventEndFields({
     return () => input.removeEventListener('change', onChange)
   }, [])
 
+  const outline = error ? 'ring-[1.5px] ring-host-danger ring-inset' : ''
+
   return (
-    <div className="space-y-2.5">
+    <div className="flex gap-2">
       <button
         type="button"
         onClick={onChooseDay}
         aria-expanded={dayExpanded}
-        className="hover:border-strong flex min-h-16 w-full items-center gap-4 rounded-lg border border-border px-4 text-left transition-colors"
+        aria-label={`${en ? 'Date' : 'Dátum'}: ${formatEventDate(day, locale)}`}
+        className={`flex min-h-[52px] min-w-0 flex-[1.5] items-center justify-between gap-2 rounded-[14px] bg-host-tile px-4 py-2 text-left text-[15px] font-medium text-white transition-colors hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none ${outline}`}
       >
-        <CalendarDays
-          className="size-5 shrink-0 text-muted-foreground"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[9px] font-medium tracking-[0.16em] text-muted-foreground/70">
-            {en ? 'DATE' : 'DÁTUM'}
-          </span>
-          <span className="mt-1 block font-mono text-[13px] font-medium">
-            {formatEventDate(day, locale)}
-          </span>
+        <span className="min-w-0 text-balance">
+          {formatEventDate(day, locale)}
         </span>
-        <ChevronRight
-          className="size-5 shrink-0 text-muted-foreground"
+        <ChevronDown
+          className={`size-4 shrink-0 text-white/65 transition-transform ${
+            dayExpanded ? 'rotate-180' : ''
+          }`}
           aria-hidden="true"
         />
       </button>
 
-      <label className="hover:border-strong relative flex min-h-16 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-lg border border-border px-4 text-left transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
-        <Clock3
-          className="size-5 shrink-0 text-muted-foreground"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[9px] font-medium tracking-[0.16em] text-muted-foreground/70">
-            {en ? 'TIME' : 'IDŐPONT'}
-          </span>
-          {/* `tabular-nums` is gone with the proportional face: a mono already
-              holds its columns, which is the whole reason a clock reads in one. */}
-          <span className="mt-1 block font-mono text-[13px] font-medium">
-            {time}
-          </span>
-        </span>
-        <ChevronRight
-          className="size-5 shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
+      <label
+        className={`flex min-h-[52px] min-w-0 flex-1 cursor-pointer items-center rounded-[14px] bg-host-tile px-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-white/60 ${outline}`}
+      >
         <input
           ref={timeInput}
           type="time"
           step={timeStep}
           required
-          aria-invalid={error || undefined}
           aria-label={timeLabel}
+          aria-invalid={error || undefined}
           value={time}
           onChange={(event) => onTimeChange(event.target.value)}
-          className="absolute inset-0 size-full cursor-pointer opacity-0"
+          className="min-h-11 w-full min-w-0 bg-transparent text-[15px] font-medium text-white [color-scheme:dark] outline-none"
         />
       </label>
     </div>

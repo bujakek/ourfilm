@@ -6,6 +6,11 @@ import { setCaptureEnd } from '@/app/(product)/host/events/[slug]/actions'
 import { EventEndFields } from '@/components/host/event-end-fields'
 import { MonthCalendar } from '@/components/host/month-calendar'
 import { useSettingsSave } from '@/components/host/settings-save'
+import {
+  HOST_PANEL,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+} from '@/components/host/ui/classes'
 import { FloatingPanel } from '@/components/host/ui/floating-panel'
 import { eventLocalToIso, formatRevealBadge } from '@/lib/format'
 import { captureEndDisplay } from '@/lib/host-ui'
@@ -67,16 +72,21 @@ export function CaptureEndCard({
   // The same value for callbacks that outlive a render: a retry tapped in the
   // toast must restore whatever is stored then, not when it failed.
   const storedRef = useRef(endValue)
-  const [shown, setShown] = useState(endValue)
+  // What the two fields show. The time is its own string because a native
+  // time field passes through '' while a segment is being retyped.
+  const [day, setDay] = useState(() => endValue.slice(0, 10))
+  const [time, setTime] = useState(() => endValue.slice(11, 16))
   const [refused, setRefused] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
-  const day = shown.slice(0, 10)
-  const time = shown.slice(11, 16)
+  const show = (value: string) => {
+    setDay(value.slice(0, 10))
+    setTime(value.slice(11, 16))
+  }
 
   const save = (next: string) => {
-    setShown(next)
+    show(next)
     setRefused(false)
     startTransition(async () => {
       try {
@@ -91,7 +101,7 @@ export function CaptureEndCard({
         // text.
         const beforeStart = next <= startValue
         const display = captureEndDisplay(storedRef.current, next, true)
-        setShown(display.value)
+        show(display.value)
         if (beforeStart) {
           setRefused(display.error)
         } else {
@@ -103,7 +113,7 @@ export function CaptureEndCard({
 
   const commit = (next: string) => {
     if (next === storedRef.current) {
-      setShown(next)
+      show(next)
       setRefused(false)
       return
     }
@@ -114,9 +124,11 @@ export function CaptureEndCard({
   const kept = keptIso ? formatRevealBadge(keptIso, zone, locale) : stored
 
   return (
-    <div className="glass relative rounded-2xl px-5 py-4">
-      <p className="font-medium">{en ? 'Shooting ends' : 'A fotózás vége'}</p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+    <section className={`relative ${HOST_PANEL} p-5`}>
+      <p className={HOST_ROW_QUESTION}>
+        {en ? 'Shooting ends' : 'Fotózás vége'}
+      </p>
+      <p className={HOST_ROW_DETAIL}>
         {state === 'before'
           ? en
             ? 'The camera is not open yet.'
@@ -130,15 +142,16 @@ export function CaptureEndCard({
               : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
       </p>
 
-      <div className="mt-4" aria-busy={pending}>
+      <div
+        className={`mt-3 transition-opacity ${pending ? 'opacity-60' : ''}`}
+        aria-busy={pending}
+      >
         <EventEndFields
           day={day}
           time={time}
           onChooseDay={() => setCalendarOpen((open) => !open)}
           dayExpanded={calendarOpen}
-          onTimeChange={(value) => {
-            if (value) setShown(`${day}T${value}`)
-          }}
+          onTimeChange={setTime}
           onTimeCommit={(value) => commit(`${day}T${value}`)}
           timeStep={900}
           error={refused}
@@ -148,7 +161,10 @@ export function CaptureEndCard({
       </div>
 
       {refused ? (
-        <p role="alert" className="mt-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-3 text-[14px] leading-[1.5] text-pretty text-host-danger"
+        >
           {en
             ? `That time has already passed. Choose a later one; the earlier value (${kept}) has been kept.`
             : `Ez az időpont már elmúlt. Válassz későbbi időpontot, a korábbi érték (${kept}) megmaradt.`}
@@ -167,10 +183,12 @@ export function CaptureEndCard({
           locale={locale}
           onChange={(value) => {
             setCalendarOpen(false)
-            commit(`${value}T${time}`)
+            // A time field caught mid-edit is empty; the day still saves
+            // against the stored time rather than sending half a value.
+            commit(`${value}T${time || storedRef.current.slice(11, 16)}`)
           }}
         />
       </FloatingPanel>
-    </div>
+    </section>
   )
 }
