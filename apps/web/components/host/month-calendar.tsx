@@ -175,7 +175,7 @@ export function MonthCalendar({
                     : past
                       ? 'text-white/25'
                       : outside
-                        ? 'text-white/40 hover:bg-white/8'
+                        ? 'text-white/55 hover:bg-white/8'
                         : 'text-white hover:bg-white/8',
                 ].join(' ')}
               >

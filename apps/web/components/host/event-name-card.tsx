@@ -49,21 +49,33 @@ export function EventNameCard({
   // The last name the server confirmed. The prop catches up after the
   // action's revalidation; this does not have to wait for it.
   const stored = useRef(name)
+  // The name a save is sending right now, so a second blur does not send it
+  // again while the first is still in flight.
+  const inFlight = useRef<string | null>(null)
 
   const problem = eventNameProblem(value.trim())
 
-  const save = (next: string) =>
+  const save = (next: string) => {
+    inFlight.current = next
     startTransition(async () => {
       try {
         await renameEvent(slug, next)
         stored.current = next
-        setValue(next)
+        // Text typed while the save was in flight stays where it is.
+        setValue((current) => (current.trim() === next ? next : current))
         report('ok', () => save(next))
       } catch {
-        setValue(stored.current)
+        // Restore only if the field still shows the name that failed; a host
+        // who has typed on since then keeps what they typed.
+        setValue((current) =>
+          current.trim() === next ? stored.current : current,
+        )
         report('error', () => save(next))
+      } finally {
+        if (inFlight.current === next) inFlight.current = null
       }
     })
+  }
 
   const commit = () => {
     const trimmed = value.trim()
@@ -71,6 +83,7 @@ export function EventNameCard({
       setValue(stored.current)
       return
     }
+    if (trimmed === inFlight.current) return
     if (trimmed === stored.current) {
       if (trimmed !== value) setValue(trimmed)
       return

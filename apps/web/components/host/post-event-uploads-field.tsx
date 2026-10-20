@@ -1,5 +1,9 @@
 'use client'
 
+import {
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+} from '@/components/host/ui/classes'
 import { Switch, type SwitchTone } from '@/components/ui/switch'
 import type { Locale } from '@/lib/i18n'
 
@@ -25,19 +29,13 @@ export function PostEventUploadsField({
       className={`flex items-center justify-between gap-4 ${host ? 'min-h-[72px]' : ''}`}
     >
       <div className="min-w-0">
-        <p
-          className={
-            host
-              ? 'text-[16px] leading-[1.5] font-medium text-white'
-              : 'text-sm font-medium'
-          }
-        >
+        <p className={host ? HOST_ROW_QUESTION : 'text-sm font-medium'}>
           {title}
         </p>
         <p
           className={
             host
-              ? 'text-[14px] leading-[1.5] text-pretty text-white/65'
+              ? HOST_ROW_DETAIL
               : 'mt-1 text-xs leading-relaxed text-muted-foreground'
           }
         >

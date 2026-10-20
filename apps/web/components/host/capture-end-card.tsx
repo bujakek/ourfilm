@@ -33,7 +33,11 @@ import { captureEndDisplay } from '@/lib/host-ui'
  * overlays the cards below without moving them, and the day it is changing
  * stays in view above it.
  *
- * It saves when a day is picked and on the time field's `change`. Deliberately
+ * It saves when a day is picked, and when the time field is blurred or Enter
+ * is pressed — never on the native `change`, which desktop Chrome fires per
+ * segment, so an in-between past value would close the camera. Only a value
+ * that differs from the stored one is sent, and only the latest of
+ * overlapping saves may touch the fields. Deliberately
  * **not optimistic**, unlike the toggles: a field that showed a value the
  * server had refused would be lying about the one value guests are held to.
  * While a save is in flight the fields read as busy, and a failure puts the
@@ -72,6 +76,10 @@ export function CaptureEndCard({
   // The same value for callbacks that outlive a render: a retry tapped in the
   // toast must restore whatever is stored then, not when it failed.
   const storedRef = useRef(endValue)
+  // Saves can overlap — a day picked while a time is still saving — and
+  // resolve out of order. Only the latest one may touch the fields or report.
+  const latest = useRef(0)
+  const inFlight = useRef<string | null>(null)
   // What the two fields show. The time is its own string because a native
   // time field passes through '' while a segment is being retyped.
   const [day, setDay] = useState(() => endValue.slice(0, 10))
@@ -88,13 +96,19 @@ export function CaptureEndCard({
   const save = (next: string) => {
     show(next)
     setRefused(false)
+    const seq = ++latest.current
+    inFlight.current = next
     startTransition(async () => {
       try {
         await setCaptureEnd(slug, next)
+        if (seq !== latest.current) return
+        inFlight.current = null
         storedRef.current = next
         setStored(next)
         report('ok', () => save(next))
       } catch {
+        if (seq !== latest.current) return
+        inFlight.current = null
         // A server error's message does not survive a production build, so
         // the refusal is recognised by the same rule the action applies.
         // Both strings are wall clock in the same zone, so they compare as
@@ -112,7 +126,8 @@ export function CaptureEndCard({
   }
 
   const commit = (next: string) => {
-    if (next === storedRef.current) {
+    if (next === inFlight.current) return
+    if (next === storedRef.current && inFlight.current === null) {
       show(next)
       setRefused(false)
       return
