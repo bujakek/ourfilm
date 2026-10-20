@@ -1,24 +1,16 @@
-import {
-  ChevronRight,
-  ExternalLink,
-  Globe,
-  LogOut,
-  Mail,
-  Trash2,
-} from 'lucide-react'
+import { ChevronRight, ExternalLink, LogOut, Trash2 } from 'lucide-react'
 import { getHostLocale } from '@/lib/host-locale'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { SiInstagram, SiTiktok } from 'react-icons/si'
 
 import { AccountLanguageSelect } from '@/components/host/account-language-select'
 import { AccountNameForm } from '@/components/host/account-name-form'
 import { BackLink } from '@/components/ui/back-link'
 import { getCurrentHostProfile } from '@/lib/host-profile'
-import { localePath, localeTag } from '@/lib/i18n'
-import { CONTACT_EMAIL, INSTAGRAM_URL, SITE_URL, TIKTOK_URL } from '@/lib/site'
+import { localeTag } from '@/lib/i18n'
+import { CONTACT_EMAIL } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,7 +106,6 @@ export default async function AccountPage({
   const profile = await getCurrentHostProfile()
   if (!profile) redirect(`/host/login?lang=${locale}`)
 
-  const homepage = `${SITE_URL}/${locale}`
   const deletionSubject = encodeURIComponent(
     en ? 'OurFilm account deletion request' : 'OurFilm-fiók törlése',
   )
@@ -173,70 +164,6 @@ export default async function AccountPage({
             {profile.email}
           </p>
         </div>
-      </section>
-
-      <section className="mt-10" aria-labelledby="ourfilm-heading">
-        <h2
-          id="ourfilm-heading"
-          className="font-mono text-[10px] font-medium tracking-[0.22em] text-foreground/42"
-        >
-          OURFILM
-        </h2>
-        <nav
-          aria-label={en ? 'OurFilm links' : 'OurFilm-linkek'}
-          className="mt-4 border-y border-border"
-        >
-          <SettingsLink
-            href={INSTAGRAM_URL}
-            affordance="external"
-            icon={
-              <SiInstagram
-                className="size-[19px] text-foreground/75"
-                aria-hidden="true"
-              />
-            }
-          >
-            Instagram
-          </SettingsLink>
-          <SettingsLink
-            href={TIKTOK_URL}
-            affordance="external"
-            icon={
-              <SiTiktok
-                className="size-[19px] text-foreground/75"
-                aria-hidden="true"
-              />
-            }
-          >
-            TikTok
-          </SettingsLink>
-          <SettingsLink
-            href={homepage}
-            affordance="external"
-            icon={
-              <Globe
-                className="size-5 text-foreground/75"
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
-            }
-          >
-            {en ? 'Website' : 'Weboldal'}
-          </SettingsLink>
-          <SettingsLink
-            href={localePath(locale, '/kapcsolat')}
-            affordance="external"
-            icon={
-              <Mail
-                className="size-5 text-foreground/75"
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
-            }
-          >
-            {en ? 'Contact' : 'Kapcsolat'}
-          </SettingsLink>
-        </nav>
       </section>
 
       <section className="mt-12" aria-labelledby="actions-heading">
