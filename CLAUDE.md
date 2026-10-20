@@ -755,8 +755,8 @@ and in the queue suite; sabotaging either direction turns them red.
 
 A host can let guests add photos **from their phone's gallery** for 24 hours
 after `capture_end_at`: `events.post_event_uploads_enabled`, off by default,
-offered on the last onboarding screen and in settings
-(`post-event-uploads-card.tsx`). It is not a second roll and not an extension
+turned on in settings only (`post-event-uploads-card.tsx`) — onboarding does
+not offer it. It is not a second roll and not an extension
 of the event — those photos spend the same fixed roll, land in the same album,
 and neither `capture_end_at` nor `reveal_at` moves.
 
@@ -795,14 +795,22 @@ off unless the host turns it on, and the landing page does not advertise it.
 
 `/host/events/new` asks four things, one per screen, in a shared shell
 (`apps/web/components/host/onboarding/*`): the name, when the event ends, when the
-photos appear, and — sharing the last screen — how many guests, how long a roll
-is, and who may look. Modelled closely on Once's onboarding: full-bleed dark
-screens, one question each, a back arrow top-left, progress dots and the CTA
-pinned to the bottom.
+photos appear, and how many guests. Modelled closely on Once's onboarding:
+full-bleed dark screens, one question each, a back arrow top-left, a step
+counter and the CTA pinned to the bottom.
 
-The last screen carries three controls rather than three screens because they
-are the same decision from three sides: how big is this party and how much film
-does it need. Neither of the other two depends on the first being answered.
+**Roll length and gallery visibility are not asked.** They used to share the
+last screen; now they take their defaults — `DEFAULT_SHOTS` (24) and visible —
+and settings is the only place to change them, as it is for after-event
+uploads. The draft schema still carries all three, defaulted, because the
+server action reads them and an older draft that holds an answer keeps it.
+
+**The free path accepts the Terms by pressing.** There is no checkbox: the
+CTA that commits the draft (signed-in "Létrehozás", signed-out "Tovább a
+mentéshez") sits over a line saying that creating the event accepts the ÁSZF
+and the privacy notice, and pressing it sets `legalAccepted` on the draft.
+The server still refuses a create without it. The paid path keeps its explicit
+early-performance declaration, ticked before the sky CTA wakes.
 
 - **The camera opens the moment the event is created.** `capture_start_at` is
   stamped by the server action, not sent from the browser, so there is no clock

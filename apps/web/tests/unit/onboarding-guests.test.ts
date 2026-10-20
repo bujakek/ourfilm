@@ -5,12 +5,6 @@ import { guestsScreen } from '@/app/(product)/host/events/new/step-guests'
 const base = {
   plan: 'free' as const,
   setPlan: vi.fn(),
-  shots: 24 as const,
-  setShots: vi.fn(),
-  guestsCanView: true,
-  setGuestsCanView: vi.fn(),
-  postEventUploads: false,
-  setPostEventUploads: vi.fn(),
   legalAccepted: true,
   setLegalAccepted: vi.fn(),
   paymentsEnabled: true,
@@ -30,28 +24,45 @@ describe('the last question before saving', () => {
     }
   })
 
-  it('saves the event before asking signed-in hosts for payment', () => {
+  it('creates a signed-in free event, and sends a signed-in paid one to pay', () => {
     expect(guestsScreen({ ...base, signedIn: true }).cta).toBe('Létrehozás')
     expect(guestsScreen({ ...base, signedIn: true, plan: 'full' }).cta).toBe(
-      'Tovább a mentéshez',
+      'Tovább a fizetéshez',
     )
   })
 
-  it('localizes the save CTA', () => {
+  it('localizes the CTA', () => {
     expect(guestsScreen({ ...base, locale: 'en' }).cta).toBe('Continue to save')
+    expect(
+      guestsScreen({ ...base, locale: 'en', signedIn: true, plan: 'full' }).cta,
+    ).toBe('Continue to payment')
   })
 
-  it('still requires consent before either path can proceed', () => {
+  it('accepts the free terms by pressing, under a terms line', () => {
     for (const signedIn of [false, true]) {
-      expect(
-        guestsScreen({ ...base, signedIn, legalAccepted: false }).ctaDisabled,
-      ).toBe(true)
+      const screen = guestsScreen({ ...base, signedIn, legalAccepted: false })
+      expect(screen.ctaDisabled).toBe(false)
+      expect(screen.footnote).toBeTruthy()
     }
   })
 
-  it('lets either plan save without asking for a billing country', () => {
-    expect(guestsScreen(base).ctaDisabled).toBe(false)
-    expect(guestsScreen({ ...base, plan: 'full' }).ctaDisabled).toBe(false)
+  it('holds the paid path until the declaration is ticked', () => {
+    for (const signedIn of [false, true]) {
+      expect(
+        guestsScreen({ ...base, signedIn, plan: 'full', legalAccepted: false })
+          .ctaDisabled,
+      ).toBe(true)
+      expect(
+        guestsScreen({ ...base, signedIn, plan: 'full', legalAccepted: true })
+          .ctaDisabled,
+      ).toBe(false)
+    }
+  })
+
+  it('paints the paid path as a payment and the free one as the primary', () => {
+    expect(guestsScreen({ ...base, plan: 'full' }).ctaTone).toBe('pay')
+    expect(guestsScreen(base).ctaTone).toBeUndefined()
+    expect(guestsScreen({ ...base, plan: 'full' }).footnote).toBeUndefined()
   })
 
   it('keeps the submission pending state for both paths', () => {

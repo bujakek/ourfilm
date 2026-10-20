@@ -1,7 +1,6 @@
 'use client'
 
-import { ChevronDown } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -10,29 +9,25 @@ import {
   PaidTermsAcceptance,
 } from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
-import { ShotsSelector } from '@/components/host/shots-selector'
-import { PostEventUploadsField } from '@/components/host/post-event-uploads-field'
-import { SwitchTrack } from '@/components/ui/switch'
-import type { ShotOption } from '@/lib/camera'
+import { DEFAULT_SHOTS } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
 import { eventPriceLabel } from '@/lib/pricing'
 import { localePath, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
 /**
- * Guest count is the last decision. Roll length and gallery access keep their
- * draft defaults unless the host opens the optional settings. Both remain
- * editable after creation, so neither needs an answer before saving an event.
+ * Guest count is the last decision, and the only one on this screen. Roll
+ * length and gallery access are no longer asked: they take the draft's
+ * defaults (`DEFAULT_SHOTS`, visible) and live in settings, as do after-event
+ * uploads, which onboarding does not offer at all.
+ *
+ * The free path accepts the Terms by pressing the button, under a line that
+ * says so; the CTA that commits the draft sets `legalAccepted`. The paid path
+ * keeps its explicit declaration, ticked before the button wakes.
  */
 export function guestsScreen({
   plan,
   setPlan,
-  shots,
-  setShots,
-  guestsCanView,
-  setGuestsCanView,
-  postEventUploads,
-  setPostEventUploads,
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
@@ -42,12 +37,6 @@ export function guestsScreen({
 }: {
   plan: EventPlan
   setPlan: (value: EventPlan) => void
-  shots: ShotOption
-  setShots: (value: ShotOption) => void
-  guestsCanView: boolean
-  setGuestsCanView: (value: boolean) => void
-  postEventUploads: boolean
-  setPostEventUploads: (value: boolean) => void
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   /** Whether Stripe is switched on in this environment. When it is not, the
@@ -73,23 +62,19 @@ export function guestsScreen({
           : 'Tovább a mentéshez'
         : plan === 'full'
           ? en
-            ? 'Continue to save'
-            : 'Tovább a mentéshez'
+            ? 'Continue to payment'
+            : 'Tovább a fizetéshez'
           : en
             ? 'Create event'
             : 'Létrehozás',
-    ctaDisabled: !legalAccepted,
+    ctaDisabled: plan === 'full' && !legalAccepted,
     ctaPending: pending,
+    ctaTone: plan === 'full' ? 'pay' : undefined,
+    footnote: plan === 'full' ? undefined : <FreeTermsLine locale={locale} />,
     content: (
       <GuestsFields
         plan={plan}
         setPlan={setPlan}
-        shots={shots}
-        setShots={setShots}
-        guestsCanView={guestsCanView}
-        setGuestsCanView={setGuestsCanView}
-        postEventUploads={postEventUploads}
-        setPostEventUploads={setPostEventUploads}
         legalAccepted={legalAccepted}
         setLegalAccepted={setLegalAccepted}
         paymentsEnabled={paymentsEnabled}
@@ -102,12 +87,6 @@ export function guestsScreen({
 function GuestsFields({
   plan,
   setPlan,
-  shots,
-  setShots,
-  guestsCanView,
-  setGuestsCanView,
-  postEventUploads,
-  setPostEventUploads,
   legalAccepted,
   setLegalAccepted,
   paymentsEnabled,
@@ -115,12 +94,6 @@ function GuestsFields({
 }: {
   plan: EventPlan
   setPlan: (value: EventPlan) => void
-  shots: ShotOption
-  setShots: (value: ShotOption) => void
-  guestsCanView: boolean
-  setGuestsCanView: (value: boolean) => void
-  postEventUploads: boolean
-  setPostEventUploads: (value: boolean) => void
   legalAccepted: boolean
   setLegalAccepted: (value: boolean) => void
   paymentsEnabled: boolean
@@ -179,125 +152,67 @@ function GuestsFields({
         </div>
       </fieldset>
 
-      <details className="group border-t border-border">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-3 text-[13.5px] font-medium [&::-webkit-details-marker]:hidden">
-          {en ? 'More settings' : 'További beállítások'}
-          <ChevronDown
-            className="size-4 shrink-0 transition-transform group-open:rotate-180"
-            aria-hidden="true"
-          />
-        </summary>
-        <div className="flex flex-col gap-4.5 pt-1">
-          <p className="text-[12px] leading-[1.5] text-muted-foreground">
-            {en ? 'You can change these later.' : 'Később is módosítható.'}
-          </p>
-          <fieldset>
-            <legend className="sr-only">
-              {en ? 'Shots per guest' : 'Képek száma vendégenként'}
-            </legend>
-            <SectionLabel>
-              {en ? 'PHOTOS PER GUEST' : 'FOTÓK VENDÉGENKÉNT'}
-            </SectionLabel>
-            <div className="mt-3">
-              <ShotsSelector
-                value={shots}
-                onChange={setShots}
-                name="shots_choice"
-                locale={locale}
-              />
-            </div>
-          </fieldset>
+      <p className="text-[13px] leading-[1.6] text-pretty text-muted-foreground">
+        {en
+          ? `${DEFAULT_SHOTS} photos per guest. You can change the gallery settings later in settings.`
+          : `${DEFAULT_SHOTS} kép vendégenként. A galéria beállításait később a beállításokban módosíthatod.`}
+      </p>
 
-          <div className="border-t border-border pt-4.5">
-            {/* A real label pair, with the switch to the right of it. The switch
-              used to sit first with a single sentence beside it that changed
-              underneath — which meant the control had no stable name, only a
-              description of its current state. */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={guestsCanView}
-              onClick={() => setGuestsCanView(!guestsCanView)}
-              className="flex min-h-11 w-full items-center justify-between gap-4 text-left"
-            >
-              <span className="min-w-0">
-                <span className="block text-[13.5px] font-medium">
-                  {en
-                    ? 'Guests can see the gallery'
-                    : 'A vendégek látják a galériát'}
-                </span>
-                {/* Still optimistic, still on the label rather than the track:
-                  a switch that sits still for a round trip is one a host taps
-                  twice. */}
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.span
-                    key={guestsCanView ? 'visible' : 'private'}
-                    initial={reduceMotion ? false : { opacity: 0, y: 3 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reduceMotion ? undefined : { opacity: 0, y: -3 }}
-                    transition={reduceMotion ? still : T.settle}
-                    className="mt-0.5 block text-[12px] leading-snug text-pretty text-muted-foreground"
-                  >
-                    {guestsCanView
-                      ? en
-                        ? 'Turn off and only you see the photos.'
-                        : 'Kikapcsolva csak te látod a képeket.'
-                      : en
-                        ? 'Only you can see the photos.'
-                        : 'Most csak te látod a képeket.'}
-                  </motion.span>
-                </AnimatePresence>
-              </span>
-              <SwitchTrack checked={guestsCanView} />
-            </button>
-          </div>
-
-          <div className="border-t border-border pt-4.5">
-            <PostEventUploadsField
-              enabled={postEventUploads}
-              onChange={setPostEventUploads}
-              locale={locale}
+      {plan === 'full' ? (
+        <div className="border-t border-border pt-4.5">
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[13px] leading-[1.6] text-foreground/80">
+            <input
+              type="checkbox"
+              checked={legalAccepted}
+              onChange={(event) => setLegalAccepted(event.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
             />
+            <PaidTermsAcceptance locale={locale} />
+          </label>
+          <div className="ml-7">
+            <LegalDetails locale={locale} />
           </div>
         </div>
-      </details>
-
-      <div className="border-t border-border pt-4.5">
-        <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[13px] leading-[1.6] text-foreground/80">
-          <input
-            type="checkbox"
-            checked={legalAccepted}
-            onChange={(event) => setLegalAccepted(event.target.checked)}
-            className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
-          />
-          {plan === 'full' ? (
-            <PaidTermsAcceptance locale={locale} />
-          ) : (
-            <span>
-              {en ? 'I accept the ' : 'Elfogadom az '}
-              <Link
-                href={localePath(locale, '/aszf')}
-                target="_blank"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                {en ? 'Terms' : 'ÁSZF-et'}
-              </Link>
-              .
-            </span>
-          )}
-        </label>
-        <div className="ml-7">
-          <LegalDetails key={plan} locale={locale} paid={plan === 'full'} />
-        </div>
-      </div>
+      ) : null}
     </div>
   )
 }
 
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-muted-foreground">
-      {children}
+/** The free path's whole consent: pressing the button is the acceptance, and
+ *  this line under it says so. */
+function FreeTermsLine({ locale }: { locale: Locale }) {
+  const link = 'underline underline-offset-2 hover:text-foreground'
+  return locale === 'en' ? (
+    <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-muted-foreground">
+      By creating the event you accept the{' '}
+      <Link href={localePath(locale, '/aszf')} target="_blank" className={link}>
+        Terms
+      </Link>{' '}
+      and the{' '}
+      <Link
+        href={localePath(locale, '/adatvedelem')}
+        target="_blank"
+        className={link}
+      >
+        Privacy Notice
+      </Link>
+      .
+    </p>
+  ) : (
+    <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-muted-foreground">
+      A létrehozással elfogadod az{' '}
+      <Link href={localePath(locale, '/aszf')} target="_blank" className={link}>
+        ÁSZF
+      </Link>
+      -et és az{' '}
+      <Link
+        href={localePath(locale, '/adatvedelem')}
+        target="_blank"
+        className={link}
+      >
+        adatkezelési tájékoztatót
+      </Link>
+      .
     </p>
   )
 }

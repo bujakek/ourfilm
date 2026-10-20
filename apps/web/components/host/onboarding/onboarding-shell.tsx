@@ -39,8 +39,12 @@ export type StepScreen = {
   cta: string
   ctaDisabled?: boolean
   ctaPending?: boolean
+  /** `pay` paints the CTA sky: it is the button on the way to a payment. */
+  ctaTone?: 'pay'
   compact?: boolean
   note?: ReactNode
+  /** Small print under the CTA — the free path's terms line. */
+  footnote?: ReactNode
   content: ReactNode
 }
 
@@ -78,6 +82,7 @@ export function OnboardingShell({
   onNext,
   error = null,
   note = null,
+  footnote = null,
   compact = false,
   children,
   locale = 'hu',
@@ -97,6 +102,8 @@ export function OnboardingShell({
   onNext?: () => void
   error?: string | null
   note?: ReactNode
+  footnote?: ReactNode
+  ctaTone?: 'pay'
   /** Sets the question at 34px instead of 40px. */
   compact?: boolean
   children: ReactNode
@@ -296,6 +303,8 @@ export function OnboardingShell({
             )}
           </motion.button>
         </footer>
+
+        {footnote}
       </div>
     </div>
   )

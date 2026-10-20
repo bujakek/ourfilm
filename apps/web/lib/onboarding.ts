@@ -10,26 +10,93 @@
  * server can re-derive every one of these from the FormData it is handed.
  */
 
+import { formatEventLocalInput } from '@/lib/format'
+import type { Locale } from '@/lib/i18n'
+
 /**
- * The five titles offered under ÖTLETEK on the first screen.
+ * The three titles offered under the name field on the first screen.
  *
  * They are prompts, not event types: tapping one fills the field with something
  * a host would plausibly keep, and the point is removing the blank-field pause
- * rather than classifying the party.
+ * rather than classifying the party. Three rather than five, so the chips fit
+ * two rows at 390px and 130% text.
  *
- * Two of them are personalised when the host's first name is known. Today it
+ * The birthday is personalised when the host's first name is known. Today it
  * never is — a magic-link signup carries only an email, and reading the account
  * on the create page would make that segment suspend into the admin loading
  * boundary, which is a hydration bug rather than a nicety (see the note on
- * `app/host/events/new/page.tsx`). So every caller passes null for now, and
- * the generic pair is what a host actually sees.
+ * `app/(product)/host/events/new/page.tsx`). So every caller passes null for
+ * now, and the generic titles are what a host actually sees.
  */
-export function eventNameSuggestions(firstName: string | null): string[] {
+export function eventNameSuggestions(
+  firstName: string | null,
+  locale: Locale = 'hu',
+): string[] {
   const name = firstName?.trim()
-  const opening = name
-    ? [`${name} bulija`, `${name} születésnapja`]
-    : ['A nagy bulink', 'Születésnapi buli']
-  return [...opening, 'Az esküvőnk', 'Az évfordulónk', 'A mi kis bulink']
+  if (locale === 'en') {
+    return [
+      'Our wedding',
+      name ? `${name}’s birthday` : 'Birthday party',
+      'An unforgettable night',
+    ]
+  }
+  return [
+    'Esküvőnk',
+    name ? `${name} szülinapja` : 'Szülinapi buli',
+    'Egy felejthetetlen este',
+  ]
+}
+
+/** The two dated chips on the end screen. "Másik nap" is the third, and is
+ *  whatever these two are not. */
+export type EndQuickPick = 'tonight' | 'tomorrow'
+
+/** Before this hour a time belongs to the night that started the day before:
+ *  "Ma éjjel 02:00" is after midnight, not fourteen hours ago. */
+const NIGHT_ROLLOVER_HOUR = 12
+
+/** A bare `YYYY-MM-DD` moved by whole days. Calendar arithmetic in UTC, where
+ *  no day is 23 or 25 hours long — the zone was settled when the day was read. */
+function addDays(day: string, days: number): string {
+  const [year, month, date] = day.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, date + days))
+    .toISOString()
+    .slice(0, 10)
+}
+
+/**
+ * The end a quick pick stands for, as a `datetime-local` value in the event's
+ * zone.
+ *
+ * "Tonight" is the night that starts today where the host is standing: a time
+ * of 12:00 or later lands on today's date, an earlier one on tomorrow's.
+ * "Tomorrow" is the same, one day later. Takes `now` like everything here.
+ */
+export function endQuickPick(
+  kind: EndQuickPick,
+  time: string,
+  now: Date,
+  timeZone: string,
+): string {
+  const today = formatEventLocalInput(now, timeZone).slice(0, 10)
+  const hour = Number(time.slice(0, 2))
+  const tonight = hour >= NIGHT_ROLLOVER_HOUR ? today : addDays(today, 1)
+  return `${kind === 'tonight' ? tonight : addDays(tonight, 1)}T${time}`
+}
+
+/** Which chip an end reads as: the inverse of `endQuickPick` at the end's own
+ *  time, so the chips and the day tile can never disagree. */
+export function activeQuickPick(
+  endLocal: string,
+  now: Date,
+  timeZone: string,
+): EndQuickPick | 'other' {
+  const time = endLocal.slice(11, 16)
+  if (!/^\d{2}:\d{2}$/.test(time)) return 'other'
+  for (const kind of ['tonight', 'tomorrow'] as const) {
+    if (endQuickPick(kind, time, now, timeZone) === endLocal) return kind
+  }
+  return 'other'
 }
 
 /**

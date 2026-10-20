@@ -12,7 +12,7 @@ import {
   invalidateStoredDraft,
   useStoredDraft,
 } from '@/components/host/onboarding/use-stored-draft'
-import type { RevealChoice, ShotOption } from '@/lib/camera'
+import type { RevealChoice } from '@/lib/camera'
 import {
   clearDraft,
   draftHasAnswers,
@@ -31,8 +31,9 @@ import { guestsScreen } from './step-guests'
 import { nameScreen } from './step-name'
 import { revealScreen } from './step-reveal'
 
-/** Four questions: name, end, reveal, and guest count. Roll length and gallery
- *  access are optional settings on the last screen. */
+/** Four questions: name, end, reveal, and guest count. Roll length, gallery
+ *  access and after-event uploads are not asked: the draft's defaults stand,
+ *  and settings is where a host changes them. */
 const STEP_COUNT = 4
 const LAST_STEP = STEP_COUNT - 1
 const END_STEP = 1
@@ -207,12 +208,11 @@ function OnboardingFlow({
   const [step, setStep] = useState(Math.min(LAST_STEP, Math.max(0, startStep)))
   const [name, setName] = useState(initial.name)
   const [revealMode, setRevealMode] = useState<RevealChoice>(initial.revealMode)
-  const [shots, setShots] = useState<ShotOption>(initial.shots)
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
-  const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
-  const [postEventUploads, setPostEventUploads] = useState(
-    initial.postEventUploads,
-  )
+  // No longer asked. Carried from the draft — the defaults for a new one, the
+  // old answers for a draft written before the questions went away — because
+  // the server action still reads all three.
+  const { shots, guestsCanView, postEventUploads } = initial
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
@@ -299,8 +299,12 @@ function OnboardingFlow({
   // `now` at insert time and refuses that with a message naming it.
   const endIsFuture = endIso ? endIso > nowIso : false
 
-  function create() {
+  /** `accepted` is the free path's consent: pressing the CTA under the terms
+   *  line is the acceptance, so it is passed in rather than read from state
+   *  the same click is still setting. */
+  function create(accepted: boolean) {
     setError(null)
+    setLegalAccepted(accepted)
     startTransition(async () => {
       const result = await createEventFromDraft({
         locale,
@@ -312,7 +316,7 @@ function OnboardingFlow({
         plan,
         guestsCanView,
         postEventUploads,
-        legalAccepted,
+        legalAccepted: accepted,
         creationKey: initialCreationKey,
       })
 
@@ -348,7 +352,10 @@ function OnboardingFlow({
       if (result.reason === 'auth') {
         // Remembered across the round trip: the mail client is a different app,
         // and what comes back is a fresh page load with nothing but this.
-        saveDraft({ ...draft, pendingCreate: true }, new Date())
+        saveDraft(
+          { ...draft, legalAccepted: accepted, pendingCreate: true },
+          new Date(),
+        )
         track('onboarding_save_viewed', {
           creation_key: initialCreationKey,
           plan,
@@ -452,12 +459,6 @@ function OnboardingFlow({
                 // Changing the offer requires a fresh acceptance.
                 setLegalAccepted(false)
               },
-              shots,
-              setShots,
-              guestsCanView,
-              postEventUploads,
-              setGuestsCanView,
-              setPostEventUploads,
               legalAccepted,
               setLegalAccepted,
               paymentsEnabled: paymentsAvailable,
@@ -491,7 +492,10 @@ function OnboardingFlow({
                 step: STEP_NAMES[LAST_STEP],
                 index: LAST_STEP,
               })
-              create()
+              // The free path has no checkbox: this press is the acceptance,
+              // under the line that says so. The paid path's CTA cannot be
+              // pressed until its declaration is ticked.
+              create(plan === 'free' ? true : legalAccepted)
             }
           : advance
       }
