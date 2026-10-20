@@ -11,7 +11,7 @@ import {
 } from '@/lib/billing-country'
 import { eventPriceLabelFor } from '@/lib/pricing'
 import { Check, Loader2 } from 'lucide-react'
-import { useActionState, useEffect, useId, useState } from 'react'
+import { useActionState, useEffect, useId, useRef, useState } from 'react'
 import { BillingCountryField } from '@/components/host/billing-country-field'
 import {
   LegalDetails,
@@ -24,7 +24,9 @@ import {
   HOST_ROW_QUESTION,
   HOST_SECONDARY,
 } from '@/components/host/ui/classes'
+import { StateNotice } from '@/components/host/ui/state-notice'
 import { useSettlePolling } from '@/components/host/use-settle-polling'
+import { CONTACT_EMAIL } from '@/lib/site'
 import { cn } from '@/lib/utils'
 
 const INITIAL: CheckoutState = { error: null }
@@ -49,6 +51,9 @@ export type BillingCardProps = {
   /** A suggested default on the checkout screen; always editable. */
   suggestedBillingCountry: BillingCountry | null
   checkout: 'success' | 'cancelled' | null
+  /** The 7f state, from `paymentNotice()`: the latest attempt failed, or the
+   *  host came back from Stripe without paying. */
+  paymentNotice?: 'failed' | 'cancelled' | null
   presentation?: 'settings' | 'checkout'
 }
 
@@ -64,9 +69,11 @@ export type BillingCardProps = {
  * "Feloldás" button — and the country, the withdrawal waiver and the sky pay
  * button appear only after that tap. It opens already expanded when the URL
  * says `#billing`, which is where the event page's quota banner links, so the
- * host lands ready to pay; and after a cancelled checkout, which is a host
- * coming back mid-decision. The post-save checkout screen shows the form
- * straight away.
+ * host lands ready to pay. A failed or cancelled payment (7f) puts a notice
+ * above the row instead, saying nothing was charged; its "Másik kártya →"
+ * opens the same form, because a new attempt still needs the country and the
+ * waiver, and the server checks both. The post-save checkout screen shows the
+ * form straight away.
  *
  * The pay button stays at 40% until the waiver is ticked and a country is
  * chosen. The checkbox is still a real `required` input named
@@ -83,6 +90,7 @@ export function BillingCard({
   savedBillingCountry,
   suggestedBillingCountry,
   checkout,
+  paymentNotice = null,
   presentation = 'settings',
 }: BillingCardProps) {
   const en = locale === 'en'
@@ -101,7 +109,8 @@ export function BillingCard({
     }),
   )
   const [accepted, setAccepted] = useState(false)
-  const [open, setOpen] = useState(checkout === 'cancelled')
+  const [open, setOpen] = useState(false)
+  const formRef = useRef<HTMLDivElement>(null)
 
   // The hash only exists in the browser, so it is read after mount — in a
   // timeout, because a synchronous setState in an effect body is a cascading
@@ -141,6 +150,15 @@ export function BillingCard({
 
   const full = participantCount >= participantLimit
   const expanded = standalone || open
+  const notice = settling ? null : paymentNotice
+
+  // Opening the form from the notice moves focus into it, so a keyboard or
+  // screen reader user lands where the next step is rather than on a button
+  // that has just disappeared.
+  function retryWithAnotherCard() {
+    setOpen(true)
+    window.setTimeout(() => formRef.current?.focus(), 0)
+  }
 
   const form = stripeReady ? (
     <form action={submit} className="flex flex-col gap-3">
@@ -294,12 +312,41 @@ export function BillingCard({
         </p>
       ) : null}
 
-      {checkout === 'cancelled' && !settling ? (
-        <p className="mt-3 text-[14px] text-white/65">
-          {en
-            ? 'Payment was cancelled. You were not charged.'
-            : 'A fizetést megszakítottad. Nem történt terhelés.'}
-        </p>
+      {notice ? (
+        <div className="mt-4 flex flex-col gap-2">
+          <StateNotice
+            tone="warn"
+            // Hosted Checkout does not say why a payment failed, so neither
+            // does this: no guessing at a declined card or an empty balance.
+            title={
+              notice === 'failed'
+                ? en
+                  ? 'The payment did not go through'
+                  : 'A fizetés nem ment át'
+                : en
+                  ? 'The payment was not completed'
+                  : 'A fizetés nem fejeződött be'
+            }
+            body={en ? 'You have not been charged.' : 'Nem vontunk le pénzt.'}
+          />
+          {stripeReady && !expanded ? (
+            <button
+              type="button"
+              aria-controls={formId}
+              aria-expanded={false}
+              onClick={retryWithAnotherCard}
+              className={`${HOST_PAY} mt-2 w-full`}
+            >
+              {en ? 'Try another card →' : 'Másik kártya →'}
+            </button>
+          ) : null}
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className={`${HOST_SECONDARY} w-full`}
+          >
+            {en ? 'Get help' : 'Segítség kérése'}
+          </a>
+        </div>
       ) : null}
 
       {!stripeReady ? (
@@ -307,8 +354,10 @@ export function BillingCard({
       ) : (
         <div
           id={formId}
+          ref={formRef}
+          tabIndex={-1}
           hidden={!expanded}
-          className={standalone ? '' : 'mt-4'}
+          className={cn(standalone ? '' : 'mt-4', 'outline-none')}
         >
           {expanded ? form : null}
         </div>

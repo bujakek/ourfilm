@@ -35,6 +35,7 @@ import { getAllEventPhotos } from '@/lib/photos'
 import { planNote } from '@/lib/plan-copy'
 import { suggestedBillingCountry } from '@/lib/billing-country'
 import { checkoutReadiness } from '@/lib/checkout-readiness'
+import { paymentNotice } from '@/lib/host-ui'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -294,6 +295,7 @@ async function EventBilling({
         (await headers()).get('x-vercel-ip-country'),
       )}
       checkout={checkout}
+      paymentNotice={paymentNotice(purchase, checkout === 'cancelled')}
     />
   )
 }

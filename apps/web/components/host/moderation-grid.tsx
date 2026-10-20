@@ -1,7 +1,9 @@
 'use client'
 
 import { AlbumDownload } from '@/components/host/album-download'
+import { QrSheetButton } from '@/components/host/qr-sheet'
 import { HOST_PRIMARY } from '@/components/host/ui/classes'
+import { StateNotice } from '@/components/host/ui/state-notice'
 import { useHostToast } from '@/components/host/ui/toast'
 import { Lightbox } from '@/components/event/lightbox'
 import type { ExportResponse } from '@/lib/album-export'
@@ -57,6 +59,7 @@ export function ModerationGrid({
   exportEndpoint,
   exportInitial = null,
   exportNote = null,
+  qr = null,
 }: {
   photos: ModerationTile[]
   slug: string
@@ -73,6 +76,9 @@ export function ModerationGrid({
   exportInitial?: ExportResponse | null
   /** One sentence under the toolbar saying what the button will do. */
   exportNote?: string | null
+  /** What the empty album's "share the QR code" needs (7b). Null once the
+   *  camera has closed, when asking for a share would send nobody anywhere. */
+  qr?: { name: string; url: string; shots: number } | null
 }) {
   const en = locale === 'en'
   // One piece of state for the whole grid, because it is one: a tile flipping
@@ -161,9 +167,33 @@ export function ModerationGrid({
       ) : null}
 
       {items.length === 0 ? (
-        <p className="mt-4.5 rounded-[20px] bg-host-tile px-5 py-6 text-center text-sm text-white/65">
-          {en ? 'No photos yet.' : 'Még nem érkezett kép.'}
-        </p>
+        <div className="mt-4.5">
+          <StateNotice
+            tone="neutral"
+            title={en ? 'No photos yet' : 'Még nem érkezett kép'}
+            body={
+              qr
+                ? en
+                  ? 'As soon as a guest takes a photo, it appears here. Share the QR code to get it started.'
+                  : 'Amint egy vendég fotózik, a képe itt jelenik meg. Oszd meg a QR-kódot, hogy elinduljon.'
+                : en
+                  ? 'Photos guests take appear here.'
+                  : 'A vendégek képei itt jelennek meg.'
+            }
+            actions={
+              qr ? (
+                <QrSheetButton
+                  name={qr.name}
+                  url={qr.url}
+                  eventId={eventId}
+                  shots={qr.shots}
+                  locale={locale}
+                  label={en ? 'Share the QR code' : 'QR-kód megosztása'}
+                />
+              ) : null
+            }
+          />
+        </div>
       ) : (
         <ul className="mt-4.5 grid grid-cols-3 gap-2">
           {items.map((photo, index) => (

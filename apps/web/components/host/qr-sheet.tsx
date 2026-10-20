@@ -39,6 +39,7 @@ export function QrSheetButton({
   eventId,
   shots,
   locale,
+  label,
 }: {
   name: string
   url: string
@@ -46,6 +47,9 @@ export function QrSheetButton({
   eventId: string
   shots: number
   locale: Locale
+  /** A text button instead of the camera row's QR square, for a screen that
+   *  asks the host to share the code (the 7b empty album). */
+  label?: string
 }) {
   const en = locale === 'en'
   const [open, setOpen] = useState(false)
@@ -70,14 +74,33 @@ export function QrSheetButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={en ? 'QR code and link' : 'QR-kód és link'}
-        className="flex size-14 shrink-0 items-center justify-center rounded-[16px] bg-host-tile text-white transition-colors hover:bg-white/10"
-      >
-        <QrCode className="size-[19px]" strokeWidth={1.8} aria-hidden="true" />
-      </button>
+      {label ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`${HOST_SECONDARY} w-full gap-2`}
+        >
+          <QrCode
+            className="size-[19px]"
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
+          {label}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={en ? 'QR code and link' : 'QR-kód és link'}
+          className="flex size-14 shrink-0 items-center justify-center rounded-[16px] bg-host-tile text-white transition-colors hover:bg-white/10"
+        >
+          <QrCode
+            className="size-[19px]"
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
+        </button>
+      )}
 
       <Sheet
         open={open}

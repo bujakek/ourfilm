@@ -23,10 +23,7 @@ const BANNED = [
 ]
 
 /** Files still on the old look. Each task removes its own; Task 8 empties it. */
-export const PENDING: string[] = [
-  'app/(product)/host/page.tsx',
-  'components/host/event-list.tsx',
-]
+export const PENDING: string[] = []
 
 function walk(path: string): string[] {
   if (statSync(path).isFile()) return path.endsWith('.tsx') ? [path] : []

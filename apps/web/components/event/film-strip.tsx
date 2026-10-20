@@ -11,6 +11,8 @@ import { AnimatePresence, motion, type Transition } from 'motion/react'
 import Image from 'next/image'
 import { useEffect, useRef } from 'react'
 
+import { StateNotice } from '@/components/host/ui/state-notice'
+import { offlineQueueNotice } from '@/lib/event-copy'
 import type { Frame } from '@/lib/frames'
 import type { Locale } from '@/lib/i18n'
 import { T } from '@/lib/motion'
@@ -134,9 +136,21 @@ export function FilmStrip({
   }, [exposed])
 
   const cells = Array.from({ length: total }, (_, i) => frames[i] ?? null)
+  // The shots still owed while there is no signal: the same cells that wear
+  // the waiting mark below, counted for the 7g notice above them.
+  const waiting = offline
+    ? pending.filter((p) => !p.confirmed && p.receipt !== 'lost').length
+    : 0
+  const notice = waiting > 0 ? offlineQueueNotice(waiting, locale) : null
 
   return (
     <div className={className}>
+      {notice ? (
+        <div className="mb-4">
+          <StateNotice tone="warn" title={notice.title} body={notice.body} />
+        </div>
+      ) : null}
+
       {/* The strip restates the counter above it in pictures, so it is hidden
           from assistive tech rather than read out as two dozen cells. The one
           sentence below is the accessible equivalent, and it is the same two

@@ -10,9 +10,10 @@ import {
   joinEventAction,
   type JoinState,
 } from '@/app/(product)/e/[slug]/actions'
-import { revealSummary } from '@/lib/event-copy'
+import { capReachedNotice, revealSummary } from '@/lib/event-copy'
 import { formatEventDay } from '@/lib/format'
 import { type Locale, localeTag } from '@/lib/i18n'
+import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import { ticket } from '@/lib/motion'
 import { track } from '@/lib/telemetry'
 import { useEntrance } from '@/lib/use-entrance'
@@ -105,7 +106,8 @@ export function JoinForm({
   // to the camera happens inside `joinEventAction`, which redirects. An effect
   // keyed on `useActionState`'s state has no stable resting point, since that
   // state is a fresh object on every render.
-  if (state.capReached) return <ParticipantCapReached locale={locale} />
+  if (state.capReached)
+    return <ParticipantCapReached eventName={eventName} locale={locale} />
 
   const day = formatEventDay(captureEndAt, timeZone, locale)
   const byline = hostName
@@ -297,39 +299,41 @@ export function JoinForm({
 }
 
 /**
- * The free tier's edge, seen from the guest's side.
+ * The free tier's edge, seen from the guest's side (7l).
  *
  * No checkout, no price, no button. A wedding guest holding a phone is not the
  * person who can fix this, and asking them to pay for the couple's album is the
  * wrong sentence to put in front of them. The upgrade lives on the host's
- * dashboard, where the person who can act on it is already standing.
+ * dashboard, where the person who can act on it is already standing. The copy
+ * is `capReachedNotice`, shared with the action's own refusal.
  *
- * It gets the paper treatment because it is still the ticket window — the guest
- * arrived at the same door, and it is the answer that is different, not the
- * place.
+ * It wears the landing look rather than the ticket's paper: the ticket is a
+ * stub issued to you, and this guest was not issued one.
  */
-function ParticipantCapReached({ locale }: { locale: Locale }) {
-  const en = locale === 'en'
+function ParticipantCapReached({
+  eventName,
+  locale,
+}: {
+  eventName: string
+  locale: Locale
+}) {
+  const { title, body } = capReachedNotice(FREE_PARTICIPANT_LIMIT, locale)
   return (
     <main
-      className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-11"
+      className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-11"
       lang={localeTag[locale]}
     >
-      <div className="paper rounded-lg px-6 py-7 text-center">
-        <p className="paper-muted font-mono text-[9.5px] font-medium tracking-[0.2em]">
-          {en ? 'OURFILM · DISPOSABLE CAMERA' : 'OURFILM · ELDOBHATÓ KAMERA'}
+      <section className="rounded-[32px] bg-host-panel px-6 py-8">
+        <p className="text-[14px] leading-[1.4] font-medium [overflow-wrap:anywhere] text-host-warn">
+          {eventName}
         </p>
-        <h1 className="mt-4 font-display text-[28px] leading-[1.06] text-balance">
-          {en
-            ? 'This event has reached its guest limit'
-            : 'Az esemény elérte a résztvevői keretet'}
+        <h1 className="landing-serif mt-3 font-landing-display text-[28px] leading-[1.2] text-balance text-white">
+          {title}
         </h1>
-        <p className="paper-muted mt-3 text-sm leading-relaxed text-pretty">
-          {en
-            ? 'The free event supports up to 5 guests. Ask the host to unlock the full event.'
-            : 'Ez az ingyenes esemény legfeljebb 5 résztvevővel használható. Kérd meg a szervezőt, hogy oldja fel a teljes eseményt.'}
+        <p className="mt-3 text-[15px] leading-[1.6] text-pretty text-white/65">
+          {body}
         </p>
-      </div>
+      </section>
     </main>
   )
 }

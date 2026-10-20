@@ -17,9 +17,9 @@ import {
 import {
   captureStatus,
   formatLine,
-  offlineQueueNote,
   ownRollNote,
   queueClearedNote,
+  spentRollNotice,
 } from '@/lib/event-copy'
 import {
   POST_EVENT_UPLOAD_MS,
@@ -39,6 +39,7 @@ import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import { useEntrance } from '@/lib/use-entrance'
 import { useOnline } from '@/lib/use-online'
+import { StateNotice } from '@/components/host/ui/state-notice'
 import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
@@ -132,6 +133,7 @@ export function GuestEventView({
   photos,
   wall,
   revealAt,
+  guestsCanView,
   locale,
 }: {
   eventId: string
@@ -153,6 +155,8 @@ export function GuestEventView({
   /** The locked album as tiles; null when there is no wall to draw. */
   wall: DevelopingWall | null
   revealAt: string
+  /** Whether guests ever see the album; the spent roll's line depends on it. */
+  guestsCanView: boolean
   locale: Locale
 }) {
   const en = locale === 'en'
@@ -328,33 +332,48 @@ export function GuestEventView({
 
   /**
    * What takes over the line under the shutter, in order of what a guest
-   * needs most: a failure, then an outage, then the receipt for an outage
-   * that has ended, and only last a spent roll. `null` when none of those is
-   * true, and the line goes back to saying what the product is.
+   * needs most: a failure, then the receipt for an outage that has ended.
+   * `null` when neither is true, and the slot goes back to a state block or
+   * the format line.
    *
-   * The receipt outranks the spent roll because the shutter is already
-   * reading "Megtelt a tekercs" and the counter is already at zero, so a
-   * third telling of that adds nothing — while "did the photos I took with no
-   * signal actually go?" has no other answer anywhere on the screen.
+   * The outage itself is not here any more: it is the 7g notice above the
+   * strip, which stays for as long as the outage does. The receipt outranks
+   * the spent roll because the shutter already says the roll is spent and the
+   * counter is already at zero, while "did the photos I took with no signal
+   * actually go?" has no other answer anywhere on the screen.
    */
   const statusLine: { text: string; tone: string } | null = flash
     ? { text: flash, tone: 'text-destructive' }
-    : !online && outstanding > 0
+    : online && outstanding === 0 && offlineBacklog > 0
       ? {
-          text: offlineQueueNote(outstanding, canTakePhoto, locale),
-          tone: 'text-foreground/62',
+          text: queueClearedNote(offlineBacklog, locale),
+          tone: 'text-accent',
         }
-      : online && outstanding === 0 && offlineBacklog > 0
-        ? {
-            text: queueClearedNote(offlineBacklog, locale),
-            tone: 'text-accent',
-          }
-        : remaining <= 0
-          ? {
-              text: en ? 'Your roll is full.' : 'Megtelt a tekercsed.',
-              tone: 'text-muted-foreground',
-            }
-          : null
+      : null
+
+  // 7m: every frame is spent and the server has said so. `remaining`, not
+  // `framesLeft`, for the same reason the shutter's label reads it: while the
+  // last frames are still going up the shutter says "Mentés…", and this
+  // block waits for the server rather than racing it.
+  const rollSpent = remaining <= 0
+  const spent = rollSpent
+    ? spentRollNotice(
+        {
+          now: new Date(now),
+          captureStartAt: new Date(captureStartAt),
+          captureEndAt: new Date(captureEndAt),
+          revealAt: new Date(revealAt),
+          guestsCanView,
+          timeZone,
+        },
+        shotsPerParticipant,
+        locale,
+      )
+    : null
+  // 7c: an open camera and nothing on this guest's roll yet, on screen or on
+  // its way. Says where the photos will appear and what the format is.
+  const rollUntouched =
+    canTakePhoto && frames.length === 0 && developing.length === 0
 
   const status = captureStatus(
     {
@@ -841,24 +860,24 @@ export function GuestEventView({
           <Odometer
             value={framesLeft}
             dir="down"
-            className="font-mono text-[62px] leading-[0.82] font-medium tracking-[-0.06em] tabular-nums"
+            className="host-figure text-[64px] leading-[0.9] tabular-nums"
           />
         </span>
-        <span className="pb-1.5 font-mono text-[19px] tracking-[-0.03em] text-foreground/35">
+        <span className="host-figure pb-1 text-[24px] text-white/55">
           /{shotsPerParticipant}
         </span>
-        <span className="ml-auto pb-2 text-right text-xs leading-[1.45] font-medium text-foreground/55">
+        <span className="ml-auto pb-1.5 text-right text-[12px] leading-[1.5] font-medium tracking-[0.2em] text-white/55 uppercase">
           {en ? (
             <>
-              frames
+              photos
               <br />
-              remaining
+              left
             </>
           ) : (
             <>
-              maradt
+              kép
               <br />
-              képkocka
+              maradt
             </>
           )}
         </span>
@@ -960,10 +979,10 @@ export function GuestEventView({
             ? en
               ? 'Choose photos'
               : 'Képek kiválasztása'
-            : remaining <= 0
+            : rollSpent
               ? en
-                ? 'Roll finished'
-                : 'Megtelt a tekercs'
+                ? 'Camera · no photos left'
+                : 'Kamera · nincs több kép'
               : uploading && !canTakePhoto
                 ? // The roll is spent but the last frames are still going up.
                   // The only moment this screen says "saving" — while a shot is
@@ -1051,19 +1070,51 @@ export function GuestEventView({
           that a guest tapping the shutter repeatedly must not see motion each
           time. The entrance below fires once, on first paint; after that the
           only transition here is the colour. */}
-      <motion.p
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={stage(4)}
-        aria-live={flash ? 'assertive' : 'polite'}
-        className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
-          statusLine
-            ? `text-[13px] leading-[1.45] ${statusLine.tone}`
-            : 'text-xs leading-[1.55] text-foreground/45'
-        }`}
-      >
-        {statusLine ? statusLine.text : formatLine(participantCount, locale)}
-      </motion.p>
+      {/* A spent roll (7m) or an untouched one (7c) takes the slot as a
+          block when nothing more urgent needs it. Each appears once in a
+          guest's evening, so the one-time shift it causes is the state
+          changing rather than motion on every shutter press. */}
+      {!statusLine && (spent || rollUntouched) ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={stage(4)}
+          aria-live="polite"
+          className="mt-4"
+        >
+          {spent ? (
+            <StateNotice tone="neutral" title={spent.title} body={spent.body} />
+          ) : (
+            <StateNotice
+              tone="neutral"
+              title={
+                en
+                  ? 'You have not taken a photo yet'
+                  : 'Még nem készítettél képet'
+              }
+              body={
+                en
+                  ? 'Your photos appear here as they are taken. No preview and no retakes.'
+                  : 'A képeid itt jelennek meg, ahogy elkészülnek. Nincs előnézet és nincs újrafotózás.'
+              }
+            />
+          )}
+        </motion.div>
+      ) : (
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={stage(4)}
+          aria-live={flash ? 'assertive' : 'polite'}
+          className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
+            statusLine
+              ? `text-[13px] leading-[1.45] ${statusLine.tone}`
+              : 'text-xs leading-[1.55] text-foreground/45'
+          }`}
+        >
+          {statusLine ? statusLine.text : formatLine(participantCount, locale)}
+        </motion.p>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}

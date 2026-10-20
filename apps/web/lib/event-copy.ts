@@ -5,6 +5,7 @@ import {
   postEventUploadsAreOpen,
 } from './camera'
 import { formatDeadline } from './format'
+import { huNumberArticle } from './host-ui'
 import type { Locale } from './i18n'
 
 /**
@@ -303,30 +304,98 @@ export function captureStatus(
   }
 }
 
+/** A state block's two lines: a heading and the sentence under it. */
+export type GuestNotice = { title: string; body: string }
+
 /**
- * "Nincs kapcsolat. 3 kép feltöltésre vár. Nyugodtan fotózhatsz tovább."
+ * "Nincs kapcsolat · 3 kép vár a feltöltésre" (7g).
  *
- * The line under the shutter while the device is offline with shots still
+ * Shown above the film strip while the device is offline with shots still
  * owed. It is not a toast, and that is the whole design: a guest can be out of
  * signal for an entire wedding, so the sentence saying their photos are safe
  * has to stay on the screen the whole time rather than appear and leave.
  *
- * The last clause goes when there is no film left, because "keep shooting" is
- * then untrue. Nothing here promises delivery — `lib/upload-queue.ts` owns
- * that, and it has its own budget — only that the shots taken are still in
- * hand.
+ * It names no deadline. `lib/upload-queue.ts` owns how long a stored shot is
+ * kept, and a number here would be a promise about a device nobody controls.
+ * "Ne zárd be az oldalt" covers the one case where the tab is the only copy.
  */
-export function offlineQueueNote(
+export function offlineQueueNotice(
   count: number,
-  canShoot: boolean,
   locale: Locale = 'hu',
-): string {
-  if (locale === 'en') {
-    const waiting = `No connection. ${count} photo${count === 1 ? '' : 's'} waiting`
-    return canShoot ? `${waiting} — keep shooting.` : `${waiting} to upload.`
+): GuestNotice {
+  return locale === 'en'
+    ? {
+        title: `No connection · ${count} photo${count === 1 ? '' : 's'} waiting to upload`,
+        body: 'Your photos stay on this phone and upload by themselves once you are back online. Do not close this page.',
+      }
+    : {
+        title: `Nincs kapcsolat · ${count} kép vár a feltöltésre`,
+        body: 'A képeid a telefonon maradnak, és kapcsolat után maguktól feltöltődnek. Ne zárd be az oldalt.',
+      }
+}
+
+/**
+ * The free tier's edge, seen from the guest's side (7l).
+ *
+ * No checkout, no price and no upgrade: a wedding guest holding a phone is not
+ * the person who can fix this. It names the limit, sends them to the host and
+ * says what to do after, because a guest told only "full" closes the tab.
+ */
+export function capReachedNotice(
+  limit: number,
+  locale: Locale = 'hu',
+): GuestNotice {
+  return locale === 'en'
+    ? {
+        title: 'This event is full',
+        body: `Up to ${limit} guests can join this event, and all ${limit} places are taken. Ask the host to let you in, then scan the QR code again.`,
+      }
+    : {
+        title: 'Ez az esemény betelt',
+        body: `Erre az eseményre legfeljebb ${limit} vendég csatlakozhat, és mind ${huNumberArticle(limit)} ${limit} hely elfogyott. Kérd meg a szervezőt, hogy engedjen be, aztán olvasd be újra a QR-kódot.`,
+      }
+}
+
+/**
+ * The spent roll (7m): every frame is taken, and when the guest gets to see
+ * them. The gallery is a separate permission from the camera, so this says
+ * which of its three states the event is in rather than promising a reveal
+ * the host has switched off.
+ */
+export function spentRollNotice(
+  timing: EventTiming,
+  shots: number,
+  locale: Locale = 'hu',
+): GuestNotice {
+  const en = locale === 'en'
+  const taken = en
+    ? `All ${shots} photos are taken.`
+    : `Mind ${huNumberArticle(shots)} ${shots} kép elkészült.`
+  let after: string
+  if (guestGalleryIsOpen(timing)) {
+    after = en
+      ? 'The gallery is already open, and every photo is below.'
+      : 'A galéria már nyitva, lent láthatod az összes képet.'
+  } else if (!timing.guestsCanView) {
+    after = en
+      ? 'Only the host can see the photos at this event.'
+      : 'Ennél az eseménynél a képeket csak a szervező láthatja.'
+  } else {
+    const at = formatDeadline(
+      timing.revealAt.toISOString(),
+      timing.timeZone,
+      locale,
+    )
+    after = en
+      ? `The gallery opens ${at}, and you can see every photo then.`
+      : `A galéria ${at}-kor nyílik meg, és akkor láthatod az összes képet.`
   }
-  const waiting = `Nincs kapcsolat. ${count} kép feltöltésre vár.`
-  return canShoot ? `${waiting} Nyugodtan fotózhatsz tovább.` : waiting
+  return {
+    title: en
+      ? 'You have used all your photos'
+      : 'Elhasználtad az összes képedet',
+    body: `${taken} ${after}`,
+  }
 }
 
 /**

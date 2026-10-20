@@ -223,6 +223,15 @@ export default async function AdminEventPage({ params }: Props) {
             }
             exportInitial={initialExport}
             exportNote={exportNote(photos.length, locale)}
+            qr={
+              windowState === 'after'
+                ? null
+                : {
+                    name: event.event_name,
+                    url,
+                    shots: event.shots_per_participant,
+                  }
+            }
           />
         </section>
       </HostBlock>
