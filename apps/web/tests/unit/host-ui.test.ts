@@ -129,16 +129,18 @@ describe('autosaveOutcome', () => {
 })
 
 describe('captureEndDisplay', () => {
-  it('capture end in the past keeps the stored value', () => {
-    expect(
-      captureEndDisplay('2026-09-04T02:00', '2026-09-01T02:00', true),
-    ).toEqual({ value: '2026-09-04T02:00', error: true })
+  it('an end before the start keeps the stored value, outlined', () => {
+    expect(captureEndDisplay('2026-09-04T02:00', true)).toEqual({
+      value: '2026-09-04T02:00',
+      error: true,
+    })
   })
 
-  it('an accepted change shows what was picked', () => {
-    expect(
-      captureEndDisplay('2026-09-04T02:00', '2026-09-05T23:00', false),
-    ).toEqual({ value: '2026-09-05T23:00', error: false })
+  it('any other failure also keeps the stored value, without the outline', () => {
+    expect(captureEndDisplay('2026-09-04T02:00', false)).toEqual({
+      value: '2026-09-04T02:00',
+      error: false,
+    })
   })
 })
 

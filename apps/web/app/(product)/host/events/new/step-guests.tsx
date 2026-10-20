@@ -140,7 +140,7 @@ function GuestsFields({
 
       <p className="mx-1 mt-4 text-[14px] leading-[1.6] text-pretty text-white/65">
         {en
-          ? `${DEFAULT_SHOTS} photos per guest. You can change the gallery settings later in settings.`
+          ? `${DEFAULT_SHOTS} photos per guest. You can change this later in settings.`
           : `${DEFAULT_SHOTS} kép vendégenként. A galéria beállításait később a beállításokban módosíthatod.`}
       </p>
 

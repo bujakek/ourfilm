@@ -106,19 +106,19 @@ export function autosaveOutcome(result: AutosaveResult): {
 }
 
 /**
- * What the capture-end field shows after a save attempt (7e). A refused end
- * is never left on screen as if it were the answer: the field goes back to
- * the stored value, outlined, and the line under it names that value. Capture
- * end is deliberately not optimistic, so this is the whole of its fallback.
+ * What the capture-end field shows after a failed save (7e). A failed end is
+ * never left on screen as if it were the answer: the field goes back to the
+ * stored value. When the refusal was an end before the event began, it is
+ * also outlined and the line under it names that value; any other failure is
+ * the header's "Újra" toast. A landed save leaves the field alone, because
+ * the host may already be typing the next value. Capture end is deliberately
+ * not optimistic, so this is the whole of its fallback.
  */
 export function captureEndDisplay(
   stored: string,
-  attempted: string,
-  refused: boolean,
+  beforeStart: boolean,
 ): { value: string; error: boolean } {
-  return refused
-    ? { value: stored, error: true }
-    : { value: attempted, error: false }
+  return { value: stored, error: beforeStart }
 }
 
 /** How long the "send a new link" button waits after a link goes out. */

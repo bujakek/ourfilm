@@ -99,6 +99,29 @@ export function activeQuickPick(
   return 'other'
 }
 
+/** Where the end's day came from: a quick pick, or the month. */
+export type EndDaySource = 'chip' | 'calendar'
+
+/**
+ * The end after its time is edited. "Ma éjjel" at 02:00 is after midnight, so
+ * while a quick pick is what the host chose, a new time keeps meaning that
+ * pick and the day follows it. A day picked from the month stays put, even
+ * when it happens to be tonight's or tomorrow's date.
+ */
+export function endAfterTimeEdit(
+  endLocal: string,
+  time: string,
+  source: EndDaySource,
+  now: Date,
+  timeZone: string,
+): string {
+  const picked =
+    source === 'chip' ? activeQuickPick(endLocal, now, timeZone) : 'other'
+  return picked === 'other'
+    ? `${endLocal.slice(0, 10)}T${time}`
+    : endQuickPick(picked, time, now, timeZone)
+}
+
 /**
  * Which tier the host picks on the last screen.
  *

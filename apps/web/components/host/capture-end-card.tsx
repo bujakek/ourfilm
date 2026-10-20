@@ -79,6 +79,10 @@ export function CaptureEndCard({
   // Saves can overlap — a day picked while a time is still saving — and
   // resolve out of order. Only the latest one may touch the fields or report.
   const latest = useRef(0)
+  // The newest save the server has accepted. An overtaken save that landed
+  // still moved the stored end, so a later failure reverts to it rather than
+  // to the value before it; an older one landing late does not undo a newer.
+  const confirmed = useRef(0)
   const inFlight = useRef<string | null>(null)
   // What the two fields show. The time is its own string because a native
   // time field passes through '' while a segment is being retyped.
@@ -101,10 +105,13 @@ export function CaptureEndCard({
     startTransition(async () => {
       try {
         await setCaptureEnd(slug, next)
+        if (seq > confirmed.current) {
+          confirmed.current = seq
+          storedRef.current = next
+          setStored(next)
+        }
         if (seq !== latest.current) return
         inFlight.current = null
-        storedRef.current = next
-        setStored(next)
         report('ok', () => save(next))
       } catch {
         if (seq !== latest.current) return
@@ -113,14 +120,10 @@ export function CaptureEndCard({
         // the refusal is recognised by the same rule the action applies.
         // Both strings are wall clock in the same zone, so they compare as
         // text.
-        const beforeStart = next <= startValue
-        const display = captureEndDisplay(storedRef.current, next, true)
+        const display = captureEndDisplay(storedRef.current, next <= startValue)
         show(display.value)
-        if (beforeStart) {
-          setRefused(display.error)
-        } else {
-          report('error', () => save(next))
-        }
+        setRefused(display.error)
+        if (!display.error) report('error', () => save(next))
       }
     })
   }

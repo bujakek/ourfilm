@@ -39,15 +39,6 @@ const GENERIC_ERROR =
  */
 let started = false
 
-const dbg = (m: string) => {
-  try {
-    window.localStorage.setItem(
-      '__dbg',
-      (window.localStorage.getItem('__dbg') ?? '') + m + ' | ',
-    )
-  } catch {}
-}
-
 async function run(): Promise<Outcome> {
   const draft = loadDraft(new Date())
   if (!draft) {
@@ -115,7 +106,6 @@ async function run(): Promise<Outcome> {
     source: 'magic_link',
   })
 
-  dbg('result:' + JSON.stringify(result).slice(0, 120))
   if (result.ok) {
     // Only now, and only here. Until this line the draft is the one copy of
     // these answers.

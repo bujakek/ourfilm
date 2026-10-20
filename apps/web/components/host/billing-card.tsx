@@ -127,23 +127,22 @@ export function BillingCard({
     }
   }, [])
 
-  // A host back from Stripe without paying, or whose last attempt failed, is
-  // brought to the card, which the cancel URL alone does not do. Scrolled,
-  // not expanded: an open form would hide the notice's "Másik kártya →".
-  const scrollToNotice =
-    !standalone && (checkout === 'cancelled' || paymentNotice !== null)
+  // A host back from Stripe without paying is brought to the card, which the
+  // cancel URL alone does not do. Only on that return: a failed purchase
+  // keeps its notice on every later visit, and a later visit should open at
+  // the top of settings. A `#billing` link is scrolled by the browser itself.
+  // Scrolled, not expanded: an open form would hide "Másik kártya →".
+  const scrollToNotice = !standalone && checkout === 'cancelled'
   useEffect(() => {
     if (!scrollToNotice) return
     const timer = window.setTimeout(() => {
       const reduce = window.matchMedia(
         '(prefers-reduced-motion: reduce)',
       ).matches
-      document
-        .getElementById('billing')
-        ?.scrollIntoView({
-          behavior: reduce ? 'auto' : 'smooth',
-          block: 'start',
-        })
+      document.getElementById('billing')?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'start',
+      })
     }, 0)
     return () => window.clearTimeout(timer)
   }, [scrollToNotice])
@@ -263,11 +262,6 @@ export function BillingCard({
           ? 'No subscription. No app for guests.'
           : 'Nincs előfizetés. A vendégeknek nem kell app.'}
       </p>
-      {state.error ? (
-        <p role="alert" className="text-[14px] text-host-danger">
-          {state.error}
-        </p>
-      ) : null}
     </form>
   ) : (
     // Honest about the state of the world rather than offering a button
@@ -383,6 +377,14 @@ export function BillingCard({
           {expanded ? form : null}
         </div>
       )}
+
+      {/* At card level rather than inside the form, so "Mégsem" closing the
+          form does not take the reason the checkout was refused with it. */}
+      {state.error ? (
+        <p role="alert" className="mt-3 text-[14px] text-host-danger">
+          {state.error}
+        </p>
+      ) : null}
     </section>
   )
 }

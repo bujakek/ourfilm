@@ -6,11 +6,14 @@ import { useState } from 'react'
 import { EventEndFields } from '@/components/host/event-end-fields'
 import { MonthCalendar } from '@/components/host/month-calendar'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
+import { HOST_FOCUS } from '@/components/host/ui/classes'
 import { FloatingPanel } from '@/components/host/ui/floating-panel'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import {
   activeQuickPick,
+  endAfterTimeEdit,
+  type EndDaySource,
   endQuickPick,
   type EndQuickPick,
 } from '@/lib/onboarding'
@@ -88,6 +91,9 @@ function EndFields({
   locale: Locale
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
+  // Not stored with the draft: coming back to this screen treats the day as
+  // a quick pick's again, which is what a fresh draft starts on.
+  const [source, setSource] = useState<EndDaySource>('chip')
   const reduceMotion = useReducedMotion()
   const en = locale === 'en'
 
@@ -128,9 +134,10 @@ function EndFields({
                     return
                   }
                   setCalendarOpen(false)
+                  setSource('chip')
                   pick(key, time)
                 }}
-                className={`inline-flex min-h-11 items-center rounded-[14px] px-[18px] py-2 text-[14px] transition-colors ${
+                className={`inline-flex min-h-11 items-center rounded-[14px] px-[18px] py-2 text-[14px] transition-colors ${HOST_FOCUS} ${
                   on
                     ? 'bg-white text-landing-ink'
                     : 'bg-host-tile text-white/80 hover:bg-white/10 hover:text-white'
@@ -156,11 +163,17 @@ function EndFields({
               setEndLocal(`${day}T`)
               return
             }
-            // "Ma éjjel" at 02:00 is after midnight. While a quick pick is
-            // what the host chose, a new time keeps meaning that pick, so the
-            // day follows it; a day from the month stays put.
-            if (picked !== 'other' && !calendarOpen) pick(picked, value)
-            else setEndLocal(`${day}T${value}`)
+            // A quick pick's day follows its time; a day from the month
+            // stays put. An open month is a day being chosen, so it stays too.
+            setEndLocal(
+              endAfterTimeEdit(
+                endLocal,
+                value,
+                calendarOpen ? 'calendar' : source,
+                now,
+                timeZone,
+              ),
+            )
           }}
           timeStep={900}
           locale={locale}
@@ -182,6 +195,7 @@ function EndFields({
             locale={locale}
             onChange={(value) => {
               setCalendarOpen(false)
+              setSource('calendar')
               setEndLocal(`${value}T${time || FALLBACK_TIME}`)
             }}
           />

@@ -231,8 +231,11 @@ export function OnboardingShell({
       </div>
 
       {/* Sticky rather than fixed: it sits in the flow at the bottom of a
-          short screen and stays reachable over a long one. */}
-      <div className="sticky bottom-0 z-10 -mx-5 mt-6 bg-background px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+          short screen and stays reachable over a long one. A fade rather
+          than a fill, so the page grain carries on under it; the fade is all
+          in the top padding, and the footer's own text sits on ground that
+          is at least 90% opaque. */}
+      <div className="sticky bottom-0 z-10 -mx-5 mt-2 bg-gradient-to-t from-background from-70% via-background/90 via-80% to-transparent px-5 pt-7 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         <div className="mx-auto w-full max-w-md">
           {error ? (
             <p

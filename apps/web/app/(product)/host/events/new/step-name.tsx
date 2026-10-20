@@ -101,7 +101,7 @@ function NameFields({
             if (canAdvance) onAdvance?.()
           }}
           placeholder={en ? 'Enter your event name' : 'Írd be az esemény nevét'}
-          className="w-full bg-transparent text-[20px] text-white outline-none placeholder:text-white/35"
+          className="w-full bg-transparent text-[20px] text-white outline-none placeholder:text-white/55"
         />
       </div>
 

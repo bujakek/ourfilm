@@ -23,6 +23,11 @@ import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import { EXAMPLE_SLUG } from '@/lib/slug'
 import { eventUrl } from '@/lib/site'
 
+/** The guests in the mocked event, on the console and on the guest's roll
+ *  alike. One under the free cap, so the mock shows a free event with room
+ *  left rather than one at its limit. */
+const MOCK_GUESTS = FREE_PARTICIPANT_LIMIT - 1
+
 /**
  * Three real product screens, drawn at phone size.
  *
@@ -380,7 +385,7 @@ export function ScreenTicket({
 
   const figures: [string, string][] = [
     ['84', en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'],
-    [String(FREE_PARTICIPANT_LIMIT - 1), en ? 'GUESTS' : 'VENDÉG'],
+    [String(MOCK_GUESTS), en ? 'GUESTS' : 'VENDÉG'],
     [String(DEFAULT_SHOTS), en ? 'SHOTS EACH' : 'KÉP / FŐ'],
   ]
 
@@ -652,8 +657,8 @@ export function ScreenCamera({
 
       <p className="mt-2.5 text-center font-mono text-[7px] tracking-[0.02em] text-foreground/35">
         {en
-          ? '7 GUESTS · NO PREVIEW · NO RETAKES'
-          : '7 VENDÉG · NINCS ELŐNÉZET · NINCS ÚJRAPRÓBÁLÁS'}
+          ? `${MOCK_GUESTS} GUESTS · NO PREVIEW · NO RETAKES`
+          : `${MOCK_GUESTS} VENDÉG · NINCS ELŐNÉZET · NINCS ÚJRAPRÓBÁLÁS`}
       </p>
 
       <div className="mt-4 border-t border-border pt-3">

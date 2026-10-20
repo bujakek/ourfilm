@@ -10,7 +10,7 @@ import {
 import { SiteClosing } from '@/components/pages/site-closing'
 import { SiteFaq } from '@/components/pages/site-faq'
 import { SiteShell } from '@/components/pages/site-shell'
-import { SHOT_OPTIONS } from '@/lib/camera'
+import { SHOT_OPTIONS, shotRollList } from '@/lib/camera'
 import { hasRealCompanyDetails } from '@/lib/company'
 import { isLocale } from '@/lib/i18n'
 import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
@@ -21,10 +21,6 @@ import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-
-/** `5, 10, 16, 24 or 36`, from the options the database accepts. */
-const rolls = (or: string) =>
-  `${SHOT_OPTIONS.slice(0, -1).join(', ')} ${or} ${SHOT_OPTIONS.at(-1)}`
 
 const copy = {
   en: {
@@ -69,7 +65,7 @@ const copy = {
       ],
       [
         'How many photos can a guest take?',
-        `You choose ${rolls('or')} frames per guest. Everyone gets the same number on their own digital roll.`,
+        `You choose ${shotRollList('or')} frames per guest. Everyone gets the same number on their own digital roll.`,
       ],
       [
         'What does the price include?',
@@ -125,7 +121,7 @@ const copy = {
       ],
       [
         'Hány képet készíthet egy vendég?',
-        `Te választod ki, hogy ${rolls('vagy')} képkocka jusson egy vendégnek. Mindenki ugyanannyi képet kap a saját digitális tekercsén.`,
+        `Te választod ki, hogy ${shotRollList('vagy')} képkocka jusson egy vendégnek. Mindenki ugyanannyi képet kap a saját digitális tekercsén.`,
       ],
       [
         'Mit tartalmaz az ár?',

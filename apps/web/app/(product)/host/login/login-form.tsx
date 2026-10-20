@@ -126,7 +126,11 @@ export function LoginForm({
         track('sign_in_blocked', context)
         return { sent: previous.sent, error: outcome.message ?? null }
       }
-      return { sent: { email: address, sentAt: Date.now() }, error: null }
+      const at = Date.now()
+      // The countdown reads from this send, not from a tick up to a second
+      // older than it.
+      setNow(at)
+      return { sent: { email: address, sentAt: at }, error: null }
     } catch {
       track('sign_in_blocked', context)
       return {

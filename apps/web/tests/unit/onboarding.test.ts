@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   activeQuickPick,
+  endAfterTimeEdit,
   endQuickPick,
   eventNameSuggestions,
   FREE_PARTICIPANT_LIMIT,
@@ -91,6 +92,30 @@ describe('end quick picks', () => {
     ]) {
       expect(activeQuickPick(other, NOW, ZONE)).toBe('other')
     }
+  })
+
+  it('a time edit on a quick pick keeps meaning that pick', () => {
+    expect(
+      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'chip', NOW, ZONE),
+    ).toBe('2026-09-04T02:00')
+    expect(
+      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'chip', NOW, ZONE),
+    ).toBe('2026-09-05T02:00')
+  })
+
+  it('a day from the calendar stays put, even on tonight’s date', () => {
+    expect(
+      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'calendar', NOW, ZONE),
+    ).toBe('2026-09-03T02:00')
+    expect(
+      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'calendar', NOW, ZONE),
+    ).toBe('2026-09-04T02:00')
+  })
+
+  it('a day that is no quick pick stays put whatever the source', () => {
+    expect(
+      endAfterTimeEdit('2026-09-06T23:00', '02:00', 'chip', NOW, ZONE),
+    ).toBe('2026-09-06T02:00')
   })
 })
 

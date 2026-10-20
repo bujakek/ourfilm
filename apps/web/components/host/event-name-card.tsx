@@ -52,15 +52,23 @@ export function EventNameCard({
   // The name a save is sending right now, so a second blur does not send it
   // again while the first is still in flight.
   const inFlight = useRef<string | null>(null)
+  // Saves can overlap — the stored name typed back while another is still
+  // sending — and an older one answering late must not overwrite a newer.
+  const issued = useRef(0)
+  const confirmed = useRef(0)
 
   const problem = eventNameProblem(value.trim())
 
   const save = (next: string) => {
     inFlight.current = next
+    const seq = ++issued.current
     startTransition(async () => {
       try {
         await renameEvent(slug, next)
-        stored.current = next
+        if (seq > confirmed.current) {
+          confirmed.current = seq
+          stored.current = next
+        }
         // Text typed while the save was in flight stays where it is.
         setValue((current) => (current.trim() === next ? next : current))
         report('ok', () => save(next))
@@ -84,7 +92,9 @@ export function EventNameCard({
       return
     }
     if (trimmed === inFlight.current) return
-    if (trimmed === stored.current) {
+    // The stored name typed back while another save is in flight is a
+    // change: that save is about to replace it, so it has to be sent too.
+    if (trimmed === stored.current && inFlight.current === null) {
       if (trimmed !== value) setValue(trimmed)
       return
     }

@@ -1,4 +1,4 @@
-import { SHOT_OPTIONS } from './camera'
+import { shotRollList } from './camera'
 import type { Locale } from './i18n'
 import type { OccasionId } from './occasions'
 import { FREE_PARTICIPANT_LIMIT } from './onboarding'
@@ -18,11 +18,7 @@ import { FREE_PARTICIPANT_LIMIT } from './onboarding'
 /** The fifth tab. Not an `OccasionId`: it has no page of its own to link to. */
 export type LandingOccasionId = OccasionId | 'everyday'
 
-const rolls = (locale: Locale) => {
-  const list = [...SHOT_OPTIONS]
-  const last = list.pop()
-  return `${list.join(', ')} ${locale === 'en' ? 'or' : 'vagy'} ${last}`
-}
+const rolls = (locale: Locale) => shotRollList(locale === 'en' ? 'or' : 'vagy')
 
 export const landingCopy = {
   en: {
