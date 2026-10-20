@@ -46,3 +46,22 @@ export function toastReducer(
       return state.toast?.id === action.id ? { ...state, toast: null } : state
   }
 }
+
+/**
+ * When the free cap deserves a banner on the event page: one seat from it, or
+ * at it. Quiet otherwise, and always quiet on a paid or granted event.
+ */
+export function quotaBannerState({
+  count,
+  limit,
+  unlimited,
+}: {
+  count: number
+  limit: number
+  unlimited: boolean
+}): 'near' | 'full' | null {
+  if (unlimited) return null
+  if (count >= limit) return 'full'
+  if (count === limit - 1) return 'near'
+  return null
+}

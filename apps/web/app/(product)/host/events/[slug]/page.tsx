@@ -14,6 +14,7 @@ import { getEventQuota } from '@/lib/billing'
 import { captureWindowState } from '@/lib/camera'
 import { shortTimeRemaining } from '@/lib/event-copy'
 import { getOwnedEventBySlug } from '@/lib/events'
+import { quotaBannerState } from '@/lib/host-ui'
 import { localeTag } from '@/lib/i18n'
 import { getAllEventPhotos, toModerationTiles } from '@/lib/photos'
 import { eventUrl } from '@/lib/site'
@@ -99,6 +100,14 @@ export default async function AdminEventPage({ params }: Props) {
     quota !== null &&
     !quota.unlimited &&
     quota.participantCount >= quota.participantLimit
+
+  const bannerState = quota
+    ? quotaBannerState({
+        count: quota.participantCount,
+        limit: quota.participantLimit,
+        unlimited: quota.unlimited,
+      })
+    : null
 
   return (
     <main
@@ -191,11 +200,12 @@ export default async function AdminEventPage({ params }: Props) {
           locale={locale}
         />
 
-        {quota && !quota.unlimited ? (
+        {quota && bannerState ? (
           <QuotaBanner
             slug={event.slug}
             eventId={event.id}
             quota={quota}
+            state={bannerState}
             locale={locale}
           />
         ) : null}

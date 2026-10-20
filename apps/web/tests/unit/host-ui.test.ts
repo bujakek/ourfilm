@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { initialToastState, toastReducer } from '@/lib/host-ui'
+import {
+  initialToastState,
+  quotaBannerState,
+  toastReducer,
+} from '@/lib/host-ui'
 
 const show = (s = initialToastState, text = 'a') =>
   toastReducer(s, { type: 'show', text })
@@ -40,5 +44,27 @@ describe('toastReducer', () => {
     const again = show(dismissed, 'b')
     expect(again.toast?.id).toBe(2)
     expect(toastReducer(again, { type: 'expire', id: 1 })).toBe(again)
+  })
+})
+
+describe('quotaBannerState', () => {
+  const q = (count: number, limit = 5, unlimited = false) =>
+    quotaBannerState({ count, limit, unlimited })
+
+  it('is quiet until one seat is left', () => {
+    expect(q(3)).toBeNull()
+  })
+  it('is near at limit - 1', () => {
+    expect(q(4)).toBe('near')
+  })
+  it('is full at and beyond the limit', () => {
+    expect(q(5)).toBe('full')
+    expect(q(6)).toBe('full')
+  })
+  it('is never shown on an unlimited event', () => {
+    expect(q(5, 5, true)).toBeNull()
+  })
+  it('handles a limit of one', () => {
+    expect(q(0, 1)).toBe('near')
   })
 })
