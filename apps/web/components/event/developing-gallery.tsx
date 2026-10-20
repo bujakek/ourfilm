@@ -50,19 +50,19 @@ export function DevelopingGallery({
             style={{ background: developingWash(tile.seed) }}
           />
           <span className="absolute inset-x-1.5 top-1/2 flex -translate-y-1/2 justify-center">
-            <span className="truncate rounded-full bg-background/40 px-2 py-0.5 text-[10px] leading-[1.4] font-medium text-foreground/80 backdrop-blur-sm">
+            <span className="truncate rounded-full bg-landing/50 px-2 py-0.5 text-[10px] leading-[1.4] font-medium text-white/85 backdrop-blur-sm">
               {label}
             </span>
           </span>
           {tile.uploaderName ? (
-            <span className="absolute inset-x-2 bottom-1.5 truncate font-display text-[13px] leading-tight text-foreground/85 italic">
+            <span className="absolute inset-x-2 bottom-1.5 truncate font-landing-quote text-[14px] leading-tight text-white/85 italic">
               {tile.uploaderName}
             </span>
           ) : null}
         </li>
       ))}
       {more > 0 ? (
-        <li className="flex aspect-square items-center justify-center rounded-sm border border-border font-mono text-xs text-muted-foreground">
+        <li className="flex aspect-square items-center justify-center rounded-sm bg-host-tile text-[12px] font-medium text-white/65 tabular-nums">
           {moreDevelopingLabel(more, locale)}
         </li>
       ) : null}

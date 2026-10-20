@@ -344,11 +344,11 @@ export function GuestEventView({
    * actually go?" has no other answer anywhere on the screen.
    */
   const statusLine: { text: string; tone: string } | null = flash
-    ? { text: flash, tone: 'text-destructive' }
+    ? { text: flash, tone: 'text-host-danger' }
     : online && outstanding === 0 && offlineBacklog > 0
       ? {
           text: queueClearedNote(offlineBacklog, locale),
-          tone: 'text-accent',
+          tone: 'text-white',
         }
       : null
 
@@ -821,21 +821,21 @@ export function GuestEventView({
         transition={stage(0)}
         className="flex items-center justify-between gap-3"
       >
-        <span className="text-xs font-semibold tracking-[0.02em] text-foreground/55">
+        <span className="text-[12px] leading-[1.3] font-medium text-white/65">
           OurFilm
         </span>
         {/* Two facts in one row, and they are not the same kind of fact: the
             window is the event's, the connection is this phone's. Amber says
             the second one is gone, and it wins — a guest with no signal does
-            not need to be told how long the camera stays open. Lilac is left
+            not need to be told how long the camera stays open. Sky is left
             meaning only that the film is running. */}
         <span
-          className={`inline-flex items-center gap-[7px] text-xs font-medium transition-colors ${
+          className={`inline-flex items-center gap-[7px] text-[12px] leading-[1.3] font-medium transition-colors ${
             !online
-              ? 'text-warning'
+              ? 'text-host-warn'
               : status.live
-                ? 'text-accent'
-                : 'text-foreground/55'
+                ? 'text-landing-sky'
+                : 'text-white/65'
           }`}
         >
           {/* Amber never breathes. The pulse means the film is running, and
@@ -849,7 +849,7 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(1)}
-        className="mt-3.5 font-display text-[34px] leading-[1.02] tracking-[-0.005em] text-balance"
+        className="landing-serif mt-3.5 font-landing-display text-[34px] leading-[1.15] text-balance text-white"
       >
         {eventName}
       </motion.h1>
@@ -913,12 +913,12 @@ export function GuestEventView({
 
       {canAddPhotos ? (
         <div className="mt-6" aria-live="polite">
-          <h2 className="text-lg font-semibold tracking-tight text-balance">
+          <h2 className="text-[18px] leading-[1.4] font-medium text-balance text-white">
             {en
               ? 'Still have photos on your phone?'
               : 'Maradt még pár kép a telefonodon?'}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+          <p className="mt-2 text-[14px] leading-[1.5] text-pretty text-white/65">
             {en
               ? `Add your moments from the event to the shared album. You can upload ${framesLeft} more ${framesLeft === 1 ? 'photo' : 'photos'} until ${deadline}.`
               : `Adj hozzá az esemény pillanataiból a közös albumhoz. Még ${framesLeft} képet tölthetsz fel, ${deadline}-ig.`}
@@ -972,7 +972,7 @@ export function GuestEventView({
               : undefined
           }
           transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
-          className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-lg text-[15px] font-semibold disabled:pointer-events-none"
+          className="flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-[16px] bg-white text-[16px] font-medium text-landing-ink disabled:pointer-events-none"
         >
           {canAddPhotos ? (
             <Images className="size-[19px]" aria-hidden="true" />
@@ -1004,12 +1004,7 @@ export function GuestEventView({
                   : 'Kamera'}
         </motion.button>
 
-        <InviteButton
-          url={eventUrl}
-          eventId={eventId}
-          locale={locale}
-          iconOnly
-        />
+        <InviteButton url={eventUrl} eventId={eventId} locale={locale} />
 
         <input
           ref={galleryInputRef}
@@ -1136,7 +1131,7 @@ export function GuestEventView({
           className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
             statusLine
               ? `text-[13px] leading-[1.45] ${statusLine.tone}`
-              : 'text-xs leading-[1.55] text-foreground/45'
+              : 'text-[12px] leading-[1.55] text-white/55'
           }`}
         >
           {statusLine ? statusLine.text : formatLine(participantCount, locale)}
@@ -1147,14 +1142,14 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(5)}
-        className="mt-6.5 border-t border-border pt-4.5"
+        className="mt-8"
       >
         <div className="flex items-baseline justify-between gap-4">
-          <h2 className="font-display text-[22px] leading-none">
+          <h2 className="landing-serif font-landing-display text-[24px] leading-[1.2] text-white">
             {en ? 'Shared photos' : 'Közös képek'}
           </h2>
           {photoCount > 0 ? (
-            <p className="text-xs font-medium text-muted-foreground tabular-nums">
+            <p className="text-[12px] leading-[1.3] font-medium tracking-[0.24em] text-white/65 uppercase tabular-nums">
               {en
                 ? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
                 : `${photoCount} kép`}
@@ -1164,7 +1159,7 @@ export function GuestEventView({
 
         {!gallery.open && wall && wall.tiles.length > 0 ? (
           <div className="mt-4">
-            <p className="mb-3 text-sm leading-relaxed text-pretty text-muted-foreground">
+            <p className="mb-3 text-[14px] leading-[1.5] text-pretty text-white/65">
               {gallery.detail ?? gallery.heading}
             </p>
             <DevelopingGallery
@@ -1174,29 +1169,29 @@ export function GuestEventView({
               now={now}
               locale={locale}
             />
-            <p className="mt-3 text-xs leading-relaxed text-pretty text-muted-foreground/70">
+            <p className="mt-3 text-[12px] leading-[1.5] text-pretty text-white/55">
               {ownRollNote(locale)}
             </p>
           </div>
         ) : !gallery.open ? (
-          <div className="mt-4 rounded-2xl border border-border px-6 py-8 text-center">
-            <h3 className="text-base font-semibold text-balance">
+          <div className="mt-4 rounded-[32px] bg-host-panel px-6 py-8 text-center">
+            <h3 className="text-[16px] leading-[1.5] font-medium text-balance text-white">
               {gallery.heading}
             </h3>
             {gallery.detail ? (
-              <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+              <p className="mt-2 text-[14px] leading-[1.5] text-pretty text-white/65">
                 {gallery.detail}
               </p>
             ) : null}
             {/* Two things on this screen now obey different rules — the strip
                 above is this guest's own film and is never reveal-gated — so the
                 lock says which is which rather than letting it read as a bug. */}
-            <p className="mt-3 text-xs leading-relaxed text-pretty text-muted-foreground/70">
+            <p className="mt-3 text-[12px] leading-[1.5] text-pretty text-white/55">
               {ownRollNote(locale)}
             </p>
           </div>
         ) : photos.length === 0 ? (
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-4 text-[14px] leading-[1.5] text-white/65">
             {canAddPhotos
               ? en
                 ? 'No photos yet. Add the first moments from your phone.'

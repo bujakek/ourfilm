@@ -48,7 +48,8 @@ const martianMono = Martian_Mono({
   display: 'swap',
 })
 
-/** Goes on `<body>` in both root layouts. */
+/** Goes on `<body>` in the public site's root layout and the global 404.
+ *  The product's root layout uses the landing faces instead. */
 export const bodyClassName = `${manrope.variable} ${instrumentSerif.variable} ${martianMono.variable} font-sans antialiased`
 
 /**

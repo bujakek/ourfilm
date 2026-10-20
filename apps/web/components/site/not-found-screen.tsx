@@ -1,8 +1,16 @@
 import Link from 'next/link'
 
 import { PageGrain } from '@/components/site/page-grain'
-import { buttonVariants } from '@/components/ui/button'
 import { defaultLocale, type Locale, localePath } from '@/lib/i18n'
+
+/** The landing's white primary, written out: these screens are shared by the
+ *  public site and the product, and neither tree's class module belongs to
+ *  the other. `error-screen.tsx` imports both. */
+export const SCREEN_PRIMARY =
+  'inline-flex h-14 items-center justify-center rounded-[16px] bg-white px-6 text-[16px] font-medium text-landing-ink transition-colors hover:bg-white/90'
+
+export const SCREEN_SECONDARY =
+  'inline-flex h-14 items-center justify-center rounded-[16px] bg-white/8 px-6 text-[16px] font-medium text-white transition-colors hover:bg-white/12'
 
 const copy = {
   en: {
@@ -37,20 +45,20 @@ export function NotFoundScreen({
     <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
       <PageGrain />
       <main className="relative z-10 w-full max-w-md text-center">
-        <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
+        <p className="text-[11px] leading-[1.3] font-medium tracking-[0.24em] text-white/65 uppercase">
           404
-        </span>
-        <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+        </p>
+        <h1 className="mt-4 text-[30px] leading-[1.2] font-medium tracking-tight text-balance text-white">
           {text.heading}
         </h1>
         {/* Most people who land here mistyped a QR link, so lead with that
             rather than a generic apology. */}
-        <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
+        <p className="mt-4 text-[16px] leading-[1.6] text-pretty text-white/65">
           {text.body}
         </p>
         <Link
           href={localePath(locale, '/')}
-          className={buttonVariants({ className: 'mt-8' })}
+          className={`mt-8 ${SCREEN_PRIMARY}`}
         >
           {text.cta}
         </Link>

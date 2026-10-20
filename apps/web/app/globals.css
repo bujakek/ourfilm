@@ -243,11 +243,12 @@
     overflow-x: hidden;
   }
   ::selection {
-    background: rgba(195, 182, 255, 0.25);
+    background: rgba(135, 199, 242, 0.3);
     color: #ffffff;
   }
+  /* White, as on the landing: lilac is no longer part of the look. */
   :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid #ffffff;
     outline-offset: 2px;
     border-radius: 4px;
   }

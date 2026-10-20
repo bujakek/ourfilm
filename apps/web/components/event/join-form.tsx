@@ -7,6 +7,16 @@ import Link from 'next/link'
 import { useActionState, useEffect, useState } from 'react'
 
 import {
+  HOST_FIELD,
+  HOST_KICKER,
+  HOST_KICKER_BASE,
+  HOST_LINK,
+  HOST_PANEL,
+  HOST_PRIMARY,
+  HOST_TITLE,
+} from '@/components/host/ui/classes'
+
+import {
   joinEventAction,
   type JoinState,
 } from '@/app/(product)/e/[slug]/actions'
@@ -24,6 +34,11 @@ const NAME_MAX_LENGTH = 40
 
 /**
  * The guest's front door, as a ticket.
+ *
+ * It wears the landing look the host app does, and borrows its class strings:
+ * the ticket is a panel, the roll size is a Crimson figure, and the one action
+ * is the white primary. It used to be a paper stub with a lilac button; the
+ * shape is the same, only the material changed.
  *
  * The printed QR sheet was already the strongest-designed thing in the product
  * and it stopped at the sheet; this is its vocabulary used as the front door. A
@@ -144,45 +159,43 @@ export function JoinForm({
 
         {/* The ticket. `overflow-hidden` is deliberately absent: the tear line's
             two notches have to bleed past both edges to read as punched out of
-            the sheet rather than drawn on it. */}
+            the panel rather than drawn on it. */}
         <motion.div
           {...ticket}
           transition={stage(1)}
-          className="paper relative rounded-lg px-6 pt-6.5"
+          className={`${HOST_PANEL} relative px-6 pt-7`}
         >
-          <p className="paper-muted font-mono text-[9.5px] font-medium tracking-[0.2em]">
-            {en ? 'OURFILM · DISPOSABLE CAMERA' : 'OURFILM · ELDOBHATÓ KAMERA'}
+          <p className={HOST_KICKER}>
+            {en ? 'OurFilm · Disposable camera' : 'OurFilm · Eldobható kamera'}
           </p>
 
-          <h1 className="mt-3.5 font-display text-[38px] leading-[1.02] tracking-[-0.01em] text-balance">
-            {eventName}
-          </h1>
-          <p className="paper-muted mt-1.5 text-[13px]">{byline}</p>
+          <h1 className={`mt-3.5 ${HOST_TITLE}`}>{eventName}</h1>
+          <p className="mt-2 text-[14px] leading-[1.5] text-white/65">
+            {byline}
+          </p>
 
-          <div className="paper-rule mt-5.5 flex items-end justify-between gap-4 border-t pt-4">
+          <div className="mt-6 flex items-end justify-between gap-4">
             <div>
-              <p className="paper-muted font-mono text-[9px] font-medium tracking-[0.16em]">
-                {en ? 'YOUR ROLL' : 'A TEKERCSED'}
-              </p>
-              <p className="mt-1 font-mono text-[40px] leading-[0.9] font-medium tracking-[-0.05em]">
+              <p className={HOST_KICKER}>{en ? 'Your roll' : 'A tekercsed'}</p>
+              <p className="host-figure mt-1 text-[44px] leading-[0.9] text-white tabular-nums">
                 {shotsPerParticipant}
               </p>
             </div>
             <div className="text-right">
-              <p className="paper-muted font-mono text-[9px] font-medium tracking-[0.16em]">
+              <p className={HOST_KICKER}>
                 {revealed
                   ? en
-                    ? 'PHOTOS'
-                    : 'A KÉPEK'
+                    ? 'Photos'
+                    : 'A képek'
                   : en
-                    ? 'DEVELOPING'
-                    : 'ELŐHÍVÁS'}
+                    ? 'Developing'
+                    : 'Előhívás'}
               </p>
-              <p className="mt-1 font-mono text-[12px] leading-[1.4] font-medium">
+              <p className="mt-1.5 text-[14px] leading-[1.4] font-medium text-white">
                 {revealed
                   ? en
-                    ? 'DEVELOPED'
-                    : 'ELŐHÍVVA'
+                    ? 'Developed'
+                    : 'Előhívva'
                   : revealSummary(revealMode, locale)}
               </p>
             </div>
@@ -190,26 +203,21 @@ export function JoinForm({
 
           {/* The tear line. The only ornament in the design, and it earns its
               place: it says "stub" before a single word does. The two circles
-              are the page background punched through the sheet, so they have to
-              be `bg-background` rather than a shade of paper. */}
+              are the page ground punched through the panel, so they have to be
+              `bg-landing` rather than a shade of the panel. */}
           <div
             aria-hidden="true"
-            className="relative top-[9px] mt-5 flex items-center gap-2"
+            className="relative top-[9px] mt-6 flex items-center gap-2"
           >
-            <span className="-ml-8 size-4 shrink-0 rounded-full bg-background" />
-            <span className="h-px flex-1 bg-[repeating-linear-gradient(to_right,rgba(20,19,18,.28)_0_5px,transparent_5px_11px)]" />
-            <span className="-mr-8 size-4 shrink-0 rounded-full bg-background" />
+            <span className="-ml-8 size-4 shrink-0 rounded-full bg-landing" />
+            <span className="h-px flex-1 bg-[repeating-linear-gradient(to_right,rgba(255,255,255,.18)_0_5px,transparent_5px_11px)]" />
+            <span className="-mr-8 size-4 shrink-0 rounded-full bg-landing" />
           </div>
 
-          <div className="pt-6.5 pb-6">
-            <label
-              htmlFor="join-name"
-              className="paper-muted block font-mono text-[9px] font-medium tracking-[0.16em]"
-            >
-              {en ? 'YOUR NAME' : 'A NEVED'}
+          <div className="pt-7 pb-6">
+            <label htmlFor="join-name" className={`block ${HOST_KICKER}`}>
+              {en ? 'Your name' : 'A neved'}
             </label>
-            {/* A rule, not a filled box. On paper that is what a field looks
-                like — and `.glass` is no longer what an input wears anywhere. */}
             <input
               id="join-name"
               name="name"
@@ -220,13 +228,13 @@ export function JoinForm({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={en ? 'Enter your name' : 'Írd be a neved'}
-              className="mt-2.5 w-full border-b-[1.5px] border-[rgba(20,19,18,.22)] bg-transparent pb-2.5 text-[19px] text-[color:var(--paper-foreground)] outline-none placeholder:text-[rgba(20,19,18,.32)] focus:border-[rgba(20,19,18,.5)]"
+              className={`mt-3 ${HOST_FIELD}`}
             />
           </div>
         </motion.div>
 
         {state.error ? (
-          <p className="mt-4 text-center text-sm text-destructive">
+          <p className="mt-4 text-center text-[14px] leading-[1.5] text-host-danger">
             {state.error}
           </p>
         ) : null}
@@ -235,17 +243,17 @@ export function JoinForm({
             say — the day shooting *starts*. The open state's version of this
             line only repeats the roll size printed above, so it is not shown. */}
         {!canCapture ? (
-          <p className="mt-4 text-center text-[12px] leading-relaxed text-pretty text-foreground/55">
+          <p className="mt-4 text-center text-[13px] leading-[1.5] text-pretty text-white/65">
             {stateLabel}
           </p>
         ) : null}
 
-        {/* Outside the card, and the one lilac fill in the product — on the one
+        {/* Outside the card: the one white primary on the screen, on the one
             action that starts the film. */}
         <button
           type="submit"
           disabled={pending || !name.trim()}
-          className="btn-shine mt-4 flex min-h-14 w-full items-center justify-center gap-2.5 rounded-xl bg-accent text-[15px] font-semibold text-accent-foreground transition-opacity disabled:pointer-events-none disabled:opacity-50"
+          className={`mt-4 w-full gap-2.5 disabled:pointer-events-none ${HOST_PRIMARY}`}
         >
           {pending ? (
             <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -266,20 +274,19 @@ export function JoinForm({
           )}
         </button>
 
-        <p className="mt-3.5 text-center font-mono text-[10px] leading-[1.7] tracking-[0.05em] text-foreground/40">
-          {en ? 'NO APP · NO SIGN-UP' : 'NINCS APP · NINCS REGISZTRÁCIÓ'}
+        <p
+          className={`mt-4 text-center leading-[1.8] text-white/55 ${HOST_KICKER_BASE}`}
+        >
+          {en ? 'No app · No sign-up' : 'Nincs app · Nincs regisztráció'}
           <br />
           {en
-            ? 'NO PREVIEW · NO RETAKES'
-            : 'NINCS ELŐNÉZET · NINCS ÚJRAPRÓBÁLÁS'}
+            ? 'No preview · No retakes'
+            : 'Nincs előnézet · Nincs újrapróbálás'}
         </p>
 
-        <p className="mt-4.5 text-center text-[11px] leading-[1.6] text-pretty text-foreground/42">
+        <p className="mt-5 text-center text-[12px] leading-[1.6] text-pretty text-white/55">
           {en ? 'By joining you accept the ' : 'A csatlakozással elfogadod az '}
-          <Link
-            href={en ? '/en/terms' : '/hu/aszf'}
-            className="underline underline-offset-2 hover:text-foreground"
-          >
+          <Link href={en ? '/en/terms' : '/hu/aszf'} className={HOST_LINK}>
             {en
               ? 'guest rules in the Terms of service'
               : 'ÁSZF vendégekre vonatkozó szabályait'}
@@ -287,7 +294,7 @@ export function JoinForm({
           {en ? ' and acknowledge the ' : ', és tudomásul veszed az '}
           <Link
             href={en ? '/en/privacy' : '/hu/adatvedelem'}
-            className="underline underline-offset-2 hover:text-foreground"
+            className={HOST_LINK}
           >
             {en ? 'Privacy notice' : 'adatkezelési tájékoztatót'}
           </Link>
@@ -307,8 +314,8 @@ export function JoinForm({
  * dashboard, where the person who can act on it is already standing. The copy
  * is `capReachedNotice`, shared with the action's own refusal.
  *
- * It wears the landing look rather than the ticket's paper: the ticket is a
- * stub issued to you, and this guest was not issued one.
+ * It is a plain panel rather than the ticket: the ticket is a stub issued to
+ * you, and this guest was not issued one.
  */
 function ParticipantCapReached({
   eventName,
@@ -323,7 +330,7 @@ function ParticipantCapReached({
       className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-11"
       lang={localeTag[locale]}
     >
-      <section className="rounded-[32px] bg-host-panel px-6 py-8">
+      <section className={`${HOST_PANEL} px-6 py-8`}>
         <p className="text-[14px] leading-[1.4] font-medium [overflow-wrap:anywhere] text-host-warn">
           {eventName}
         </p>

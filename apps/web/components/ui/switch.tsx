@@ -12,24 +12,21 @@ import { cn } from '@/lib/utils'
  * The knob rides `snap` and the track's colour crosses on `settle`, and they
  * are deliberately on different tokens. A spring is what a thing being pushed
  * does; a colour has no mass, and springing it is what makes a form feel
- * bouncy all over. The track is two layers with the lilac one's opacity
- * animated rather than one layer whose `backgroundColor` is, because both
- * shades are theme variables and only opacity interpolates reliably between
- * them.
+ * bouncy all over. The track is two layers with the white one's opacity
+ * animated rather than one layer whose `backgroundColor` is, because only
+ * opacity interpolates reliably between a wash and a solid.
+ *
+ * The landing look: a white track and a near-black knob when on. There was a
+ * lilac default tone beside it until every caller had moved to this one.
  */
-export type SwitchTone = 'default' | 'host'
-
 export function SwitchTrack({
   checked,
   disabled = false,
   className,
-  tone = 'default',
 }: {
   checked: boolean
   disabled?: boolean
   className?: string
-  /** `host` is the landing look: a white track, a near-black knob. */
-  tone?: SwitchTone
 }) {
   const reduceMotion = useReducedMotion()
 
@@ -37,17 +34,13 @@ export function SwitchTrack({
     <span
       aria-hidden="true"
       className={cn(
-        'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full',
-        tone === 'host' ? 'bg-white/14' : 'bg-foreground/10',
+        'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full bg-white/14',
         disabled && 'opacity-50',
         className,
       )}
     >
       <motion.span
-        className={cn(
-          'absolute inset-0 rounded-full',
-          tone === 'host' ? 'bg-white' : 'bg-accent/70',
-        )}
+        className="absolute inset-0 rounded-full bg-white"
         initial={false}
         animate={{ opacity: checked ? 1 : 0 }}
         transition={reduceMotion ? still : T.settle}
@@ -55,11 +48,7 @@ export function SwitchTrack({
       <motion.span
         className={cn(
           'absolute size-6 rounded-full',
-          tone === 'host'
-            ? checked
-              ? 'bg-landing'
-              : 'bg-white'
-            : 'bg-foreground',
+          checked ? 'bg-landing' : 'bg-white',
         )}
         initial={false}
         animate={{ x: checked ? 28 : 4 }}
@@ -74,9 +63,7 @@ export function Switch({
   onCheckedChange,
   disabled = false,
   label,
-  tone = 'default',
 }: {
-  tone?: SwitchTone
   checked: boolean
   onCheckedChange: (checked: boolean) => void
   disabled?: boolean
@@ -92,11 +79,10 @@ export function Switch({
       onClick={() => onCheckedChange(!checked)}
       className={cn(
         'inline-flex size-14 shrink-0 items-center justify-center rounded-full disabled:opacity-50',
-        // Host screens wear the white focus mark, never the global lilac one.
-        tone === 'host' && HOST_FOCUS,
+        HOST_FOCUS,
       )}
     >
-      <SwitchTrack checked={checked} tone={tone} />
+      <SwitchTrack checked={checked} />
     </button>
   )
 }

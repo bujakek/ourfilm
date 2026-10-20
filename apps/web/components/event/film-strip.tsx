@@ -190,7 +190,7 @@ export function FilmStrip({
             ) : (
               <span
                 key={`frame-${i}`}
-                className="flex size-13 shrink-0 snap-start items-end justify-end rounded-xs border border-white/10 p-[3px] font-mono text-[8px] text-white/20"
+                className="flex size-13 shrink-0 snap-start items-end justify-end rounded-xs bg-white/4 p-[3px] text-[9px] leading-none font-medium text-white/30 tabular-nums"
               >
                 {String(i + 1).padStart(2, '0')}
               </span>
@@ -284,7 +284,7 @@ function DevelopingCell({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={T.settle}
-            className="absolute inset-0 rounded-xs ring-[1.5px] ring-accent ring-inset"
+            className="absolute inset-0 rounded-xs ring-[1.5px] ring-white ring-inset"
           />
         ) : null}
       </AnimatePresence>
@@ -346,15 +346,15 @@ function receiptMark(
     case 'stored':
       return { key: 'stored', tone: 'text-white/85', Icon: ShieldCheck }
     case 'uploading':
-      return { key: 'uploading', tone: 'text-accent', Icon: CloudUpload }
+      return { key: 'uploading', tone: 'text-landing-sky', Icon: CloudUpload }
     case 'waiting':
       return durable
-        ? { key: 'waiting', tone: 'text-warning', Icon: WifiOff }
-        : { key: 'held', tone: 'text-warning', Icon: TriangleAlert }
+        ? { key: 'waiting', tone: 'text-host-warn', Icon: WifiOff }
+        : { key: 'held', tone: 'text-host-warn', Icon: TriangleAlert }
     case 'memory_only':
-      return { key: 'held', tone: 'text-warning', Icon: TriangleAlert }
+      return { key: 'held', tone: 'text-host-warn', Icon: TriangleAlert }
     case 'lost':
-      return { key: 'lost', tone: 'text-destructive', Icon: TriangleAlert }
+      return { key: 'lost', tone: 'text-host-danger', Icon: TriangleAlert }
   }
 }
 

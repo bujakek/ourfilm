@@ -37,7 +37,6 @@ export function PostEventUploadsCard({
         locale={locale}
         disabled={pending}
         onChange={apply}
-        tone="host"
       />
     </section>
   )

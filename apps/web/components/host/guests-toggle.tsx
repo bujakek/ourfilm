@@ -78,7 +78,6 @@ export function GuestsToggle({
           }
           disabled={pending}
           onCheckedChange={apply}
-          tone="host"
         />
       </div>
     </section>
