@@ -920,7 +920,9 @@ revert on their own — none carries hand-written rollback code.
 - **`apps/web/components/host/shots-card.tsx`** — a five-way choice whose selected value
   is visible at a glance, so showing it immediately cannot mislead.
 - **`apps/web/components/host/reveal-card.tsx`** — two named choices with no date in
-  them any more, so it is the shots card's case, not the date card's.
+  them any more, so it is the shots card's case, not the date card's —
+  except "instant" while the album is still closed, which asks inline first
+  and sends nothing until confirmed (`revealChoiceCommit`).
 
 **Settings autosave, and has no Save button.** Every control reports to
 `SettingsSaveProvider` (`apps/web/components/host/settings-save.tsx`): a landed

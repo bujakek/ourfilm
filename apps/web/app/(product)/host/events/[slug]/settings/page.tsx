@@ -152,7 +152,19 @@ export default async function AdminEventSettingsPage({
             locale={locale}
           />
 
-          <RevealCard slug={event.slug} mode={revealChoice} locale={locale} />
+          <RevealCard
+            slug={event.slug}
+            mode={revealChoice}
+            // When the album opens unless it is "instant": the stored instant,
+            // or the end of shooting for an event that is instant now and
+            // would move to it. The card asks before opening it early.
+            eventEndRevealAt={
+              event.reveal_mode === 'instant'
+                ? event.capture_end_at
+                : event.reveal_at
+            }
+            locale={locale}
+          />
 
           <ShotsCard
             slug={event.slug}

@@ -11,6 +11,7 @@ import {
   paymentNotice,
   quotaBannerState,
   RESEND_COOLDOWN_S,
+  revealChoiceCommit,
   saveLedger,
   saveLedgerCommit,
   saveLedgerIssue,
@@ -276,6 +277,64 @@ describe('save ledger', () => {
     expect(last.latest).toBe(true)
     expect(last.ledger.stored).toBe('a')
     expect(last.ledger.inFlight).toBeNull()
+  })
+})
+
+describe('revealChoiceCommit', () => {
+  const now = new Date('2026-10-19T20:00:00Z')
+  const later = new Date('2026-10-19T23:00:00Z')
+  const earlier = new Date('2026-10-19T18:00:00Z')
+
+  it('does nothing when the choice is the current one', () => {
+    expect(
+      revealChoiceCommit({
+        from: 'instant',
+        to: 'instant',
+        revealAt: later,
+        now,
+      }),
+    ).toBe('none')
+  })
+
+  it('asks first before opening an album that is still closed', () => {
+    expect(
+      revealChoiceCommit({
+        from: 'event_end',
+        to: 'instant',
+        revealAt: later,
+        now,
+      }),
+    ).toBe('confirm')
+  })
+
+  it('saves straight away once the album is already open', () => {
+    expect(
+      revealChoiceCommit({
+        from: 'event_end',
+        to: 'instant',
+        revealAt: earlier,
+        now,
+      }),
+    ).toBe('save')
+    expect(
+      revealChoiceCommit({
+        from: 'event_end',
+        to: 'instant',
+        revealAt: now,
+        now,
+      }),
+    ).toBe('save')
+  })
+
+  it('saves a move to the event end at once', () => {
+    expect(
+      revealChoiceCommit({
+        from: 'instant',
+        to: 'event_end',
+        revealAt: later,
+        now,
+      }),
+    ).toBe('save')
   })
 })
 

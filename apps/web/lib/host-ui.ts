@@ -213,6 +213,29 @@ export function saveLedgerSettle(
   return { ledger: next, latest }
 }
 
+/**
+ * What picking a reveal choice does (2). Moving to the event end saves at
+ * once. Moving to "instant" while the album is still closed opens it to every
+ * guest the moment it lands — and a native radio changes on an arrow key — so
+ * that one asks first. Once the album is open anyway, it saves directly.
+ * `revealAt` is when the album opens under the current choice.
+ */
+export function revealChoiceCommit({
+  from,
+  to,
+  revealAt,
+  now,
+}: {
+  from: 'instant' | 'event_end'
+  to: 'instant' | 'event_end'
+  revealAt: Date
+  now: Date
+}): 'none' | 'save' | 'confirm' {
+  if (from === to) return 'none'
+  if (to === 'instant' && revealAt > now) return 'confirm'
+  return 'save'
+}
+
 /** How long the "send a new link" button waits after a link goes out. */
 export const RESEND_COOLDOWN_S = 60
 
