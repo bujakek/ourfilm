@@ -10,6 +10,7 @@ import {
   HOST_PANEL,
   HOST_ROW_DETAIL,
   HOST_ROW_QUESTION,
+  HOST_SECONDARY,
 } from '@/components/host/ui/classes'
 import { FloatingPanel } from '@/components/host/ui/floating-panel'
 import {
@@ -46,10 +47,11 @@ import {
  *
  * It saves when a day is picked, and when the time field is blurred or Enter
  * is pressed — never on the native `change`, which desktop Chrome fires per
- * segment, so an in-between past value would close the camera. A picked day
- * that, with the time already in the field, would close a camera that is
- * still open is *held*: shown, marked "Nincs mentve", and sent only once a
- * time is committed (`captureEndCommit`). Only a value that differs from the
+ * segment, so an in-between past value would close the camera. Any end that
+ * would close a camera that is still open — a day joined to the time in the
+ * field, a time retyped past midnight — is *held* (`captureEndCommit`): shown,
+ * marked "Nincs mentve", and sent only when the host presses "Lezárás most".
+ * A blur that changed nothing commits nothing. Only a value that differs from the
  * stored one is sent, and only the latest of overlapping saves may touch the
  * fields (`saveLedger*`). Deliberately
  * **not optimistic**, unlike the toggles: a field that showed a value the
@@ -99,20 +101,27 @@ export function CaptureEndCard({
   const [day, setDay] = useState(() => endValue.slice(0, 10))
   const [time, setTime] = useState(() => endValue.slice(11, 16))
   const [refused, setRefused] = useState(false)
-  // A picked day that would close a running camera: shown, not sent.
-  const [held, setHeld] = useState(false)
+  // An end that would close a running camera: shown, not sent, until the
+  // host presses "Lezárás most" or commits an end that keeps it open.
+  const [held, setHeld] = useState<string | null>(null)
+  // The time the fields last showed as an answer — saved, held or put back.
+  // A blur that leaves it untouched (tabbing past, the iOS wheel opened and
+  // closed) commits nothing, so it cannot turn a hold into a save.
+  const shownTime = useRef(endValue.slice(11, 16))
+  const section = useRef<HTMLElement>(null)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
   const show = (value: string) => {
     setDay(value.slice(0, 10))
     setTime(value.slice(11, 16))
+    shownTime.current = value.slice(11, 16)
   }
 
   const save = (next: string) => {
     show(next)
     setRefused(false)
-    setHeld(false)
+    setHeld(null)
     const issued = saveLedgerIssue(ledger.current, next)
     ledger.current = issued.ledger
     const { seq } = issued
@@ -136,18 +145,18 @@ export function CaptureEndCard({
       const display = captureEndDisplay(settled.ledger.stored, false)
       show(display.value)
       setRefused(display.error)
-      setHeld(false)
+      setHeld(null)
       report('error', () => save(next))
     })
   }
 
-  const commit = (next: string, source: 'day' | 'time') => {
+  const commit = (next: string) => {
     const decision = saveLedgerCommit(ledger.current, next)
     if (decision === 'skip') return
     if (decision === 'unchanged') {
       show(next)
       setRefused(false)
-      setHeld(false)
+      setHeld(null)
       return
     }
     // Both strings are wall clock in the event's zone, so they compare as
@@ -157,20 +166,19 @@ export function CaptureEndCard({
       next,
       start: startValue,
       now: formatEventLocalInput(new Date(), zone),
-      source,
     })
     if (verdict === 'refuse') {
       // 7e: the stored value stays, outlined, and the line names it.
       const display = captureEndDisplay(ledger.current.stored, true)
       show(display.value)
       setRefused(display.error)
-      setHeld(false)
+      setHeld(null)
       return
     }
     if (verdict === 'hold') {
       show(next)
       setRefused(false)
-      setHeld(true)
+      setHeld(next)
       return
     }
     save(next)
@@ -180,7 +188,7 @@ export function CaptureEndCard({
   const kept = keptIso ? formatRevealBadge(keptIso, zone, locale) : stored
 
   return (
-    <section className={`relative ${HOST_PANEL} p-5`}>
+    <section ref={section} className={`relative ${HOST_PANEL} p-5`}>
       <p className={HOST_ROW_QUESTION}>
         {en ? 'Shooting ends' : 'Fotózás vége'}
       </p>
@@ -208,7 +216,9 @@ export function CaptureEndCard({
           onChooseDay={() => setCalendarOpen((open) => !open)}
           dayExpanded={calendarOpen}
           onTimeChange={setTime}
-          onTimeCommit={(value) => commit(`${day}T${value}`, 'time')}
+          onTimeCommit={(value) => {
+            if (value !== shownTime.current) commit(`${day}T${value}`)
+          }}
           timeStep={900}
           error={refused}
           locale={locale}
@@ -228,12 +238,28 @@ export function CaptureEndCard({
       ) : null}
       {/* Always mounted, so the hold is announced when it appears. */}
       <div aria-live="polite">
-        {held && !refused ? (
-          <p className="mt-3 text-[14px] leading-[1.5] text-pretty text-white/65">
-            {en
-              ? 'Not saved – pick a time'
-              : 'Nincs mentve – válassz időpontot'}
-          </p>
+        {held !== null && !refused ? (
+          <div className="mt-3">
+            <p className="text-[14px] leading-[1.5] text-pretty text-white/65">
+              {en
+                ? 'This would close the camera now. Not saved.'
+                : 'Ez most lezárná a fényképezést. Nincs mentve.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                save(held)
+                // The button leaves with the hold; focus goes back to the
+                // field the end was being chosen in.
+                section.current
+                  ?.querySelector<HTMLInputElement>('input[type="time"]')
+                  ?.focus()
+              }}
+              className={`${HOST_SECONDARY} mt-3 w-full`}
+            >
+              {en ? 'Close now' : 'Lezárás most'}
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -251,10 +277,7 @@ export function CaptureEndCard({
             setCalendarOpen(false)
             // A time field caught mid-edit is empty; the day still commits
             // against the stored time rather than sending half a value.
-            commit(
-              `${value}T${time || ledger.current.stored.slice(11, 16)}`,
-              'day',
-            )
+            commit(`${value}T${time || ledger.current.stored.slice(11, 16)}`)
           }}
         />
       </FloatingPanel>

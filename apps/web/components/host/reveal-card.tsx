@@ -50,8 +50,12 @@ export function RevealCard({
   const [optimisticMode, setOptimisticMode] = useOptimistic(mode)
   const [confirming, setConfirming] = useState(false)
   const section = useRef<HTMLElement>(null)
-  // The confirm's buttons leave the page when either is pressed; focus goes
-  // back to the radio that now holds the choice rather than to the body.
+  const legend = useRef<HTMLLegendElement>(null)
+  // The confirm's buttons leave the page when either is pressed, so focus
+  // has to land somewhere. Cancel puts it back on the radio that holds the
+  // choice; "Megnyitás most" cannot, because the radios disable while the
+  // save is pending and a disabled control drops focus, so it goes to the
+  // question instead.
   const focusChoice = (choice: RevealChoice) =>
     section.current
       ?.querySelector<HTMLInputElement>(`input[value="${choice}"]`)
@@ -71,7 +75,11 @@ export function RevealCard({
   return (
     <section ref={section} className={`${HOST_PANEL} p-5`}>
       <fieldset>
-        <legend className={HOST_ROW_QUESTION}>
+        <legend
+          ref={legend}
+          tabIndex={-1}
+          className={`${HOST_ROW_QUESTION} outline-none`}
+        >
           {en ? 'When should photos appear?' : 'Mikor jelenjenek meg a képek?'}
         </legend>
         <div className="mt-3">
@@ -109,7 +117,7 @@ export function RevealCard({
                 onClick={() => {
                   setConfirming(false)
                   apply('instant')
-                  focusChoice('instant')
+                  legend.current?.focus()
                 }}
                 className={`${HOST_PRIMARY} w-full sm:flex-1`}
               >

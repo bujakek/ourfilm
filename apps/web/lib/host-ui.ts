@@ -128,31 +128,28 @@ export function captureEndDisplay(
  *
  * - `refuse`: at or before the start — the server's own rule (7e), applied
  *   before the round trip.
- * - `hold`: a picked *day* that, against the time already in the field,
- *   would close a camera that is still open. The day joins whatever time was
- *   there, and closing guests out of a running party is not something to do
- *   on half a choice: the value stays in the fields, unsent, until a time is
- *   committed.
- * - `save`: everything else, including a past end committed from the time
- *   field. By then the host has chosen both parts, and an end already past is
- *   how a camera is stopped early.
+ * - `hold`: an end at or before now while the camera is still open, however
+ *   it was reached — a picked day joined to the time in the field, or a time
+ *   retyped past midnight. Closing guests out of a running party is never a
+ *   side effect: the value stays in the fields, unsent, until the host
+ *   presses "Lezárás most" or commits an end that keeps the camera open.
+ *   `stored` is the in-flight value when there is one.
+ * - `save`: everything else, including a past end once the camera is already
+ *   closed, where nothing closes.
  */
 export function captureEndCommit({
   stored,
   next,
   start,
   now,
-  source,
 }: {
   stored: string
   next: string
   start: string
   now: string
-  /** Which part the host just committed. */
-  source: 'day' | 'time'
 }): 'save' | 'hold' | 'refuse' {
   if (next <= start) return 'refuse'
-  if (source === 'day' && next <= now && stored > now) return 'hold'
+  if (next <= now && stored > now) return 'hold'
   return 'save'
 }
 

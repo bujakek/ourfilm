@@ -154,80 +154,33 @@ describe('captureEndCommit', () => {
   const start = '2026-10-18T18:00'
   const now = '2026-10-19T22:30'
   const future = '2026-10-21T20:00'
+  const c = (stored: string, next: string) =>
+    captureEndCommit({ stored, next, start, now })
 
-  it('refuses an end at or before the start, whichever part was picked', () => {
-    for (const source of ['day', 'time'] as const) {
-      expect(
-        captureEndCommit({ stored: future, next: start, start, now, source }),
-      ).toBe('refuse')
-      expect(
-        captureEndCommit({
-          stored: future,
-          next: '2026-10-18T17:00',
-          start,
-          now,
-          source,
-        }),
-      ).toBe('refuse')
-    }
+  it('refuses an end at or before the start', () => {
+    expect(c(future, start)).toBe('refuse')
+    expect(c(future, '2026-10-18T17:00')).toBe('refuse')
+    // Even when the camera is already closed.
+    expect(c('2026-10-19T21:00', start)).toBe('refuse')
   })
 
-  it('holds a day pick that would close a camera that is still open', () => {
-    expect(
-      captureEndCommit({
-        stored: future,
-        next: '2026-10-19T20:00',
-        start,
-        now,
-        source: 'day',
-      }),
-    ).toBe('hold')
-    // "now" itself is already closed.
-    expect(
-      captureEndCommit({
-        stored: future,
-        next: now,
-        start,
-        now,
-        source: 'day',
-      }),
-    ).toBe('hold')
+  it('holds any end that would close a camera that is still open', () => {
+    // A day pick against the time already in the field.
+    expect(c(future, '2026-10-19T20:00')).toBe('hold')
+    // A time retyped on today's date: 23:00 → 01:00.
+    expect(c('2026-10-19T23:00', '2026-10-19T01:00')).toBe('hold')
+    // "Now" itself is already closed.
+    expect(c(future, now)).toBe('hold')
   })
 
-  it('saves a time commit in the past: both parts were chosen, so it is a deliberate close', () => {
-    expect(
-      captureEndCommit({
-        stored: future,
-        next: '2026-10-19T20:00',
-        start,
-        now,
-        source: 'time',
-      }),
-    ).toBe('save')
+  it('saves an end that keeps the camera open', () => {
+    expect(c(future, '2026-10-20T20:00')).toBe('save')
+    expect(c(future, '2026-10-19T22:31')).toBe('save')
   })
 
-  it('saves a day pick that keeps the camera open', () => {
-    expect(
-      captureEndCommit({
-        stored: future,
-        next: '2026-10-20T20:00',
-        start,
-        now,
-        source: 'day',
-      }),
-    ).toBe('save')
-  })
-
-  it('saves a past day when the camera is already closed: nothing closes', () => {
-    expect(
-      captureEndCommit({
-        stored: '2026-10-19T21:00',
-        next: '2026-10-19T20:00',
-        start,
-        now,
-        source: 'day',
-      }),
-    ).toBe('save')
+  it('saves a past end directly once the camera is already closed', () => {
+    expect(c('2026-10-19T21:00', '2026-10-19T20:00')).toBe('save')
+    expect(c(now, '2026-10-19T20:00')).toBe('save')
   })
 })
 
