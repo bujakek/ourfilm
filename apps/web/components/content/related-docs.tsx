@@ -24,8 +24,8 @@ export function RelatedDocs({ doc }: { doc: ContentDoc }) {
   const locale = doc.locale as Locale
 
   return (
-    <section className="mt-16 border-t border-border pt-10">
-      <h2 className="text-lg font-semibold tracking-tight">
+    <section className="mt-16 border-t border-site-line pt-10">
+      <h2 className="landing-serif font-landing-display text-[24px] leading-[1.25] text-white">
         {HEADING[locale]}
       </h2>
       <ul className="mt-4 space-y-3">
@@ -33,18 +33,18 @@ export function RelatedDocs({ doc }: { doc: ContentDoc }) {
           <li key={item.href}>
             <Link
               href={item.href}
-              className="glass glass-hover group flex items-center justify-between gap-4 rounded-2xl px-5 py-4"
+              className="group flex items-center justify-between gap-4 rounded-[20px] border border-site-line bg-site-surface px-5 py-4 transition-colors hover:border-white/16"
             >
               <span className="min-w-0">
-                <span className="block font-medium text-balance">
+                <span className="block text-[16px] font-medium text-balance text-white">
                   {item.title}
                 </span>
-                <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
+                <span className="mt-1 block text-[14px] leading-[1.5] text-site-muted">
                   {item.description}
                 </span>
               </span>
               <ArrowRight
-                className="size-4 shrink-0 text-accent transition-transform group-hover:translate-x-0.5"
+                className="size-4 shrink-0 text-site-link-soft transition-transform group-hover:translate-x-0.5"
                 aria-hidden="true"
               />
             </Link>

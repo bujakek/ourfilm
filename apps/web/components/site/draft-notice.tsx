@@ -11,13 +11,13 @@ import type { ReactNode } from 'react'
  */
 export function DraftNotice({ children }: { children: ReactNode }) {
   return (
-    <div className="glass flex gap-3 rounded-2xl border border-accent/25 px-5 py-4">
+    <div className="flex gap-3 rounded-[16px] bg-host-warn-fill px-5 py-4">
       <PencilRuler
-        className="mt-0.5 size-5 shrink-0 text-accent"
+        className="mt-0.5 size-5 shrink-0 text-host-warn"
         strokeWidth={1.6}
         aria-hidden="true"
       />
-      <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
+      <p className="text-[15px] leading-[1.6] text-pretty text-white/75">
         {children}
       </p>
     </div>

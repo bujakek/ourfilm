@@ -1,6 +1,5 @@
 import type { Translations } from '@/lib/content/types'
 import { type Locale, localeLabel } from '@/lib/i18n'
-import { buttonVariants } from '@/components/ui/button'
 import { LocaleSwitchLink } from '@/components/content/locale-switch-link'
 
 /**
@@ -30,11 +29,7 @@ export function LanguageSwitcher({
           key={ref.locale}
           href={ref.href}
           locale={ref.locale}
-          className={buttonVariants({
-            variant: 'secondary',
-            size: 'sm',
-            className: 'text-xs',
-          })}
+          className="inline-flex min-h-11 items-center text-[13px] text-site-muted underline underline-offset-4 transition-colors hover:text-white"
         >
           {localeLabel[ref.locale]}
         </LocaleSwitchLink>

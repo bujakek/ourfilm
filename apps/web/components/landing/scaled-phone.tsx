@@ -40,7 +40,7 @@ export function ScaledPhone({
       className={cn('@container relative aspect-[254/528] shrink-0', className)}
     >
       <div
-        className="absolute top-0 left-0 origin-top-left text-left font-sans text-foreground"
+        className="absolute top-0 left-0 origin-top-left text-left font-landing-sans text-white"
         style={{
           width: PHONE_W,
           height: PHONE_H,

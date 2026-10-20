@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Instrument_Serif, Manrope, Martian_Mono } from 'next/font/google'
+import { Manrope } from 'next/font/google'
 
 import { defaultLocale } from '@/lib/i18n'
 import { SITE_URL } from '@/lib/site'
@@ -23,34 +23,9 @@ const manrope = Manrope({
   display: 'swap',
 })
 
-/**
- * The display face: event names, page headlines, section headings. 400 is the
- * only weight Instrument Serif ships, so `font-display` must never be paired
- * with a `font-semibold` — the browser would answer with a synthetic bold.
- */
-const instrumentSerif = Instrument_Serif({
-  // `latin-ext` is not optional: Hungarian needs ő and ű, and without it the
-  // one word most likely to be set in this face — an event name — falls back
-  // mid-string. `Anna & Péter esküvője` is the check.
-  subsets: ['latin', 'latin-ext'],
-  weight: '400',
-  style: ['normal', 'italic'],
-  variable: '--font-instrument-serif',
-  display: 'swap',
-})
-
-/** The counting face: frames, countdowns, guest counts, prices, slugs,
- *  timestamps, all-caps eyebrows. Never a sentence. */
-const martianMono = Martian_Mono({
-  subsets: ['latin', 'latin-ext'],
-  weight: ['400', '500'],
-  variable: '--font-martian-mono',
-  display: 'swap',
-})
-
 /** Goes on `<body>` in the public site's root layout and the global 404.
  *  The product's root layout uses the landing faces instead. */
-export const bodyClassName = `${manrope.variable} ${instrumentSerif.variable} ${martianMono.variable} font-sans antialiased`
+export const bodyClassName = `${manrope.variable} font-sans antialiased`
 
 /**
  * The site-wide defaults are the homepage's own title and description: the

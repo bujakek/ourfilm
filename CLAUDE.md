@@ -1040,7 +1040,7 @@ editing a post rather than reconstructing the rules from here.
 `draft: true` renders in `next dev` and disappears from a production build —
 index, sitemap, RSS, related lists, and the URL itself 404s.
 
-Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`apps/web/components/blog/mdx-blocks.tsx`)
+Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`apps/web/components/pages/prose-components.tsx`)
 with no import line; they are injected through `apps/web/mdx-components.tsx`. Markdown
 tables work via `remark-gfm`. **Remark plugins must be named as strings** in
 `apps/web/next.config.mjs` — Turbopack runs the MDX pipeline in Rust and cannot accept a
@@ -1580,7 +1580,7 @@ claims are live and load-bearing:
   works. It was cited here as `benefits.tsx` for a while, which was already
   wrong — that section only ever held a heading and one sentence — and became
   wronger when the marketing page stopped rendering it.
-- **High-resolution, print-ready photos** (`photo-quality.tsx`, FAQ) — satisfied
+- **High-resolution, print-ready photos** (the FAQ) — satisfied
   by the 3200px/90% policy above. The pitch is "chat apps crush your photos, we
   don't", which stays true; never re-add claims of literally uncompressed
   originals

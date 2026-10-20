@@ -4,16 +4,10 @@ import { describe, expect, it } from 'vitest'
 
 const ROOT = join(__dirname, '..', '..')
 
-/** The whole product tree: the host app, and the guest pages a QR code opens. */
-const SCOPE = [
-  'app/(product)',
-  'components/host',
-  'components/event',
-  'components/loading-status.tsx',
-  'components/ui/back-link.tsx',
-  'components/ui/live-dot.tsx',
-  'components/ui/switch.tsx',
-]
+/** Everything that renders: the product, the public site, and the MDX map.
+ *  The old look (lilac, glass, paper, Instrument Serif, Martian Mono) is gone
+ *  from all of it, and its CSS with it. */
+const SCOPE = ['app', 'components', 'mdx-components.tsx']
 
 const BANNED = [
   'outline-accent',
@@ -58,12 +52,12 @@ const files = SCOPE.flatMap((p) => walk(join(ROOT, p))).map((f) =>
   relative(ROOT, f),
 )
 
-describe('product style guard', () => {
+describe('style guard', () => {
   it('finds files to guard', () => {
     expect(files.length).toBeGreaterThan(10)
   })
 
-  it('no product file uses the old look', () => {
+  it('nothing uses the old look', () => {
     const bad = files
       .map((f) => [f, offences(readFileSync(join(ROOT, f), 'utf8'))] as const)
       .filter(([, o]) => o.length > 0)

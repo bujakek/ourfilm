@@ -20,18 +20,12 @@
   --color-border-strong: var(--border-strong);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent-blue: var(--accent-blue);
-  --color-accent-silver: var(--accent-silver);
   --color-brand-cream: var(--brand-cream);
   --color-brand-dot: var(--brand-dot);
   --color-brand-flash: var(--brand-flash);
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
   --color-ring: var(--ring);
-  --color-paper: var(--paper);
-  --color-paper-foreground: var(--paper-foreground);
   --color-film: var(--film);
   --color-landing: var(--landing);
   --color-landing-sky: var(--landing-sky);
@@ -64,32 +58,9 @@
   --color-site-value: var(--site-value);
   --color-site-underline: var(--site-underline);
 
-  /* Three voices, and the rule for which is which is not a matter of taste:
-     Manrope says what the product says, the serif names things, and the mono
-     is reserved for what the camera counts.
-
-       --font-sans     body copy, labels, buttons, anything a guest types
-       --font-display  event names, page headlines, section headings.
-                       Instrument Serif ships 400 only — never pair it with a
-                       `font-semibold`, which only buys a synthetic bold — and
-                       never set it below 20px, where the modulation muddies.
-       --font-mono     frame counts, countdowns, guest counts, prices, slugs,
-                       timestamps, all-caps eyebrows. Never a sentence.
-
-     Martian Mono is wide. Large numerals (>=30px) want `tracking-[-0.05em]`
-     and uppercase labels (<=11px) want `0.14em`-`0.24em`; above about 14px in
-     running text it stops being legible as prose, which is the same rule as
-     "never a sentence" from the other side.
-
-     `--font-display` was aliased to Manrope for a long time, so the display
-     slot existed in the token layer and did nothing. */
   --font-sans:
     var(--font-manrope), 'Manrope Fallback', ui-sans-serif, system-ui,
     sans-serif;
-  --font-display:
-    var(--font-instrument-serif), 'Instrument Serif Fallback', Georgia, serif;
-  --font-mono:
-    var(--font-martian-mono), 'Martian Mono Fallback', ui-monospace, monospace;
 
   /* The homepage's own three faces (`components/landing/fonts.ts`). They are
      loaded by that page alone, so outside it these resolve to the fallbacks
@@ -116,10 +87,6 @@
   --radius-xl: 1.25rem; /* primary buttons, sheets */
   --radius-2xl: 1.75rem; /* cards, panels */
   --radius-3xl: 2.25rem; /* the largest surface on a screen */
-
-  --animate-float-slow: float-slow 9s ease-in-out infinite;
-  --animate-float-slower: float-slow 13s ease-in-out infinite;
-  --animate-shine: shine 2.6s ease-in-out infinite;
 }
 
 :root {
@@ -134,30 +101,12 @@
   --border-strong: rgba(255, 255, 255, 0.16);
   --primary: #f7f7f7;
   --primary-foreground: #050505;
-  /* Lilac means the film is live. The capture-window pill, the frames-remaining
-     bar, the active step marker, the current selection. Nothing else.
-
-     It used to be on the nav aperture, the section-label icons, the prices, the
-     links, the radio rings, the settings gear, the calendar and clock glyphs
-     and the "no card required" badge — nine unrelated things, which is the same
-     as signalling nothing. Anything decorative that loses it takes
-     `--accent-silver` or plain `--muted-foreground`; prices go to
-     `--foreground` in the mono; links keep `--foreground` and an underline. */
-  --accent: #c3b6ff;
-  /* What sits *on* a lilac fill, which is now a rare enough thing to be worth
-     naming: the join screen's one accent button, and the active cell of the
-     roll-length control. A near-black with the lilac's own hue in it rather
-     than `--background`, so the fill reads as a colour and not as a hole. */
-  --accent-foreground: #0f0d1a;
-  --accent-blue: #9db4ff;
-  --accent-silver: #d8dae5;
   /* The three fixed inks from the selected Flash Dot. They are identity
      colours, not interface states; only brand marks may spend them. */
   --brand-cream: #f6ede2;
   --brand-dot: #efe4d8;
   --brand-flash: #edba62;
-  /* The only warm colour in an otherwise lilac-on-near-black palette, and it is
-     used for exactly one thing: telling a host that what they typed will not be
+  /* A warm red, used for exactly one thing: telling a host that what they typed will not be
      accepted. `text-destructive` was already spelled out in the admin, the
      login form and the create flow before this token existed, which meant
      Tailwind generated no rule for it and every one of those messages rendered
@@ -165,21 +114,16 @@
      read as a refusal. */
   --destructive: #ff8a8a;
   /* The connection is degraded, and that is not the same news as the film
-     being live. Lilac had been carrying both — a guest with no signal saw the
-     same colour as a guest whose photo had just landed — so the v2 review
-     split them: lilac is receipt and live only, and amber is offline.
+     being live: sky is live, amber is offline.
 
      Not `--brand-flash` (#edba62), which is a hair away and already spoken
      for: the three brand inks are identity, not interface state, and only
      brand marks may spend them. */
   --warning: #e8c07a;
-  --ring: rgba(195, 182, 255, 0.5);
+  --ring: rgba(255, 255, 255, 0.4);
 
-  /* Paper and film: the two materials that are not glass. Values live here
-     beside the rest of the palette; the utilities that spend them are at the
-     bottom of the file. */
-  --paper: #fbfaf7;
-  --paper-foreground: #141312;
+  /* Film: the strip a roll is drawn on. The utilities that spend it are at
+     the bottom of the file. */
   --film: #101012;
 
   /* The homepage. A lifted near-black rather than `--background`, because the
@@ -265,7 +209,7 @@
     display: none;
   }
 
-  /* Loading placeholder. Deliberately NOT `.glass`: `animate-pulse` on a
+  /* Loading placeholder. Deliberately not a blurred surface: `animate-pulse` on a
      backdrop-filtered element re-blurs its backdrop on every frame of the
      pulse, and a skeleton is on screen at exactly the moment the phone is
      already busy fetching and decoding. A flat fill pulses for free. */
@@ -274,37 +218,9 @@
     border: 1px solid var(--border);
   }
 
-  /* Paper. The material of anything issued or printed: the QR sheet, a guest's
-     stub, the price, the shutter. It started as one hardcoded gradient inside
-     the host's printable QR ticket, whose own comment already called it paper
-     — the strongest-designed surface in the product, and it stopped at that
-     one card. The card itself is gone (the code now lives behind the button
-     beside the host's shutter, `components/host/qr-sheet.tsx`); the material
-     outlived it, which is the whole argument for having named it.
-
-     Deliberately NOT a filtered surface, and that is the point rather than a
-     saving: paper has to look identical on a phone, in a screenshot and out of
-     a laser printer, so it must not depend on a `backdrop-filter` that the
-     `(pointer: coarse)` block below switches off. Do not add one. */
-  .paper {
-    background: linear-gradient(180deg, var(--paper) 0%, #efece6 100%);
-    color: var(--paper-foreground);
-    box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.9);
-  }
-  /* A rule drawn on paper, and the muted ink on it. Both are the paper's own
-     near-black at low alpha rather than a grey, so they hold their relationship
-     to the sheet at any brightness. `.paper-muted` is ~5.4:1 on the gradient's
-     darker end and passes AA for body text. */
-  .paper-rule {
-    border-color: rgba(20, 19, 18, 0.12);
-  }
-  .paper-muted {
-    color: rgba(20, 19, 18, 0.55);
-  }
-
   /* Film. The strip a roll is drawn on, and the perforations down its edges.
      Darker than `--background` so the strip reads as a thing lying on the page
-     rather than a hole cut in it. Unfiltered for the same reason as `.paper`. */
+     rather than a hole cut in it. */
   .film {
     background: var(--film);
   }
@@ -328,156 +244,6 @@
     font-weight: 600;
   }
 
-  /* Liquid glass surface.
-
-     `.glass` itself is unchanged — the compositing notes below are hard-won and
-     still correct. What is narrowing is *where it is allowed*: inert secondary
-     surfaces only, meaning secondary buttons, disabled tiles and the nav pill.
-     It stops being the text input, the selection tile, the suggestion chip and
-     the card, because a material every surface wears is a material that ranks
-     none of them. Those become a 1px `border-border` outline on the page
-     background, which is both cheaper to composite and legible as a hierarchy.
-     `.paper` above is what a surface wears when it is the subject. */
-  .glass {
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.06) 0%,
-      rgba(255, 255, 255, 0.02) 100%
-    );
-    /* Only the standard property. Lightning CSS adds -webkit- itself; writing
-       it by hand makes the deduplicator keep the prefixed line and drop the
-       standard one, which silently removes the blur in Firefox. */
-    backdrop-filter: blur(20px) saturate(140%);
-    border: 1px solid var(--border);
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
-      0 20px 50px -20px rgba(0, 0, 0, 0.8);
-  }
-
-  .glass-strong {
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.09) 0%,
-      rgba(255, 255, 255, 0.03) 100%
-    );
-    backdrop-filter: blur(28px) saturate(160%);
-    border: 1px solid var(--border-strong);
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.1) inset,
-      0 30px 70px -25px rgba(0, 0, 0, 0.9);
-  }
-
-  /* The material an overlay is drawn in — a modal sheet, a dialog.
-     
-     Distinct from `.glass-strong` because an overlay sits over the page it
-     interrupts, not over the page background, and it is the one glass surface
-     that must never be see-through. `.glass-strong` was doing that hiding with
-     `backdrop-filter: blur(28px)` — and the touch-device rule below switches
-     that filter off for the compositing cost, which left every sheet on a phone
-     a 3-9% white film over fully legible text. Verified on an iPhone: the
-     onboarding date sheet showed the question and the fields behind it straight
-     through the calendar.
-
-     So the gradient stays as the top layer and an opaque colour goes under it.
-     The surface still reads as glass, and it reads that way identically on
-     every device because it no longer depends on a filter that can be turned
-     off. Nothing here needs the `(pointer: coarse)` override.
-
-     `<dialog>` also needs its own opaque background for a second reason: the
-     `::backdrop` scrim only dims what is behind, it does not hide it. */
-  .glass-overlay {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.09) 0%,
-        rgba(255, 255, 255, 0.03) 100%
-      ),
-      var(--background-secondary);
-    border: 1px solid var(--border-strong);
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.1) inset,
-      0 30px 70px -25px rgba(0, 0, 0, 0.9);
-  }
-
-  /* Fixed chrome (nav pill). Two states of one material: a dark scrim over the
-     hero, densifying to a near-solid pill once content scrolls under. Both are
-     --background-secondary, so the state change is a pure alpha ramp rather
-     than a flip from a light film to a dark one.
-
-     saturate() is what reads as glass: it lets the warm photography behind the
-     pill bloom through instead of going grey. Blur stays low — the scrim does
-     the contrast work, and a heavy blur only smears those photos into mud. */
-  .glass-nav {
-    background: rgba(11, 11, 13, 0.6);
-    backdrop-filter: blur(14px) saturate(220%);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    box-shadow: 0 12px 34px -14px rgba(0, 0, 0, 0.5);
-    transition:
-      padding 0.22s ease,
-      gap 0.22s ease,
-      background 0.22s ease,
-      border-color 0.22s ease,
-      box-shadow 0.22s ease;
-  }
-
-  .glass-nav-scrolled {
-    background: rgba(11, 11, 13, 0.93);
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 14px 40px -16px rgba(0, 0, 0, 0.6);
-  }
-
-  /* Touch devices pay for `backdrop-filter` in a way desktops do not: iOS
-     re-samples and re-blurs the backdrop of every glass surface on each
-     composited frame, and this app puts five to eleven of them on one screen.
-     Over a near-solid #050505 page the blur is also close to invisible — it is
-     blurring black under a smooth gradient, so a sharp backdrop and a blurred
-     one look the same. The gradients, borders and shadows stay; only the
-     convolution goes.
-
-     `.glass-nav` is the exception, because it is the one surface that really
-     does sit over photography. It keeps a backdrop-filter, but saturate() only
-     — that is the part its own comment calls load-bearing, and it costs a
-     per-pixel multiply rather than a large-radius blur. */
-  @media (pointer: coarse) {
-    .glass,
-    .glass-strong {
-      backdrop-filter: none;
-    }
-    .glass-nav {
-      backdrop-filter: saturate(220%);
-    }
-  }
-
-  .glass-hover {
-    transition:
-      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-      border-color 0.4s ease,
-      box-shadow 0.4s ease;
-  }
-  .glass-hover:hover {
-    transform: translateY(-4px);
-    border-color: var(--border-strong);
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.12) inset,
-      0 40px 80px -30px rgba(0, 0, 0, 0.95),
-      0 0 60px -20px rgba(195, 182, 255, 0.35);
-  }
-
-  /* Silver gradient text */
-  .text-gradient {
-    background: linear-gradient(180deg, #ffffff 0%, #cfd0dc 60%, #9a9ba8 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .text-gradient-accent {
-    background: linear-gradient(120deg, #e6e1ff 0%, #b9c4ff 50%, #d8dae5 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
   /* Grain texture overlay */
   .grain::before {
     content: '';
@@ -488,73 +254,6 @@
     opacity: 0.05;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-
-  /* CTA sheen */
-  .btn-shine {
-    position: relative;
-    overflow: hidden;
-  }
-  .btn-shine::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -150%;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(
-      100deg,
-      transparent,
-      rgba(255, 255, 255, 0.55),
-      transparent
-    );
-    transform: skewX(-20deg);
-  }
-  .btn-shine:hover::after {
-    animation: shine 0.9s ease;
-  }
-
-  .reveal {
-    opacity: 0;
-    transform: translateY(28px);
-    transition:
-      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .reveal.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* `will-change` is a hint for an animation that is *about* to happen, not a
-     permanent attribute. Left on the base rule it pinned every revealed section
-     to its own GPU layer for the life of the page — a landing page's worth of
-     compositing memory that is never reclaimed.
-     Scoped instead to the two states that are genuinely animating or waiting to:
-     before the observer fires, and while the transition runs (`Reveal` clears
-     `reveal-animating` on transitionend). Dropping it at the *start* of the
-     transition instead would demote the layer at the worst possible moment.
-     Elements that hardcode `reveal is-visible` in markup never animate, and
-     correctly match neither. */
-  .reveal:not(.is-visible),
-  .reveal-animating {
-    will-change: opacity, transform;
-  }
-}
-
-@keyframes float-slow {
-  0%,
-  100% {
-    transform: translateY(0) rotate(var(--rot, 0deg));
-  }
-  50% {
-    transform: translateY(-18px) rotate(var(--rot, 0deg));
-  }
-}
-
-@keyframes shine {
-  to {
-    left: 150%;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -563,10 +262,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
-  }
-  .reveal {
-    opacity: 1;
-    transform: none;
   }
 }
 

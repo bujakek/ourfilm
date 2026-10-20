@@ -5,11 +5,10 @@ import type { ReactNode } from 'react'
 /**
  * What an article body is made of on the new blog pages.
  *
- * The site-wide `mdx-components.tsx` gives every element its own utility
- * classes for the older content pages. Here the elements are left bare and
- * `.site-prose` in `globals.css` styles them, so the article reads like the
- * approved design without touching the pages that still use the old look.
- * The three blocks an article can use are redrawn the same way.
+ * The elements are left bare and `.site-prose` in `globals.css` styles them,
+ * so an article reads like the approved design. The root `mdx-components.tsx`
+ * hands these to every MDX body — blog posts and the content library alike —
+ * and the three blocks an article can use are drawn the same way.
  */
 export const proseComponents: MDXComponents = {
   h1: ({ children }) => <h2>{children}</h2>,

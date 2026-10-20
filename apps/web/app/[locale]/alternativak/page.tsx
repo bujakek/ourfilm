@@ -34,11 +34,11 @@ export default async function AlternativesHubPage({ params }: Props) {
     <>
       <PageHeader eyebrow={copy.eyebrow} title={copy.title} lead={copy.lead} />
 
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
+      <section className="mx-auto w-[90%] max-w-[800px] pb-[70px] tab:pb-[120px]">
+        <div>
           {/* Said once, at the top of the shelf, rather than trusted to each
               page: these are our pages about our competitors, not a review. */}
-          <p className="glass rounded-2xl px-6 py-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="rounded-[16px] bg-site-note px-6 py-4 text-[14px] leading-[1.6] text-site-muted">
             {locale === 'en'
               ? 'These comparisons are published by OurFilm, not an independent reviewer. We checked each competitor’s public information on the date shown; pricing and features may have changed since.'
               : 'Ezek az összevetések az OurFilm oldalán jelennek meg, nem független tesztek. A versenytársak nyilvános adatait a megjelöléskor ellenőriztük; az árak és a funkciók azóta változhattak.'}

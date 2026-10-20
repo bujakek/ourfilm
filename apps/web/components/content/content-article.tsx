@@ -2,6 +2,8 @@ import { Breadcrumbs } from '@/components/content/breadcrumbs'
 import { LanguageSwitcher } from '@/components/content/language-switcher'
 import { RelatedDocs } from '@/components/content/related-docs'
 import { JsonLd } from '@/components/json-ld'
+import { SITE_HEADING } from '@/components/pages/layout'
+import { proseComponents } from '@/components/pages/prose-components'
 import { getTranslations } from '@/lib/content/docs'
 import { getFaq } from '@/lib/content/faq'
 import { loadDocContent } from '@/lib/content/mdx'
@@ -14,6 +16,7 @@ import {
   type Crumb,
   faqJsonLd,
 } from '@/lib/seo'
+import { cn } from '@/lib/utils'
 
 /**
  * One content page, whichever of the five kinds it is.
@@ -40,8 +43,8 @@ export async function ContentArticle({
   const faq = faqJsonLd(getFaq(doc))
 
   return (
-    <article className="relative px-4 pt-32 pb-24 sm:px-6 sm:pt-40 lg:pb-32">
-      <div className="mx-auto max-w-3xl">
+    <article className="mx-auto w-[90%] max-w-[800px] pt-[70px] pb-[70px] tab:pt-25 tab:pb-[120px]">
+      <div>
         <JsonLd data={contentJsonLd(doc)} />
         <JsonLd data={breadcrumbJsonLd(locale, crumbs)} />
         {faq ? <JsonLd data={faq} /> : null}
@@ -50,11 +53,9 @@ export async function ContentArticle({
 
         {/* The single h1. MDX bodies start at `##`, so the heading hierarchy
             below it stays flat and sensible. */}
-        <header className="mt-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            {doc.title}
-          </h1>
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <header className="mt-8 border-b border-site-line pb-8 tab:pb-14">
+          <h1 className={cn(SITE_HEADING, 'text-balance')}>{doc.title}</h1>
+          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-site-muted">
             <time dateTime={doc.updatedAt ?? doc.publishedAt}>
               {formatPostDate(doc.updatedAt ?? doc.publishedAt, locale)}
             </time>
@@ -67,7 +68,9 @@ export async function ContentArticle({
           <LanguageSwitcher current={locale} translations={translations} />
         </header>
 
-        <Content />
+        <div className="site-prose site-prose-info pt-8 tab:pt-14">
+          <Content components={proseComponents} />
+        </div>
 
         <RelatedDocs doc={doc} />
       </div>
