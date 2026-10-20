@@ -129,7 +129,7 @@ export default async function AdminEventPage({ params }: Props) {
         index={0}
         className="print-hidden flex items-center justify-between gap-4"
       >
-        <BackLink href={`/host?lang=${locale}`}>
+        <BackLink tone="host" href={`/host?lang=${locale}`}>
           {en ? 'Your events' : 'Eseményeid'}
         </BackLink>
         <div className="flex items-center gap-2">

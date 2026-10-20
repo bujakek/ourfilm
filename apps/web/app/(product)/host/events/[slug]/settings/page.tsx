@@ -132,7 +132,10 @@ export default async function AdminEventSettingsPage({
       <SettingsSaveProvider
         locale={locale}
         header={
-          <BackLink href={`/host/events/${event.slug}?lang=${locale}`}>
+          <BackLink
+            tone="host"
+            href={`/host/events/${event.slug}?lang=${locale}`}
+          >
             {event.event_name}
           </BackLink>
         }

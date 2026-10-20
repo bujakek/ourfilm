@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from 'motion/react'
 
+import { HOST_FOCUS } from '@/components/host/ui/classes'
 import { T, still } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
@@ -89,7 +90,11 @@ export function Switch({
       aria-label={label}
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
-      className="inline-flex size-14 shrink-0 items-center justify-center rounded-full disabled:opacity-50"
+      className={cn(
+        'inline-flex size-14 shrink-0 items-center justify-center rounded-full disabled:opacity-50',
+        // Host screens wear the white focus mark, never the global lilac one.
+        tone === 'host' && HOST_FOCUS,
+      )}
     >
       <SwitchTrack checked={checked} tone={tone} />
     </button>

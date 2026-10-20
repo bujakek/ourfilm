@@ -66,7 +66,9 @@ export function guestsScreen({
             : 'Létrehozás',
     ctaDisabled: plan === 'full' && !legalAccepted,
     ctaPending: pending,
-    ctaTone: plan === 'full' ? 'pay' : undefined,
+    // Sky is for payment, and a signed-out host is going to the save screen
+    // first, not to Stripe.
+    ctaTone: signedIn === true && plan === 'full' ? 'pay' : undefined,
     footnote: plan === 'full' ? undefined : <FreeTermsLine locale={locale} />,
     content: (
       <GuestsFields
@@ -174,7 +176,9 @@ function GuestsFields({
 }
 
 /** The free path's whole consent: pressing the button is the acceptance, and
- *  this line under it says so. */
+ *  this line under it says so. Each link is a 44px target, as the auth terms
+ *  line's are: `py-3.5` on an inline box grows what a finger can hit without
+ *  moving the line it sits on, which `min-h-11` on an inline-flex box would. */
 function FreeTermsLine({ locale }: { locale: Locale }) {
   return (
     <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-pretty text-white/65">
@@ -185,7 +189,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/aszf')}
             target="_blank"
             rel="noopener noreferrer"
-            className={HOST_LINK}
+            className={`py-3.5 ${HOST_LINK}`}
           >
             Terms
           </Link>{' '}
@@ -194,7 +198,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/adatvedelem')}
             target="_blank"
             rel="noopener noreferrer"
-            className={HOST_LINK}
+            className={`py-3.5 ${HOST_LINK}`}
           >
             Privacy Notice
           </Link>
@@ -207,7 +211,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/aszf')}
             target="_blank"
             rel="noopener noreferrer"
-            className={HOST_LINK}
+            className={`py-3.5 ${HOST_LINK}`}
           >
             ÁSZF
           </Link>
@@ -216,7 +220,7 @@ function FreeTermsLine({ locale }: { locale: Locale }) {
             href={localePath(locale, '/adatvedelem')}
             target="_blank"
             rel="noopener noreferrer"
-            className={HOST_LINK}
+            className={`py-3.5 ${HOST_LINK}`}
           >
             adatkezelési tájékoztatót
           </Link>

@@ -69,7 +69,9 @@ function addDays(day: string, days: number): string {
  * zone.
  *
  * "Tonight" is the night that starts today where the host is standing: a time
- * of 12:00 or later lands on today's date, an earlier one on tomorrow's.
+ * of 12:00 or later lands on today's date, an earlier one on tomorrow's —
+ * unless it is still ahead today, which is a host creating after midnight
+ * with the night still going.
  * "Tomorrow" is the same, one day later. Takes `now` like everything here.
  */
 export function endQuickPick(
@@ -78,9 +80,15 @@ export function endQuickPick(
   now: Date,
   timeZone: string,
 ): string {
-  const today = formatEventLocalInput(now, timeZone).slice(0, 10)
+  const nowLocal = formatEventLocalInput(now, timeZone)
+  const today = nowLocal.slice(0, 10)
   const hour = Number(time.slice(0, 2))
-  const tonight = hour >= NIGHT_ROLLOVER_HOUR ? today : addDays(today, 1)
+  // A host creating at 00:30 is inside tonight already: a small-hours time
+  // still ahead of them is today's, not the following night's.
+  const tonight =
+    hour >= NIGHT_ROLLOVER_HOUR || `${today}T${time}` > nowLocal
+      ? today
+      : addDays(today, 1)
   return `${kind === 'tonight' ? tonight : addDays(tonight, 1)}T${time}`
 }
 

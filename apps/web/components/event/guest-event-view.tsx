@@ -1083,6 +1083,18 @@ export function GuestEventView({
           order. The slot is under the shutter on purpose: whatever grows here
           moves only what is below it, so a wifi drop never moves the
           shutter or the strip. */}
+      {/* The slot's one live region, always mounted: a region that mounts
+          with its text is often not announced at all, and the slot below
+          swaps between three shapes. It carries the failure flash, the
+          receipt and the outage; the visible blocks are not live, so nothing
+          is read twice. */}
+      <p aria-live="polite" className="sr-only">
+        {statusLine
+          ? statusLine.text
+          : offlineNotice
+            ? `${offlineNotice.title}. ${offlineNotice.body}`
+            : ''}
+      </p>
       {!flash && offlineNotice ? (
         <div className="mt-4">
           <StateNotice
@@ -1096,7 +1108,6 @@ export function GuestEventView({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={stage(4)}
-          aria-live="polite"
           className="mt-4"
         >
           {spent ? (
@@ -1122,7 +1133,6 @@ export function GuestEventView({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={stage(4)}
-          aria-live={flash ? 'assertive' : 'polite'}
           className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
             statusLine
               ? `text-[13px] leading-[1.45] ${statusLine.tone}`

@@ -59,9 +59,23 @@ describe('the last question before saving', () => {
     }
   })
 
-  it('paints the paid path as a payment and the free one as the primary', () => {
-    expect(guestsScreen({ ...base, plan: 'full' }).ctaTone).toBe('pay')
+  it('paints only a signed-in paid path as a payment', () => {
+    expect(
+      guestsScreen({ ...base, signedIn: true, plan: 'full' }).ctaTone,
+    ).toBe('pay')
+    expect(guestsScreen({ ...base, signedIn: true }).ctaTone).toBeUndefined()
     expect(guestsScreen(base).ctaTone).toBeUndefined()
+  })
+
+  it('a signed-out paid path goes to saving first, so it wears the white primary', () => {
+    for (const signedIn of [false, null]) {
+      expect(
+        guestsScreen({ ...base, signedIn, plan: 'full' }).ctaTone,
+      ).toBeUndefined()
+    }
+  })
+
+  it('drops the free terms line on the paid path', () => {
     expect(guestsScreen({ ...base, plan: 'full' }).footnote).toBeUndefined()
   })
 

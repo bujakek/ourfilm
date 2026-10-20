@@ -131,7 +131,7 @@ export default async function AccountPage({
       className="mx-auto w-full max-w-lg px-5 pt-7 pb-11 sm:px-7"
       lang={localeTag[locale]}
     >
-      <BackLink href={`/host?lang=${locale}`}>
+      <BackLink tone="host" href={`/host?lang=${locale}`}>
         {en ? 'Your events' : 'Eseményeid'}
       </BackLink>
 

@@ -99,7 +99,7 @@ export function SaveEventScreen({
           </button>
           <p className={`${HOST_KICKER} flex items-center gap-2`}>
             <Check className="size-4" aria-hidden="true" />
-            {en ? 'Settings saved' : 'Beállítások kész'}
+            {en ? 'Settings ready' : 'Beállítások kész'}
           </p>
         </header>
         <h1
@@ -110,7 +110,7 @@ export function SaveEventScreen({
           {sent
             ? en
               ? 'Check your inbox'
-              : 'Elküldtük a linket'
+              : 'Nézd meg a postaládád'
             : en
               ? 'Save your event'
               : 'Mentsd el az eseményed'}
@@ -121,8 +121,8 @@ export function SaveEventScreen({
               ? 'Open the email link in this browser to finish saving your event.'
               : 'Az esemény mentéséhez ugyanebben a böngészőben nyisd meg az e-mailben kapott linket.'
             : en
-              ? 'Create a free account so you can reach and manage the event later. Your settings are already saved.'
-              : 'Hozz létre egy ingyenes fiókot, hogy később is elérd és kezeld az eseményt. A beállításaid már el vannak mentve.'}
+              ? 'Create a free account so you can reach and manage the event later. Your answers are kept in this browser.'
+              : 'Hozz létre egy ingyenes fiókot, hogy később is elérd és kezeld az eseményt. A válaszaidat ez a böngésző őrzi.'}
         </p>
         {sent ? (
           <Mail

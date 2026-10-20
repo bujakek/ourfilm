@@ -88,6 +88,13 @@ export function MonthCalendar({
   const canGoBack =
     toDay(new Date(Date.UTC(visible.year, visible.month, 0))) >= earliest
 
+  // The day a panel opening this calendar focuses (`FloatingPanel`): the
+  // selected one, or the first that can be chosen when it cannot.
+  const focusDay =
+    value >= earliest && cells.some((date) => toDay(date) === value)
+      ? value
+      : cells.map(toDay).find((day) => day >= earliest)
+
   const step = (delta: number) =>
     setVisible(({ year, month }) => {
       const moved = new Date(Date.UTC(year, month + delta, 1))
@@ -151,6 +158,7 @@ export function MonthCalendar({
                 type="button"
                 disabled={past}
                 aria-pressed={selected}
+                data-initial-focus={day === focusDay ? '' : undefined}
                 aria-label={
                   locale === 'en'
                     ? new Intl.DateTimeFormat('en-GB', {

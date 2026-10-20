@@ -43,7 +43,7 @@ export default async function EventCheckoutPage({
       lang={localeTag[locale]}
       className="mx-auto w-full max-w-lg px-5 pt-7 pb-11 sm:px-7"
     >
-      <BackLink href={`/host/events/${slug}?lang=${locale}`}>
+      <BackLink tone="host" href={`/host/events/${slug}?lang=${locale}`}>
         {event.event_name}
       </BackLink>
       <header className="mt-6 mb-7">

@@ -48,6 +48,7 @@ export function QuotaBanner({
       participant_count: count,
       participant_limit: limit,
       full,
+      state,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- arrival snapshot
   }, [eventId])

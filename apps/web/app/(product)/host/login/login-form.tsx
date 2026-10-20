@@ -290,7 +290,20 @@ export function LoginForm({
               : `A belépő linkek ${SIGN_IN_LINK_TTL_MINUTES} percig érvényesek, és egyszer használhatók. Add meg az e-mail-címed, és küldünk egy újat.`
           }
         />
-        <div className="mt-4">{emailForm}</div>
+        {/* The same two ways in as 8c: an expired link is no reason to
+            hide Google from a host who has an account there. */}
+        <div className="mt-6 flex flex-col">
+          <GoogleSignIn
+            locale={locale}
+            surface="login"
+            next={next}
+            disabled={pending}
+            onPendingChange={setGooglePending}
+            className={`${HOST_SECONDARY} w-full gap-2.5`}
+          />
+          <AuthDivider locale={locale} />
+          {emailForm}
+        </div>
         <AuthLegalNotice locale={locale} />
       </>
     )

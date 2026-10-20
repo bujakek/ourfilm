@@ -8,7 +8,9 @@ import { T, still } from '@/lib/motion'
 /**
  * A menu that overlays the page without moving it. The panel is absolute under
  * its relatively positioned parent; a transparent full-screen button behind it
- * catches the tap-away. Escape closes, and focus goes back to the trigger.
+ * catches the tap-away. On open, focus moves to the element inside marked
+ * `data-initial-focus`, if there is one (the calendar marks its selected day);
+ * Escape closes, and focus goes back to the trigger.
  */
 export function FloatingPanel({
   open,
@@ -29,10 +31,15 @@ export function FloatingPanel({
   useEffect(() => {
     close.current = onClose
   })
+  const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
+    // Read before focus moves inside, so the close can hand it back.
     const opener = document.activeElement
+    panel.current
+      ?.querySelector<HTMLElement>('[data-initial-focus]')
+      ?.focus({ preventScroll: true })
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') close.current()
     }
@@ -55,6 +62,7 @@ export function FloatingPanel({
         className="fixed inset-0 z-40 cursor-default bg-transparent"
       />
       <motion.div
+        ref={panel}
         initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={reduceMotion ? still : T.settle}

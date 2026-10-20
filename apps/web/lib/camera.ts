@@ -24,7 +24,7 @@ export function shotRollList(or: string): string {
   return `${SHOT_OPTIONS.slice(0, -1).join(', ')} ${or} ${SHOT_OPTIONS.at(-1)}`
 }
 
-/** What the create form pre-selects and labels "Ajánlott". Long enough that a
+/** What the create form pre-selects. Long enough that a
  *  guest shoots without rationing, short enough to still feel like film. */
 export const DEFAULT_SHOTS: ShotOption = 24
 

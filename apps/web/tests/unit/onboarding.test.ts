@@ -68,6 +68,37 @@ describe('end quick picks', () => {
     )
   })
 
+  it('after midnight, a small-hours time still ahead is tonight on today’s date', () => {
+    // 00:30 in Budapest on 4 September: the night is still going.
+    const afterMidnight = new Date('2026-09-03T22:30:00Z')
+    expect(endQuickPick('tonight', '02:00', afterMidnight, ZONE)).toBe(
+      '2026-09-04T02:00',
+    )
+    expect(endQuickPick('tomorrow', '02:00', afterMidnight, ZONE)).toBe(
+      '2026-09-05T02:00',
+    )
+    // A small-hours time already behind is the next night's.
+    expect(endQuickPick('tonight', '00:15', afterMidnight, ZONE)).toBe(
+      '2026-09-05T00:15',
+    )
+  })
+
+  it('after midnight, the chips still read back as the pick that made them', () => {
+    const afterMidnight = new Date('2026-09-03T22:30:00Z')
+    expect(activeQuickPick('2026-09-04T02:00', afterMidnight, ZONE)).toBe(
+      'tonight',
+    )
+    expect(activeQuickPick('2026-09-05T02:00', afterMidnight, ZONE)).toBe(
+      'tomorrow',
+    )
+    expect(activeQuickPick('2026-09-04T23:00', afterMidnight, ZONE)).toBe(
+      'tonight',
+    )
+    expect(activeQuickPick('2026-09-06T02:00', afterMidnight, ZONE)).toBe(
+      'other',
+    )
+  })
+
   it('crosses a month end', () => {
     const lastDay = new Date('2026-09-30T13:00:00Z')
     expect(endQuickPick('tomorrow', '02:00', lastDay, ZONE)).toBe(

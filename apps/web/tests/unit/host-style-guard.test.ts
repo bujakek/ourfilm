@@ -9,7 +9,13 @@ const SCOPE = [
   'app/(product)/auth',
   'components/host',
   'components/event/lightbox.tsx',
+  'components/ui/back-link.tsx',
 ]
+
+/** The switch is shared and has a host tone. Only the focus check reads it:
+ *  its default tone wears the old lilac track (`bg-accent`) on purpose, which
+ *  is not a host screen's to ban. */
+const FOCUS_SCOPE = ['components/ui/switch.tsx']
 
 const BANNED = [
   'outline-accent',
@@ -116,7 +122,7 @@ describe('host style guard', () => {
   })
 
   it('every host control wears the white focus mark', () => {
-    const bad = files
+    const bad = [...files, ...FOCUS_SCOPE]
       .map(
         (f) =>
           [f, unmarkedControls(readFileSync(join(ROOT, f), 'utf8'))] as const,

@@ -464,7 +464,7 @@ onboarding screens, and `event_id` from the moment there is a row.
 | `onboarding_save_viewed`        | The save screen opened after `auth_required`, and for which plan               |
 | `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once           |
 | `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost              |
-| `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it                |
+| `quota_banner_viewed`           | Fires at limit−1 (`state: near`) and at the limit (`full`), seen by the host   |
 | `quota_upgrade_clicked`         | …and went to the billing card                                                  |
 | `photo_moderated`               | How much of an album a host takes out, after the round trip                    |
 | `album_export_requested`        | The Album button, and which path the endpoint chose: `browser` or `prepared`   |
@@ -541,8 +541,8 @@ Four of those pairs are read as gaps rather than as counts. A
 out or was cancelled; a `sign_in_started` with neither a `sign_in_blocked` nor
 a `sign_in_settled` is somebody who reached Google's consent screen and turned
 back — the one part of that path neither end can see alone; and
-`quota_banner_viewed` without a later `checkout_started` on the same
-`event_id` is a host watching guests be turned away. The last of those is the
+`quota_banner_viewed` with `state: full` and no later `checkout_started` on
+the same `event_id` is a host watching guests be turned away. The last of those is the
 number this product most needs.
 
 Everything reported from the browser about the host is **best effort by
