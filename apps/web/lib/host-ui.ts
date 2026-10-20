@@ -121,6 +121,98 @@ export function captureEndDisplay(
   return { value: stored, error: beforeStart }
 }
 
+/**
+ * What a committed capture end does (1). All three strings are
+ * `datetime-local` wall clock in the event's own zone, so they compare as
+ * text, and `now` is passed in like every other clock here.
+ *
+ * - `refuse`: at or before the start — the server's own rule (7e), applied
+ *   before the round trip.
+ * - `hold`: a picked *day* that, against the time already in the field,
+ *   would close a camera that is still open. The day joins whatever time was
+ *   there, and closing guests out of a running party is not something to do
+ *   on half a choice: the value stays in the fields, unsent, until a time is
+ *   committed.
+ * - `save`: everything else, including a past end committed from the time
+ *   field. By then the host has chosen both parts, and an end already past is
+ *   how a camera is stopped early.
+ */
+export function captureEndCommit({
+  stored,
+  next,
+  start,
+  now,
+  source,
+}: {
+  stored: string
+  next: string
+  start: string
+  now: string
+  /** Which part the host just committed. */
+  source: 'day' | 'time'
+}): 'save' | 'hold' | 'refuse' {
+  if (next <= start) return 'refuse'
+  if (source === 'day' && next <= now && stored > now) return 'hold'
+  return 'save'
+}
+
+/**
+ * The bookkeeping behind an autosaving field whose saves can overlap and
+ * answer out of order. `issued` numbers each save; `confirmed` is the newest
+ * one the server accepted, so an overtaken save that landed still moves
+ * `stored` while an older one landing late cannot undo a newer; `inFlight` is
+ * the value of the latest save still waiting, so a second commit of it is not
+ * sent twice.
+ */
+export type SaveLedger = {
+  issued: number
+  confirmed: number
+  inFlight: string | null
+  stored: string
+}
+
+export function saveLedger(stored: string): SaveLedger {
+  return { issued: 0, confirmed: 0, inFlight: null, stored }
+}
+
+/**
+ * Whether a committed value needs a save. The stored value committed while
+ * another save is in flight is a change — that save is about to replace it —
+ * so only an idle ledger calls it `unchanged`.
+ */
+export function saveLedgerCommit(
+  ledger: SaveLedger,
+  next: string,
+): 'skip' | 'unchanged' | 'send' {
+  if (next === ledger.inFlight) return 'skip'
+  if (next === ledger.stored && ledger.inFlight === null) return 'unchanged'
+  return 'send'
+}
+
+export function saveLedgerIssue(
+  ledger: SaveLedger,
+  next: string,
+): { ledger: SaveLedger; seq: number } {
+  const seq = ledger.issued + 1
+  return { ledger: { ...ledger, issued: seq, inFlight: next }, seq }
+}
+
+/** A save answered. Only the `latest` one may touch the field or report. */
+export function saveLedgerSettle(
+  ledger: SaveLedger,
+  seq: number,
+  value: string,
+  ok: boolean,
+): { ledger: SaveLedger; latest: boolean } {
+  const latest = seq === ledger.issued
+  let next = ledger
+  if (ok && seq > ledger.confirmed) {
+    next = { ...next, confirmed: seq, stored: value }
+  }
+  if (latest) next = { ...next, inFlight: null }
+  return { ledger: next, latest }
+}
+
 /** How long the "send a new link" button waits after a link goes out. */
 export const RESEND_COOLDOWN_S = 60
 

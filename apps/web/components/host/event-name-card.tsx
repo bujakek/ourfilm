@@ -11,6 +11,12 @@ import {
   HOST_ROW_QUESTION,
 } from '@/components/host/ui/classes'
 import { EVENT_NAME_MAX_LENGTH, eventNameProblem } from '@/lib/camera'
+import {
+  saveLedger,
+  saveLedgerCommit,
+  saveLedgerIssue,
+  saveLedgerSettle,
+} from '@/lib/host-ui'
 
 /**
  * Rename the event.
@@ -46,55 +52,54 @@ export function EventNameCard({
   const [value, setValue] = useState(name)
   const [, startTransition] = useTransition()
   const { report } = useSettingsSave()
-  // The last name the server confirmed. The prop catches up after the
-  // action's revalidation; this does not have to wait for it.
-  const stored = useRef(name)
-  // The name a save is sending right now, so a second blur does not send it
-  // again while the first is still in flight.
-  const inFlight = useRef<string | null>(null)
-  // Saves can overlap — the stored name typed back while another is still
-  // sending — and an older one answering late must not overwrite a newer.
-  const issued = useRef(0)
-  const confirmed = useRef(0)
+  // The last name the server confirmed, and the saves still in flight. Saves
+  // can overlap — the stored name typed back while another is still sending —
+  // and an older one answering late must not overwrite a newer; the ledger
+  // (`lib/host-ui.ts`) decides that. The prop catches up after the action's
+  // revalidation; this does not have to wait for it.
+  const ledger = useRef(saveLedger(name))
 
   const problem = eventNameProblem(value.trim())
 
   const save = (next: string) => {
-    inFlight.current = next
-    const seq = ++issued.current
+    const issued = saveLedgerIssue(ledger.current, next)
+    ledger.current = issued.ledger
+    const { seq } = issued
     startTransition(async () => {
+      let ok = true
       try {
         await renameEvent(slug, next)
-        if (seq > confirmed.current) {
-          confirmed.current = seq
-          stored.current = next
-        }
+      } catch {
+        ok = false
+      }
+      const settled = saveLedgerSettle(ledger.current, seq, next, ok)
+      ledger.current = settled.ledger
+      // An overtaken save neither reports nor touches the field: the newer
+      // one will.
+      if (!settled.latest) return
+      if (ok) {
         // Text typed while the save was in flight stays where it is.
         setValue((current) => (current.trim() === next ? next : current))
         report('ok', () => save(next))
-      } catch {
-        // Restore only if the field still shows the name that failed; a host
-        // who has typed on since then keeps what they typed.
-        setValue((current) =>
-          current.trim() === next ? stored.current : current,
-        )
-        report('error', () => save(next))
-      } finally {
-        if (inFlight.current === next) inFlight.current = null
+        return
       }
+      // Restore only if the field still shows the name that failed; a host
+      // who has typed on since then keeps what they typed.
+      const stored = settled.ledger.stored
+      setValue((current) => (current.trim() === next ? stored : current))
+      report('error', () => save(next))
     })
   }
 
   const commit = () => {
     const trimmed = value.trim()
     if (eventNameProblem(trimmed) !== null) {
-      setValue(stored.current)
+      setValue(ledger.current.stored)
       return
     }
-    if (trimmed === inFlight.current) return
-    // The stored name typed back while another save is in flight is a
-    // change: that save is about to replace it, so it has to be sent too.
-    if (trimmed === stored.current && inFlight.current === null) {
+    const decision = saveLedgerCommit(ledger.current, trimmed)
+    if (decision === 'skip') return
+    if (decision === 'unchanged') {
       if (trimmed !== value) setValue(trimmed)
       return
     }

@@ -12,8 +12,19 @@ import {
   HOST_ROW_QUESTION,
 } from '@/components/host/ui/classes'
 import { FloatingPanel } from '@/components/host/ui/floating-panel'
-import { eventLocalToIso, formatRevealBadge } from '@/lib/format'
-import { captureEndDisplay } from '@/lib/host-ui'
+import {
+  eventLocalToIso,
+  formatEventLocalInput,
+  formatRevealBadge,
+} from '@/lib/format'
+import {
+  captureEndCommit,
+  captureEndDisplay,
+  saveLedger,
+  saveLedgerCommit,
+  saveLedgerIssue,
+  saveLedgerSettle,
+} from '@/lib/host-ui'
 
 /**
  * Moves the moment the camera closes.
@@ -35,15 +46,20 @@ import { captureEndDisplay } from '@/lib/host-ui'
  *
  * It saves when a day is picked, and when the time field is blurred or Enter
  * is pressed — never on the native `change`, which desktop Chrome fires per
- * segment, so an in-between past value would close the camera. Only a value
- * that differs from the stored one is sent, and only the latest of
- * overlapping saves may touch the fields. Deliberately
+ * segment, so an in-between past value would close the camera. A picked day
+ * that, with the time already in the field, would close a camera that is
+ * still open is *held*: shown, marked "Nincs mentve", and sent only once a
+ * time is committed (`captureEndCommit`). Only a value that differs from the
+ * stored one is sent, and only the latest of overlapping saves may touch the
+ * fields (`saveLedger*`). Deliberately
  * **not optimistic**, unlike the toggles: a field that showed a value the
  * server had refused would be lying about the one value guests are held to.
  * While a save is in flight the fields read as busy, and a failure puts the
- * stored value back. When the refusal is the end falling before the event
- * began (7e), the fields are outlined and the line underneath names the value
- * that stayed; any other failure is the header's "Újra" toast.
+ * stored value back. An end at or before the start (7e) is refused before
+ * the round trip, by the server's own rule: the fields are outlined and the
+ * line underneath names the value that stayed. Any other failure is the
+ * header's "Újra" toast. A deliberate close lands like any other save, and the
+ * revalidated page's state line then reads "A fotózás véget ért".
  *
  * Setting the end in the past is allowed and is the fastest way to stop a
  * camera early. That is why the calendar's floor is the day the event
@@ -73,22 +89,18 @@ export function CaptureEndCard({
   // The last end the server confirmed. Both strings are the event's own wall
   // clock, already formatted by the server, so nothing here reparses a zone.
   const [stored, setStored] = useState(endValue)
-  // The same value for callbacks that outlive a render: a retry tapped in the
-  // toast must restore whatever is stored then, not when it failed.
-  const storedRef = useRef(endValue)
   // Saves can overlap — a day picked while a time is still saving — and
-  // resolve out of order. Only the latest one may touch the fields or report.
-  const latest = useRef(0)
-  // The newest save the server has accepted. An overtaken save that landed
-  // still moved the stored end, so a later failure reverts to it rather than
-  // to the value before it; an older one landing late does not undo a newer.
-  const confirmed = useRef(0)
-  const inFlight = useRef<string | null>(null)
+  // resolve out of order. The ledger (`lib/host-ui.ts`) decides which save may
+  // touch the fields and what is stored; it lives in a ref because a retry
+  // tapped in the toast must see whatever is stored then, not when it failed.
+  const ledger = useRef(saveLedger(endValue))
   // What the two fields show. The time is its own string because a native
   // time field passes through '' while a segment is being retyped.
   const [day, setDay] = useState(() => endValue.slice(0, 10))
   const [time, setTime] = useState(() => endValue.slice(11, 16))
   const [refused, setRefused] = useState(false)
+  // A picked day that would close a running camera: shown, not sent.
+  const [held, setHeld] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -100,39 +112,65 @@ export function CaptureEndCard({
   const save = (next: string) => {
     show(next)
     setRefused(false)
-    const seq = ++latest.current
-    inFlight.current = next
+    setHeld(false)
+    const issued = saveLedgerIssue(ledger.current, next)
+    ledger.current = issued.ledger
+    const { seq } = issued
     startTransition(async () => {
+      let ok = true
       try {
         await setCaptureEnd(slug, next)
-        if (seq > confirmed.current) {
-          confirmed.current = seq
-          storedRef.current = next
-          setStored(next)
-        }
-        if (seq !== latest.current) return
-        inFlight.current = null
-        report('ok', () => save(next))
       } catch {
-        if (seq !== latest.current) return
-        inFlight.current = null
-        // A server error's message does not survive a production build, so
-        // the refusal is recognised by the same rule the action applies.
-        // Both strings are wall clock in the same zone, so they compare as
-        // text.
-        const display = captureEndDisplay(storedRef.current, next <= startValue)
-        show(display.value)
-        setRefused(display.error)
-        if (!display.error) report('error', () => save(next))
+        ok = false
       }
+      const settled = saveLedgerSettle(ledger.current, seq, next, ok)
+      ledger.current = settled.ledger
+      if (ok) setStored(settled.ledger.stored)
+      if (!settled.latest) return
+      if (ok) {
+        report('ok', () => save(next))
+        return
+      }
+      // Not the end-before-start refusal: `commit` catches that before the
+      // round trip, so this is a failure worth "Újra".
+      const display = captureEndDisplay(settled.ledger.stored, false)
+      show(display.value)
+      setRefused(display.error)
+      setHeld(false)
+      report('error', () => save(next))
     })
   }
 
-  const commit = (next: string) => {
-    if (next === inFlight.current) return
-    if (next === storedRef.current && inFlight.current === null) {
+  const commit = (next: string, source: 'day' | 'time') => {
+    const decision = saveLedgerCommit(ledger.current, next)
+    if (decision === 'skip') return
+    if (decision === 'unchanged') {
       show(next)
       setRefused(false)
+      setHeld(false)
+      return
+    }
+    // Both strings are wall clock in the event's zone, so they compare as
+    // text; `now` is read here, at the moment of the commit.
+    const verdict = captureEndCommit({
+      stored: ledger.current.inFlight ?? ledger.current.stored,
+      next,
+      start: startValue,
+      now: formatEventLocalInput(new Date(), zone),
+      source,
+    })
+    if (verdict === 'refuse') {
+      // 7e: the stored value stays, outlined, and the line names it.
+      const display = captureEndDisplay(ledger.current.stored, true)
+      show(display.value)
+      setRefused(display.error)
+      setHeld(false)
+      return
+    }
+    if (verdict === 'hold') {
+      show(next)
+      setRefused(false)
+      setHeld(true)
       return
     }
     save(next)
@@ -170,7 +208,7 @@ export function CaptureEndCard({
           onChooseDay={() => setCalendarOpen((open) => !open)}
           dayExpanded={calendarOpen}
           onTimeChange={setTime}
-          onTimeCommit={(value) => commit(`${day}T${value}`)}
+          onTimeCommit={(value) => commit(`${day}T${value}`, 'time')}
           timeStep={900}
           error={refused}
           locale={locale}
@@ -188,6 +226,16 @@ export function CaptureEndCard({
             : `Ez az időpont már elmúlt. Válassz későbbi időpontot, a korábbi érték (${kept}) megmaradt.`}
         </p>
       ) : null}
+      {/* Always mounted, so the hold is announced when it appears. */}
+      <div aria-live="polite">
+        {held && !refused ? (
+          <p className="mt-3 text-[14px] leading-[1.5] text-pretty text-white/65">
+            {en
+              ? 'Not saved – pick a time'
+              : 'Nincs mentve – válassz időpontot'}
+          </p>
+        ) : null}
+      </div>
 
       <FloatingPanel
         open={calendarOpen}
@@ -201,9 +249,12 @@ export function CaptureEndCard({
           locale={locale}
           onChange={(value) => {
             setCalendarOpen(false)
-            // A time field caught mid-edit is empty; the day still saves
+            // A time field caught mid-edit is empty; the day still commits
             // against the stored time rather than sending half a value.
-            commit(`${value}T${time || storedRef.current.slice(11, 16)}`)
+            commit(
+              `${value}T${time || ledger.current.stored.slice(11, 16)}`,
+              'day',
+            )
           }}
         />
       </FloatingPanel>

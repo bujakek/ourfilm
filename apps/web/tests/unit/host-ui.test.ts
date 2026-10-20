@@ -4,12 +4,17 @@ import { describe, expect, it } from 'vitest'
 
 import {
   autosaveOutcome,
+  captureEndCommit,
   captureEndDisplay,
   huNumberArticle,
   initialToastState,
   paymentNotice,
   quotaBannerState,
   RESEND_COOLDOWN_S,
+  saveLedger,
+  saveLedgerCommit,
+  saveLedgerIssue,
+  saveLedgerSettle,
   resendSecondsLeft,
   SIGN_IN_LINK_TTL_MINUTES,
   TOAST_MS,
@@ -141,6 +146,136 @@ describe('captureEndDisplay', () => {
       value: '2026-09-04T02:00',
       error: false,
     })
+  })
+})
+
+describe('captureEndCommit', () => {
+  const start = '2026-10-18T18:00'
+  const now = '2026-10-19T22:30'
+  const future = '2026-10-21T20:00'
+
+  it('refuses an end at or before the start, whichever part was picked', () => {
+    for (const source of ['day', 'time'] as const) {
+      expect(
+        captureEndCommit({ stored: future, next: start, start, now, source }),
+      ).toBe('refuse')
+      expect(
+        captureEndCommit({
+          stored: future,
+          next: '2026-10-18T17:00',
+          start,
+          now,
+          source,
+        }),
+      ).toBe('refuse')
+    }
+  })
+
+  it('holds a day pick that would close a camera that is still open', () => {
+    expect(
+      captureEndCommit({
+        stored: future,
+        next: '2026-10-19T20:00',
+        start,
+        now,
+        source: 'day',
+      }),
+    ).toBe('hold')
+    // "now" itself is already closed.
+    expect(
+      captureEndCommit({
+        stored: future,
+        next: now,
+        start,
+        now,
+        source: 'day',
+      }),
+    ).toBe('hold')
+  })
+
+  it('saves a time commit in the past: both parts were chosen, so it is a deliberate close', () => {
+    expect(
+      captureEndCommit({
+        stored: future,
+        next: '2026-10-19T20:00',
+        start,
+        now,
+        source: 'time',
+      }),
+    ).toBe('save')
+  })
+
+  it('saves a day pick that keeps the camera open', () => {
+    expect(
+      captureEndCommit({
+        stored: future,
+        next: '2026-10-20T20:00',
+        start,
+        now,
+        source: 'day',
+      }),
+    ).toBe('save')
+  })
+
+  it('saves a past day when the camera is already closed: nothing closes', () => {
+    expect(
+      captureEndCommit({
+        stored: '2026-10-19T21:00',
+        next: '2026-10-19T20:00',
+        start,
+        now,
+        source: 'day',
+      }),
+    ).toBe('save')
+  })
+})
+
+describe('save ledger', () => {
+  it('skips the value already in flight and leaves the stored value alone', () => {
+    const l = saveLedger('a')
+    expect(saveLedgerCommit(l, 'a')).toBe('unchanged')
+    expect(saveLedgerCommit(l, 'b')).toBe('send')
+    const { ledger } = saveLedgerIssue(l, 'b')
+    expect(saveLedgerCommit(ledger, 'b')).toBe('skip')
+    // The stored value typed back while another save is in flight is a
+    // change: that save is about to replace it.
+    expect(saveLedgerCommit(ledger, 'a')).toBe('send')
+  })
+
+  it('a landed save stores its value and clears the flight when it is the latest', () => {
+    const { ledger, seq } = saveLedgerIssue(saveLedger('a'), 'b')
+    const settled = saveLedgerSettle(ledger, seq, 'b', true)
+    expect(settled.latest).toBe(true)
+    expect(settled.ledger.stored).toBe('b')
+    expect(settled.ledger.inFlight).toBeNull()
+  })
+
+  it('an overtaken save that lands still moves the stored value, but does not report', () => {
+    const one = saveLedgerIssue(saveLedger('a'), 'b')
+    const two = saveLedgerIssue(one.ledger, 'c')
+    const settled = saveLedgerSettle(two.ledger, one.seq, 'b', true)
+    expect(settled.latest).toBe(false)
+    expect(settled.ledger.stored).toBe('b')
+    expect(settled.ledger.inFlight).toBe('c')
+  })
+
+  it('an older save landing after a newer one does not undo it', () => {
+    const one = saveLedgerIssue(saveLedger('a'), 'b')
+    const two = saveLedgerIssue(one.ledger, 'c')
+    const newer = saveLedgerSettle(two.ledger, two.seq, 'c', true)
+    const older = saveLedgerSettle(newer.ledger, one.seq, 'b', true)
+    expect(older.ledger.stored).toBe('c')
+  })
+
+  it('a failure keeps the stored value, and clears the flight only when latest', () => {
+    const one = saveLedgerIssue(saveLedger('a'), 'b')
+    const two = saveLedgerIssue(one.ledger, 'c')
+    const stale = saveLedgerSettle(two.ledger, one.seq, 'b', false)
+    expect(stale).toEqual({ ledger: two.ledger, latest: false })
+    const last = saveLedgerSettle(two.ledger, two.seq, 'c', false)
+    expect(last.latest).toBe(true)
+    expect(last.ledger.stored).toBe('a')
+    expect(last.ledger.inFlight).toBeNull()
   })
 })
 
