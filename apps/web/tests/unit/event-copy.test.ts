@@ -163,9 +163,7 @@ describe('capReachedNotice', () => {
         locale === 'en' ? 'This event is full' : 'Ez az esemény betelt',
       )
       expect(body).toMatch(locale === 'en' ? /host/ : /szervező/)
-      expect(body).not.toMatch(
-        /fizet|Ft|feloldás|oldja fel|pay|price|unlock|upgrade/i,
-      )
+      expect(body).not.toMatch(/fizet|Ft|checkout|pay|price/i)
     }
   })
 })

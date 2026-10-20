@@ -17,6 +17,7 @@ import {
 import {
   captureStatus,
   formatLine,
+  offlineQueueNotice,
   ownRollNote,
   queueClearedNote,
   spentRollNotice,
@@ -336,8 +337,8 @@ export function GuestEventView({
    * `null` when neither is true, and the slot goes back to a state block or
    * the format line.
    *
-   * The outage itself is not here any more: it is the 7g notice above the
-   * strip, which stays for as long as the outage does. The receipt outranks
+   * The outage itself is not a line: it is the 7g block in the same slot,
+   * which stays for as long as the outage does. The receipt outranks
    * the spent roll because the shutter already says the roll is spent and the
    * counter is already at zero, while "did the photos I took with no signal
    * actually go?" has no other answer anywhere on the screen.
@@ -370,6 +371,13 @@ export function GuestEventView({
         locale,
       )
     : null
+  // 7g: no signal and shots still owed. Counted from the same developing
+  // cells the strip draws with the waiting mark, so the number and the marks
+  // cannot disagree. No deadline is named; see `offlineQueueNotice`.
+  const waiting = online
+    ? 0
+    : developing.filter((c) => !c.confirmed && c.receipt !== 'lost').length
+  const offlineNotice = waiting > 0 ? offlineQueueNotice(waiting, locale) : null
   // 7c: an open camera and nothing on this guest's roll yet, on screen or on
   // its way. Says where the photos will appear and what the format is.
   const rollUntouched =
@@ -1070,11 +1078,20 @@ export function GuestEventView({
           that a guest tapping the shutter repeatedly must not see motion each
           time. The entrance below fires once, on first paint; after that the
           only transition here is the colour. */}
-      {/* A spent roll (7m) or an untouched one (7c) takes the slot as a
-          block when nothing more urgent needs it. Each appears once in a
-          guest's evening, so the one-time shift it causes is the state
-          changing rather than motion on every shutter press. */}
-      {!statusLine && (spent || rollUntouched) ? (
+      {/* An outage with shots owed (7g), a spent roll (7m) or an untouched
+          one (7c) takes the slot as a block when no failure needs it, in that
+          order. The slot is under the shutter on purpose: whatever grows here
+          moves only what is below it, so a wifi drop never moves the
+          shutter or the strip. */}
+      {!flash && offlineNotice ? (
+        <div className="mt-4">
+          <StateNotice
+            tone="warn"
+            title={offlineNotice.title}
+            body={offlineNotice.body}
+          />
+        </div>
+      ) : !statusLine && (spent || rollUntouched) ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

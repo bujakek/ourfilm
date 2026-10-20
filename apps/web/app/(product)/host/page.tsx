@@ -3,6 +3,7 @@ import { getHostLocale } from '@/lib/host-locale'
 import { EventListSkeleton } from '@/components/host/skeletons'
 import { captureIsOpen, getEventListItems } from '@/lib/events'
 import { localeTag } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
 import { HOST_SECONDARY, HOST_TITLE } from '@/components/host/ui/classes'
 import { Plus, UserRound } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -53,14 +54,20 @@ export default async function AdminPage({
         <div className="flex items-center gap-2">
           <Link
             href={`/host/account?lang=${locale}`}
-            className={`${HOST_SECONDARY} h-11 gap-2 rounded-[14px] px-4 text-[14px]`}
+            className={cn(
+              HOST_SECONDARY,
+              'h-11 gap-2 rounded-[14px] px-4 text-[14px]',
+            )}
           >
             <UserRound className="size-4" aria-hidden="true" />
             {en ? 'Account' : 'Fiók'}
           </Link>
           <Link
             href={`/host/events/new?lang=${locale}`}
-            className={`${HOST_SECONDARY} h-11 gap-2 rounded-[14px] px-4 text-[14px]`}
+            className={cn(
+              HOST_SECONDARY,
+              'h-11 gap-2 rounded-[14px] px-4 text-[14px]',
+            )}
           >
             <Plus className="size-4" strokeWidth={2.2} aria-hidden="true" />
             {en ? 'New event' : 'Új esemény'}

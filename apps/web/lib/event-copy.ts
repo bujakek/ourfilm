@@ -337,9 +337,9 @@ export function offlineQueueNotice(
 /**
  * The free tier's edge, seen from the guest's side (7l).
  *
- * No checkout, no price and no upgrade: a wedding guest holding a phone is not
- * the person who can fix this. It names the limit, sends them to the host and
- * says what to do after, because a guest told only "full" closes the tab.
+ * No checkout, no price and no payment: a wedding guest holding a phone is not
+ * the person who can fix this. It names the limit, says what the host can do
+ * and what to do after, because a guest told only "full" closes the tab.
  */
 export function capReachedNotice(
   limit: number,
@@ -348,11 +348,11 @@ export function capReachedNotice(
   return locale === 'en'
     ? {
         title: 'This event is full',
-        body: `Up to ${limit} guests can join this event, and all ${limit} places are taken. Ask the host to let you in, then scan the QR code again.`,
+        body: `Up to ${limit} guests can join this event, and all ${limit} places are taken. Ask the host to unlock the event, then scan the QR code again.`,
       }
     : {
         title: 'Ez az esemény betelt',
-        body: `Erre az eseményre legfeljebb ${limit} vendég csatlakozhat, és mind ${huNumberArticle(limit)} ${limit} hely elfogyott. Kérd meg a szervezőt, hogy engedjen be, aztán olvasd be újra a QR-kódot.`,
+        body: `Erre az eseményre legfeljebb ${limit} vendég csatlakozhat, és mind ${huNumberArticle(limit)} ${limit} hely elfogyott. Kérd meg a szervezőt, hogy oldja fel az eseményt, aztán olvasd be újra a QR-kódot.`,
       }
 }
 

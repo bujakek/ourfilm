@@ -14,6 +14,7 @@ import type { Locale } from '@/lib/i18n'
 import { downloadQrCanvas } from '@/lib/qr-file'
 import { shareEventLink } from '@/lib/share-link'
 import { track } from '@/lib/telemetry'
+import { cn } from '@/lib/utils'
 
 /**
  * The QR code, one tap from the host's camera.
@@ -114,7 +115,7 @@ export function QrSheetButton({
             <button
               type="button"
               onClick={() => downloadQrCanvas(canvas.current, name)}
-              className={`${HOST_SECONDARY} flex-1 gap-2 text-sm`}
+              className={cn(HOST_SECONDARY, 'flex-1 gap-2 text-sm')}
             >
               <Download className="size-4" aria-hidden="true" />
               {en ? 'Save QR code' : 'QR-kód mentése'}
@@ -122,7 +123,7 @@ export function QrSheetButton({
             <button
               type="button"
               onClick={share}
-              className={`${HOST_SECONDARY} flex-1 gap-2 text-sm`}
+              className={cn(HOST_SECONDARY, 'flex-1 gap-2 text-sm')}
             >
               {copied ? (
                 <Check className="size-4" aria-hidden="true" />

@@ -127,6 +127,27 @@ export function BillingCard({
     }
   }, [])
 
+  // A host back from Stripe without paying, or whose last attempt failed, is
+  // brought to the card, which the cancel URL alone does not do. Scrolled,
+  // not expanded: an open form would hide the notice's "Másik kártya →".
+  const scrollToNotice =
+    !standalone && (checkout === 'cancelled' || paymentNotice !== null)
+  useEffect(() => {
+    if (!scrollToNotice) return
+    const timer = window.setTimeout(() => {
+      const reduce = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches
+      document
+        .getElementById('billing')
+        ?.scrollIntoView({
+          behavior: reduce ? 'auto' : 'smooth',
+          block: 'start',
+        })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [scrollToNotice])
+
   // Stripe's redirect lands before the webhook does; `useSettlePolling` says
   // why that gap is polled rather than waited out.
   const settling = checkout === 'success' && !unlimited
