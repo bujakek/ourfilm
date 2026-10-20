@@ -23,21 +23,25 @@ export function FloatingPanel({
   children: ReactNode
 }) {
   const reduceMotion = useReducedMotion()
-  const trigger = useRef<Element | null>(null)
+  // An inline `onClose` is a new function every render; depending on it would
+  // run the cleanup (and its focus return) on every parent render.
+  const close = useRef(onClose)
+  useEffect(() => {
+    close.current = onClose
+  })
 
   useEffect(() => {
     if (!open) return
-    trigger.current = document.activeElement
+    const opener = document.activeElement
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') close.current()
     }
     document.addEventListener('keydown', onKey)
-    const opener = trigger.current
     return () => {
       document.removeEventListener('keydown', onKey)
       if (opener instanceof HTMLElement) opener.focus()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

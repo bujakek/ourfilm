@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 
-import { TOAST_MS, toastReducer } from '@/lib/host-ui'
+import { initialToastState, TOAST_MS, toastReducer } from '@/lib/host-ui'
 import { T, still } from '@/lib/motion'
 
 type ToastAction = { label: string; onAction: () => void }
@@ -25,7 +25,7 @@ const ToastContext = createContext<HostToast | null>(null)
 
 /** One toast at a time, at the bottom of the host screens. */
 export function HostToastProvider({ children }: { children: ReactNode }) {
-  const [toast, dispatch] = useReducer(toastReducer, null)
+  const [{ toast }, dispatch] = useReducer(toastReducer, initialToastState)
   // The callback stays out of reducer state, which is pure data.
   const onAction = useRef<(() => void) | null>(null)
   const reduceMotion = useReducedMotion()
@@ -78,7 +78,7 @@ export function HostToastProvider({ children }: { children: ReactNode }) {
                     dispatch({ type: 'dismiss' })
                     run?.()
                   }}
-                  className="h-11 shrink-0 rounded-[12px] px-3 font-medium text-landing-sky"
+                  className="h-11 shrink-0 rounded-[12px] px-3 font-medium text-white underline underline-offset-4"
                 >
                   {toast.action.label}
                 </button>

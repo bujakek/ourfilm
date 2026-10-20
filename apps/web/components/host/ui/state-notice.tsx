@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { HOST_PANEL } from './classes'
+import { HOST_PANEL_SHAPE } from './classes'
 
 const TONE = {
   neutral: { panel: 'bg-host-panel', title: 'text-white' },
@@ -26,7 +26,7 @@ export function StateNotice({
   return (
     <section
       role={tone === 'danger' ? 'alert' : undefined}
-      className={`${HOST_PANEL} ${t.panel} p-6`}
+      className={`${HOST_PANEL_SHAPE} ${t.panel} p-6`}
     >
       {figure ? (
         <div className="host-figure mb-3 text-[40px]">{figure}</div>

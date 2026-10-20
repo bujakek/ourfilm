@@ -68,12 +68,18 @@ function stripComments(source: string): string {
     .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
 }
 
-/** Banned tokens as whole class-name words: `glass-overlay` and `bg-accent/70`
- *  count, `glassy` and `paperwork` do not. */
-function offences(source: string): string[] {
+const UTILITY_PREFIX =
+  '(?:(?:bg|text|border|ring|from|to|via|fill|stroke|outline|shadow|divide)-)?'
+
+/** Banned tokens as class-name words, with or without a utility prefix and a
+ *  variant: `glass-overlay`, `bg-accent/70`, `bg-paper`, `text-paper-foreground`
+ *  and `hover:border-accent` count; `glassy` and `paperwork` do not. */
+export function offences(source: string): string[] {
   const code = stripComments(source)
   return BANNED.filter((token) =>
-    new RegExp(`(^|[^\\w-])(?:[\\w:\\[\\]-]*:)?${token}(?![\\w])`).test(code),
+    new RegExp(
+      `(^|[^\\w-])(?:[\\w:\\[\\]-]*:)?${UTILITY_PREFIX}${token}(?![\\w])`,
+    ).test(code),
   )
 }
 
@@ -101,5 +107,17 @@ describe('host style guard', () => {
         offences(readFileSync(join(ROOT, f), 'utf8')).length === 0,
     )
     expect(stale).toEqual([])
+  })
+
+  it('matcher catches prefixed paper and glass, ignores prose', () => {
+    expect(offences('<i className="bg-paper p-2" />')).toEqual(['paper'])
+    expect(offences('<i className="text-paper-foreground" />')).toEqual([
+      'paper',
+    ])
+    expect(offences('<i className="hover:border-paper" />')).toEqual(['paper'])
+    expect(offences('<i className="glass-overlay" />')).toEqual(['glass'])
+    expect(offences("<p>{'Paper tickets, glassy and paperwork'}</p>")).toEqual(
+      [],
+    )
   })
 })

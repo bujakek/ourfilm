@@ -8,6 +8,11 @@
 export const HOST_KICKER =
   'text-[11px] leading-[1.3] font-medium tracking-[0.24em] text-white/65 uppercase'
 
+/** The live dot that may lead a kicker: `<span className={HOST_KICKER_DOT} />`
+ *  inside a flex row with the kicker text. Sky, because it marks live state. */
+export const HOST_KICKER_DOT =
+  'inline-block size-1.5 shrink-0 rounded-full bg-landing-sky'
+
 /** The event page's title. */
 export const HOST_TITLE =
   'font-landing-display landing-serif text-[36px] leading-[1.15] text-white text-balance'
@@ -17,7 +22,8 @@ export const HOST_QUESTION =
   'font-landing-display landing-serif text-[30px] leading-[1.2] text-white text-balance'
 
 /** A grouping panel: no border, no hairlines. */
-export const HOST_PANEL = 'rounded-[32px] bg-host-panel'
+export const HOST_PANEL_SHAPE = 'rounded-[32px]'
+export const HOST_PANEL = `${HOST_PANEL_SHAPE} bg-host-panel`
 
 /** A tile or well inside a panel. */
 export const HOST_TILE = 'rounded-[20px] bg-host-tile'
