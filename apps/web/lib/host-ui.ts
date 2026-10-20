@@ -65,3 +65,37 @@ export function quotaBannerState({
   if (count === limit - 1) return 'near'
   return null
 }
+
+export type AutosaveResult = 'ok' | 'error'
+
+/**
+ * What an autosaving setting does once its action answers. A landed save
+ * flashes "✓ Mentve" in the header; a failed one shows no flash, puts the
+ * control back where the server still has it and offers "Újra" in a toast.
+ * The 7d state, as data, so every control on the screen answers the same way.
+ */
+export function autosaveOutcome(result: AutosaveResult): {
+  flashSaved: boolean
+  revert: boolean
+  toast: 'retry' | null
+} {
+  return result === 'ok'
+    ? { flashSaved: true, revert: false, toast: null }
+    : { flashSaved: false, revert: true, toast: 'retry' }
+}
+
+/**
+ * What the capture-end field shows after a save attempt (7e). A refused end
+ * is never left on screen as if it were the answer: the field goes back to
+ * the stored value, outlined, and the line under it names that value. Capture
+ * end is deliberately not optimistic, so this is the whole of its fallback.
+ */
+export function captureEndDisplay(
+  stored: string,
+  attempted: string,
+  refused: boolean,
+): { value: string; error: boolean } {
+  return refused
+    ? { value: stored, error: true }
+    : { value: attempted, error: false }
+}

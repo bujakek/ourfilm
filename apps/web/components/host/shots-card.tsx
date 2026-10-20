@@ -1,18 +1,19 @@
 'use client'
 
-import { useOptimistic, useState, useTransition } from 'react'
+import { useOptimistic, useTransition } from 'react'
 
 import { setShotsPerParticipant } from '@/app/(product)/host/events/[slug]/actions'
+import { useSettingsSave } from '@/components/host/settings-save'
 import { ShotsSelector } from '@/components/host/shots-selector'
 import type { ShotOption } from '@/lib/camera'
 
 /**
  * How many frames each guest gets.
  *
- * Optimistic, unlike the two date cards: this is a five-way choice where the
+ * Optimistic, unlike the capture-end card: this is a five-way choice where the
  * selected value is visible at a glance, so showing it immediately cannot
  * mislead the way a half-saved timestamp would. It falls back on its own if the
- * action throws.
+ * action throws, and the header's toast offers to send the same choice again.
  *
  * Lowering it deletes nothing. A guest who already shot more than the new limit
  * keeps every photo and simply cannot take another — the copy says so, because
@@ -30,8 +31,19 @@ export function ShotsCard({
 }) {
   const en = locale === 'en'
   const [pending, startTransition] = useTransition()
-  const [error, setError] = useState(false)
+  const { report } = useSettingsSave()
   const [optimisticShots, setOptimisticShots] = useOptimistic(shots)
+
+  const apply = (option: ShotOption) =>
+    startTransition(async () => {
+      setOptimisticShots(option)
+      try {
+        await setShotsPerParticipant(slug, option)
+        report('ok', () => apply(option))
+      } catch {
+        report('error', () => apply(option))
+      }
+    })
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
@@ -50,28 +62,12 @@ export function ShotsCard({
         </legend>
         <ShotsSelector
           value={optimisticShots}
-          onChange={(option) =>
-            startTransition(async () => {
-              setError(false)
-              setOptimisticShots(option)
-              try {
-                await setShotsPerParticipant(slug, option)
-              } catch {
-                setError(true)
-              }
-            })
-          }
+          onChange={apply}
           name="shots_setting"
           locale={locale}
           disabled={pending}
         />
       </fieldset>
-
-      {error ? (
-        <p className="mt-2 text-xs text-destructive">
-          {en ? 'Could not save changes.' : 'Nem sikerült módosítani.'}
-        </p>
-      ) : null}
     </div>
   )
 }

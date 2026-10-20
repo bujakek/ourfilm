@@ -7,6 +7,7 @@ import { EventNameCard } from '@/components/host/event-name-card'
 import { PostEventUploadsCard } from '@/components/host/post-event-uploads-card'
 import { GuestsToggle } from '@/components/host/guests-toggle'
 import { RevealCard } from '@/components/host/reveal-card'
+import { SettingsSaveProvider } from '@/components/host/settings-save'
 import { ShotsCard } from '@/components/host/shots-card'
 import {
   type EventQuota,
@@ -119,85 +120,94 @@ export default async function AdminEventSettingsPage({
       className="mx-auto w-full max-w-lg px-5 pt-7 pb-11 sm:px-7"
       lang={localeTag[locale]}
     >
-      <BackLink href={`/host/events/${event.slug}?lang=${locale}`}>
-        {event.event_name}
-      </BackLink>
+      <SettingsSaveProvider
+        locale={locale}
+        header={
+          <BackLink href={`/host/events/${event.slug}?lang=${locale}`}>
+            {event.event_name}
+          </BackLink>
+        }
+      >
+        <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance">
+          {en ? 'Settings' : 'Beállítások'}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {en
+            ? 'Change the name, when shooting ends, when photos appear, each guest’s roll, gallery access, billing and deletion.'
+            : 'Itt állíthatod be az esemény nevét, meddig lehet fotózni, mikor jelenjenek meg a képek, hányat készíthet egy vendég — és itt törölheted az eseményt.'}
+        </p>
 
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight text-balance">
-        {en ? 'Settings' : 'Beállítások'}
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {en
-          ? 'Change the name, when shooting ends, when photos appear, each guest’s roll, gallery access, billing and deletion.'
-          : 'Itt állíthatod be az esemény nevét, meddig lehet fotózni, mikor jelenjenek meg a képek, hányat készíthet egy vendég — és itt törölheted az eseményt.'}
-      </p>
-
-      <div className="mt-8 flex flex-col gap-4">
-        {/* First, and with no boundary around it: it needs nothing but the row
+        <div className="mt-8 flex flex-col gap-4">
+          {/* First, and with no boundary around it: it needs nothing but the row
             this page already has, and it is the likeliest reason a host opened
             these settings at all — a name typed on a phone in a hurry. */}
-        <EventNameCard
-          slug={event.slug}
-          name={event.event_name}
-          locale={locale}
-        />
+          <EventNameCard
+            slug={event.slug}
+            name={event.event_name}
+            locale={locale}
+          />
 
-        <CaptureEndCard
-          slug={event.slug}
-          endValue={formatEventLocalInput(new Date(event.capture_end_at), zone)}
-          // The card's calendar refuses exactly what `setCaptureEnd` refuses,
-          // and that is `end <= start` — not `end < now`. Closing the camera
-          // early means picking a moment already past.
-          startDay={formatEventLocalInput(
-            new Date(event.capture_start_at),
-            zone,
-          ).slice(0, 10)}
-          state={windowState}
-          locale={locale}
-        />
+          <CaptureEndCard
+            slug={event.slug}
+            endValue={formatEventLocalInput(
+              new Date(event.capture_end_at),
+              zone,
+            )}
+            // The card refuses exactly what `setCaptureEnd` refuses, and that is
+            // `end <= start` — not `end < now`. Closing the camera early means
+            // picking a moment already past.
+            startValue={formatEventLocalInput(
+              new Date(event.capture_start_at),
+              zone,
+            )}
+            zone={zone}
+            state={windowState}
+            locale={locale}
+          />
 
-        <RevealCard slug={event.slug} mode={revealChoice} locale={locale} />
+          <RevealCard slug={event.slug} mode={revealChoice} locale={locale} />
 
-        <ShotsCard
-          slug={event.slug}
-          shots={event.shots_per_participant as ShotOption}
-          locale={locale}
-        />
+          <ShotsCard
+            slug={event.slug}
+            shots={event.shots_per_participant as ShotOption}
+            locale={locale}
+          />
 
-        <PostEventUploadsCard
-          slug={event.slug}
-          enabled={event.post_event_uploads_enabled}
-          locale={locale}
-        />
+          <PostEventUploadsCard
+            slug={event.slug}
+            enabled={event.post_event_uploads_enabled}
+            locale={locale}
+          />
 
-        <GuestsToggle
-          slug={event.slug}
-          canView={event.guests_can_view}
-          locale={locale}
-        />
+          <GuestsToggle
+            slug={event.slug}
+            canView={event.guests_can_view}
+            locale={locale}
+          />
 
-        {/* The event page's quota banner links straight here — the unlock has
+          {/* The event page's quota banner links straight here — the unlock has
             to be reached with its consumer-law checkbox, not around it. */}
-        <div id="billing" className="scroll-mt-6">
-          <Suspense fallback={<BillingCardSkeleton />}>
-            <EventBilling
-              slug={event.slug}
-              eventId={event.id}
-              checkout={checkoutState}
-              locale={locale}
-            />
-          </Suspense>
+          <div id="billing" className="scroll-mt-6">
+            <Suspense fallback={<BillingCardSkeleton />}>
+              <EventBilling
+                slug={event.slug}
+                eventId={event.id}
+                checkout={checkoutState}
+                locale={locale}
+              />
+            </Suspense>
+          </div>
         </div>
-      </div>
 
-      <Suspense fallback={null}>
-        <EventDangerZone
-          slug={event.slug}
-          eventName={event.event_name}
-          eventId={event.id}
-          locale={locale}
-        />
-      </Suspense>
+        <Suspense fallback={null}>
+          <EventDangerZone
+            slug={event.slug}
+            eventName={event.event_name}
+            eventId={event.id}
+            locale={locale}
+          />
+        </Suspense>
+      </SettingsSaveProvider>
     </main>
   )
 }

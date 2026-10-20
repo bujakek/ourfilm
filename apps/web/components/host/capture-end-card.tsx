@@ -1,180 +1,176 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 
 import { setCaptureEnd } from '@/app/(product)/host/events/[slug]/actions'
 import { EventEndFields } from '@/components/host/event-end-fields'
 import { MonthCalendar } from '@/components/host/month-calendar'
-import { Sheet } from '@/components/host/sheet'
-import { Button } from '@/components/ui/button'
+import { useSettingsSave } from '@/components/host/settings-save'
+import { FloatingPanel } from '@/components/host/ui/floating-panel'
+import { eventLocalToIso, formatRevealBadge } from '@/lib/format'
+import { captureEndDisplay } from '@/lib/host-ui'
 
 /**
  * Moves the moment the camera closes.
  *
  * **Only the end.** The camera opens when the event is created, which is not a
  * decision anybody makes — the create flow does not ask for it and this does not
- * offer to change it. A start field here would have been a second date to keep
- * straight for a value that is always "when I pressed the button", and its one
- * real use — reopening a camera by moving the start backwards — is already what
- * moving the *end* forwards does.
+ * offer to change it. Reopening a camera is what moving the *end* forwards does.
  *
- * **No `<input type="datetime-local">`, and that is the whole reason this card
- * looks like the create flow's second screen.** iOS Safari lays a native date
- * control out from its own shadow tree (`::-webkit-datetime-edit`, which
- * Tailwind's preflight sets to `inline-flex` to fix a *macOS* height bug) and
- * draws the control around that intrinsic width — so the field rendered wider
- * than its card and ran off the side of the phone. `min-width`, `max-width` and
- * `box-sizing` were all tried and all failed, which is the signature: they act
- * on the CSS box, and the overflow was coming from a shadow tree that never
- * consulted it. The fix is to stop asking the browser to draw a date. The
- * visible text is ours, `MonthCalendar` is ours, and the only native control
- * left is `type="time"`, which is a fixed-width `HH:mm` and lies flat.
+ * **No `<input type="datetime-local">`.** iOS Safari lays a native date control
+ * out from its own shadow tree and draws the control around that intrinsic
+ * width, so the field ran off the side of the phone; `min-width`, `max-width`
+ * and `box-sizing` all failed because they act on a box the shadow tree never
+ * consulted. The visible day is ours, `MonthCalendar` is ours, and the only
+ * native control left is `type="time"`, which is a fixed-width `HH:mm`.
  *
- * It reads in Hungarian now too. The native field showed whatever the device
- * locale produced — "2026. Aug 29. at 0:00" on a Hungarian phone with an
- * English system language.
+ * The calendar is a `FloatingPanel` under the card rather than a sheet: it
+ * overlays the cards below without moving them, and the day it is changing
+ * stays in view above it.
  *
- * Deliberately **no optimistic state**, unlike the toggles beside it. A field
- * that shows the typed text while the saved answer is an hour off would be lying
- * about the one value guests are held to — and unlike a boolean, there is no way
- * to glance at it and notice.
+ * It saves when a day is picked and on the time field's `change`. Deliberately
+ * **not optimistic**, unlike the toggles: a field that showed a value the
+ * server had refused would be lying about the one value guests are held to.
+ * While a save is in flight the fields read as busy, and a failure puts the
+ * stored value back. When the refusal is the end falling before the event
+ * began (7e), the fields are outlined and the line underneath names the value
+ * that stayed; any other failure is the header's "Újra" toast.
  *
- * Setting the end in the past is allowed and is the fastest way to stop a camera
- * early: a host standing in the room at the end of the night should not have to
- * compute a future timestamp to close it now. That is why the calendar's floor
- * is the day the event *started* rather than today — the server refuses only
- * `end <= start`, and the picker should refuse exactly what the server does.
+ * Setting the end in the past is allowed and is the fastest way to stop a
+ * camera early. That is why the calendar's floor is the day the event
+ * *started* rather than today — the server refuses only `end <= start`, and
+ * the picker refuses exactly what the server does.
  */
 export function CaptureEndCard({
   slug,
   endValue,
-  startDay,
+  startValue,
+  zone,
   state,
   locale,
 }: {
+  slug: string
   /** The saved end, as a `datetime-local` value in the event's own zone. */
   endValue: string
-  slug: string
-  /** The day the camera opened, `YYYY-MM-DD` in the event's zone. */
-  startDay: string
+  /** When the camera opened, as a `datetime-local` value in the same zone. */
+  startValue: string
+  /** The event's IANA zone, to name a kept value in 7e. */
+  zone: string
   state: 'before' | 'open' | 'after'
   locale: 'en' | 'hu'
 }) {
   const en = locale === 'en'
-  // Split once, on the string the server already formatted in the event's zone.
-  // Reparsing it into a Date here would reintroduce exactly the zone question
-  // `formatEventLocalInput` settled on the server.
-  const [day, setDay] = useState(() => endValue.slice(0, 10))
-  const [time, setTime] = useState(() => endValue.slice(11, 16))
+  const { report } = useSettingsSave()
+  // The last end the server confirmed. Both strings are the event's own wall
+  // clock, already formatted by the server, so nothing here reparses a zone.
+  const [stored, setStored] = useState(endValue)
+  // The same value for callbacks that outlive a render: a retry tapped in the
+  // toast must restore whatever is stored then, not when it failed.
+  const storedRef = useRef(endValue)
+  const [shown, setShown] = useState(endValue)
+  const [refused, setRefused] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
 
-  const end = `${day}T${time}`
+  const day = shown.slice(0, 10)
+  const time = shown.slice(11, 16)
+
+  const save = (next: string) => {
+    setShown(next)
+    setRefused(false)
+    startTransition(async () => {
+      try {
+        await setCaptureEnd(slug, next)
+        storedRef.current = next
+        setStored(next)
+        report('ok', () => save(next))
+      } catch {
+        // A server error's message does not survive a production build, so
+        // the refusal is recognised by the same rule the action applies.
+        // Both strings are wall clock in the same zone, so they compare as
+        // text.
+        const beforeStart = next <= startValue
+        const display = captureEndDisplay(storedRef.current, next, true)
+        setShown(display.value)
+        if (beforeStart) {
+          setRefused(display.error)
+        } else {
+          report('error', () => save(next))
+        }
+      }
+    })
+  }
+
+  const commit = (next: string) => {
+    if (next === storedRef.current) {
+      setShown(next)
+      setRefused(false)
+      return
+    }
+    save(next)
+  }
+
+  const keptIso = eventLocalToIso(stored, zone)
+  const kept = keptIso ? formatRevealBadge(keptIso, zone, locale) : stored
 
   return (
-    <>
-      <div className="glass rounded-2xl px-5 py-4">
-        <p className="font-medium">{en ? 'Shooting ends' : 'A fotózás vége'}</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {state === 'before'
+    <div className="glass relative rounded-2xl px-5 py-4">
+      <p className="font-medium">{en ? 'Shooting ends' : 'A fotózás vége'}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        {state === 'before'
+          ? en
+            ? 'The camera is not open yet.'
+            : 'A kamera még nem nyílt meg.'
+          : state === 'open'
             ? en
-              ? 'The camera is not open yet.'
-              : 'A kamera még nem nyílt meg.'
-            : state === 'open'
-              ? en
-                ? 'Guests can take photos now.'
-                : 'A vendégek most fotózhatnak.'
-              : en
-                ? 'Shooting has ended. Choose a later time to reopen it.'
-                : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
-        </p>
-
-        <div className="mt-4">
-          {/* The same two cards and the same sheet as the create flow's second
-            screen. Editing an event and creating one are the same question,
-            and a host who has just answered it once should not have to learn a
-            second control to change the answer.
-
-            It also has to be a sheet. `MonthCalendar` is seven 44px cells, so
-            it needs 308px; expanded inside this card at 390px it gets about
-            302 and the grid is squeezed. */}
-          <EventEndFields
-            day={day}
-            time={time}
-            onChooseDay={() => setCalendarOpen(true)}
-            onTimeChange={(value) => {
-              setTime(value)
-              setSaved(false)
-            }}
-            locale={locale}
-            timeLabel={en ? 'Shooting end time' : 'A fotózás végének időpontja'}
-          />
-        </div>
-
-        <Button
-          disabled={pending || end === endValue}
-          onClick={() =>
-            startTransition(async () => {
-              setError(null)
-              try {
-                await setCaptureEnd(slug, end)
-                setSaved(true)
-              } catch (e) {
-                setError(
-                  e instanceof Error
-                    ? e.message
-                    : en
-                      ? 'Could not save changes.'
-                      : 'Nem sikerült módosítani.',
-                )
-              }
-            })
-          }
-          className="mt-4 w-full"
-        >
-          {pending
-            ? en
-              ? 'Saving…'
-              : 'Mentés…'
+              ? 'Guests can take photos now.'
+              : 'A vendégek most fotózhatnak.'
             : en
-              ? 'Save changes'
-              : 'Változtatások mentése'}
-        </Button>
+              ? 'Shooting has ended. Choose a later time to reopen it.'
+              : 'A fotózás véget ért. Egy későbbi időpontot megadva újra megnyithatod.'}
+      </p>
 
-        {error ? (
-          <p className="mt-2 text-xs text-destructive">{error}</p>
-        ) : saved ? (
-          <p className="mt-2 text-xs text-accent">
-            {en ? 'Saved.' : 'Elmentettük.'}
-          </p>
-        ) : null}
+      <div className="mt-4" aria-busy={pending}>
+        <EventEndFields
+          day={day}
+          time={time}
+          onChooseDay={() => setCalendarOpen((open) => !open)}
+          dayExpanded={calendarOpen}
+          onTimeChange={(value) => {
+            if (value) setShown(`${day}T${value}`)
+          }}
+          onTimeCommit={(value) => commit(`${day}T${value}`)}
+          timeStep={900}
+          error={refused}
+          locale={locale}
+          timeLabel={en ? 'Shooting end time' : 'A fotózás végének időpontja'}
+        />
       </div>
 
-      <Sheet
+      {refused ? (
+        <p role="alert" className="mt-3 text-sm text-destructive">
+          {en
+            ? `That time has already passed. Choose a later one; the earlier value (${kept}) has been kept.`
+            : `Ez az időpont már elmúlt. Válassz későbbi időpontot, a korábbi érték (${kept}) megmaradt.`}
+        </p>
+      ) : null}
+
+      <FloatingPanel
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
-        closeLabel={en ? 'Close date picker' : 'Dátumválasztó bezárása'}
-        title={en ? 'Choose a date' : 'Válassz dátumot'}
-        detail={
-          en
-            ? 'Guests can take photos until this time.'
-            : 'Eddig az időpontig készíthetnek képeket a vendégeid.'
-        }
+        anchorClassName="inset-x-2 top-[calc(100%-8px)]"
       >
         <MonthCalendar
           value={day}
-          earliest={startDay}
+          earliest={startValue.slice(0, 10)}
           label={en ? 'Shooting ends' : 'A fotózás vége'}
           locale={locale}
           onChange={(value) => {
-            setDay(value)
-            setSaved(false)
             setCalendarOpen(false)
+            commit(`${value}T${time}`)
           }}
         />
-      </Sheet>
-    </>
+      </FloatingPanel>
+    </div>
   )
 }

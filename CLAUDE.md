@@ -897,7 +897,7 @@ finally something to save. A host who is already signed in never sees it.
 
 ## Optimistic updates (settled)
 
-Three host-area controls show the result before the server has confirmed it. All
+Five host-area controls show the result before the server has confirmed it. All
 revert on their own — none carries hand-written rollback code.
 
 - **`apps/web/components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
@@ -908,14 +908,25 @@ revert on their own — none carries hand-written rollback code.
   else a round trip behind, which reads as a bug.
 - **`apps/web/components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
+  `post-event-uploads-card.tsx` is the same switch for the same reason.
 - **`apps/web/components/host/shots-card.tsx`** — a five-way choice whose selected value
   is visible at a glance, so showing it immediately cannot mislead.
+- **`apps/web/components/host/reveal-card.tsx`** — two named choices with no date in
+  them any more, so it is the shots card's case, not the date card's.
 
-**The two date cards are deliberately _not_ optimistic.**
-`capture-end-card.tsx` and `reveal-card.tsx` show a saved/failed state
-instead. A field that displays the typed text while the stored answer is an hour
-off would be lying about the one value guests are held to — and unlike a boolean,
-there is no way to glance at it and notice.
+**Settings autosave, and has no Save button.** Every control reports to
+`SettingsSaveProvider` (`apps/web/components/host/settings-save.tsx`): a landed
+save flashes "✓ Mentve" in the header, a failed one shows the "Újra" toast,
+whose retry sends the same value again. The event name saves on blur and Enter
+and is not optimistic — the field already shows the new name — so a failure
+restores the stored one.
+
+**The capture-end card is deliberately _not_ optimistic.** It saves on a picked
+day or a committed time, and a failure puts the stored value back; a refusal
+for an end before the event began outlines the field and names the value that
+stayed. A field that displays a value the server refused would be lying about
+the one value guests are held to — and unlike a boolean, there is no way to
+glance at it and notice.
 
 **Nothing on the guest side is optimistic any more.** The old `recent-uploads`
 store showed a guest their own photo the instant it uploaded, drawn from the

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useOptimistic, useTransition } from 'react'
 
 import { setReveal } from '@/app/(product)/host/events/[slug]/actions'
 import { RevealSelector } from '@/components/host/reveal-selector'
-import { Button } from '@/components/ui/button'
+import { useSettingsSave } from '@/components/host/settings-save'
 import type { RevealChoice } from '@/lib/camera'
 
 /**
@@ -13,12 +13,14 @@ import type { RevealChoice } from '@/lib/camera'
  * Both choices are pinned to the capture window, and the database trigger
  * recomputes the instant whenever that window moves.
  *
- * Like the capture window beside it, there is no optimistic state: the saved
- * rule is something a host will read back and act on.
+ * Optimistic, like the roll length. It used to sit with the date cards, but
+ * there is no date in it any more: two named choices, the selected one visible
+ * at a glance, so showing the pick immediately cannot mislead. It saves on the
+ * pick and falls back on its own if the action throws.
  */
 export function RevealCard({
   slug,
-  mode: savedMode,
+  mode,
   locale,
 }: {
   slug: string
@@ -26,12 +28,20 @@ export function RevealCard({
   locale: 'en' | 'hu'
 }) {
   const en = locale === 'en'
-  const [mode, setMode] = useState<RevealChoice>(savedMode)
   const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { report } = useSettingsSave()
+  const [optimisticMode, setOptimisticMode] = useOptimistic(mode)
 
-  const dirty = mode !== savedMode
+  const apply = (next: RevealChoice) =>
+    startTransition(async () => {
+      setOptimisticMode(next)
+      try {
+        await setReveal(slug, next)
+        report('ok', () => apply(next))
+      } catch {
+        report('error', () => apply(next))
+      }
+    })
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
@@ -42,54 +52,15 @@ export function RevealCard({
           {en ? 'Photo reveal time' : 'Leleplezés időpontja'}
         </legend>
         <RevealSelector
-          value={mode}
+          value={optimisticMode}
           onChange={(value) => {
-            setMode(value)
-            setSaved(false)
+            if (value !== optimisticMode) apply(value)
           }}
           name="reveal_mode_setting"
           locale={locale}
           disabled={pending}
         />
       </fieldset>
-
-      <Button
-        disabled={pending || !dirty}
-        onClick={() =>
-          startTransition(async () => {
-            setError(null)
-            try {
-              await setReveal(slug, mode)
-              setSaved(true)
-            } catch (e) {
-              setError(
-                e instanceof Error
-                  ? e.message
-                  : en
-                    ? 'Could not save changes.'
-                    : 'Nem sikerült módosítani.',
-              )
-            }
-          })
-        }
-        className="mt-4 w-full"
-      >
-        {pending
-          ? en
-            ? 'Saving…'
-            : 'Mentés…'
-          : en
-            ? 'Save changes'
-            : 'Változtatások mentése'}
-      </Button>
-
-      {error ? (
-        <p className="mt-2 text-xs text-destructive">{error}</p>
-      ) : saved ? (
-        <p className="mt-2 text-xs text-accent">
-          {en ? 'Saved.' : 'Elmentettük.'}
-        </p>
-      ) : null}
     </div>
   )
 }

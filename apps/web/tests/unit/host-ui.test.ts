@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  autosaveOutcome,
+  captureEndDisplay,
   initialToastState,
   quotaBannerState,
   toastReducer,
@@ -66,5 +68,37 @@ describe('quotaBannerState', () => {
   })
   it('handles a limit of one', () => {
     expect(q(0, 1)).toBe('near')
+  })
+})
+
+describe('autosaveOutcome', () => {
+  it('autosave reports failure without a saved flash', () => {
+    expect(autosaveOutcome('error')).toEqual({
+      flashSaved: false,
+      revert: true,
+      toast: 'retry',
+    })
+  })
+
+  it('a save that lands flashes and keeps the value', () => {
+    expect(autosaveOutcome('ok')).toEqual({
+      flashSaved: true,
+      revert: false,
+      toast: null,
+    })
+  })
+})
+
+describe('captureEndDisplay', () => {
+  it('capture end in the past keeps the stored value', () => {
+    expect(
+      captureEndDisplay('2026-09-04T02:00', '2026-09-01T02:00', true),
+    ).toEqual({ value: '2026-09-04T02:00', error: true })
+  })
+
+  it('an accepted change shows what was picked', () => {
+    expect(
+      captureEndDisplay('2026-09-04T02:00', '2026-09-05T23:00', false),
+    ).toEqual({ value: '2026-09-05T23:00', error: false })
   })
 })

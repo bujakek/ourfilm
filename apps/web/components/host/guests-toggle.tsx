@@ -1,8 +1,9 @@
 'use client'
 
 import { setGuestsCanView } from '@/app/(product)/host/events/[slug]/actions'
+import { useSettingsSave } from '@/components/host/settings-save'
 import { Switch } from '@/components/ui/switch'
-import { useOptimistic, useState, useTransition } from 'react'
+import { useOptimistic, useTransition } from 'react'
 
 /**
  * Whether guests may open the album once it develops.
@@ -31,10 +32,21 @@ export function GuestsToggle({
 }) {
   const en = locale === 'en'
   const [pending, startTransition] = useTransition()
-  const [error, setError] = useState(false)
+  const { report } = useSettingsSave()
   // Falls back to `canView` on its own once the action settles or throws, so
   // a failed toggle returns to the truth without any rollback code here.
   const [optimisticCanView, setOptimisticCanView] = useOptimistic(canView)
+
+  const apply = (checked: boolean) =>
+    startTransition(async () => {
+      setOptimisticCanView(checked)
+      try {
+        await setGuestsCanView(slug, checked)
+        report('ok', () => apply(checked))
+      } catch {
+        report('error', () => apply(checked))
+      }
+    })
 
   return (
     <div className="glass rounded-2xl px-5 py-4">
@@ -58,25 +70,9 @@ export function GuestsToggle({
           checked={optimisticCanView}
           label={en ? 'Guest gallery access' : 'Vendégek galéria-hozzáférése'}
           disabled={pending}
-          onCheckedChange={(checked) =>
-            startTransition(async () => {
-              setError(false)
-              setOptimisticCanView(checked)
-              try {
-                await setGuestsCanView(slug, checked)
-              } catch {
-                setError(true)
-              }
-            })
-          }
+          onCheckedChange={apply}
         />
       </div>
-
-      {error ? (
-        <p className="mt-2 text-xs text-destructive">
-          {en ? 'Could not save changes.' : 'Nem sikerült módosítani.'}
-        </p>
-      ) : null}
     </div>
   )
 }
