@@ -4,6 +4,13 @@ import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  HOST_ICON_BUTTON,
+  HOST_KICKER,
+  HOST_PAY,
+  HOST_PRIMARY,
+  HOST_QUESTION,
+} from '@/components/host/ui/classes'
 import { Odometer } from '@/components/ui/odometer'
 import { localeTag, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
@@ -41,7 +48,6 @@ export type StepScreen = {
   ctaPending?: boolean
   /** `pay` paints the CTA sky: it is the button on the way to a payment. */
   ctaTone?: 'pay'
-  compact?: boolean
   note?: ReactNode
   /** Small print under the CTA — the free path's terms line. */
   footnote?: ReactNode
@@ -49,24 +55,20 @@ export type StepScreen = {
 }
 
 /**
- * One question per screen, set like an editorial page rather than a survey.
+ * One question per screen, in the landing look (6a–6d).
  *
- * Three things carry that, and each replaced something that was doing the job
- * badly:
+ * - **A kicker naming the thing being decided**, then the question in Roboto
+ *   Serif, left aligned, and an optional lead line.
+ * - **A step counter and a rule instead of dots.** `1 / 4` in the figure face
+ *   says where you are; the rule beside the CTA is the same information as a
+ *   shape. The dots' accessible equivalent survives verbatim below — a
+ *   visually hidden ordered list carrying `aria-current`.
+ * - **One white action.** The CTA is `HOST_PRIMARY`, or sky `HOST_PAY` on the
+ *   way to a payment, pinned to the bottom.
  *
- * - **An eyebrow naming the thing being decided**, then the question in the
- *   display serif, **left aligned**. A centred 28px heading over a left-aligned
- *   form is most of what made these screens read as a form to get through
- *   rather than a thing being made.
- * - **A step counter and a rule instead of dots.** `01 / 04` says where you are
- *   without anyone counting circles, and the rule along the bottom is the same
- *   information as a shape. The dots' accessible equivalent survives verbatim
- *   below — a visually hidden ordered list carrying `aria-current` — because
- *   the counter is the thing a sighted host reads, not the thing a screen
- *   reader should be handed.
- * - **One material per screen.** The back button and the CTA are the only
- *   chrome, and the CTA is `.paper`: on a flow whose whole subject is a
- *   printed ticket, the button that advances it is the printed thing.
+ * The page scrolls as a whole and the footer is sticky, rather than the
+ * question scrolling inside a fixed frame: a floating panel (the end screen's
+ * month) is absolute, and an inner scroller would clip it.
  */
 export function OnboardingShell({
   eyebrow,
@@ -79,18 +81,18 @@ export function OnboardingShell({
   cta,
   ctaDisabled = false,
   ctaPending = false,
+  ctaTone,
   onNext,
   error = null,
   note = null,
   footnote = null,
-  compact = false,
   children,
   locale = 'hu',
 }: {
-  /** Names the thing being decided, in mono caps. The one lilac on the screen. */
+  /** Names the thing being decided. One to three words. */
   eyebrow: string
   title: string
-  /** Optional supporting copy below the question. */
+  /** Optional lead line below the question. */
   detail?: string
   step: number
   stepCount: number
@@ -99,13 +101,11 @@ export function OnboardingShell({
   cta: string
   ctaDisabled?: boolean
   ctaPending?: boolean
+  ctaTone?: 'pay'
   onNext?: () => void
   error?: string | null
   note?: ReactNode
   footnote?: ReactNode
-  ctaTone?: 'pay'
-  /** Sets the question at 34px instead of 40px. */
-  compact?: boolean
   children: ReactNode
   locale?: Locale
 }) {
@@ -152,18 +152,18 @@ export function OnboardingShell({
 
   return (
     <div
-      className="flex h-[100dvh] flex-col overflow-hidden px-6 pt-[calc(1.375rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+      className="flex min-h-[100dvh] flex-col px-5 pt-[calc(1.25rem+env(safe-area-inset-top))]"
       // Every step of the create flow renders through this shell, so marking
       // the language here covers the whole flow. See `app/(product)/layout.tsx`.
       lang={localeTag[locale]}
     >
-      <div className="mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <header className="flex items-center justify-between">
           {backHref ? (
             <Link
               href={backHref}
               aria-label={en ? 'Back to events' : 'Vissza az eseményekhez'}
-              className={backButtonClassName}
+              className={HOST_ICON_BUTTON}
             >
               <ArrowLeft className="size-[19px]" aria-hidden="true" />
             </Link>
@@ -171,28 +171,28 @@ export function OnboardingShell({
             <motion.button
               type="button"
               onClick={onBack}
-              whileTap={{ scale: 0.94 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+              transition={reduceMotion ? still : T.snap}
               aria-label={
                 en
                   ? 'Back to the previous question'
                   : 'Vissza az előző kérdéshez'
               }
-              className={backButtonClassName}
+              className={HOST_ICON_BUTTON}
             >
               <ArrowLeft className="size-[19px]" aria-hidden="true" />
             </motion.button>
           )}
 
           {/* The counter is what a host reads; the list under it is what a
-              screen reader gets. Announcing "zero one slash zero four" would be
-              a worse answer than the sentence the list already carried. */}
+              screen reader gets. */}
           <p
             aria-hidden="true"
-            className="flex items-center font-mono text-[11px] font-medium tracking-[0.14em] text-foreground/40"
+            className="host-figure flex items-center text-[22px] leading-none text-white/65"
           >
-            <Odometer value={step + 1} dir={dir > 0 ? 'up' : 'down'} pad={2} />
-            <span className="px-1">/</span>
-            {String(stepCount).padStart(2, '0')}
+            <Odometer value={step + 1} dir={dir > 0 ? 'up' : 'down'} />
+            <span className="px-1.5">/</span>
+            {stepCount}
           </p>
           <ol aria-label={en ? 'Steps' : 'Lépések'} className="sr-only">
             {Array.from({ length: stepCount }, (_, i) => (
@@ -213,104 +213,85 @@ export function OnboardingShell({
             initial="enter"
             animate="center"
             exit="exit"
-            className="flex min-h-0 flex-1 flex-col"
+            className="flex flex-1 flex-col"
           >
-            <div className={compact ? 'mt-5' : 'mt-7'}>
-              <p className="font-mono text-[9.5px] font-medium tracking-[0.2em] text-accent">
-                {eyebrow}
-              </p>
-              <h1
-                className={`font-display tracking-[-0.01em] text-balance ${
-                  compact
-                    ? 'mt-3.5 text-[34px] leading-[1.06]'
-                    : 'mt-4 text-[40px] leading-[1.06]'
-                }`}
-              >
-                {title}
-              </h1>
+            <div className="mt-9">
+              <p className={HOST_KICKER}>{eyebrow}</p>
+              <h1 className={`mt-3.5 ${HOST_QUESTION}`}>{title}</h1>
               {detail ? (
-                <p className="mt-3.5 max-w-[20rem] text-[14.5px] leading-[1.6] text-pretty text-muted-foreground">
+                <p className="mt-3.5 max-w-[20rem] text-[15px] leading-[1.6] text-pretty text-white/65">
                   {detail}
                 </p>
               ) : null}
             </div>
 
-            <div
-              className={`-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1 ${
-                compact ? 'mt-5' : 'mt-9'
-              }`}
-            >
-              {children}
-            </div>
+            <div className="mt-7 flex flex-1 flex-col">{children}</div>
           </motion.div>
         </AnimatePresence>
+      </div>
 
-        {error ? (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
+      {/* Sticky rather than fixed: it sits in the flow at the bottom of a
+          short screen and stays reachable over a long one. */}
+      <div className="sticky bottom-0 z-10 -mx-5 mt-6 bg-background px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <div className="mx-auto w-full max-w-md">
+          {error ? (
+            <p
+              role="alert"
+              className="mb-3 text-[14px] leading-[1.5] text-pretty text-host-danger"
+            >
+              {error}
+            </p>
+          ) : null}
 
-        {note}
+          {note}
 
-        <footer className="mt-5 flex items-center gap-3.5 pt-1">
-          {/* The dots' job, as a shape rather than a count. `aria-hidden`
-              because the visually hidden step list above is the announcement
-              and two of them would be one too many. */}
-          <div
-            aria-hidden="true"
-            className="h-0.5 flex-1 overflow-hidden rounded-[2px] bg-white/10"
-          >
-            {/* The one element that crosses every step change unchanged, which
-                is what makes four screens read as one sheet. So it grows on
-                `advance` — a mechanical move — and is never cut and redrawn. */}
-            <motion.span
-              className="block h-full bg-accent"
-              initial={false}
-              animate={{ width: `${((step + 1) / stepCount) * 100}%` }}
-              transition={reduceMotion ? still : T.advance}
-            />
-          </div>
-
-          {/* Submitted: the button holds at half strength rather than
-              flickering between states. The dim is an `animate` value, not
-              `disabled:opacity-50`, because motion writes an inline opacity
-              and the two would otherwise fight over the same property. */}
-          <motion.button
-            type="button"
-            disabled={blocked}
-            initial={false}
-            animate={{ opacity: blocked ? 0.5 : 1 }}
-            whileTap={blocked || reduceMotion ? undefined : { scale: 0.97 }}
-            transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
-            onClick={() => {
-              if (spent.current === step) return
-              spent.current = step
-              onNext?.()
-            }}
-            className="paper btn-shine inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-xl px-6.5 text-[15px] font-semibold disabled:pointer-events-none"
-          >
-            {ctaPending ? (
-              <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-            ) : null}
-            {cta}
-            {ctaPending ? null : (
-              <ArrowRight
-                className="size-[18px]"
-                strokeWidth={2}
-                aria-hidden="true"
+          <footer className="flex items-center gap-3">
+            {/* The dots' job, as a shape rather than a count. */}
+            <div
+              aria-hidden="true"
+              className="h-0.5 flex-1 overflow-hidden rounded-[2px] bg-white/10"
+            >
+              {/* The one element that crosses every step change unchanged, so
+                  it grows on `advance` — a mechanical move. Scaled rather than
+                  sized: transform, not layout. */}
+              <motion.span
+                className="block h-full origin-left bg-white/80"
+                initial={false}
+                animate={{ scaleX: (step + 1) / stepCount }}
+                transition={reduceMotion ? still : T.advance}
               />
-            )}
-          </motion.button>
-        </footer>
+            </div>
 
-        {footnote}
+            <motion.button
+              type="button"
+              disabled={blocked}
+              aria-busy={ctaPending || undefined}
+              whileTap={blocked || reduceMotion ? undefined : { scale: 0.97 }}
+              transition={reduceMotion ? still : T.snap}
+              onClick={() => {
+                if (spent.current === step) return
+                spent.current = step
+                onNext?.()
+              }}
+              className={`${ctaTone === 'pay' ? HOST_PAY : HOST_PRIMARY} shrink-0 gap-2 disabled:pointer-events-none`}
+            >
+              {ctaPending ? (
+                <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+              ) : null}
+              {cta}
+              {ctaPending ? null : (
+                <ArrowRight
+                  className="size-[18px]"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              )}
+            </motion.button>
+          </footer>
+
+          {footnote}
+        </div>
       </div>
     </div>
   )
 }
-
-/** A bordered outline, not `.glass` — the back arrow is the most inert control
- *  in the flow and was wearing the same material as the thing being decided. */
-const backButtonClassName =
-  'flex size-11 shrink-0 items-center justify-center rounded-lg border border-white/15 text-foreground transition-colors hover:border-white/30'

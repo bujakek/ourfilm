@@ -21,7 +21,7 @@ import {
   type EventDraft,
 } from '@/lib/event-draft'
 import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
-import type { EventPlan } from '@/lib/onboarding'
+import { eventNameSuggestions, type EventPlan } from '@/lib/onboarding'
 import { type Locale, resolveLocale } from '@/lib/i18n'
 import { track, type OnboardingStep } from '@/lib/telemetry'
 import type { CheckoutReadiness } from '@/lib/billing-country'
@@ -55,8 +55,6 @@ const STEP_NAMES: readonly OnboardingStep[] = [
 type Props = {
   nowIso: string
   defaultEndIso: string
-  /** The five ÖTLETEK titles, resolved on the server. */
-  suggestions: string[]
   /** Whether a paid event can actually be sold here, per side of the
    *  billing-country boundary. Deployed environments without `STRIPE_*`
    *  variables offer no paid tier at all; a Hungarian billing address
@@ -176,7 +174,6 @@ export function NewEventForm(props: Props) {
 function OnboardingFlow({
   nowIso,
   defaultEndIso,
-  suggestions,
   readiness,
   initial,
   initialCreationKey,
@@ -216,18 +213,16 @@ function OnboardingFlow({
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
-  // apart between the calendar and the time pill. Null means "not chosen yet",
-  // and the suggested end is re-derived from the server's instant in whatever
-  // zone this browser turns out to be in — which is what lets the timezone
-  // arrive one render late without moving a value the host has already picked.
+  // apart between the quick picks, the calendar and the time tile. Null means
+  // "not chosen yet", and the suggested end is re-derived from the server's
+  // instant in whatever zone this browser turns out to be in — which is what
+  // lets the timezone arrive one render late without moving a value the host
+  // has already picked.
   const [chosenEnd, setChosenEnd] = useState<string | null>(
     initial.endLocal || null,
   )
   const endLocal =
     chosenEnd ?? formatEventLocalInput(new Date(defaultEndIso), timeZone)
-
-  const day = endLocal.slice(0, 10)
-  const time = endLocal.slice(11)
 
   const endIso = eventLocalToIso(endLocal, timeZone)
   const today = formatEventLocalInput(new Date(nowIso), timeZone).slice(0, 10)
@@ -411,25 +406,18 @@ function OnboardingFlow({
           name,
           setName,
           onAdvance: advance,
-          suggestions:
-            locale === 'en'
-              ? [
-                  'Our wedding',
-                  'The big day',
-                  'Birthday party',
-                  'Anniversary',
-                  'One unforgettable night',
-                ]
-              : suggestions,
+          // Null until a sign-in provider supplies a first name; see the
+          // note on `page.tsx` for why the page cannot read one.
+          suggestions: eventNameSuggestions(null, locale),
           canAdvance: name.trim().length > 0,
         })
       : step === END_STEP
         ? endScreen({
             locale,
-            day,
-            setDay: (value) => setChosenEnd(`${value}T${time}`),
-            time,
-            setTime: (value) => setChosenEnd(`${day}T${value}`),
+            endLocal,
+            setEndLocal: setChosenEnd,
+            now: new Date(nowIso),
+            timeZone,
             today,
             canAdvance: endIsFuture,
           })

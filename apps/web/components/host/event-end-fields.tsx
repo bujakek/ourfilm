@@ -2,6 +2,7 @@
 
 import { ChevronDown } from 'lucide-react'
 
+import { HOST_KICKER_BASE } from '@/components/host/ui/classes'
 import { formatEventDate } from '@/lib/format'
 import type { Locale } from '@/lib/i18n'
 
@@ -24,6 +25,7 @@ export function EventEndFields({
   timeStep = 60,
   dayExpanded,
   error = false,
+  labels,
 }: {
   day: string
   time: string
@@ -44,10 +46,14 @@ export function EventEndFields({
   dayExpanded?: boolean
   /** 7e: the server refused the value; both tiles are outlined. */
   error?: boolean
+  /** Small labels over the two values. Onboarding (6b) names them "Nap" and
+   *  "Idő"; settings sits under its own question and leaves them out. */
+  labels?: { day: string; time: string }
 }) {
   const en = locale === 'en'
 
   const outline = error ? 'ring-[1.5px] ring-host-danger ring-inset' : ''
+  const label = `${HOST_KICKER_BASE} block text-white/65`
 
   return (
     <div className="flex gap-2">
@@ -59,6 +65,11 @@ export function EventEndFields({
         className={`flex min-h-[52px] min-w-0 flex-[1.5] items-center justify-between gap-2 rounded-[14px] bg-host-tile px-4 py-2 text-left text-[15px] font-medium text-white transition-colors hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none ${outline}`}
       >
         <span className="min-w-0 text-balance">
+          {labels ? (
+            <span aria-hidden="true" className={`${label} mb-1`}>
+              {labels.day}
+            </span>
+          ) : null}
           {formatEventDate(day, locale)}
         </span>
         <ChevronDown
@@ -70,8 +81,15 @@ export function EventEndFields({
       </button>
 
       <label
-        className={`flex min-h-[52px] min-w-0 flex-1 cursor-pointer items-center rounded-[14px] bg-host-tile px-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-white/60 ${outline}`}
+        className={`flex min-h-[52px] min-w-0 flex-1 cursor-pointer rounded-[14px] bg-host-tile px-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-white/60 ${
+          labels ? 'flex-col justify-center py-2' : 'items-center'
+        } ${outline}`}
       >
+        {labels ? (
+          <span aria-hidden="true" className={label}>
+            {labels.time}
+          </span>
+        ) : null}
         <input
           type="time"
           step={timeStep}

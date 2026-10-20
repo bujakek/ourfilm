@@ -25,16 +25,10 @@ const BANNED = [
 /** Files still on the old look. Each task removes its own; Task 8 empties it. */
 export const PENDING: string[] = [
   'app/(product)/host/account/page.tsx',
-  'app/(product)/host/events/new/step-guests.tsx',
-  'app/(product)/host/events/new/step-name.tsx',
   'app/(product)/host/login/login-form.tsx',
   'app/(product)/host/page.tsx',
-  'app/(product)/auth/event-complete/complete-creation.tsx',
   'components/host/account-name-form.tsx',
   'components/host/event-list.tsx',
-  'components/host/onboarding/onboarding-shell.tsx',
-  'components/host/onboarding/reveal-preview.tsx',
-  'components/host/onboarding/save-event-screen.tsx',
   'components/event/lightbox.tsx',
 ]
 

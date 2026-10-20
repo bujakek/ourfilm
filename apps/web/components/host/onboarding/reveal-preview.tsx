@@ -31,20 +31,12 @@ export function RevealPreview({
   badge: string
 }) {
   const reduceMotion = useReducedMotion()
-  // `develop` at half length. It is the same event the product is named for —
-  // a photograph becoming visible — but here it is a preview answering a
-  // question the host is still holding, so it resolves in half the time the
-  // real thing takes.
-  const lift = reduceMotion
-    ? still
-    : { ...T.develop, duration: T.develop.duration / 2 }
+  // `settle`, inside the 320ms ceiling: this is a preview answering a question
+  // the host is still holding, not the real reveal, which keeps `develop`.
+  const lift = reduceMotion ? still : T.settle
 
   return (
-    // flex-1 up to a cap: the pair grows into whatever the screen has spare and
-    // stops at roughly the 7:10 tiles the design calls for, so a tall phone gets
-    // breathing room rather than two poster-shaped photos. min-h-0 is what lets
-    // it shrink again on a short one instead of pushing the choices off-screen.
-    <div className="relative grid max-h-60 min-h-0 w-full flex-1 grid-cols-2 gap-2">
+    <div className="relative grid h-50 w-full grid-cols-2 gap-2">
       {SAMPLES.map((photo) => (
         <div
           key={photo.src}
@@ -52,10 +44,10 @@ export function RevealPreview({
           // photo of nobody the host knows, and the sentence that matters — when
           // the album opens — is the badge below, which is real text.
           aria-hidden="true"
-          className="relative overflow-hidden rounded-2xl border border-border"
+          className="relative overflow-hidden rounded-[24px] bg-host-tile"
         >
           {/* The 14px blur lifts rather than switching, so the host watches
-              their own answer take effect. */}
+              their own answer take effect. `filter` and `transform` only. */}
           <motion.span
             className="absolute inset-0 block"
             initial={false}
@@ -77,23 +69,18 @@ export function RevealPreview({
               className="object-cover"
             />
           </motion.span>
-          <span className="absolute top-3 left-3 text-sm font-medium text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]">
+          <span className="absolute top-3.5 left-4 text-[14px] font-medium text-white drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]">
             {photo.name}
           </span>
         </div>
       ))}
 
       {/* Centred across the pair rather than inside one of them: it describes
-          the album, not a photo.
-
-          A flat scrim rather than `.glass`: this badge is the one surface in
-          the product that always sits over photography, and a white-gradient
-          film over a warm blurred photo turns brown. No `backdrop-blur` either
-          — the same reason `.glass` drops its own on touch devices, and here it
-          would be re-blurring an already-blurred layer. */}
-      <p className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto flex w-fit max-w-full -translate-y-1/2 items-center gap-2 rounded-full border border-border-strong bg-background/80 px-3.5 py-2.5 text-center font-mono text-[10px] leading-[1.5] font-medium tracking-[0.08em] text-balance">
+          the album, not a photo. A flat scrim, no backdrop blur — it would be
+          re-blurring an already-blurred layer. */}
+      <p className="pointer-events-none absolute inset-x-3 top-1/2 mx-auto flex w-fit max-w-[calc(100%-1.5rem)] -translate-y-1/2 items-center gap-2 rounded-full bg-landing/85 px-4 py-2.5 text-center text-[13px] leading-[1.4] font-medium text-balance text-white">
         <Clock
-          className="size-3.5 shrink-0"
+          className="size-3.5 shrink-0 text-white/65"
           strokeWidth={1.8}
           aria-hidden="true"
         />

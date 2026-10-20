@@ -7,6 +7,7 @@ import type { RevealChoice } from '@/lib/camera'
 import { formatRevealBadge } from '@/lib/format'
 import type { Locale } from '@/lib/i18n'
 
+/** Question three: when does the album develop? (6c) */
 export function revealScreen({
   mode,
   setMode,
@@ -21,26 +22,25 @@ export function revealScreen({
   locale: Locale
 }): StepScreen {
   const en = locale === 'en'
-  // A readout, not a sentence — it is set in the mono now, and the rule for
-  // that face is that it counts things rather than saying them. Same three
-  // states as before, in caps.
+  // Sentence case, not a tracked caps label: a date and a time are more than
+  // the three words a kicker may carry.
   const badge =
     mode === 'instant'
       ? en
-        ? 'VISIBLE NOW'
-        : 'AZONNAL LÁTHATÓ'
+        ? 'Visible right away'
+        : 'Azonnal látható'
       : revealIso
-        ? `${en ? 'OPENS' : 'MEGNYÍLIK'} · ${formatRevealBadge(
+        ? `${en ? 'Opens' : 'Megnyílik'} · ${formatRevealBadge(
             revealIso,
             timeZone,
             locale,
-          ).toUpperCase()}`
+          )}`
         : en
-          ? 'AFTER THE EVENT'
-          : 'AZ ESEMÉNY VÉGÉN'
+          ? 'When the event ends'
+          : 'Az esemény végén'
 
   return {
-    eyebrow: en ? 'DEVELOPING' : 'AZ ELŐHÍVÁS',
+    eyebrow: en ? 'Developing' : 'Az előhívás',
     title: en
       ? 'When should the photos appear?'
       : 'Mikor jelenjenek meg a képek?',
@@ -49,7 +49,7 @@ export function revealScreen({
       <>
         <RevealPreview blurred={mode !== 'instant'} badge={badge} />
 
-        <fieldset className="mt-auto pt-6">
+        <fieldset className="mt-5">
           <legend className="sr-only">
             {en ? 'Gallery reveal time' : 'A galéria megnyílásának időpontja'}
           </legend>

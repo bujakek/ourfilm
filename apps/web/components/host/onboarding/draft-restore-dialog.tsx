@@ -1,7 +1,7 @@
 'use client'
 
 import { Sheet } from '@/components/host/sheet'
-import { Button } from '@/components/ui/button'
+import { HOST_PRIMARY, HOST_SECONDARY } from '@/components/host/ui/classes'
 import type { Locale } from '@/lib/i18n'
 
 /**
@@ -34,19 +34,21 @@ export function DraftRestoreDialog({
           : 'Találtunk egy korábban elkezdett eseményt ezen az eszközön.'
       }
     >
-      <div className="flex flex-col gap-2.5">
-        <Button type="button" onClick={onResume} size="lg" className="w-full">
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={onResume}
+          className={`${HOST_PRIMARY} w-full`}
+        >
           {en ? 'Continue' : 'Folytatás'}
-        </Button>
-        <Button
+        </button>
+        <button
           type="button"
           onClick={onDiscard}
-          variant="secondary"
-          size="lg"
-          className="w-full"
+          className={`${HOST_SECONDARY} w-full`}
         >
           {en ? 'Start over' : 'Újrakezdés'}
-        </Button>
+        </button>
       </div>
     </Sheet>
   )

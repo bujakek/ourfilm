@@ -1,12 +1,19 @@
 'use client'
 
-import { ArrowLeft, Check, Loader2, Mail } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Loader2, Mail } from 'lucide-react'
 import { useActionState, useEffect, useId, useRef, useState } from 'react'
 
 import { AuthLegalNotice } from '@/components/host/auth-legal-notice'
-import { AuthDivider, GoogleSignIn } from '@/components/host/google-sign-in'
-import { Button } from '@/components/ui/button'
-import { inputClassName } from '@/components/ui/input'
+import { GoogleSignIn } from '@/components/host/google-sign-in'
+import {
+  HOST_FIELD,
+  HOST_ICON_BUTTON,
+  HOST_KICKER,
+  HOST_KICKER_BASE,
+  HOST_PRIMARY,
+  HOST_QUESTION,
+  HOST_SECONDARY,
+} from '@/components/host/ui/classes'
 import { sendSignInLink } from '@/lib/auth-link'
 import { localeTag, type Locale } from '@/lib/i18n'
 import { track } from '@/lib/telemetry'
@@ -14,7 +21,10 @@ import { track } from '@/lib/telemetry'
 type Result = { status: 'idle' | 'sent' | 'error'; message?: string }
 const INITIAL: Result = { status: 'idle' }
 
-/** The parent keeps the draft alive while this screen replaces the questions. */
+/**
+ * The account, asked for at the end (6e). The parent keeps the draft alive
+ * while this screen replaces the questions.
+ */
 export function SaveEventScreen({
   onBack,
   returnTo,
@@ -74,7 +84,7 @@ export function SaveEventScreen({
   return (
     <main
       lang={localeTag[locale]}
-      className="min-h-[100dvh] px-6 pt-[calc(1.375rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+      className="min-h-[100dvh] px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto w-full max-w-md">
         <header className="flex items-center justify-between gap-4">
@@ -83,19 +93,19 @@ export function SaveEventScreen({
             onClick={onBack}
             disabled={pending || googlePending}
             aria-label={en ? 'Back to settings' : 'Vissza a beállításokhoz'}
-            className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-white/15 text-foreground transition-colors hover:border-white/30 disabled:opacity-50"
+            className={HOST_ICON_BUTTON}
           >
             <ArrowLeft className="size-[19px]" aria-hidden="true" />
           </button>
-          <p className="flex items-center gap-2 font-mono text-[10px] font-medium tracking-[0.08em] text-accent">
+          <p className={`${HOST_KICKER} flex items-center gap-2`}>
             <Check className="size-4" aria-hidden="true" />
-            {en ? 'Settings complete' : 'Beállítások kész'}
+            {en ? 'Settings saved' : 'Beállítások kész'}
           </p>
         </header>
         <h1
           ref={headingRef}
           tabIndex={-1}
-          className="mt-10 font-display text-[40px] leading-[1.06] tracking-[-0.01em] text-balance"
+          className={`mt-10 outline-none ${HOST_QUESTION}`}
         >
           {sent
             ? en
@@ -105,23 +115,23 @@ export function SaveEventScreen({
               ? 'Save your event'
               : 'Mentsd el az eseményed'}
         </h1>
-        <p className="mt-4 text-[14.5px] leading-[1.6] text-pretty text-muted-foreground">
+        <p className="mt-3 text-[15px] leading-[1.6] text-pretty text-white/65">
           {sent
             ? en
               ? 'Open the email link in this browser to finish saving your event.'
               : 'Az esemény mentéséhez ugyanebben a böngészőben nyisd meg az e-mailben kapott linket.'
             : en
-              ? 'Sign in to access your QR code and gallery later.'
-              : 'Lépj be, hogy később is elérd a QR-kódot és a galériát.'}
+              ? 'Create a free account so you can reach and manage the event later. Your settings are already saved.'
+              : 'Hozz létre egy ingyenes fiókot, hogy később is elérd és kezeld az eseményt. A beállításaid már el vannak mentve.'}
         </p>
         {sent ? (
           <Mail
-            className="mt-8 size-10 text-accent"
+            className="mt-8 size-10 text-white/65"
             strokeWidth={1.6}
             aria-hidden="true"
           />
         ) : (
-          <form action={submit} className="mt-8 flex flex-col gap-3">
+          <form action={submit} className="mt-6 flex flex-col">
             <GoogleSignIn
               locale={locale}
               surface="onboarding"
@@ -129,51 +139,59 @@ export function SaveEventScreen({
               creationKey={creationKey}
               disabled={pending}
               onPendingChange={setGooglePending}
+              className={`${HOST_SECONDARY} w-full gap-2.5`}
             />
-            <AuthDivider locale={locale} />
-            <div>
-              <label
-                htmlFor={emailId}
-                className="mb-2 block text-sm font-medium"
-              >
-                {en ? 'Email address' : 'E-mail-cím'}
-              </label>
-              <input
-                id={emailId}
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                disabled={pending || googlePending}
-                placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
-                className={inputClassName}
-              />
-            </div>
+            <p
+              aria-hidden="true"
+              className={`${HOST_KICKER_BASE} my-3.5 text-center text-white/65`}
+            >
+              {en ? 'or' : 'vagy'}
+            </p>
+            <label htmlFor={emailId} className="sr-only">
+              {en ? 'Email address' : 'E-mail-cím'}
+            </label>
+            <input
+              id={emailId}
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              disabled={pending || googlePending}
+              placeholder={en ? 'you@example.com' : 'te@pelda.hu'}
+              className={HOST_FIELD}
+            />
             {result.status === 'error' ? (
-              <p role="alert" className="text-sm text-destructive">
+              <p
+                role="alert"
+                className="mt-2.5 text-[14px] leading-[1.5] text-pretty text-host-danger"
+              >
                 {result.message}
               </p>
             ) : null}
-            <Button
+            <button
               type="submit"
               disabled={pending || googlePending}
               aria-busy={pending}
-              size="lg"
-              className="w-full"
+              className={`${HOST_PRIMARY} mt-2.5 w-full gap-2`}
             >
               {pending ? (
                 <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Mail className="size-5" strokeWidth={1.8} aria-hidden="true" />
-              )}
+              ) : null}
               {pending
                 ? en
                   ? 'Sending…'
                   : 'Küldés…'
                 : en
-                  ? 'Send a sign-in link'
-                  : 'Küldj belépési linket'}
-            </Button>
+                  ? 'Send me the link'
+                  : 'Küldjétek a linket'}
+              {pending ? null : (
+                <ArrowRight
+                  className="size-[18px]"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              )}
+            </button>
           </form>
         )}
         <AuthLegalNotice locale={locale} />

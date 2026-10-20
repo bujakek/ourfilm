@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto'
 import type { Metadata } from 'next'
 
 import { resolveLocale } from '@/lib/i18n'
-import { eventNameSuggestions } from '@/lib/onboarding'
 import { checkoutReadiness } from '@/lib/checkout-readiness'
 import { NewEventForm } from './new-event-form'
 
@@ -54,10 +53,11 @@ const HALF_HOUR_MS = 30 * 60 * 1000
  *
  * That is why the host's account is not read here. `proxy.ts` already gates
  * `/host/:path*`, so there is nothing to check — and the only thing an
- * `await supabase.auth.getUser()` would add is a first name for two of the five
- * ÖTLETEK. Magic-link signups carry no name, so every account today falls back
- * anyway; `eventNameSuggestions` takes one the day a provider supplies it, and
- * whoever wires that up has to get it here without suspending the segment.
+ * `await supabase.auth.getUser()` would add is a first name for one of the three
+ * name suggestions. Magic-link signups carry no name, so every account today
+ * falls back anyway; `eventNameSuggestions` takes one the day a provider
+ * supplies it, and whoever wires that up has to get it here without suspending
+ * the segment.
  */
 export default function NewEventPage() {
   const now = new Date()
@@ -71,7 +71,6 @@ export default function NewEventPage() {
     <NewEventForm
       nowIso={now.toISOString()}
       defaultEndIso={end.toISOString()}
-      suggestions={eventNameSuggestions(null)}
       // Reads environment variables only — no await, so the segment still does
       // not suspend. See the note above.
       //

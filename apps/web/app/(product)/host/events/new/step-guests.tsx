@@ -1,17 +1,17 @@
 'use client'
 
+import { Check } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
 
 import {
   LegalDetails,
   PaidTermsAcceptance,
 } from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
+import { HOST_KICKER_BASE } from '@/components/host/ui/classes'
 import { DEFAULT_SHOTS } from '@/lib/camera'
 import { FREE_PARTICIPANT_LIMIT, type EventPlan } from '@/lib/onboarding'
-import { eventPriceLabel } from '@/lib/pricing'
 import { localePath, type Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
@@ -50,11 +50,8 @@ export function guestsScreen({
   const en = locale === 'en'
 
   return {
-    compact: true,
-    eyebrow: en ? 'THE GUESTS' : 'A VENDÉGEK',
-    title: en
-      ? 'How many guests are you expecting?'
-      : 'Hány vendégre számítasz?',
+    eyebrow: en ? 'The guests' : 'A vendégek',
+    title: en ? 'How many guests will you have?' : 'Hány vendéged lesz?',
     cta:
       signedIn !== true
         ? en
@@ -103,48 +100,37 @@ function GuestsFields({
   const en = locale === 'en'
 
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col">
       <fieldset>
         <legend className="sr-only">
           {en ? 'How many guests can join' : 'Hány vendég csatlakozhat'}
         </legend>
-        {/* The exact checkout price follows the country confirmed after saving. */}
-        <div className="grid grid-cols-2 gap-2.5">
+        {/* No price here: the billing country confirmed after saving decides
+            which one applies, and the checkout screen names it. */}
+        <div className="grid grid-cols-2 gap-2">
           <PlanTile
             value="free"
             plan={plan}
             setPlan={setPlan}
-            figure={en ? 'Free event' : 'Ingyenes esemény'}
-            label={`${FREE_PARTICIPANT_LIMIT} ${en ? 'guests' : 'vendég'}`}
-            price={en ? '0 USD' : '0 Ft'}
+            figure={String(FREE_PARTICIPANT_LIMIT)}
+            label={en ? 'Guests · free' : 'Vendégig · ingyenes'}
+            detail={en ? 'One event, no fee.' : 'Egy esemény, nincs díj.'}
             reduceMotion={reduceMotion}
           />
           <PlanTile
             value="full"
             plan={plan}
             setPlan={setPlan}
-            figure={en ? 'Unlimited event' : 'Korlátlan esemény'}
-            label={en ? 'Unlimited guests' : 'Korlátlan vendég'}
-            price={
+            figure="∞"
+            label={en ? 'Unlimited · paid' : 'Korlátlan · fizetős'}
+            detail={
               paymentsEnabled
-                ? eventPriceLabel(locale).replace(/ /g, '\u00a0')
+                ? en
+                  ? 'One-time fee per event.'
+                  : 'Egyszeri díj eseményenként.'
                 : en
                   ? 'Coming soon'
                   : 'Hamarosan'
-            }
-            offer={
-              paymentsEnabled ? (
-                <>
-                  <span className="block text-xs text-muted-foreground">
-                    {en ? 'one-time payment' : 'egyszeri díj'}
-                  </span>
-                  <span className="mt-2 block text-xs leading-relaxed text-muted-foreground">
-                    {en
-                      ? 'No app • no subscription'
-                      : 'Nincs app • nincs előfizetés'}
-                  </span>
-                </>
-              ) : null
             }
             disabled={!paymentsEnabled}
             reduceMotion={reduceMotion}
@@ -152,24 +138,33 @@ function GuestsFields({
         </div>
       </fieldset>
 
-      <p className="text-[13px] leading-[1.6] text-pretty text-muted-foreground">
+      <p className="mx-1 mt-4 text-[14px] leading-[1.6] text-pretty text-white/65">
         {en
           ? `${DEFAULT_SHOTS} photos per guest. You can change the gallery settings later in settings.`
           : `${DEFAULT_SHOTS} kép vendégenként. A galéria beállításait később a beállításokban módosíthatod.`}
       </p>
 
       {plan === 'full' ? (
-        <div className="border-t border-border pt-4.5">
-          <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[13px] leading-[1.6] text-foreground/80">
-            <input
-              type="checkbox"
-              checked={legalAccepted}
-              onChange={(event) => setLegalAccepted(event.target.checked)}
-              className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
-            />
+        <div className="mt-3">
+          {/* A real checkbox under a drawn box: the input is what a keyboard
+              and a screen reader use, the box is what a finger sees. */}
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 px-1 text-[13px] leading-[1.5] text-white/65">
+            <span className="relative mt-0.5 flex size-5 shrink-0">
+              <input
+                type="checkbox"
+                checked={legalAccepted}
+                onChange={(event) => setLegalAccepted(event.target.checked)}
+                className="peer size-5 cursor-pointer appearance-none rounded-[6px] bg-white/12 transition-colors checked:bg-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+              />
+              <Check
+                aria-hidden="true"
+                strokeWidth={2.5}
+                className="pointer-events-none absolute inset-0.5 size-4 text-landing-ink opacity-0 peer-checked:opacity-100"
+              />
+            </span>
             <PaidTermsAcceptance locale={locale} />
           </label>
-          <div className="ml-7">
+          <div className="ml-9">
             <LegalDetails locale={locale} />
           </div>
         </div>
@@ -181,49 +176,64 @@ function GuestsFields({
 /** The free path's whole consent: pressing the button is the acceptance, and
  *  this line under it says so. */
 function FreeTermsLine({ locale }: { locale: Locale }) {
-  const link = 'underline underline-offset-2 hover:text-foreground'
-  return locale === 'en' ? (
-    <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-muted-foreground">
-      By creating the event you accept the{' '}
-      <Link href={localePath(locale, '/aszf')} target="_blank" className={link}>
-        Terms
-      </Link>{' '}
-      and the{' '}
-      <Link
-        href={localePath(locale, '/adatvedelem')}
-        target="_blank"
-        className={link}
-      >
-        Privacy Notice
-      </Link>
-      .
-    </p>
-  ) : (
-    <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-muted-foreground">
-      A létrehozással elfogadod az{' '}
-      <Link href={localePath(locale, '/aszf')} target="_blank" className={link}>
-        ÁSZF
-      </Link>
-      -et és az{' '}
-      <Link
-        href={localePath(locale, '/adatvedelem')}
-        target="_blank"
-        className={link}
-      >
-        adatkezelési tájékoztatót
-      </Link>
-      .
+  const link = 'text-white underline underline-offset-[3px] hover:text-white/80'
+  return (
+    <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-pretty text-white/65">
+      {locale === 'en' ? (
+        <>
+          By creating the event you accept the{' '}
+          <Link
+            href={localePath(locale, '/aszf')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={link}
+          >
+            Terms
+          </Link>{' '}
+          and the{' '}
+          <Link
+            href={localePath(locale, '/adatvedelem')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={link}
+          >
+            Privacy Notice
+          </Link>
+          .
+        </>
+      ) : (
+        <>
+          A létrehozással elfogadod az{' '}
+          <Link
+            href={localePath(locale, '/aszf')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={link}
+          >
+            ÁSZF
+          </Link>
+          -et és az{' '}
+          <Link
+            href={localePath(locale, '/adatvedelem')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={link}
+          >
+            adatkezelési tájékoztatót
+          </Link>
+          .
+        </>
+      )}
     </p>
   )
 }
 
 /**
- * One tier, with a compact offer for the paid option.
+ * One tier: a figure, a kicker and a sentence.
  *
- * Selection is a 1.5px lilac border and a faint lilac wash rather than a tick:
- * the border is the thing the eye already uses to tell the two cards apart, so
- * thickening and colouring it is the cheapest possible signal — and the tick
- * was competing with the numeral for the same corner.
+ * Selection is a sky ring and a sky wash, and the figure and kicker turn sky
+ * with it — selected state is one of the two things sky may mean. The ring
+ * travels between the tiles on `snap`, a transform, rather than being redrawn.
  */
 function PlanTile({
   value,
@@ -231,8 +241,7 @@ function PlanTile({
   setPlan,
   figure,
   label,
-  price,
-  offer,
+  detail,
   disabled = false,
   reduceMotion,
 }: {
@@ -241,25 +250,23 @@ function PlanTile({
   setPlan: (value: EventPlan) => void
   figure: string
   label: string
-  price: string
-  offer?: ReactNode
+  detail: string
   disabled?: boolean
   reduceMotion: boolean | null
 }) {
   const active = plan === value
+  const ink = active ? 'text-landing-sky' : 'text-white'
   return (
     <label
-      className={`relative flex flex-col rounded-lg px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-        active
-          ? 'border border-transparent text-accent'
-          : 'border border-white/13'
-      } ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
+      className={`relative flex min-h-[150px] flex-col justify-between gap-4 rounded-[24px] bg-host-panel px-[18px] py-5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-white/60 ${
+        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+      }`}
     >
       {active ? (
         <motion.span
           layoutId="plan-selection"
           aria-hidden="true"
-          className="absolute -inset-px rounded-lg border-[1.5px] border-accent bg-accent/9"
+          className="absolute inset-0 rounded-[24px] bg-landing-sky/10 ring-[1.5px] ring-landing-sky ring-inset"
           transition={reduceMotion ? still : T.snap}
         />
       ) : null}
@@ -272,22 +279,21 @@ function PlanTile({
         onChange={() => setPlan(value)}
         className="sr-only"
       />
-      <span className="relative z-10 min-h-[2.75em] text-[15px] leading-snug font-semibold">
+      <span
+        aria-hidden="true"
+        className={`host-figure relative text-[56px] leading-none ${ink}`}
+      >
         {figure}
       </span>
-      <span
-        className={`relative z-10 mt-2 text-xs leading-relaxed ${
-          active ? 'text-accent' : 'text-muted-foreground'
-        }`}
-      >
-        {label}
+      <span className="relative">
+        <span className={`${HOST_KICKER_BASE} block ${ink}`}>
+          {value === 'free' ? <span className="sr-only">{figure} </span> : null}
+          {label}
+        </span>
+        <span className="mt-1 block text-[14px] leading-[1.5] text-pretty text-white/65">
+          {detail}
+        </span>
       </span>
-      <span
-        className={`relative z-10 mt-3 font-semibold tabular-nums ${disabled ? 'text-sm' : 'text-lg min-[375px]:text-xl'}`}
-      >
-        {price}
-      </span>
-      {offer ? <span className="relative z-10 mt-0.5">{offer}</span> : null}
     </label>
   )
 }

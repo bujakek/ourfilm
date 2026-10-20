@@ -26,6 +26,7 @@ export function GoogleSignIn({
   disabled,
   onPendingChange,
   creationKey,
+  className,
 }: {
   locale: Locale
   surface: 'login' | 'onboarding'
@@ -33,6 +34,10 @@ export function GoogleSignIn({
   disabled: boolean
   onPendingChange: (pending: boolean) => void
   creationKey?: string
+  /** A surface already in the host look passes its own button classes and
+   *  gets a plain button wearing them. Without it, the shared outline
+   *  `Button` login still uses. */
+  className?: string
 }) {
   const en = locale === 'en'
   const [pending, setPending] = useState(false)
@@ -80,30 +85,48 @@ export function GoogleSignIn({
     }
   }
 
+  const label = (
+    <>
+      {pending ? (
+        <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+      ) : (
+        <SiGoogle className="size-5" aria-hidden="true" />
+      )}
+      {pending
+        ? en
+          ? 'Opening Google…'
+          : 'Google megnyitása…'
+        : en
+          ? 'Continue with Google'
+          : 'Folytatás Google-lel'}
+    </>
+  )
+
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        className="w-full"
-        disabled={disabled || pending}
-        aria-busy={pending}
-        onClick={signIn}
-      >
-        {pending ? (
-          <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-        ) : (
-          <SiGoogle className="size-5" aria-hidden="true" />
-        )}
-        {pending
-          ? en
-            ? 'Opening Google…'
-            : 'Google megnyitása…'
-          : en
-            ? 'Continue with Google'
-            : 'Folytatás Google-lel'}
-      </Button>
+      {className ? (
+        <button
+          type="button"
+          className={className}
+          disabled={disabled || pending}
+          aria-busy={pending}
+          onClick={signIn}
+        >
+          {label}
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          disabled={disabled || pending}
+          aria-busy={pending}
+          onClick={signIn}
+        >
+          {label}
+        </Button>
+      )}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
