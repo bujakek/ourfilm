@@ -5,6 +5,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { useRef, useState } from 'react'
 
 import {
+  HOST_FOCUS,
   HOST_KICKER,
   HOST_SECONDARY,
   HOST_TILE,
@@ -93,7 +94,7 @@ export function QrSheetButton({
           type="button"
           onClick={() => setOpen(true)}
           aria-label={en ? 'QR code and link' : 'QR-kód és link'}
-          className="flex size-14 shrink-0 items-center justify-center rounded-[16px] bg-host-tile text-white transition-colors hover:bg-white/10"
+          className={`flex size-14 shrink-0 items-center justify-center rounded-[16px] bg-host-tile text-white transition-colors hover:bg-white/10 ${HOST_FOCUS}`}
         >
           <QrCode
             className="size-[19px]"

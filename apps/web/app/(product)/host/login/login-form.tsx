@@ -14,6 +14,7 @@ import { AuthLegalNotice } from '@/components/host/auth-legal-notice'
 import { AuthDivider, GoogleSignIn } from '@/components/host/google-sign-in'
 import {
   HOST_FIELD,
+  HOST_FOCUS,
   HOST_PANEL,
   HOST_PRIMARY,
   HOST_SECONDARY,
@@ -212,7 +213,7 @@ export function LoginForm({
             setEditing(sent)
           }}
           disabled={pending}
-          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-[14px] text-[14px] font-medium text-white/65 transition-colors hover:text-white disabled:opacity-40"
+          className={`mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-[14px] text-[14px] font-medium text-white/65 transition-colors hover:text-white disabled:opacity-40 ${HOST_FOCUS}`}
         >
           {en ? 'Use another email address' : 'Másik e-mail-cím'}
         </button>

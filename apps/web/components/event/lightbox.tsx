@@ -10,6 +10,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
+import { HOST_FOCUS } from '@/components/host/ui/classes'
 import { useToastLayer } from '@/components/host/ui/toast'
 import type { Locale } from '@/lib/i18n'
 import { T } from '@/lib/motion'
@@ -125,6 +126,9 @@ export function Lightbox<Photo extends ViewablePhoto>({
       ? 'Photo'
       : 'Fotó'
   const host = heading !== undefined
+  // The host's screens use the white focus ring; the guest side keeps the
+  // global one, unchanged.
+  const hostFocus = host ? HOST_FOCUS : ''
 
   const counter = host ? (
     <p className="host-figure shrink-0 text-[22px] leading-none whitespace-nowrap text-white">
@@ -145,7 +149,7 @@ export function Lightbox<Photo extends ViewablePhoto>({
       aria-label={locale === 'en' ? 'Close' : 'Bezárás'}
       className={`flex size-11 shrink-0 items-center justify-center text-white backdrop-blur-md ${
         host ? 'rounded-[14px] bg-white/12' : 'rounded-full bg-white/12'
-      }`}
+      } ${hostFocus}`}
     >
       <X className="size-5" />
     </motion.button>
@@ -158,7 +162,7 @@ export function Lightbox<Photo extends ViewablePhoto>({
       disabled={index === 0}
       whileTap={index === 0 ? undefined : { scale: 0.9 }}
       aria-label={locale === 'en' ? 'Previous photo' : 'Előző kép'}
-      className="flex size-12 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur-md disabled:opacity-30"
+      className={`flex size-12 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur-md disabled:opacity-30 ${hostFocus}`}
     >
       <ChevronLeft className="size-6" />
     </motion.button>
@@ -171,7 +175,7 @@ export function Lightbox<Photo extends ViewablePhoto>({
       disabled={index === photos.length - 1}
       whileTap={index === photos.length - 1 ? undefined : { scale: 0.9 }}
       aria-label={locale === 'en' ? 'Next photo' : 'Következő kép'}
-      className="flex size-12 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur-md disabled:opacity-30"
+      className={`flex size-12 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur-md disabled:opacity-30 ${hostFocus}`}
     >
       <ChevronRight className="size-6" />
     </motion.button>

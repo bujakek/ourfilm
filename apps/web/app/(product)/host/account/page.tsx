@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { AccountLanguageSelect } from '@/components/host/account-language-select'
 import { AccountNameForm } from '@/components/host/account-name-form'
 import {
+  HOST_FOCUS,
   HOST_KICKER,
   HOST_PANEL,
   HOST_ROW_DETAIL,
@@ -177,7 +178,7 @@ export default async function AccountPage({
 
         <a
           href={`mailto:${CONTACT_EMAIL}`}
-          className={`${HOST_PANEL} flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 transition-colors hover:bg-white/6`}
+          className={`${HOST_PANEL} flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 transition-colors hover:bg-white/6 ${HOST_FOCUS}`}
         >
           <span className={HOST_ROW_QUESTION}>
             {en ? 'Contact' : 'Kapcsolat'}
@@ -203,7 +204,7 @@ export default async function AccountPage({
         <p className={HOST_ROW_DETAIL}>{deletionDetail(totals, locale)}</p>
         <a
           href={`mailto:${CONTACT_EMAIL}?subject=${deletionSubject}`}
-          className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[14px] bg-host-danger-fill px-6 text-[15px] font-medium text-host-danger transition-opacity hover:opacity-85"
+          className={`mt-4 inline-flex h-12 w-full items-center justify-center rounded-[14px] bg-host-danger-fill px-6 text-[15px] font-medium text-host-danger transition-opacity hover:opacity-85 ${HOST_FOCUS}`}
         >
           {en ? 'Delete account' : 'Fiók törlése'}
         </a>

@@ -2,7 +2,7 @@
 
 import { AlbumDownload } from '@/components/host/album-download'
 import { QrSheetButton } from '@/components/host/qr-sheet'
-import { HOST_PRIMARY } from '@/components/host/ui/classes'
+import { HOST_FOCUS, HOST_PRIMARY } from '@/components/host/ui/classes'
 import { StateNotice } from '@/components/host/ui/state-notice'
 import { useHostToast } from '@/components/host/ui/toast'
 import { Lightbox } from '@/components/event/lightbox'
@@ -259,7 +259,7 @@ function Tile({
         onClick={onOpen}
         whileTap={reduceMotion ? undefined : { scale: 0.975 }}
         transition={reduceMotion ? still : T.snap}
-        className="group relative block aspect-square w-full overflow-hidden rounded-[12px]"
+        className={`group relative block aspect-square w-full overflow-hidden rounded-[12px] ${HOST_FOCUS}`}
       >
         {/* Grayscale as well as dimmed: opacity alone on a bright wedding
             photo still reads as "in the album, slightly faded". Draining the
@@ -427,8 +427,7 @@ function HostViewer({
     })
   }
 
-  const barButton =
-    'flex min-h-13 min-w-0 flex-1 items-center justify-center rounded-[20px] px-2 py-2 text-center text-[15px] leading-[1.2] font-medium hyphens-auto transition-colors'
+  const barButton = `flex min-h-13 min-w-0 flex-1 items-center justify-center rounded-[20px] px-2 py-2 text-center text-[15px] leading-[1.2] font-medium hyphens-auto transition-colors ${HOST_FOCUS}`
 
   return (
     <Lightbox
@@ -502,7 +501,7 @@ function HostViewer({
               <button
                 type="button"
                 onClick={confirmDelete}
-                className="inline-flex h-14 min-w-0 flex-1 items-center justify-center rounded-[16px] bg-host-danger-fill px-4 text-[16px] font-medium text-host-danger transition-opacity hover:opacity-85"
+                className={`inline-flex h-14 min-w-0 flex-1 items-center justify-center rounded-[16px] bg-host-danger-fill px-4 text-[16px] font-medium text-host-danger transition-opacity hover:opacity-85 ${HOST_FOCUS}`}
               >
                 {en ? 'Delete' : 'Törlés'}
               </button>

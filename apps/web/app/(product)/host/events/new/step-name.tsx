@@ -3,7 +3,7 @@
 import { motion, useAnimationControls, useReducedMotion } from 'motion/react'
 
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
-import { HOST_KICKER } from '@/components/host/ui/classes'
+import { HOST_FOCUS, HOST_KICKER } from '@/components/host/ui/classes'
 import { EVENT_NAME_MAX_LENGTH } from '@/lib/camera'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
@@ -130,7 +130,7 @@ function NameFields({
                   field.set({ y: 4, opacity: 0.35 })
                   void field.start({ y: 0, opacity: 1, transition: T.settle })
                 }}
-                className={`inline-flex min-h-11 items-center rounded-[14px] px-[18px] py-2 text-left text-[14px] transition-colors ${
+                className={`inline-flex min-h-11 items-center rounded-[14px] px-[18px] py-2 text-left text-[14px] transition-colors ${HOST_FOCUS} ${
                   chosen
                     ? 'bg-white text-landing-ink'
                     : 'bg-host-tile text-white/80 hover:bg-white/10 hover:text-white'

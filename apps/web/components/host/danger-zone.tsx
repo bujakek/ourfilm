@@ -6,6 +6,7 @@ import { Loader2, Trash2, TriangleAlert } from 'lucide-react'
 import { useState, useTransition } from 'react'
 
 import {
+  HOST_FOCUS,
   HOST_PANEL,
   HOST_ROW_DETAIL,
   HOST_ROW_QUESTION,
@@ -61,8 +62,7 @@ export function DangerZone({
       }
     })
 
-  const danger =
-    'inline-flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-host-danger-fill px-6 text-[15px] font-medium text-host-danger transition-colors hover:bg-host-danger-fill/80 disabled:opacity-40'
+  const danger = `inline-flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-host-danger-fill px-6 text-[15px] font-medium text-host-danger transition-colors hover:bg-host-danger-fill/80 disabled:opacity-40 ${HOST_FOCUS}`
 
   return (
     <section className={`print-hidden ${HOST_PANEL} p-5`}>

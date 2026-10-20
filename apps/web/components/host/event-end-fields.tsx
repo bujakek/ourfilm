@@ -108,7 +108,9 @@ export function EventEndFields({
               event.currentTarget.blur()
             }
           }}
-          className="min-h-11 w-full min-w-0 bg-transparent text-[15px] font-medium text-white [color-scheme:dark] outline-none"
+          // The tile around it draws the white ring (`has-[:focus-visible]`), so
+          // the field itself shows no outline of its own.
+          className="min-h-11 w-full min-w-0 bg-transparent text-[15px] font-medium text-white [color-scheme:dark] outline-none focus-visible:outline-none"
         />
       </label>
     </div>

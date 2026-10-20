@@ -100,8 +100,9 @@ function EndFields({
   const day = endLocal.slice(0, 10)
   const time = endLocal.slice(11)
   const picked = activeQuickPick(endLocal, now, timeZone)
-  // An open month is "another day" being chosen, whatever the value says yet.
-  const active = calendarOpen ? 'other' : picked
+  // An open month is "another day" being chosen, whatever the value says yet,
+  // and a day picked from it stays "another day" even on tonight's date.
+  const active = calendarOpen || source === 'calendar' ? 'other' : picked
 
   const pick = (kind: EndQuickPick, at: string) =>
     setEndLocal(endQuickPick(kind, at || FALLBACK_TIME, now, timeZone))
