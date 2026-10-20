@@ -1,10 +1,16 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
   autosaveOutcome,
   captureEndDisplay,
+  huNumberArticle,
   initialToastState,
   quotaBannerState,
+  RESEND_COOLDOWN_S,
+  resendSecondsLeft,
+  SIGN_IN_LINK_TTL_MINUTES,
   toastReducer,
 } from '@/lib/host-ui'
 
@@ -100,5 +106,37 @@ describe('captureEndDisplay', () => {
     expect(
       captureEndDisplay('2026-09-04T02:00', '2026-09-05T23:00', false),
     ).toEqual({ value: '2026-09-05T23:00', error: false })
+  })
+})
+
+describe('resendSecondsLeft', () => {
+  it('counts down from the cooldown and clamps at zero', () => {
+    expect(RESEND_COOLDOWN_S).toBe(60)
+    expect(resendSecondsLeft(0, 0)).toBe(60)
+    expect(resendSecondsLeft(0, 18_000)).toBe(42)
+    expect(resendSecondsLeft(0, 61_000)).toBe(0)
+  })
+})
+
+describe('SIGN_IN_LINK_TTL_MINUTES', () => {
+  it('matches otp_expiry in supabase/config.toml', () => {
+    const toml = readFileSync(
+      join(__dirname, '..', '..', '..', '..', 'supabase', 'config.toml'),
+      'utf8',
+    )
+    // The [auth.email] table runs until the next table header.
+    const section = toml.split(/^\[auth\.email\]\s*$/m)[1]?.split(/^\[/m)[0]
+    const expiry = section?.match(/^otp_expiry\s*=\s*(\d+)/m)?.[1]
+    expect(expiry).toBeDefined()
+    expect(SIGN_IN_LINK_TTL_MINUTES * 60).toBe(Number(expiry))
+  })
+})
+
+describe('huNumberArticle', () => {
+  it('is az before a numeral read with a vowel, a otherwise', () => {
+    const az = [1, 5, 50, 57, 500, 512, 1000, 1999, 5000, 50_000, 1_000_000]
+    const a = [0, 2, 3, 4, 10, 12, 20, 84, 100, 412, 2000, 10_000, 100_000]
+    for (const n of az) expect([n, huNumberArticle(n)]).toEqual([n, 'az'])
+    for (const n of a) expect([n, huNumberArticle(n)]).toEqual([n, 'a'])
   })
 })

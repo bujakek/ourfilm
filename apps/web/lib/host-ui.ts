@@ -99,3 +99,45 @@ export function captureEndDisplay(
     ? { value: stored, error: true }
     : { value: attempted, error: false }
 }
+
+/** How long the "send a new link" button waits after a link goes out. */
+export const RESEND_COOLDOWN_S = 60
+
+/** Whole seconds until another sign-in link may be requested, between 0 and
+ *  the cooldown, so a clock stepping backwards cannot lengthen the wait. */
+export function resendSecondsLeft(sentAt: number, now: number): number {
+  const left = RESEND_COOLDOWN_S - Math.floor((now - sentAt) / 1000)
+  return Math.min(RESEND_COOLDOWN_S, Math.max(0, left))
+}
+
+/**
+ * How long a sign-in link works, as the screen states it. Pinned by a test to
+ * `[auth.email] otp_expiry` in `supabase/config.toml`; the hosted project's
+ * own setting is in the dashboard and has to be kept equal by hand.
+ */
+export const SIGN_IN_LINK_TTL_MINUTES = 60
+
+/**
+ * The Hungarian definite article before a numeral, which follows how the
+ * number is read aloud: `az` before egy, öt, ötven, ötszáz, ezer and
+ * egymillió, `a` before everything else. Only the leading spoken word
+ * matters, so only the leading three-digit group is read.
+ */
+export function huNumberArticle(n: number): 'a' | 'az' {
+  let group = Math.floor(Math.abs(n))
+  let scale = 0
+  while (group >= 1000) {
+    group = Math.floor(group / 1000)
+    scale += 1
+  }
+  // 1000 is "ezer" and 1 000 000 is "egymillió": both open on a vowel.
+  if (group === 1 && scale > 0) return 'az'
+  const lead =
+    group >= 100
+      ? Math.floor(group / 100) // száz, kétszáz, … ötszáz
+      : group >= 10
+        ? Math.floor(group / 10) // tíz, húsz, … ötven
+        : group // nulla, egy, … öt
+  if (group >= 10) return lead === 5 ? 'az' : 'a'
+  return lead === 1 || lead === 5 ? 'az' : 'a'
+}

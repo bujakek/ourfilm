@@ -1,13 +1,14 @@
 'use client'
 
 import { AlbumDownload } from '@/components/host/album-download'
+import { HOST_PRIMARY } from '@/components/host/ui/classes'
+import { useHostToast } from '@/components/host/ui/toast'
 import { Lightbox } from '@/components/event/lightbox'
 import type { ExportResponse } from '@/lib/album-export'
 import type { ModerationTile } from '@/lib/photos'
-import { Download, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
-import { useOptimistic, useState, useTransition } from 'react'
+import { useOptimistic, useRef, useState, useTransition } from 'react'
 import {
   deletePhoto,
   setPhotoHidden,
@@ -27,7 +28,11 @@ import { track } from '@/lib/telemetry'
  */
 const OPTIMISTIC_HIDDEN = 'optimistic'
 
-type Action = { type: 'toggle'; id: string } | { type: 'remove'; id: string }
+/** Absolute rather than a toggle, so an undo that lands after the server's
+ *  answer has already flipped the row still means "show it". */
+type Action =
+  | { type: 'hidden'; id: string; hidden: boolean }
+  | { type: 'remove'; id: string }
 
 /**
  * The host's album: the guest's contact sheet, with the controls a host needs.
@@ -80,13 +85,55 @@ export function ModerationGrid({
           photo.id === action.id
             ? {
                 ...photo,
-                hidden_at: photo.hidden_at ? null : OPTIMISTIC_HIDDEN,
+                hidden_at: action.hidden
+                  ? (photo.hidden_at ?? OPTIMISTIC_HIDDEN)
+                  : null,
               }
             : photo,
         ),
   )
   const [open, setOpen] = useState<number | null>(null)
   const reduceMotion = useReducedMotion()
+  const toast = useHostToast()
+  const [, startTransition] = useTransition()
+
+  // Here rather than in the viewer, because its undo outlives the viewer: the
+  // toast stays for four seconds after the host may have closed the photo.
+  function setHidden(id: string, hidden: boolean) {
+    // Shown with the flip, on the same tap; a failure replaces it.
+    toast.show(
+      hidden
+        ? en
+          ? 'Hidden from guests'
+          : 'Elrejtve a vendégek elől'
+        : en
+          ? 'Visible to guests again'
+          : 'Újra látható a vendégeknek',
+      hidden
+        ? {
+            label: en ? 'Undo' : 'Visszavonás',
+            onAction: () => setHidden(id, false),
+          }
+        : undefined,
+    )
+    startTransition(async () => {
+      // Before the await, so the frame flips on the same tap.
+      apply({ type: 'hidden', id, hidden })
+      try {
+        await setPhotoHidden(slug, id, hidden)
+        // After the round trip, not beside the flip: the whole point of the
+        // number is how much of an album a host takes out, and a tap that
+        // failed took nothing out.
+        track('photo_moderated', { event_id: eventId, hidden })
+      } catch {
+        // The optimistic flip rolls back with the transition; this says so.
+        toast.show(en ? 'That did not save.' : 'Nem sikerült menteni.', {
+          label: en ? 'Retry' : 'Újra',
+          onAction: () => setHidden(id, hidden),
+        })
+      }
+    })
+  }
 
   return (
     <>
@@ -142,6 +189,7 @@ export function ModerationGrid({
             timeZone={timeZone}
             onNavigate={setOpen}
             onClose={() => setOpen(null)}
+            onSetHidden={setHidden}
             apply={apply}
           />
         ) : null}
@@ -250,12 +298,12 @@ function Tile({
  * The photo at full size, with the three things only a host can do to it.
  *
  * The guest's `Lightbox` carries the hard parts — the dialog, the swipe, the
- * arrow keys, the exit — and this adds a footer to it. That is the whole
+ * arrow keys, the exit — and this fills its host slots. That is the whole
  * difference between the two sides, and it is why there is not a second viewer.
  *
- * Order in the row is deliberate: hide, then save, then delete. The
+ * Order in the bar is deliberate: hide, then save, then delete. The
  * irreversible action does not sit next to the reversible one, so a thumb
- * aiming for `Elrejtem` and missing does not destroy a guest's photo.
+ * aiming for `Elrejtés` and missing does not destroy a guest's photo.
  */
 function HostViewer({
   photos,
@@ -266,6 +314,7 @@ function HostViewer({
   timeZone,
   onNavigate,
   onClose,
+  onSetHidden,
   apply,
 }: {
   photos: ModerationTile[]
@@ -276,58 +325,44 @@ function HostViewer({
   timeZone: string
   onNavigate: (next: number) => void
   onClose: () => void
+  onSetHidden: (id: string, hidden: boolean) => void
   apply: (action: Action) => void
 }) {
   const en = locale === 'en'
+  const toast = useHostToast()
   // No `isPending`. Every action here is optimistic — the frame flips, the row
   // leaves, the viewer moves on — and a control greyed out behind that is
   // reporting on work the host has already been shown the result of. Worse
   // after a delete, where `pending` belongs to a photo that is no longer on
   // screen and would disable the buttons for the one that is.
   const [, startTransition] = useTransition()
-  const [confirming, setConfirming] = useState(false)
+  // The id, not a flag: a confirmation belongs to one photo, and swiping on
+  // while it is open must not carry it over to the next one.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Cancel unmounts the button that had focus; this hands it back to Delete.
+  const refocusDelete = useRef(false)
   const photo = photos[index]
   const hidden = photo.hidden_at !== null
+  const confirming = confirmingId === photo.id
 
   // The last photo stays. `deletePhoto` refuses it too — this is what stops the
   // host reaching a refusal they cannot act on rather than the check itself.
   const deleteBlocked = photos.length <= 1
 
-  const stamp = photo.takenAt ? eventStamp(photo.takenAt, timeZone) : null
-  const caption = [
-    photo.uploaderName,
-    stamp?.slice(11, 16),
-    hidden ? (en ? 'hidden' : 'rejtve') : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-
-  function toggleHidden() {
-    startTransition(async () => {
-      setError(null)
-      // Before the await, so the frame flips on the same tap.
-      apply({ type: 'toggle', id: photo.id })
-      try {
-        await setPhotoHidden(slug, photo.id, !hidden)
-        // After the round trip, not beside the flip: the whole point of the
-        // number is how much of an album a host takes out, and a tap that
-        // failed took nothing out.
-        track('photo_moderated', { event_id: eventId, hidden: !hidden })
-      } catch {
-        setError(en ? 'That did not save.' : 'Nem sikerült menteni.')
-      }
-    })
-  }
+  const time = photo.takenAt
+    ? eventStamp(photo.takenAt, timeZone).slice(11, 16)
+    : null
+  const name = photo.uploaderName ?? (en ? 'Photo' : 'Fotó')
 
   function confirmDelete() {
-    // **Outside the transition, on purpose.** These three are the answer to the
+    // **Outside the transition, on purpose.** These are the answer to the
     // tap, and a transition update is held at low priority until the whole
     // async callback settles — so the confirmation stayed on screen, over the
     // *next* photo, for as long as the request took. The host had already
     // decided; the only thing still owed is the round trip.
     setError(null)
-    setConfirming(false)
+    setConfirmingId(null)
     // Removing shifts the list under the index, so staying put lands on the
     // next photo — which is what a host clearing a run of bad frames wants.
     // Only the end of the album has nowhere forward to go, and stepping back
@@ -343,6 +378,10 @@ function HostViewer({
       apply({ type: 'remove', id: photo.id })
       try {
         await deletePhoto(slug, photo.id)
+        // No undo, by the owner's decision: the objects are gone from Storage
+        // and the CDN by now, and an undo would need a soft-delete window the
+        // server does not have.
+        toast.show(en ? 'Photo deleted' : 'Kép törölve')
       } catch (e) {
         // The viewer stays open on the photo that failed. Losing it here would
         // leave the host with no idea which one did not go.
@@ -357,6 +396,9 @@ function HostViewer({
     })
   }
 
+  const barButton =
+    'flex min-h-13 min-w-0 flex-1 items-center justify-center rounded-[20px] px-2 py-2 text-center text-[15px] leading-[1.2] font-medium hyphens-auto transition-colors'
+
   return (
     <Lightbox
       photos={photos}
@@ -366,110 +408,147 @@ function HostViewer({
       onClose={onClose}
       onNavigate={onNavigate}
       dimmed={hidden}
-      caption={caption}
+      heading={
+        <>
+          <p className="truncate text-[15px] leading-[1.3] font-medium text-white">
+            {name}
+          </p>
+          {time ? (
+            <p className="text-[13px] leading-[1.3] text-white/75">{time}</p>
+          ) : null}
+        </>
+      }
+      overlay={
+        hidden ? (
+          <p className="rounded-full bg-black/80 px-3.5 py-2 text-[13px] leading-[1.3] font-medium text-host-warn">
+            {en ? 'Hidden from guests' : 'Elrejtve a vendégek elől'}
+          </p>
+        ) : null
+      }
       actions={
-        <div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleHidden}
-              className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-white/14 text-[12.5px] font-semibold text-white/85 transition-colors hover:border-white/30 disabled:opacity-60"
+        confirming ? (
+          // Inline, in place of the bar, rather than a second dialog on top
+          // of the first — so the photo the host is agreeing to destroy stays
+          // in front of them while they decide.
+          <div
+            role="group"
+            aria-labelledby="delete-photo-title"
+            aria-describedby="delete-photo-body"
+            className="rounded-[28px] bg-host-sheet p-5 shadow-host-sheet"
+          >
+            <p
+              id="delete-photo-title"
+              className="text-[16px] leading-[1.5] font-medium text-white"
             >
-              {hidden ? (
-                <Eye className="size-3.5" aria-hidden="true" />
-              ) : (
-                <EyeOff className="size-3.5" aria-hidden="true" />
-              )}
-              {hidden
-                ? en
-                  ? 'Restore'
-                  : 'Visszaállítom'
-                : en
-                  ? 'Hide'
-                  : 'Elrejtem'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                void savePhoto({
-                  url: photo.downloadUrl,
-                  filename: photo.downloadName,
-                  title: photo.uploaderName ?? photo.downloadName,
-                })
-              }
-              aria-label={en ? 'Save the photo' : 'Kép mentése'}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/14 text-white/85 transition-colors hover:border-white/30"
+              {en ? 'Delete this photo?' : 'Törlöd ezt a képet?'}
+            </p>
+            <p
+              id="delete-photo-body"
+              className="mt-1 text-[14px] leading-[1.6] text-pretty break-words text-white/70"
             >
-              <Download className="size-3.5" aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setConfirming(true)}
-              disabled={deleteBlocked}
-              aria-label={en ? 'Delete the photo' : 'Kép törlése'}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-destructive/35 text-destructive transition-colors hover:border-destructive/70 disabled:border-white/10 disabled:text-white/30"
-            >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-            </button>
-          </div>
-
-          {deleteBlocked ? (
-            <p className="mt-2.5 text-[12.5px] leading-[1.5] text-white/55">
               {en
-                ? 'This is the last photo in the event, so it cannot be deleted. You can hide it instead, and guests will no longer see it.'
-                : 'Ez az esemény utolsó képe, ezért nem törölheted. Elrejtheted, így a vendégek nem látják.'}
+                ? photo.uploaderName
+                  ? `${photo.uploaderName}’s photo will be permanently deleted from the gallery. This cannot be undone.`
+                  : 'The photo will be permanently deleted from the gallery. This cannot be undone.'
+                : photo.uploaderName
+                  ? `${photo.uploaderName} képe véglegesen törlődik a galériából. Nem vonható vissza.`
+                  : 'A kép véglegesen törlődik a galériából. Nem vonható vissza.'}
             </p>
-          ) : null}
-
-          {error ? (
-            <p role="alert" className="mt-2.5 text-[12.5px] text-destructive">
-              {error}
-            </p>
-          ) : null}
-
-          {/* Inline, under the row, rather than a second dialog on top of the
-              first — so the photo the host is agreeing to destroy stays in
-              front of them while they decide. */}
-          {confirming ? (
-            <div className="mt-4 border-t border-destructive/30 pt-3.5">
-              <p className="text-[13px] font-semibold">
-                {en
-                  ? photo.uploaderName
-                    ? `Delete ${photo.uploaderName}'s photo?`
-                    : 'Delete this photo?'
-                  : photo.uploaderName
-                    ? `Törlöd ${photo.uploaderName} képét?`
-                    : 'Törlöd ezt a képet?'}
-              </p>
-              <p className="mt-1.5 text-[12.5px] leading-[1.6] text-white/55">
-                {en
-                  ? 'The photo is permanently removed from storage and will be left out of the film. Hiding can be undone, deleting cannot.'
-                  : 'A kép végleg eltűnik a tárhelyről és a közös albumból. Az elrejtést visszavonhatod, a törlést nem.'}
-              </p>
-              <div className="mt-3.5 flex gap-2">
-                {/* Cancel first and focused, as `DangerZone` has it: Enter is
-                    never the delete. */}
-                <button
-                  type="button"
-                  autoFocus
-                  onClick={() => setConfirming(false)}
-                  className="min-h-11 flex-1 rounded-full border border-white/14 text-[13px] font-semibold text-white/85"
-                >
-                  {en ? 'Cancel' : 'Mégsem'}
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDelete}
-                  className="min-h-11 flex-[1.3] rounded-full border border-destructive/70 text-[13px] font-semibold text-destructive disabled:opacity-60"
-                >
-                  {en ? 'Yes, delete permanently' : 'Igen, végleg törlöm'}
-                </button>
-              </div>
+            <div className="mt-4 flex gap-2">
+              {/* Cancel is the white one and has focus, so Enter is never
+                  the delete. */}
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  refocusDelete.current = true
+                  setConfirmingId(null)
+                }}
+                className={`${HOST_PRIMARY} min-w-0 flex-1`}
+              >
+                {en ? 'Cancel' : 'Mégsem'}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="inline-flex h-14 min-w-0 flex-1 items-center justify-center rounded-[16px] bg-host-danger-fill px-4 text-[16px] font-medium text-host-danger transition-opacity hover:opacity-85"
+              >
+                {en ? 'Delete' : 'Törlés'}
+              </button>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div>
+            {deleteBlocked ? (
+              <p
+                id="delete-blocked"
+                className="mx-2 mb-2.5 text-[14px] leading-[1.5] text-pretty text-white/75"
+              >
+                {en
+                  ? 'This is the last photo in the event, so it cannot be deleted. You can hide it instead, and guests will no longer see it.'
+                  : 'Ez az esemény utolsó képe, ezért nem törölheted. Elrejtheted, így a vendégek nem látják.'}
+              </p>
+            ) : null}
+
+            {error ? (
+              <p
+                role="alert"
+                className="mx-2 mb-2.5 text-[14px] leading-[1.5] text-pretty text-host-danger"
+              >
+                {error}
+              </p>
+            ) : null}
+
+            <div className="flex gap-2 rounded-[28px] bg-host-sheet p-2 shadow-host-sheet">
+              <button
+                type="button"
+                onClick={() => onSetHidden(photo.id, !hidden)}
+                className={`${barButton} bg-white/8 text-white hover:bg-white/12`}
+              >
+                {hidden
+                  ? en
+                    ? 'Show'
+                    : 'Megjelenítés'
+                  : en
+                    ? 'Hide'
+                    : 'Elrejtés'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void savePhoto({
+                    url: photo.downloadUrl,
+                    filename: photo.downloadName,
+                    title: photo.uploaderName ?? photo.downloadName,
+                  })
+                }
+                className={`${barButton} bg-white/8 text-white hover:bg-white/12`}
+              >
+                {en ? 'Save' : 'Mentés'}
+              </button>
+
+              <button
+                type="button"
+                ref={(button) => {
+                  if (button && refocusDelete.current) {
+                    refocusDelete.current = false
+                    button.focus()
+                  }
+                }}
+                onClick={() => {
+                  setError(null)
+                  setConfirmingId(photo.id)
+                }}
+                disabled={deleteBlocked}
+                aria-describedby={deleteBlocked ? 'delete-blocked' : undefined}
+                className={`${barButton} bg-host-danger-fill text-host-danger hover:opacity-85 disabled:bg-white/4 disabled:text-white/45 disabled:hover:opacity-100`}
+              >
+                {en ? 'Delete' : 'Törlés'}
+              </button>
+            </div>
+          </div>
+        )
       }
     />
   )

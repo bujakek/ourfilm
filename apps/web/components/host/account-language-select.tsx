@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation'
 import { useId, useState, useTransition } from 'react'
 
 import { updateHostLocale } from '@/app/(product)/host/account/actions'
-import { inputClassName } from '@/components/ui/input'
+import {
+  HOST_FIELD,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+} from '@/components/host/ui/classes'
 import { type Locale, localeLabel, locales } from '@/lib/i18n'
 
 /**
@@ -24,7 +28,7 @@ export function AccountLanguageSelect({ locale }: { locale: Locale }) {
 
   return (
     <div>
-      <label htmlFor={id} className="text-sm text-muted-foreground">
+      <label htmlFor={id} className={HOST_ROW_QUESTION}>
         {en ? 'Language' : 'Nyelv'}
       </label>
       <select
@@ -46,7 +50,8 @@ export function AccountLanguageSelect({ locale }: { locale: Locale }) {
             }
           })
         }}
-        className={`${inputClassName} mt-1.5 h-11`}
+        // Dark scheme, so the native option list is not white on white.
+        className={`${HOST_FIELD} mt-2 scheme-dark`}
       >
         {locales.map((option) => (
           <option key={option} value={option}>
@@ -54,7 +59,9 @@ export function AccountLanguageSelect({ locale }: { locale: Locale }) {
           </option>
         ))}
       </select>
-      <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+      <p
+        className={`mt-2 ${error ? 'text-[14px] leading-[1.5] text-pretty text-host-danger' : HOST_ROW_DETAIL}`}
+      >
         {error
           ? en
             ? 'Could not save. Try again.'

@@ -4,12 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const ROOT = join(__dirname, '..', '..')
 
-const SCOPE = [
-  'app/(product)/host',
-  'app/(product)/auth',
-  'components/host',
-  'components/event/lightbox.tsx',
-]
+const SCOPE = ['app/(product)/host', 'app/(product)/auth', 'components/host']
 
 const BANNED = [
   'font-display',
@@ -24,12 +19,8 @@ const BANNED = [
 
 /** Files still on the old look. Each task removes its own; Task 8 empties it. */
 export const PENDING: string[] = [
-  'app/(product)/host/account/page.tsx',
-  'app/(product)/host/login/login-form.tsx',
   'app/(product)/host/page.tsx',
-  'components/host/account-name-form.tsx',
   'components/host/event-list.tsx',
-  'components/event/lightbox.tsx',
 ]
 
 function walk(path: string): string[] {

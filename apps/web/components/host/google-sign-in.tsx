@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { SiGoogle } from 'react-icons/si'
 
-import { Button } from '@/components/ui/button'
+import { HOST_KICKER_BASE, HOST_SECONDARY } from '@/components/host/ui/classes'
 import { signInWithGoogle } from '@/lib/auth-google'
 import type { Locale } from '@/lib/i18n'
 import { track } from '@/lib/telemetry'
@@ -26,7 +26,7 @@ export function GoogleSignIn({
   disabled,
   onPendingChange,
   creationKey,
-  className,
+  className = `${HOST_SECONDARY} w-full gap-2.5`,
 }: {
   locale: Locale
   surface: 'login' | 'onboarding'
@@ -34,9 +34,8 @@ export function GoogleSignIn({
   disabled: boolean
   onPendingChange: (pending: boolean) => void
   creationKey?: string
-  /** A surface already in the host look passes its own button classes and
-   *  gets a plain button wearing them. Without it, the shared outline
-   *  `Button` login still uses. */
+  /** The button's classes. Both callers are in the host look, so the
+   *  default is its secondary button at full width. */
   className?: string
 }) {
   const en = locale === 'en'
@@ -104,31 +103,20 @@ export function GoogleSignIn({
 
   return (
     <>
-      {className ? (
-        <button
-          type="button"
-          className={className}
-          disabled={disabled || pending}
-          aria-busy={pending}
-          onClick={signIn}
-        >
-          {label}
-        </button>
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="w-full"
-          disabled={disabled || pending}
-          aria-busy={pending}
-          onClick={signIn}
-        >
-          {label}
-        </Button>
-      )}
+      <button
+        type="button"
+        className={className}
+        disabled={disabled || pending}
+        aria-busy={pending}
+        onClick={signIn}
+      >
+        {label}
+      </button>
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-2.5 text-[14px] leading-[1.5] text-pretty text-host-danger"
+        >
           {error}
         </p>
       ) : null}
@@ -136,14 +124,15 @@ export function GoogleSignIn({
   )
 }
 
-/** The line between the two ways in. Everything about Google belongs above
+/** The word between the two ways in. Everything about Google belongs above
  *  it, everything about the email link below. */
 export function AuthDivider({ locale }: { locale: Locale }) {
   return (
-    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-      <span className="h-px flex-1 bg-border" />
-      {locale === 'en' ? 'or with email' : 'vagy e-maillel'}
-      <span className="h-px flex-1 bg-border" />
-    </div>
+    <p
+      aria-hidden="true"
+      className={`${HOST_KICKER_BASE} my-5 text-center text-white/65`}
+    >
+      {locale === 'en' ? 'or' : 'vagy'}
+    </p>
   )
 }
