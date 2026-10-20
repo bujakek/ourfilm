@@ -1,9 +1,10 @@
-import { ExternalLink, Settings } from 'lucide-react'
+import { Eye, Settings } from 'lucide-react'
 import { getHostLocale } from '@/lib/host-locale'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { HOST_ICON_BUTTON } from '@/components/host/ui/classes'
 import { HostBlock } from '@/components/host/host-block'
 import { ModerationGrid } from '@/components/host/moderation-grid'
 import { exportAnswer, exportNote } from '@/lib/exports/answer'
@@ -125,16 +126,19 @@ export default async function AdminEventPage({ params }: Props) {
           {en ? 'Your events' : 'Eseményeid'}
         </BackLink>
         <div className="flex items-center gap-2">
-          <Link href={`/e/${event.slug}?lang=${locale}`} className={pillClass}>
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-            {en ? 'Guest view' : 'Vendégnézet'}
+          <Link
+            href={`/e/${event.slug}?lang=${locale}`}
+            aria-label={en ? 'Guest view' : 'Vendégnézet'}
+            className={HOST_ICON_BUTTON}
+          >
+            <Eye className="size-5" aria-hidden="true" />
           </Link>
           <Link
             href={`/host/events/${event.slug}/settings?lang=${locale}`}
-            className={pillClass}
+            aria-label={en ? 'Settings' : 'Beállítások'}
+            className={HOST_ICON_BUTTON}
           >
-            <Settings className="size-3.5" aria-hidden="true" />
-            {en ? 'Settings' : 'Beállítások'}
+            <Settings className="size-5" aria-hidden="true" />
           </Link>
         </div>
       </HostBlock>
@@ -231,9 +235,6 @@ export default async function AdminEventPage({ params }: Props) {
     </main>
   )
 }
-
-const pillClass =
-  'inline-flex min-h-9 items-center gap-2 rounded-full border border-white/14 px-4 text-[11px] font-medium text-foreground/80 transition-colors hover:border-white/30 hover:text-foreground'
 
 /** The capture window as a state, in the one colour that means it is running. */
 function CapturePill({
