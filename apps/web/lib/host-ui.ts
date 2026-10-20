@@ -141,3 +141,19 @@ export function huNumberArticle(n: number): 'a' | 'az' {
   if (group >= 10) return lead === 5 ? 'az' : 'a'
   return lead === 1 || lead === 5 ? 'az' : 'a'
 }
+
+/**
+ * The 7f notice on the billing card. A latest purchase that failed says so on
+ * any visit, since the webhook is what learned it; a `?checkout=cancelled`
+ * return says the payment did not finish, unless the event is paid by now, in
+ * which case the URL is stale and the card's paid state is the whole answer.
+ * Hosted Checkout never tells us why a payment failed, so neither does this.
+ */
+export function paymentNotice(
+  purchase: { status: string } | null,
+  cancelledReturn: boolean,
+): 'failed' | 'cancelled' | null {
+  if (purchase?.status === 'failed') return 'failed'
+  if (cancelledReturn && purchase?.status !== 'paid') return 'cancelled'
+  return null
+}

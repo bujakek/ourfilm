@@ -7,6 +7,7 @@ import {
   captureEndDisplay,
   huNumberArticle,
   initialToastState,
+  paymentNotice,
   quotaBannerState,
   RESEND_COOLDOWN_S,
   resendSecondsLeft,
@@ -138,5 +139,30 @@ describe('huNumberArticle', () => {
     const a = [0, 2, 3, 4, 10, 12, 20, 84, 100, 412, 2000, 10_000, 100_000]
     for (const n of az) expect([n, huNumberArticle(n)]).toEqual([n, 'az'])
     for (const n of a) expect([n, huNumberArticle(n)]).toEqual([n, 'a'])
+  })
+})
+
+describe('paymentNotice', () => {
+  it('is failed when the latest purchase failed', () => {
+    expect(paymentNotice({ status: 'failed' }, false)).toBe('failed')
+    expect(paymentNotice({ status: 'failed' }, true)).toBe('failed')
+  })
+
+  it('is cancelled on a cancelled return with no purchase', () => {
+    expect(paymentNotice(null, true)).toBe('cancelled')
+  })
+
+  it('is cancelled on a cancelled return over an abandoned attempt', () => {
+    expect(paymentNotice({ status: 'pending' }, true)).toBe('cancelled')
+    expect(paymentNotice({ status: 'expired' }, true)).toBe('cancelled')
+  })
+
+  it('stays quiet once the event is paid, whatever the URL says', () => {
+    expect(paymentNotice({ status: 'paid' }, true)).toBeNull()
+  })
+
+  it('stays quiet with no purchase and no return', () => {
+    expect(paymentNotice(null, false)).toBeNull()
+    expect(paymentNotice({ status: 'expired' }, false)).toBeNull()
   })
 })
