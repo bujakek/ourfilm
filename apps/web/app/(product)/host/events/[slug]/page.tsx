@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation'
 import {
   HOST_ICON_BUTTON,
   HOST_KICKER,
+  HOST_KICKER_BASE,
   HOST_KICKER_DOT,
   HOST_PANEL,
   HOST_TILE,
@@ -122,9 +123,8 @@ export default async function AdminEventPage({ params }: Props) {
       className="mx-auto min-h-dvh w-full max-w-3xl px-5 pt-7 pb-11 sm:px-7"
       lang={localeTag[locale]}
     >
-      {/* Utility row. The settings gear stops being a lone lilac icon button:
-          it is a destination, not a state, and lilac now means the film is
-          live. */}
+      {/* Utility row: two destinations, so two quiet icon buttons. Sky is
+          reserved for live state and payment. */}
       <HostBlock
         index={0}
         className="print-hidden flex items-center justify-between gap-4"
@@ -134,7 +134,7 @@ export default async function AdminEventPage({ params }: Props) {
         </BackLink>
         <div className="flex items-center gap-2">
           <Link
-            href={`/e/${event.slug}?lang=${locale}`}
+            href={`/e/${event.slug}`}
             aria-label={en ? 'Guest view' : 'Vendégnézet'}
             className={HOST_ICON_BUTTON}
           >
@@ -248,19 +248,20 @@ function CaptureKicker({
       {state === 'open' ? (
         <>
           <span aria-hidden="true" className={HOST_KICKER_DOT} />
-          {en ? 'Open' : 'Nyitva'} ·{' '}
-          {shortTimeRemaining(new Date(captureEndAt), now, locale)}
+          {en
+            ? `Open · ${shortTimeRemaining(new Date(captureEndAt), now, locale)} left`
+            : `Nyitva · még ${shortTimeRemaining(new Date(captureEndAt), now, locale)}`}
         </>
       ) : state === 'before' ? (
         en ? (
           'Not open yet'
         ) : (
-          'Még nem lehet fotózni'
+          'Még zárva'
         )
       ) : en ? (
-        'Shooting ended'
+        'Ended'
       ) : (
-        'Véget ért a fotózás'
+        'Lezárva'
       )}
     </p>
   )
@@ -294,7 +295,9 @@ function Figure({
         {of === null ? null : <span>/{of}</span>}
       </p>
       <p
-        className={`mt-2 ${HOST_KICKER} ${alarming ? 'text-host-danger' : ''}`}
+        className={`mt-2 ${HOST_KICKER_BASE} ${
+          alarming ? 'text-host-danger' : 'text-white/65'
+        }`}
       >
         {label}
       </p>

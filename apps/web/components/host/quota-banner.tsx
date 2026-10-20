@@ -56,13 +56,21 @@ export function QuotaBanner({
   const onClick = () =>
     track('quota_upgrade_clicked', { event_id: eventId, full })
 
-  const title = full
+  const kicker = full
     ? en
       ? `Full ${count}/${limit}`
       : `Betelt ${count}/${limit}`
     : en
       ? `Guests ${count}/${limit}`
       : `Vendégek ${count}/${limit}`
+
+  const title = full
+    ? en
+      ? 'Guest list full'
+      : 'Betelt a vendéglista'
+    : en
+      ? 'One seat left'
+      : 'Egy hely maradt'
 
   const body = full
     ? en
@@ -76,6 +84,7 @@ export function QuotaBanner({
     <div className="print-hidden mt-4">
       <StateNotice
         tone={full ? 'danger' : 'warn'}
+        kicker={kicker}
         title={title}
         body={body}
         figure={

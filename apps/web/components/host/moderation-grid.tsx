@@ -90,9 +90,8 @@ export function ModerationGrid({
 
   return (
     <>
-      {/* No count in here. The page's own figure row above already says how
-          many photos the event has, and two counts of the same thing on one
-          screen is one of them being wrong at some point. */}
+      {/* The count beside the heading is `items.length`, the optimistic
+          list, so it moves on the same frame as a hide or delete. */}
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
         <h2 className="flex items-baseline gap-2.5 font-landing-display text-[22px] leading-none text-white">
           {title}

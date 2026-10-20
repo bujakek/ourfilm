@@ -5,8 +5,11 @@
  */
 
 /** Small tracked capitals above a heading. Keep it to one to three words. */
-export const HOST_KICKER =
-  'text-[11px] leading-[1.3] font-medium tracking-[0.24em] text-white/65 uppercase'
+/** The kicker without its colour, for a kicker that wears another one. */
+export const HOST_KICKER_BASE =
+  'text-[11px] leading-[1.3] font-medium tracking-[0.24em] uppercase'
+
+export const HOST_KICKER = `${HOST_KICKER_BASE} text-white/65`
 
 /** The live dot that may lead a kicker: `<span className={HOST_KICKER_DOT} />`
  *  inside a flex row with the kicker text. Sky, because it marks live state. */
