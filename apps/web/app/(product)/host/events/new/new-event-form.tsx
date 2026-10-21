@@ -294,7 +294,7 @@ function OnboardingFlow({
   // `now` at insert time and refuses that with a message naming it.
   const endIsFuture = endIso ? endIso > nowIso : false
 
-  /** `accepted` is the free path's consent: pressing the CTA under the terms
+  /** `accepted` is the onboarding's consent: pressing the CTA under the terms
    *  line is the acceptance, so it is passed in rather than read from state
    *  the same click is still setting. */
   function create(accepted: boolean) {
@@ -444,11 +444,7 @@ function OnboardingFlow({
                   plan: value,
                   payments_enabled: paymentsAvailable,
                 })
-                // Changing the offer requires a fresh acceptance.
-                setLegalAccepted(false)
               },
-              legalAccepted,
-              setLegalAccepted,
               paymentsEnabled: paymentsAvailable,
               pending,
             })
@@ -480,10 +476,10 @@ function OnboardingFlow({
                 step: STEP_NAMES[LAST_STEP],
                 index: LAST_STEP,
               })
-              // The free path has no checkbox: this press is the acceptance,
-              // under the line that says so. The paid path's CTA cannot be
-              // pressed until its declaration is ticked.
-              create(plan === 'free' ? true : legalAccepted)
+              // No checkbox on either path: this press is the acceptance,
+              // under the line that says so. The paid declaration is asked
+              // once, on the checkout screen.
+              create(true)
             }
           : advance
       }

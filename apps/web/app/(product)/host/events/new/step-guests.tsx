@@ -1,13 +1,8 @@
 'use client'
 
-import { Check } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 
-import {
-  LegalDetails,
-  PaidTermsAcceptance,
-} from '@/components/host/paid-terms-acceptance'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import { HOST_KICKER_BASE, HOST_LINK } from '@/components/host/ui/classes'
 import { DEFAULT_SHOTS } from '@/lib/camera'
@@ -21,15 +16,15 @@ import { T, still } from '@/lib/motion'
  * defaults (`DEFAULT_SHOTS`, visible) and live in settings, as do after-event
  * uploads, which onboarding does not offer at all.
  *
- * The free path accepts the Terms by pressing the button, under a line that
- * says so; the CTA that commits the draft sets `legalAccepted`. The paid path
- * keeps its explicit declaration, ticked before the button wakes.
+ * Both paths accept the Terms by pressing the button, under a line that says
+ * so; the CTA that commits the draft sets `legalAccepted`. The paid path's
+ * early-performance declaration is not asked here: the checkout screen asks
+ * it beside the price, and `startEventCheckout` refuses without it, so a box
+ * here only made the host tick the same thing twice.
  */
 export function guestsScreen({
   plan,
   setPlan,
-  legalAccepted,
-  setLegalAccepted,
   paymentsEnabled,
   pending,
   locale,
@@ -37,8 +32,6 @@ export function guestsScreen({
 }: {
   plan: EventPlan
   setPlan: (value: EventPlan) => void
-  legalAccepted: boolean
-  setLegalAccepted: (value: boolean) => void
   /** Whether Stripe is switched on in this environment. When it is not, the
    *  paid tier is not offered — a price on a button that cannot charge is a
    *  worse answer than not showing the button. */
@@ -64,18 +57,15 @@ export function guestsScreen({
           : en
             ? 'Create event'
             : 'Létrehozás',
-    ctaDisabled: plan === 'full' && !legalAccepted,
     ctaPending: pending,
     // Sky is for payment, and a signed-out host is going to the save screen
     // first, not to Stripe.
     ctaTone: signedIn === true && plan === 'full' ? 'pay' : undefined,
-    footnote: plan === 'full' ? undefined : <FreeTermsLine locale={locale} />,
+    footnote: <TermsLine locale={locale} />,
     content: (
       <GuestsFields
         plan={plan}
         setPlan={setPlan}
-        legalAccepted={legalAccepted}
-        setLegalAccepted={setLegalAccepted}
         paymentsEnabled={paymentsEnabled}
         locale={locale}
       />
@@ -86,15 +76,11 @@ export function guestsScreen({
 function GuestsFields({
   plan,
   setPlan,
-  legalAccepted,
-  setLegalAccepted,
   paymentsEnabled,
   locale,
 }: {
   plan: EventPlan
   setPlan: (value: EventPlan) => void
-  legalAccepted: boolean
-  setLegalAccepted: (value: boolean) => void
   paymentsEnabled: boolean
   locale: Locale
 }) {
@@ -145,41 +131,15 @@ function GuestsFields({
           ? `${DEFAULT_SHOTS} photos per guest. You can change this later in settings.`
           : `${DEFAULT_SHOTS} kép vendégenként. A galéria beállításait később a beállításokban módosíthatod.`}
       </p>
-
-      {plan === 'full' ? (
-        <div className="mt-3">
-          {/* A real checkbox under a drawn box: the input is what a keyboard
-              and a screen reader use, the box is what a finger sees. */}
-          <label className="flex min-h-11 cursor-pointer items-start gap-3 px-1 text-[13px] leading-[1.5] text-white/65">
-            <span className="relative mt-0.5 flex size-5 shrink-0">
-              <input
-                type="checkbox"
-                checked={legalAccepted}
-                onChange={(event) => setLegalAccepted(event.target.checked)}
-                className="peer size-5 cursor-pointer appearance-none rounded-[6px] bg-white/12 transition-colors checked:bg-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-              />
-              <Check
-                aria-hidden="true"
-                strokeWidth={2.5}
-                className="pointer-events-none absolute inset-0.5 size-4 text-landing-ink opacity-0 peer-checked:opacity-100"
-              />
-            </span>
-            <PaidTermsAcceptance locale={locale} />
-          </label>
-          <div className="ml-9">
-            <LegalDetails locale={locale} />
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
 
-/** The free path's whole consent: pressing the button is the acceptance, and
- *  this line under it says so. Each link is a 44px target, as the auth terms
+/** The onboarding's whole consent, on either plan: pressing the button is the
+ *  acceptance, and this line under it says so. Each link is a 44px target, as the auth terms
  *  line's are: `py-3.5` on an inline box grows what a finger can hit without
  *  moving the line it sits on, which `min-h-11` on an inline-flex box would. */
-function FreeTermsLine({ locale }: { locale: Locale }) {
+function TermsLine({ locale }: { locale: Locale }) {
   return (
     <p className="mt-3.5 text-center text-[12px] leading-[1.6] text-pretty text-white/65">
       {locale === 'en' ? (

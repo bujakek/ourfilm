@@ -5,8 +5,6 @@ import { guestsScreen } from '@/app/(product)/host/events/new/step-guests'
 const base = {
   plan: 'free' as const,
   setPlan: vi.fn(),
-  legalAccepted: true,
-  setLegalAccepted: vi.fn(),
   paymentsEnabled: true,
   pending: false,
   locale: 'hu' as const,
@@ -38,24 +36,13 @@ describe('the last question before saving', () => {
     ).toBe('Continue to payment')
   })
 
-  it('accepts the free terms by pressing, under a terms line', () => {
+  it('accepts the terms by pressing, under a terms line, on either plan', () => {
     for (const signedIn of [false, true]) {
-      const screen = guestsScreen({ ...base, signedIn, legalAccepted: false })
-      expect(screen.ctaDisabled).toBe(false)
-      expect(screen.footnote).toBeTruthy()
-    }
-  })
-
-  it('holds the paid path until the declaration is ticked', () => {
-    for (const signedIn of [false, true]) {
-      expect(
-        guestsScreen({ ...base, signedIn, plan: 'full', legalAccepted: false })
-          .ctaDisabled,
-      ).toBe(true)
-      expect(
-        guestsScreen({ ...base, signedIn, plan: 'full', legalAccepted: true })
-          .ctaDisabled,
-      ).toBe(false)
+      for (const plan of ['free', 'full'] as const) {
+        const screen = guestsScreen({ ...base, signedIn, plan })
+        expect(screen.ctaDisabled).toBeFalsy()
+        expect(screen.footnote).toBeTruthy()
+      }
     }
   })
 
@@ -73,10 +60,6 @@ describe('the last question before saving', () => {
         guestsScreen({ ...base, signedIn, plan: 'full' }).ctaTone,
       ).toBeUndefined()
     }
-  })
-
-  it('drops the free terms line on the paid path', () => {
-    expect(guestsScreen({ ...base, plan: 'full' }).footnote).toBeUndefined()
   })
 
   it('keeps the submission pending state for both paths', () => {

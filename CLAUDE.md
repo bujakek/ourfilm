@@ -809,8 +809,9 @@ server action reads them and an older draft that holds an answer keeps it.
 CTA that commits the draft (signed-in "Létrehozás", signed-out "Tovább a
 mentéshez") sits over a line saying that creating the event accepts the ÁSZF
 and the privacy notice, and pressing it sets `legalAccepted` on the draft.
-The server still refuses a create without it. The paid path keeps its explicit
-early-performance declaration, ticked before the sky CTA wakes.
+The server still refuses a create without it. The paid path accepts the same way;
+its early-performance declaration is asked once, on the checkout screen beside
+the price, where `startEventCheckout` requires it — not a second time here.
 
 - **The camera opens the moment the event is created.** `capture_start_at` is
   stamped by the server action, not sent from the browser, so there is no clock
