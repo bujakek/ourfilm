@@ -1,6 +1,4 @@
-import { PageGrain } from '@/components/site/page-grain'
-import { Footer } from '@/components/site/footer'
-import { Navbar } from '@/components/site/navbar'
+import { SiteShell } from '@/components/pages/site-shell'
 import type { Locale } from '@/lib/i18n'
 import type { ReactNode } from 'react'
 
@@ -11,8 +9,8 @@ import type { ReactNode } from 'react'
  * frontmatter, so the header has to come from the document rather than from a
  * wrapper. Each hub supplies its own `PageHeader` instead.
  *
- * Shared by all four content route trees so they cannot drift into looking
- * like four different sites.
+ * The chrome is `SiteShell`, the frame of every page around the homepage, so
+ * the content library and the rest of the site cannot drift apart.
  */
 export function ContentLayout({
   locale,
@@ -21,12 +19,5 @@ export function ContentLayout({
   locale: Locale
   children: ReactNode
 }) {
-  return (
-    <div className="relative min-h-screen">
-      <PageGrain />
-      <Navbar locale={locale} />
-      <main className="relative z-10">{children}</main>
-      <Footer locale={locale} />
-    </div>
-  )
+  return <SiteShell locale={locale}>{children}</SiteShell>
 }

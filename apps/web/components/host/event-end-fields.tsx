@@ -1,10 +1,19 @@
 'use client'
 
-import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
+import { HOST_KICKER_BASE } from '@/components/host/ui/classes'
 import { formatEventDate } from '@/lib/format'
 import type { Locale } from '@/lib/i18n'
 
+/**
+ * The end of the event as two tiles: a day button and a native time field.
+ *
+ * The day is ours, because iOS draws a native date control from a shadow tree
+ * that ignores the box it sits in. The time is the browser's own
+ * `type="time"` — a fixed-width `HH:mm` that lies flat — with no custom
+ * stepper beside it.
+ */
 export function EventEndFields({
   day,
   time,
@@ -12,6 +21,11 @@ export function EventEndFields({
   onTimeChange,
   locale,
   timeLabel,
+  onTimeCommit,
+  timeStep = 60,
+  dayExpanded,
+  error = false,
+  labels,
 }: {
   day: string
   time: string
@@ -19,63 +33,84 @@ export function EventEndFields({
   onTimeChange: (time: string) => void
   locale: Locale
   timeLabel: string
+  /**
+   * The host is done with the time: the field lost focus, or Enter was
+   * pressed. Not the native `change` event, which desktop Chrome fires as each
+   * segment completes — and an in-between value in the past would close the
+   * camera early, since a past end after the start is allowed on purpose.
+   */
+  onTimeCommit?: (time: string) => void
+  /** Seconds. Settings asks for 900, a quarter-hour. */
+  timeStep?: number
+  /** Set when the day button opens a panel rather than a dialog. */
+  dayExpanded?: boolean
+  /** 7e: the server refused the value; both tiles are outlined. */
+  error?: boolean
+  /** Small labels over the two values. Onboarding (6b) names them "Nap" and
+   *  "Idő"; settings sits under its own question and leaves them out. */
+  labels?: { day: string; time: string }
 }) {
   const en = locale === 'en'
 
+  const outline = error ? 'ring-[1.5px] ring-host-danger ring-inset' : ''
+  const label = `${HOST_KICKER_BASE} block text-white/65`
+
   return (
-    <div className="space-y-2.5">
+    <div className="flex gap-2">
       <button
         type="button"
         onClick={onChooseDay}
-        className="hover:border-strong flex min-h-16 w-full items-center gap-4 rounded-lg border border-border px-4 text-left transition-colors"
+        aria-expanded={dayExpanded}
+        aria-label={`${en ? 'Date' : 'Dátum'}: ${formatEventDate(day, locale)}`}
+        className={`flex min-h-[52px] min-w-0 flex-[1.5] items-center justify-between gap-2 rounded-[14px] bg-host-tile px-4 py-2 text-left text-[15px] font-medium text-white transition-colors hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none ${outline}`}
       >
-        <CalendarDays
-          className="size-5 shrink-0 text-muted-foreground"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[9px] font-medium tracking-[0.16em] text-muted-foreground/70">
-            {en ? 'DATE' : 'DÁTUM'}
-          </span>
-          <span className="mt-1 block font-mono text-[13px] font-medium">
-            {formatEventDate(day, locale)}
-          </span>
+        <span className="min-w-0 text-balance">
+          {labels ? (
+            <span aria-hidden="true" className={`${label} mb-1`}>
+              {labels.day}
+            </span>
+          ) : null}
+          {formatEventDate(day, locale)}
         </span>
-        <ChevronRight
-          className="size-5 shrink-0 text-muted-foreground"
+        <ChevronDown
+          className={`size-4 shrink-0 text-white/65 transition-transform ${
+            dayExpanded ? 'rotate-180' : ''
+          }`}
           aria-hidden="true"
         />
       </button>
 
-      <label className="hover:border-strong relative flex min-h-16 w-full cursor-pointer items-center gap-4 overflow-hidden rounded-lg border border-border px-4 text-left transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
-        <Clock3
-          className="size-5 shrink-0 text-muted-foreground"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[9px] font-medium tracking-[0.16em] text-muted-foreground/70">
-            {en ? 'TIME' : 'IDŐPONT'}
+      <label
+        className={`flex min-h-[52px] min-w-0 flex-1 cursor-pointer rounded-[14px] bg-host-tile px-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-white/60 ${
+          labels ? 'flex-col justify-center py-2' : 'items-center'
+        } ${outline}`}
+      >
+        {labels ? (
+          <span aria-hidden="true" className={label}>
+            {labels.time}
           </span>
-          {/* `tabular-nums` is gone with the proportional face: a mono already
-              holds its columns, which is the whole reason a clock reads in one. */}
-          <span className="mt-1 block font-mono text-[13px] font-medium">
-            {time}
-          </span>
-        </span>
-        <ChevronRight
-          className="size-5 shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
+        ) : null}
         <input
           type="time"
-          step={60}
+          step={timeStep}
           required
           aria-label={timeLabel}
+          aria-invalid={error || undefined}
           value={time}
           onChange={(event) => onTimeChange(event.target.value)}
-          className="absolute inset-0 size-full cursor-pointer opacity-0"
+          onBlur={(event) => {
+            if (event.target.value) onTimeCommit?.(event.target.value)
+          }}
+          onKeyDown={(event) => {
+            // Enter commits through blur, so one save goes out either way.
+            if (event.key === 'Enter' && onTimeCommit) {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+          }}
+          // The tile around it draws the white ring (`has-[:focus-visible]`), so
+          // the field itself shows no outline of its own.
+          className="min-h-11 w-full min-w-0 bg-transparent text-[15px] font-medium text-white [color-scheme:dark] outline-none focus-visible:outline-none"
         />
       </label>
     </div>

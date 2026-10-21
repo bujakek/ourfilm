@@ -4,6 +4,8 @@ import { X } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
+import { HOST_FOCUS } from '@/components/host/ui/classes'
+import { useToastLayer } from '@/components/host/ui/toast'
 import { T, still } from '@/lib/motion'
 import { useScrollLock } from '@/lib/use-scroll-lock'
 
@@ -46,6 +48,10 @@ export function Sheet({
 }) {
   useScrollLock(open)
   const ref = useRef<HTMLDialogElement>(null)
+  // A modal dialog makes the page under it inert, so a toast shown while the
+  // sheet is open has to render inside it, as in the photo viewer. Only while
+  // open: the element stays mounted when closed.
+  useToastLayer(ref, open)
   const closeTimer = useRef<number | null>(null)
   const titleId = useId()
   const reduceMotion = useReducedMotion()
@@ -112,7 +118,7 @@ export function Sheet({
                 : { opacity: 0, y: 28, scale: 0.985 }
           }
           transition={reduceMotion ? still : panelVisible ? T.snap : T.exit}
-          className="glass-overlay pointer-events-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-t-2xl sm:rounded-2xl"
+          className="pointer-events-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-t-[28px] bg-host-sheet text-white shadow-host-sheet sm:rounded-[28px]"
         >
           {/* The body scrolls, not the panel, so a footer can sit outside it.
               With no footer the padding is exactly what it was before this
@@ -129,12 +135,12 @@ export function Sheet({
                 {icon ? <div className="mb-3">{icon}</div> : null}
                 <h2
                   id={titleId}
-                  className="font-display text-xl tracking-tight text-balance"
+                  className="landing-serif font-landing-display text-xl text-balance"
                 >
                   {title}
                 </h2>
                 {detail ? (
-                  <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                  <p className="mt-2 text-sm leading-relaxed text-pretty text-white/65">
                     {detail}
                   </p>
                 ) : null}
@@ -148,7 +154,7 @@ export function Sheet({
                     !busy && !reduceMotion ? { scale: 0.92 } : undefined
                   }
                   aria-label={closeLabel}
-                  className="glass -mt-1 flex size-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50"
+                  className={`-mt-1 flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile disabled:opacity-50 ${HOST_FOCUS}`}
                 >
                   <X className="size-4" aria-hidden="true" />
                 </motion.button>

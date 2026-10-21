@@ -9,7 +9,6 @@ import {
 } from './actions'
 import { guestCountRanges } from '@/lib/early-couple'
 import type { Locale } from '@/lib/i18n'
-import { Button } from '@/components/ui/button'
 import { inputClassName, textareaClassName } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -91,19 +90,19 @@ export function EarlyCoupleApplicationForm({
     return (
       <div
         role="status"
-        className="glass-strong flex min-h-80 flex-col items-center justify-center rounded-[2rem] px-6 py-12 text-center sm:px-10"
+        className="flex min-h-80 flex-col items-center justify-center rounded-[28px] bg-site-surface px-6 py-12 text-center sm:px-10"
       >
-        <span className="flex size-16 items-center justify-center rounded-full bg-accent/20">
+        <span className="flex size-16 items-center justify-center rounded-full bg-white/8">
           <Check
-            className="size-8 text-accent"
+            className="size-8 text-white"
             strokeWidth={2.2}
             aria-hidden="true"
           />
         </span>
-        <h2 className="mt-6 text-2xl font-semibold tracking-tight text-balance">
+        <h2 className="landing-serif mt-6 font-landing-display text-[28px] leading-[1.2] text-balance text-white">
           {copy.success}
         </h2>
-        <p className="mt-3 max-w-md leading-relaxed text-pretty text-muted-foreground">
+        <p className="mt-3 max-w-md text-[16px] leading-[1.6] text-pretty text-site-muted">
           {state.message}
         </p>
       </div>
@@ -117,7 +116,7 @@ export function EarlyCoupleApplicationForm({
         if (submittingRef.current) event.preventDefault()
         submittingRef.current = true
       }}
-      className="glass-strong rounded-[2rem] p-6 sm:p-9"
+      className="rounded-[28px] bg-site-surface p-6 sm:p-9"
     >
       <input type="hidden" name="locale" value={locale} />
       {Object.entries(tracking).map(([name, value]) => (
@@ -163,7 +162,7 @@ export function EarlyCoupleApplicationForm({
           placeholder={copy.locationPlaceholder}
           maxLength={160}
         />
-        <label className="block text-sm font-medium">
+        <label className="block text-[14px] font-medium text-white">
           {copy.guests}
           <select
             required
@@ -183,7 +182,7 @@ export function EarlyCoupleApplicationForm({
         </label>
       </div>
 
-      <label className="mt-5 block text-sm font-medium">
+      <label className="mt-5 block text-[14px] font-medium text-white">
         {copy.why}
         <textarea
           required
@@ -196,29 +195,28 @@ export function EarlyCoupleApplicationForm({
         />
       </label>
 
-      <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm leading-relaxed">
+      <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[16px] bg-white/6 p-4 text-[14px] leading-[1.6] text-white/85">
         <input
           required
           type="checkbox"
           name="agreementAccepted"
           value="accepted"
-          className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
+          className="mt-0.5 size-4 shrink-0 accent-white"
         />
         <span>{copy.agreement}</span>
       </label>
 
       {state.status === 'error' ? (
-        <p role="alert" className="mt-5 text-sm text-destructive">
+        <p role="alert" className="mt-5 text-[14px] text-host-danger">
           {state.message}
         </p>
       ) : null}
 
-      <Button
+      <button
         type="submit"
         disabled={pending}
         aria-busy={pending}
-        size="lg"
-        className="mt-6 w-full"
+        className="mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-[16px] bg-white px-6 text-[16px] font-medium text-landing-ink transition-colors hover:bg-white/90 disabled:pointer-events-none disabled:opacity-50"
       >
         {pending ? (
           <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -226,8 +224,8 @@ export function EarlyCoupleApplicationForm({
           <Send className="size-5" strokeWidth={1.8} aria-hidden="true" />
         )}
         {pending ? copy.submitting : copy.submit}
-      </Button>
-      <p className="mt-4 text-center text-xs leading-relaxed text-pretty text-muted-foreground">
+      </button>
+      <p className="mt-4 text-center text-[13px] leading-[1.6] text-pretty text-site-muted">
         {copy.privacy}
       </p>
     </form>
@@ -256,11 +254,11 @@ function Field({
   required?: boolean
 }) {
   return (
-    <label className="block text-sm font-medium">
+    <label className="block text-[14px] font-medium text-white">
       <span className="flex items-baseline justify-between gap-2">
         {label}
         {hint ? (
-          <span className="text-xs font-normal text-muted-foreground">
+          <span className="text-[12px] font-normal text-site-muted">
             {hint}
           </span>
         ) : null}

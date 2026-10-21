@@ -30,6 +30,11 @@ export default defineConfig({
       'client-only': fileURLToPath(
         new URL('./tests/stubs/client-only.ts', import.meta.url),
       ),
+      // See tests/stubs/next-font-google.ts: a build-time transform, not a
+      // module a test can call.
+      'next/font/google': fileURLToPath(
+        new URL('./tests/stubs/next-font-google.ts', import.meta.url),
+      ),
     },
   },
   test: {

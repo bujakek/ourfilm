@@ -1,5 +1,6 @@
 'use client'
 
+import { HOST_SECONDARY } from '@/components/host/ui/classes'
 import {
   MISSING_PHOTOS_ENTRY,
   missingPhotosNote,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/album-export'
 import { exifDateSegmentFrom, withExifDate } from '@/lib/exif-write'
 import { track } from '@/lib/telemetry'
+import { cn } from '@/lib/utils'
 import { Download } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -209,9 +211,14 @@ export function AlbumDownload({
         disabled={disabled}
         aria-busy={disabled}
         aria-label={label}
-        className="inline-flex min-w-28 items-center justify-center gap-2 rounded-full border border-white/14 px-3.5 py-1.5 text-[11px] font-medium text-foreground/80 tabular-nums transition-colors hover:border-white/30 hover:text-foreground disabled:cursor-progress disabled:opacity-70"
+        // A secondary at the settings rows' compact size: 44px, never the
+        // screen's primary.
+        className={cn(
+          HOST_SECONDARY,
+          'h-11 min-w-28 gap-2 rounded-[14px] px-4 text-[14px] tabular-nums disabled:cursor-progress disabled:opacity-70',
+        )}
       >
-        <Download className="size-3.5" aria-hidden="true" />
+        <Download className="size-4" aria-hidden="true" />
         {/* Hidden from assistive tech because `aria-label` above already says
             it, at greater length. */}
         <span aria-hidden="true">{shortLabelFor(phase, en)}</span>

@@ -3,8 +3,9 @@ import type { Metadata } from 'next'
 import { cookies, headers } from 'next/headers'
 import type { ReactNode } from 'react'
 
+import { landingFontClass } from '@/components/landing/fonts'
 import { PostHogLoader } from '@/components/analytics/posthog-loader'
-import { bodyClassName, siteMetadata, siteViewport } from '@/lib/document'
+import { siteMetadata, siteViewport } from '@/lib/document'
 import {
   DOCUMENT_LANG_HEADER,
   DOCUMENT_ROUTE_HEADER,
@@ -95,9 +96,16 @@ export default async function ProductRootLayout({
     <html
       lang={localeTag[await documentLocale()]}
       translate="no"
-      className="bg-background"
+      className="bg-landing"
     >
-      <body className={bodyClassName}>
+      {/* The landing look end to end: its ground and its three faces, and
+          none of the site's legacy ones. Nothing in the product tree sets
+          Manrope, Instrument Serif or Martian Mono any more (the product
+          style guard bans the last two), so a guest's phone is not sent
+          three font files the page never draws. */}
+      <body
+        className={`${landingFontClass} bg-landing font-landing-sans antialiased`}
+      >
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
         {/* Product analytics — see lib/telemetry.ts. Loads only where

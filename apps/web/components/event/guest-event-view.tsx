@@ -17,9 +17,10 @@ import {
 import {
   captureStatus,
   formatLine,
-  offlineQueueNote,
+  offlineQueueNotice,
   ownRollNote,
   queueClearedNote,
+  spentRollNotice,
 } from '@/lib/event-copy'
 import {
   POST_EVENT_UPLOAD_MS,
@@ -39,6 +40,7 @@ import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import { useEntrance } from '@/lib/use-entrance'
 import { useOnline } from '@/lib/use-online'
+import { StateNotice } from '@/components/host/ui/state-notice'
 import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
@@ -132,6 +134,7 @@ export function GuestEventView({
   photos,
   wall,
   revealAt,
+  guestsCanView,
   locale,
 }: {
   eventId: string
@@ -153,6 +156,8 @@ export function GuestEventView({
   /** The locked album as tiles; null when there is no wall to draw. */
   wall: DevelopingWall | null
   revealAt: string
+  /** Whether guests ever see the album; the spent roll's line depends on it. */
+  guestsCanView: boolean
   locale: Locale
 }) {
   const en = locale === 'en'
@@ -328,33 +333,55 @@ export function GuestEventView({
 
   /**
    * What takes over the line under the shutter, in order of what a guest
-   * needs most: a failure, then an outage, then the receipt for an outage
-   * that has ended, and only last a spent roll. `null` when none of those is
-   * true, and the line goes back to saying what the product is.
+   * needs most: a failure, then the receipt for an outage that has ended.
+   * `null` when neither is true, and the slot goes back to a state block or
+   * the format line.
    *
-   * The receipt outranks the spent roll because the shutter is already
-   * reading "Megtelt a tekercs" and the counter is already at zero, so a
-   * third telling of that adds nothing — while "did the photos I took with no
-   * signal actually go?" has no other answer anywhere on the screen.
+   * The outage itself is not a line: it is the 7g block in the same slot,
+   * which stays for as long as the outage does. The receipt outranks
+   * the spent roll because the shutter already says the roll is spent and the
+   * counter is already at zero, while "did the photos I took with no signal
+   * actually go?" has no other answer anywhere on the screen.
    */
   const statusLine: { text: string; tone: string } | null = flash
-    ? { text: flash, tone: 'text-destructive' }
-    : !online && outstanding > 0
+    ? { text: flash, tone: 'text-host-danger' }
+    : online && outstanding === 0 && offlineBacklog > 0
       ? {
-          text: offlineQueueNote(outstanding, canTakePhoto, locale),
-          tone: 'text-foreground/62',
+          text: queueClearedNote(offlineBacklog, locale),
+          tone: 'text-white',
         }
-      : online && outstanding === 0 && offlineBacklog > 0
-        ? {
-            text: queueClearedNote(offlineBacklog, locale),
-            tone: 'text-accent',
-          }
-        : remaining <= 0
-          ? {
-              text: en ? 'Your roll is full.' : 'Megtelt a tekercsed.',
-              tone: 'text-muted-foreground',
-            }
-          : null
+      : null
+
+  // 7m: every frame is spent and the server has said so. `remaining`, not
+  // `framesLeft`, for the same reason the shutter's label reads it: while the
+  // last frames are still going up the shutter says "Mentés…", and this
+  // block waits for the server rather than racing it.
+  const rollSpent = remaining <= 0
+  const spent = rollSpent
+    ? spentRollNotice(
+        {
+          now: new Date(now),
+          captureStartAt: new Date(captureStartAt),
+          captureEndAt: new Date(captureEndAt),
+          revealAt: new Date(revealAt),
+          guestsCanView,
+          timeZone,
+        },
+        shotsPerParticipant,
+        locale,
+      )
+    : null
+  // 7g: no signal and shots still owed. Counted from the same developing
+  // cells the strip draws with the waiting mark, so the number and the marks
+  // cannot disagree. No deadline is named; see `offlineQueueNotice`.
+  const waiting = online
+    ? 0
+    : developing.filter((c) => !c.confirmed && c.receipt !== 'lost').length
+  const offlineNotice = waiting > 0 ? offlineQueueNotice(waiting, locale) : null
+  // 7c: an open camera and nothing on this guest's roll yet, on screen or on
+  // its way. Says where the photos will appear and what the format is.
+  const rollUntouched =
+    canTakePhoto && frames.length === 0 && developing.length === 0
 
   const status = captureStatus(
     {
@@ -794,21 +821,21 @@ export function GuestEventView({
         transition={stage(0)}
         className="flex items-center justify-between gap-3"
       >
-        <span className="text-xs font-semibold tracking-[0.02em] text-foreground/55">
+        <span className="text-[12px] leading-[1.3] font-medium text-white/65">
           OurFilm
         </span>
         {/* Two facts in one row, and they are not the same kind of fact: the
             window is the event's, the connection is this phone's. Amber says
             the second one is gone, and it wins — a guest with no signal does
-            not need to be told how long the camera stays open. Lilac is left
+            not need to be told how long the camera stays open. Sky is left
             meaning only that the film is running. */}
         <span
-          className={`inline-flex items-center gap-[7px] text-xs font-medium transition-colors ${
+          className={`inline-flex items-center gap-[7px] text-[12px] leading-[1.3] font-medium transition-colors ${
             !online
-              ? 'text-warning'
+              ? 'text-host-warn'
               : status.live
-                ? 'text-accent'
-                : 'text-foreground/55'
+                ? 'text-landing-sky'
+                : 'text-white/65'
           }`}
         >
           {/* Amber never breathes. The pulse means the film is running, and
@@ -822,7 +849,7 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(1)}
-        className="mt-3.5 font-display text-[34px] leading-[1.02] tracking-[-0.005em] text-balance"
+        className="landing-serif mt-3.5 font-landing-display text-[34px] leading-[1.15] text-balance text-white"
       >
         {eventName}
       </motion.h1>
@@ -841,24 +868,24 @@ export function GuestEventView({
           <Odometer
             value={framesLeft}
             dir="down"
-            className="font-mono text-[62px] leading-[0.82] font-medium tracking-[-0.06em] tabular-nums"
+            className="host-figure text-[64px] leading-[0.9] tabular-nums"
           />
         </span>
-        <span className="pb-1.5 font-mono text-[19px] tracking-[-0.03em] text-foreground/35">
+        <span className="host-figure pb-1 text-[24px] text-white/55">
           /{shotsPerParticipant}
         </span>
-        <span className="ml-auto pb-2 text-right text-xs leading-[1.45] font-medium text-foreground/55">
+        <span className="ml-auto pb-1.5 text-right text-[12px] leading-[1.5] font-medium tracking-[0.2em] text-white/55 uppercase">
           {en ? (
             <>
-              frames
+              photos
               <br />
-              remaining
+              left
             </>
           ) : (
             <>
-              maradt
+              kép
               <br />
-              képkocka
+              maradt
             </>
           )}
         </span>
@@ -886,12 +913,12 @@ export function GuestEventView({
 
       {canAddPhotos ? (
         <div className="mt-6" aria-live="polite">
-          <h2 className="text-lg font-semibold tracking-tight text-balance">
+          <h2 className="text-[18px] leading-[1.4] font-medium text-balance text-white">
             {en
               ? 'Still have photos on your phone?'
               : 'Maradt még pár kép a telefonodon?'}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+          <p className="mt-2 text-[14px] leading-[1.5] text-pretty text-white/65">
             {en
               ? `Add your moments from the event to the shared album. You can upload ${framesLeft} more ${framesLeft === 1 ? 'photo' : 'photos'} until ${deadline}.`
               : `Adj hozzá az esemény pillanataiból a közös albumhoz. Még ${framesLeft} képet tölthetsz fel, ${deadline}-ig.`}
@@ -945,7 +972,7 @@ export function GuestEventView({
               : undefined
           }
           transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
-          className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-lg text-[15px] font-semibold disabled:pointer-events-none"
+          className="flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-[16px] bg-white text-[16px] font-medium text-landing-ink disabled:pointer-events-none"
         >
           {canAddPhotos ? (
             <Images className="size-[19px]" aria-hidden="true" />
@@ -960,10 +987,10 @@ export function GuestEventView({
             ? en
               ? 'Choose photos'
               : 'Képek kiválasztása'
-            : remaining <= 0
+            : rollSpent
               ? en
-                ? 'Roll finished'
-                : 'Megtelt a tekercs'
+                ? 'Camera · no photos left'
+                : 'Kamera · nincs több kép'
               : uploading && !canTakePhoto
                 ? // The roll is spent but the last frames are still going up.
                   // The only moment this screen says "saving" — while a shot is
@@ -977,12 +1004,7 @@ export function GuestEventView({
                   : 'Kamera'}
         </motion.button>
 
-        <InviteButton
-          url={eventUrl}
-          eventId={eventId}
-          locale={locale}
-          iconOnly
-        />
+        <InviteButton url={eventUrl} eventId={eventId} locale={locale} />
 
         <input
           ref={galleryInputRef}
@@ -1051,32 +1073,83 @@ export function GuestEventView({
           that a guest tapping the shutter repeatedly must not see motion each
           time. The entrance below fires once, on first paint; after that the
           only transition here is the colour. */}
-      <motion.p
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={stage(4)}
-        aria-live={flash ? 'assertive' : 'polite'}
-        className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
-          statusLine
-            ? `text-[13px] leading-[1.45] ${statusLine.tone}`
-            : 'text-xs leading-[1.55] text-foreground/45'
-        }`}
-      >
-        {statusLine ? statusLine.text : formatLine(participantCount, locale)}
-      </motion.p>
+      {/* An outage with shots owed (7g), a spent roll (7m) or an untouched
+          one (7c) takes the slot as a block when no failure needs it, in that
+          order. The slot is under the shutter on purpose: whatever grows here
+          moves only what is below it, so a wifi drop never moves the
+          shutter or the strip. */}
+      {/* The slot's one live region, always mounted: a region that mounts
+          with its text is often not announced at all, and the slot below
+          swaps between three shapes. It carries the failure flash, the
+          receipt and the outage; the visible blocks are not live, so nothing
+          is read twice. */}
+      <p aria-live="polite" className="sr-only">
+        {statusLine
+          ? statusLine.text
+          : offlineNotice
+            ? `${offlineNotice.title}. ${offlineNotice.body}`
+            : ''}
+      </p>
+      {!flash && offlineNotice ? (
+        <div className="mt-4">
+          <StateNotice
+            tone="warn"
+            title={offlineNotice.title}
+            body={offlineNotice.body}
+          />
+        </div>
+      ) : !statusLine && (spent || rollUntouched) ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={stage(4)}
+          className="mt-4"
+        >
+          {spent ? (
+            <StateNotice tone="neutral" title={spent.title} body={spent.body} />
+          ) : (
+            <StateNotice
+              tone="neutral"
+              title={
+                en
+                  ? 'You have not taken a photo yet'
+                  : 'Még nem készítettél képet'
+              }
+              body={
+                en
+                  ? 'Your photos appear here as they are taken. No preview and no retakes.'
+                  : 'A képeid itt jelennek meg, ahogy elkészülnek. Nincs előnézet és nincs újrafotózás.'
+              }
+            />
+          )}
+        </motion.div>
+      ) : (
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={stage(4)}
+          className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
+            statusLine
+              ? `text-[13px] leading-[1.45] ${statusLine.tone}`
+              : 'text-[12px] leading-[1.55] text-white/55'
+          }`}
+        >
+          {statusLine ? statusLine.text : formatLine(participantCount, locale)}
+        </motion.p>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(5)}
-        className="mt-6.5 border-t border-border pt-4.5"
+        className="mt-8"
       >
         <div className="flex items-baseline justify-between gap-4">
-          <h2 className="font-display text-[22px] leading-none">
+          <h2 className="landing-serif font-landing-display text-[24px] leading-[1.2] text-white">
             {en ? 'Shared photos' : 'Közös képek'}
           </h2>
           {photoCount > 0 ? (
-            <p className="text-xs font-medium text-muted-foreground tabular-nums">
+            <p className="text-[12px] leading-[1.3] font-medium tracking-[0.24em] text-white/65 uppercase tabular-nums">
               {en
                 ? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
                 : `${photoCount} kép`}
@@ -1086,7 +1159,7 @@ export function GuestEventView({
 
         {!gallery.open && wall && wall.tiles.length > 0 ? (
           <div className="mt-4">
-            <p className="mb-3 text-sm leading-relaxed text-pretty text-muted-foreground">
+            <p className="mb-3 text-[14px] leading-[1.5] text-pretty text-white/65">
               {gallery.detail ?? gallery.heading}
             </p>
             <DevelopingGallery
@@ -1096,29 +1169,29 @@ export function GuestEventView({
               now={now}
               locale={locale}
             />
-            <p className="mt-3 text-xs leading-relaxed text-pretty text-muted-foreground/70">
+            <p className="mt-3 text-[12px] leading-[1.5] text-pretty text-white/55">
               {ownRollNote(locale)}
             </p>
           </div>
         ) : !gallery.open ? (
-          <div className="mt-4 rounded-2xl border border-border px-6 py-8 text-center">
-            <h3 className="text-base font-semibold text-balance">
+          <div className="mt-4 rounded-[32px] bg-host-panel px-6 py-8 text-center">
+            <h3 className="text-[16px] leading-[1.5] font-medium text-balance text-white">
               {gallery.heading}
             </h3>
             {gallery.detail ? (
-              <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+              <p className="mt-2 text-[14px] leading-[1.5] text-pretty text-white/65">
                 {gallery.detail}
               </p>
             ) : null}
             {/* Two things on this screen now obey different rules — the strip
                 above is this guest's own film and is never reveal-gated — so the
                 lock says which is which rather than letting it read as a bug. */}
-            <p className="mt-3 text-xs leading-relaxed text-pretty text-muted-foreground/70">
+            <p className="mt-3 text-[12px] leading-[1.5] text-pretty text-white/55">
               {ownRollNote(locale)}
             </p>
           </div>
         ) : photos.length === 0 ? (
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-4 text-[14px] leading-[1.5] text-white/65">
             {canAddPhotos
               ? en
                 ? 'No photos yet. Add the first moments from your phone.'

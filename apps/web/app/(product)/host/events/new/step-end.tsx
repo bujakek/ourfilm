@@ -1,19 +1,31 @@
 'use client'
 
+import { motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 
 import { EventEndFields } from '@/components/host/event-end-fields'
 import { MonthCalendar } from '@/components/host/month-calendar'
-import { Sheet } from '@/components/host/sheet'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
+import { HOST_FOCUS } from '@/components/host/ui/classes'
+import { FloatingPanel } from '@/components/host/ui/floating-panel'
 import type { Locale } from '@/lib/i18n'
+import { T, still } from '@/lib/motion'
+import {
+  activeQuickPick,
+  endAfterTimeEdit,
+  type EndDaySource,
+  endQuickPick,
+  type EndQuickPick,
+} from '@/lib/onboarding'
+
+/** What a quick pick lands on while the time field is mid-edit and empty. */
+const FALLBACK_TIME = '23:00'
 
 /**
- * Question two: when does the party end?
+ * Question two: when does the party end? (6b)
  *
  * Only the end. The camera opens the moment the event is created, so a start
- * field would be a question with one possible answer — and the screen it would
- * have shared with this one is the screen this flow exists to avoid.
+ * field would be a question with one possible answer.
  *
  * There is no timezone control either. The host is picking a wall clock and
  * means the one on the phone in their hand; the flow reads that zone off the
@@ -21,20 +33,21 @@ import type { Locale } from '@/lib/i18n'
  * settings page all agree without anyone being asked.
  */
 export function endScreen({
-  day,
-  setDay,
-  time,
-  setTime,
+  endLocal,
+  setEndLocal,
+  now,
+  timeZone,
   today,
   canAdvance,
   locale,
 }: {
-  /** `YYYY-MM-DD` */
-  day: string
-  setDay: (value: string) => void
-  /** `HH:mm`, 24-hour */
-  time: string
-  setTime: (value: string) => void
+  /** `YYYY-MM-DDTHH:mm` in `timeZone`. The quick picks, the day tile and the
+   *  time tile all read and write this one value. */
+  endLocal: string
+  setEndLocal: (value: string) => void
+  /** The server's instant, so a render reads no clock. */
+  now: Date
+  timeZone: string
   /** The host's today, `YYYY-MM-DD`. Nothing before it is selectable. */
   today: string
   canAdvance: boolean
@@ -42,19 +55,19 @@ export function endScreen({
 }): StepScreen {
   const en = locale === 'en'
   return {
-    eyebrow: en ? 'SHOOTING ENDS' : 'A FOTÓZÁS VÉGE',
-    title: en ? 'When should shooting end?' : 'Meddig lehessen fotózni?',
+    eyebrow: en ? 'Shooting ends' : 'A fotózás vége',
+    title: en ? 'When should the event end?' : 'Mikor érjen véget az esemény?',
     detail: en
-      ? 'The camera opens when you create the event.'
-      : 'A kamera létrehozáskor megnyílik.',
+      ? 'The camera opens now. Guests can take photos until this time.'
+      : 'A kamera most nyílik. A vendégek eddig az időpontig fotózhatnak.',
     cta: en ? 'Continue' : 'Tovább',
     ctaDisabled: !canAdvance,
     content: (
       <EndFields
-        day={day}
-        setDay={setDay}
-        time={time}
-        setTime={setTime}
+        endLocal={endLocal}
+        setEndLocal={setEndLocal}
+        now={now}
+        timeZone={timeZone}
         today={today}
         locale={locale}
       />
@@ -63,53 +76,132 @@ export function endScreen({
 }
 
 function EndFields({
-  day,
-  setDay,
-  time,
-  setTime,
+  endLocal,
+  setEndLocal,
+  now,
+  timeZone,
   today,
   locale,
 }: {
-  day: string
-  setDay: (value: string) => void
-  time: string
-  setTime: (value: string) => void
+  endLocal: string
+  setEndLocal: (value: string) => void
+  now: Date
+  timeZone: string
   today: string
   locale: Locale
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
+  // Not stored with the draft: coming back to this screen treats the day as
+  // a quick pick's again, which is what a fresh draft starts on.
+  const [source, setSource] = useState<EndDaySource>('chip')
+  const reduceMotion = useReducedMotion()
   const en = locale === 'en'
+
+  const day = endLocal.slice(0, 10)
+  const time = endLocal.slice(11)
+  const picked = activeQuickPick(endLocal, now, timeZone)
+  // An open month is "another day" being chosen, whatever the value says yet,
+  // and a day picked from it stays "another day" even on tonight's date.
+  const active = calendarOpen || source === 'calendar' ? 'other' : picked
+
+  const pick = (kind: EndQuickPick, at: string) =>
+    setEndLocal(endQuickPick(kind, at || FALLBACK_TIME, now, timeZone))
+
+  const chips: { key: EndQuickPick | 'other'; label: string }[] = [
+    { key: 'tonight', label: en ? 'Tonight' : 'Ma éjjel' },
+    { key: 'tomorrow', label: en ? 'Tomorrow' : 'Holnap' },
+    { key: 'other', label: en ? 'Another day' : 'Másik nap' },
+  ]
 
   return (
     <>
-      <EventEndFields
-        day={day}
-        time={time}
-        onChooseDay={() => setCalendarOpen(true)}
-        onTimeChange={setTime}
-        locale={locale}
-        timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
-      />
-
-      {/* A `<dialog>` opened with `showModal()` renders in the top layer, so it
-          is unaffected by the scrolling column it now sits inside. */}
-      <Sheet
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        closeLabel={en ? 'Close date picker' : 'Dátumválasztó bezárása'}
-        title={en ? 'Choose a date' : 'Válassz dátumot'}
+      <ul
+        aria-label={en ? 'Quick picks' : 'Gyors választás'}
+        className="flex flex-wrap gap-2"
       >
-        <MonthCalendar
-          value={day}
-          earliest={today}
-          label="Az esemény vége"
-          locale={locale}
-          onChange={(value) => {
-            setDay(value)
-            setCalendarOpen(false)
+        {chips.map(({ key, label }) => {
+          const on = active === key
+          return (
+            <li key={key}>
+              <motion.button
+                type="button"
+                aria-pressed={key === 'other' ? undefined : on}
+                aria-expanded={key === 'other' ? calendarOpen : undefined}
+                whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                transition={reduceMotion ? still : T.snap}
+                onClick={() => {
+                  if (key === 'other') {
+                    setCalendarOpen((open) => !open)
+                    return
+                  }
+                  setCalendarOpen(false)
+                  setSource('chip')
+                  pick(key, time)
+                }}
+                className={`inline-flex min-h-11 items-center rounded-[14px] px-[18px] py-2 text-[14px] transition-colors ${HOST_FOCUS} ${
+                  on
+                    ? 'bg-white text-landing-ink'
+                    : 'bg-host-tile text-white/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {label}
+              </motion.button>
+            </li>
+          )
+        })}
+      </ul>
+
+      {/* The anchor for the month: absolute under the tiles, over whatever
+          is below, so opening it moves nothing. */}
+      <div className="relative mt-3">
+        <EventEndFields
+          day={day}
+          time={time}
+          onChooseDay={() => setCalendarOpen((open) => !open)}
+          dayExpanded={calendarOpen}
+          onTimeChange={(value) => {
+            if (!value) {
+              setEndLocal(`${day}T`)
+              return
+            }
+            // A quick pick's day follows its time; a day from the month
+            // stays put. An open month is a day being chosen, so it stays too.
+            setEndLocal(
+              endAfterTimeEdit(
+                endLocal,
+                value,
+                calendarOpen ? 'calendar' : source,
+                now,
+                timeZone,
+              ),
+            )
           }}
+          timeStep={900}
+          locale={locale}
+          timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
+          labels={
+            en ? { day: 'Day', time: 'Time' } : { day: 'Nap', time: 'Idő' }
+          }
         />
-      </Sheet>
+
+        <FloatingPanel
+          open={calendarOpen}
+          onClose={() => setCalendarOpen(false)}
+          anchorClassName="inset-x-0 top-[calc(100%+8px)]"
+        >
+          <MonthCalendar
+            value={day}
+            earliest={today}
+            label={en ? 'Event end' : 'Az esemény vége'}
+            locale={locale}
+            onChange={(value) => {
+              setCalendarOpen(false)
+              setSource('calendar')
+              setEndLocal(`${value}T${time || FALLBACK_TIME}`)
+            }}
+          />
+        </FloatingPanel>
+      </div>
     </>
   )
 }

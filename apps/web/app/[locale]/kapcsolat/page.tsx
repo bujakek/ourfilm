@@ -1,12 +1,19 @@
-import { PageShell } from '@/components/site/page-shell'
+import {
+  SITE_BUTTON,
+  SITE_KICKER,
+  SITE_HEADING,
+  SITE_LEAD,
+} from '@/components/pages/layout'
+import { OpenOnHash } from '@/components/pages/open-on-hash'
+import { SiteShell } from '@/components/pages/site-shell'
 import { CONTACT_EMAIL } from '@/lib/site'
-import { Flag, HelpCircle, Mail, ReceiptText } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { isLocale, localePath } from '@/lib/i18n'
+import { localizedPageAlternates } from '@/lib/seo'
 import { notFound } from 'next/navigation'
 import { submitLegalRequest } from './actions'
-import { Button, buttonVariants } from '@/components/ui/button'
 import { inputClassName, textareaClassName } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -15,33 +22,32 @@ const copy = {
     title: 'Contact – OurFilm',
     description:
       'Get in touch with a question about OurFilm, your event or your photos.',
-    eyebrow: 'CONTACT',
-    heading: 'Talk to us',
-    lead: 'Have a question about your event, uploading or downloading photos? Send us a note and a real person will reply.',
-    emailBody:
-      'Tell us briefly how we can help. If your question is about an existing event, include its name.',
+    kicker: 'Contact',
+    heading: 'Write to us.',
+    lead: 'Have a question about your event, taking photos or downloading them? Send us a note and a real person will reply.',
+    emailBody: 'If your question is about an existing event, include its name.',
     faq: 'Frequently asked questions',
-    faqBody: 'You may find the answer you need in our FAQ.',
+    faqBody: 'We have already collected answers to the most common questions.',
     made: 'Made in Budapest',
-    madeBody: 'OurFilm is built in Hungary.',
-    about: 'About us',
+    madeBody: 'Read the story behind OurFilm.',
   },
   hu: {
     title: 'Kapcsolat – OurFilm',
     description:
       'Írj nekünk, ha kérdésed van az OurFilmről, egy eseményről vagy a fotóidról.',
-    eyebrow: 'KAPCSOLAT',
-    heading: 'Írj nekünk',
-    lead: 'Kérdésed van az eseményedről, a feltöltésről vagy a letöltésről? Írj nekünk, és személyesen válaszolunk.',
-    emailBody:
-      'Írd meg röviden, miben segíthetünk. Ha egy konkrét eseményről írsz, add meg az esemény nevét is.',
+    kicker: 'Kapcsolat',
+    heading: 'Írj nekünk.',
+    lead: 'Kérdésed van az eseményedről, a fotózásról vagy a letöltésről? Írj nekünk, és személyesen válaszolunk.',
+    emailBody: 'Ha egy konkrét eseményről írsz, add meg az esemény nevét is.',
     faq: 'Gyakori kérdések',
     faqBody: 'A leggyakoribb kérdésekre már összegyűjtöttük a válaszokat.',
     made: 'Budapesten készül',
-    madeBody: 'Az OurFilm magyar fejlesztés.',
-    about: 'Rólunk',
+    madeBody: 'Ismerd meg az OurFilm történetét.',
   },
 } as const
+
+/** The two request forms, by the fragment every link to them uses. */
+const REQUEST_IDS = ['elallas', 'kepeltavolitas'] as const
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
@@ -49,6 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: copy[locale].title,
     description: copy[locale].description,
+    alternates: localizedPageAlternates(locale, '/kapcsolat'),
     robots: { index: false, follow: true },
   }
 }
@@ -58,6 +65,12 @@ type Props = {
   searchParams: Promise<{ legal?: string; type?: string }>
 }
 
+/**
+ * The address, two ways further into the site, and — in Hungarian — the two
+ * legal requests a consumer must be able to send: withdrawal from the
+ * contract and removing a photo. Those are real forms posting to
+ * `submitLegalRequest`; each sits in a row that opens in place.
+ */
 export default async function KapcsolatPage({ params, searchParams }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
@@ -67,242 +80,224 @@ export default async function KapcsolatPage({ params, searchParams }: Props) {
     query.legal === 'sent' ? 'sent' : query.legal === 'error' ? 'error' : null
   const resultType = query.type === 'content' ? 'content' : 'withdrawal'
 
+  const rows = [
+    {
+      href: localePath(locale, '/') + '#faq',
+      title: current.faq,
+      body: current.faqBody,
+    },
+    {
+      href: localePath(locale, '/rolunk'),
+      title: current.made,
+      body: current.madeBody,
+    },
+  ]
+
   return (
-    <PageShell
-      locale={locale}
-      eyebrow={current.eyebrow}
-      title={current.heading}
-      lead={current.lead}
-    >
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
-          <div className="glass-strong mt-12 rounded-2xl p-8 sm:p-10">
-            <span className="glass flex size-12 items-center justify-center rounded-lg">
-              <Mail
-                className="size-6 text-accent"
-                strokeWidth={1.6}
-                aria-hidden="true"
-              />
-            </span>
-            <h2 className="mt-6 text-2xl font-semibold tracking-tight text-balance">
-              E-mail
-            </h2>
-            <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              {current.emailBody}
-            </p>
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className={buttonVariants({ className: 'mt-7' })}
+    <SiteShell locale={locale}>
+      <section className="mx-auto w-[90%] max-w-[800px] pt-25 pb-[70px] tab:pb-[120px]">
+        <p className={cn(SITE_KICKER, 'mb-[22px] tab:mb-7')}>
+          {current.kicker}
+        </p>
+        <h1 className={cn(SITE_HEADING, 'mb-5')}>{current.heading}</h1>
+        <p className={cn(SITE_LEAD, 'mb-9')}>{current.lead}</p>
+        <a
+          href={`mailto:${CONTACT_EMAIL}`}
+          className="landing-serif mb-4 inline-block max-w-full border-b border-site-underline font-landing-display text-[27px] leading-[1.4] break-words text-white tab:text-[36px]"
+        >
+          {CONTACT_EMAIL}
+        </a>
+        <p className={SITE_LEAD}>{current.emailBody}</p>
+
+        <div className="mt-[50px] border-t border-site-line tab:mt-[70px]">
+          {rows.map((row) => (
+            <Link
+              key={row.href}
+              href={row.href}
+              className="relative block border-b border-site-line py-7 pr-[30px] transition-colors hover:text-white tab:py-9 tab:pr-[42px]"
             >
-              <Mail className="size-4" strokeWidth={2} aria-hidden="true" />
-              {CONTACT_EMAIL}
-            </a>
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <article className="glass flex h-full flex-col rounded-2xl p-7">
-              <span className="glass flex size-12 items-center justify-center rounded-lg">
-                <HelpCircle
-                  className="size-6 text-accent"
-                  strokeWidth={1.6}
-                  aria-hidden="true"
-                />
-              </span>
-              <h2 className="mt-6 text-base font-semibold">{current.faq}</h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                {current.faqBody}
-              </p>
-              <Link
-                href={localePath(locale, '/#faq')}
-                className="mt-5 text-sm font-medium text-accent underline underline-offset-4 transition-colors hover:text-foreground"
-              >
-                {current.faq}
-              </Link>
-            </article>
-
-            <article className="glass flex h-full flex-col rounded-2xl p-7">
-              <span className="glass flex size-12 items-center justify-center rounded-lg">
-                <ReceiptText
-                  className="size-6 text-accent"
-                  strokeWidth={1.6}
-                  aria-hidden="true"
-                />
-              </span>
-              <h2 className="mt-6 text-base font-semibold">{current.made}</h2>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-pretty text-muted-foreground">
-                {current.madeBody}
-              </p>
-              <Link
-                href={localePath(locale, '/rolunk')}
-                className="mt-5 text-sm font-medium text-accent underline underline-offset-4 transition-colors hover:text-foreground"
-              >
-                {current.about}
-              </Link>
-            </article>
-          </div>
-
-          {locale === 'hu' ? (
-            <div className="mt-12 space-y-4">
-              <h2 className="text-2xl font-semibold tracking-tight">
-                Kérelmek egyszerűen
+              <h2 className="landing-serif mb-2.5 font-landing-display text-[28px] leading-[1.2] text-white tab:text-[30px]">
+                {row.title}
               </h2>
-              <p className="leading-relaxed text-pretty text-muted-foreground">
-                Válaszd ki, mit szeretnél intézni; a beküldésről azonnali,
-                dátummal és időponttal ellátott e-mailes másolatot kapsz.
+              <p className="text-[16px] text-site-muted tab:text-[18px]">
+                {row.body}
               </p>
-
-              <LegalRequestCard
-                id="elallas"
-                icon="withdrawal"
-                title="Elállás a szerződéstől"
-                description="Fogyasztóként a fizetéstől számított 14 napon belül küldheted el a nyilatkozatot. Ha a szolgáltatás már megkezdődött, a ténylegesen teljesített rész arányos díja levonható; a visszatérítés ezért nem minden esetben automatikusan a teljes összeg."
-                locale={locale}
-                result={resultType === 'withdrawal' ? result : null}
+              <ChevronRight
+                aria-hidden="true"
+                className="absolute top-1/2 right-2 size-[18px] text-white/50"
               />
-
-              <LegalRequestCard
-                id="kepeltavolitas"
-                icon="content"
-                title="Kép eltávolítása vagy tartalom bejelentése"
-                description="A leggyorsabb megoldás az esemény házigazdája, aki azonnal elrejtheti a képet. Ha ez nem lehetséges, itt pontosan megjelölheted a képet és a kérésed okát."
-                locale={locale}
-                result={resultType === 'content' ? result : null}
-              />
-            </div>
-          ) : null}
+            </Link>
+          ))}
         </div>
+
+        {locale === 'hu' ? (
+          <div className="mt-[45px] tab:mt-[70px]">
+            <OpenOnHash ids={REQUEST_IDS} />
+            <h2 className="landing-serif mb-2.5 font-landing-display text-[28px] leading-[1.2] text-white tab:text-[30px]">
+              Kérelmek egyszerűen
+            </h2>
+            <p className={cn(SITE_LEAD, 'mb-6')}>
+              Válaszd ki, mit szeretnél intézni; a beküldésről azonnali,
+              dátummal és időponttal ellátott e-mailes másolatot kapsz.
+            </p>
+
+            <LegalRequest
+              id="elallas"
+              kind="withdrawal"
+              title="Elállás a szerződéstől"
+              description="Fogyasztóként a fizetéstől számított 14 napon belül küldheted el a nyilatkozatot. Ha a szolgáltatás már megkezdődött, a ténylegesen teljesített rész arányos díja levonható; a visszatérítés ezért nem minden esetben automatikusan a teljes összeg."
+              locale={locale}
+              result={resultType === 'withdrawal' ? result : null}
+            />
+            <LegalRequest
+              id="kepeltavolitas"
+              kind="content"
+              title="Kép eltávolítása vagy tartalom bejelentése"
+              description="A leggyorsabb megoldás az esemény házigazdája, aki azonnal elrejtheti a képet. Ha ez nem lehetséges, itt pontosan megjelölheted a képet és a kérésed okát."
+              locale={locale}
+              result={resultType === 'content' ? result : null}
+            />
+          </div>
+        ) : null}
       </section>
-    </PageShell>
+    </SiteShell>
   )
 }
 
-function LegalRequestCard({
+/**
+ * One request as a row that opens into its form. It is open from the server
+ * when a submission has just come back to it, so the confirmation or the
+ * error is never folded away.
+ */
+function LegalRequest({
   id,
-  icon,
+  kind,
   title,
   description,
   locale,
   result,
 }: {
   id: string
-  icon: 'withdrawal' | 'content'
+  kind: 'withdrawal' | 'content'
   title: string
   description: string
   locale: string
   result: 'sent' | 'error' | null
 }) {
-  const Icon = icon === 'withdrawal' ? ReceiptText : Flag
-  const isWithdrawal = icon === 'withdrawal'
+  const isWithdrawal = kind === 'withdrawal'
 
   return (
-    <article id={id} className="glass scroll-mt-24 rounded-2xl p-7 sm:p-8">
-      <div className="flex items-start gap-4">
-        <span className="glass flex size-11 shrink-0 items-center justify-center rounded-lg">
-          <Icon
-            className="size-5 text-accent"
-            strokeWidth={1.6}
-            aria-hidden="true"
-          />
-        </span>
-        <div>
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-            {description}
+    <details
+      id={id}
+      open={result !== null}
+      className="group scroll-mt-24 border-b border-site-line"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 text-[16px] text-white [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronRight
+          aria-hidden="true"
+          className="size-[18px] shrink-0 text-white/50 transition-transform group-open:rotate-90"
+        />
+      </summary>
+
+      <div className="pb-8">
+        <p className="text-[15px] leading-[1.6] text-site-muted">
+          {description}
+        </p>
+
+        {result ? (
+          <p
+            role="status"
+            className={cn(
+              'mt-6 rounded-2xl px-4 py-3 text-[14px] leading-relaxed',
+              result === 'sent'
+                ? 'bg-white/8 text-white'
+                : 'bg-destructive/10 text-destructive',
+            )}
+          >
+            {result === 'sent'
+              ? 'Megkaptuk a kérelmet, és a megadott e-mail-címre elküldtük a visszaigazolást.'
+              : `Nem sikerült biztonságosan elküldeni a kérelmet. Írj közvetlenül a ${CONTACT_EMAIL} címre.`}
           </p>
-        </div>
-      </div>
+        ) : null}
 
-      {result ? (
-        <p
-          role="status"
-          className={`mt-6 rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-            result === 'sent'
-              ? 'bg-accent/15 text-foreground'
-              : 'bg-destructive/10 text-destructive'
-          }`}
-        >
-          {result === 'sent'
-            ? 'Megkaptuk a kérelmet, és a megadott e-mail-címre elküldtük a visszaigazolást.'
-            : `Nem sikerült biztonságosan elküldeni a kérelmet. Írj közvetlenül a ${CONTACT_EMAIL} címre.`}
-        </p>
-      ) : null}
-
-      <form action={submitLegalRequest} className="mt-6 space-y-4">
-        <input
-          type="hidden"
-          name="requestType"
-          value={isWithdrawal ? 'withdrawal' : 'content'}
-        />
-        <input type="hidden" name="locale" value={locale} />
-        <div className="hidden" aria-hidden="true">
-          <label>
-            Weboldal
-            <input name="website" tabIndex={-1} autoComplete="off" />
-          </label>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Neved" name="name" autoComplete="name" />
-          <FormField
-            label="E-mail-címed"
-            name="email"
-            type="email"
-            autoComplete="email"
+        <form action={submitLegalRequest} className="mt-6 space-y-4">
+          <input
+            type="hidden"
+            name="requestType"
+            value={isWithdrawal ? 'withdrawal' : 'content'}
           />
-        </div>
-
-        <FormField
-          label="Esemény neve, linkje vagy Stripe-bizonylat azonosítója"
-          name="eventReference"
-          placeholder="Például: Anna és Bence esküvője"
-        />
-
-        {isWithdrawal ? (
-          <>
-            <FormField
-              label="Fizetés időpontja (nem kötelező)"
-              name="paymentDate"
-              type="date"
-              required={false}
-            />
-            <FormTextArea label="Megjegyzés (nem kötelező)" name="details" />
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm leading-relaxed">
-              <input
-                required
-                type="checkbox"
-                name="withdrawalConfirmed"
-                value="confirmed"
-                className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
-              />
-              <span>
-                Kijelentem, hogy a fent azonosított szerződéstől elállok,
-                illetve a már megkezdett szolgáltatást felmondom.
-              </span>
+          <input type="hidden" name="locale" value={locale} />
+          <div className="hidden" aria-hidden="true">
+            <label>
+              Weboldal
+              <input name="website" tabIndex={-1} autoComplete="off" />
             </label>
-          </>
-        ) : (
-          <>
-            <FormField
-              label="Melyik képről van szó?"
-              name="photoReference"
-              placeholder="Kép sorszáma, pontos leírása vagy az album nézete"
-            />
-            <FormTextArea
-              label="Miért kéred az eltávolítást vagy vizsgálatot?"
-              name="details"
-              required
-            />
-          </>
-        )}
+          </div>
 
-        <Button type="submit">
-          {isWithdrawal ? 'Elállás megerősítése' : 'Kérelem elküldése'}
-        </Button>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          A megadott adatokat kizárólag a kérelem kezelésére használjuk.
-        </p>
-      </form>
-    </article>
+          <div className="grid gap-4 tab:grid-cols-2">
+            <FormField label="Neved" name="name" autoComplete="name" />
+            <FormField
+              label="E-mail-címed"
+              name="email"
+              type="email"
+              autoComplete="email"
+            />
+          </div>
+
+          <FormField
+            label="Esemény neve, linkje vagy Stripe-bizonylat azonosítója"
+            name="eventReference"
+            placeholder="Például: Anna és Bence esküvője"
+          />
+
+          {isWithdrawal ? (
+            <>
+              <FormField
+                label="Fizetés időpontja (nem kötelező)"
+                name="paymentDate"
+                type="date"
+                required={false}
+              />
+              <FormTextArea label="Megjegyzés (nem kötelező)" name="details" />
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-site-line bg-white/5 p-4 text-[14px] leading-relaxed text-site-value">
+                <input
+                  required
+                  type="checkbox"
+                  name="withdrawalConfirmed"
+                  value="confirmed"
+                  className="mt-0.5 size-4 shrink-0 accent-white"
+                />
+                <span>
+                  Kijelentem, hogy a fent azonosított szerződéstől elállok,
+                  illetve a már megkezdett szolgáltatást felmondom.
+                </span>
+              </label>
+            </>
+          ) : (
+            <>
+              <FormField
+                label="Melyik képről van szó?"
+                name="photoReference"
+                placeholder="Kép sorszáma, pontos leírása vagy az album nézete"
+              />
+              <FormTextArea
+                label="Miért kéred az eltávolítást vagy vizsgálatot?"
+                name="details"
+                required
+              />
+            </>
+          )}
+
+          <button type="submit" className={SITE_BUTTON}>
+            {isWithdrawal ? 'Elállás megerősítése' : 'Kérelem elküldése'}
+          </button>
+          <p className="text-[12px] leading-relaxed text-site-kicker">
+            A megadott adatokat kizárólag a kérelem kezelésére használjuk.
+          </p>
+        </form>
+      </div>
+    </details>
   )
 }
 
@@ -322,7 +317,7 @@ function FormField({
   required?: boolean
 }) {
   return (
-    <label className="block text-sm font-medium">
+    <label className="block text-[14px] font-medium text-site-value">
       {label}
       <input
         required={required}
@@ -330,7 +325,7 @@ function FormField({
         type={type}
         autoComplete={autoComplete}
         placeholder={placeholder}
-        className={cn(inputClassName, 'mt-2 px-4')}
+        className={cn(inputClassName, 'mt-2 px-4 text-white')}
       />
     </label>
   )
@@ -346,13 +341,13 @@ function FormTextArea({
   required?: boolean
 }) {
   return (
-    <label className="block text-sm font-medium">
+    <label className="block text-[14px] font-medium text-site-value">
       {label}
       <textarea
         required={required}
         name={name}
         rows={4}
-        className={cn(textareaClassName, 'mt-2 px-4 py-3')}
+        className={cn(textareaClassName, 'mt-2 px-4 py-3 text-white')}
       />
     </label>
   )

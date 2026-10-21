@@ -10,7 +10,14 @@ import {
 } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
+import {
+  SITE_BUTTON,
+  SITE_CONTAINER,
+  SITE_HEADING,
+  SITE_KICKER,
+  SITE_LEAD,
+} from '@/components/pages/layout'
+import { cn } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 
 const programPath = '/early-couple-program'
@@ -182,26 +189,24 @@ export default async function EarlyCoupleProgramPage({
       title={current.heading}
       lead={current.lead}
     >
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-            <Link href="#apply" className={buttonVariants()}>
+      <section className="mx-auto w-[90%] max-w-[800px] pb-16 tab:pb-24">
+        <div>
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <Link href="#apply" className={SITE_BUTTON}>
               {current.cta}
             </Link>
-            <p className="text-xs leading-relaxed text-muted-foreground">
+            <p className="text-[13px] leading-[1.6] text-site-muted">
               {current.helper}
             </p>
           </div>
         </div>
       </section>
 
-      <section className="relative px-4 py-24 sm:px-6 lg:py-32">
-        <div className="mx-auto max-w-6xl">
+      <section className="py-16 tab:py-24">
+        <div className={SITE_CONTAINER}>
           <div className="max-w-2xl">
-            <span className="glass inline-flex rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
-              {current.includedEyebrow}
-            </span>
-            <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            <p className={SITE_KICKER}>{current.includedEyebrow}</p>
+            <h2 className={cn(SITE_HEADING, 'mt-5 text-balance')}>
               {current.includedHeading}
             </h2>
           </div>
@@ -211,19 +216,19 @@ export default async function EarlyCoupleProgramPage({
               return (
                 <article
                   key={title}
-                  className="glass flex h-full flex-col rounded-2xl p-7"
+                  className="flex h-full flex-col rounded-[20px] border border-site-line bg-site-surface p-7"
                 >
-                  <span className="glass flex size-12 items-center justify-center rounded-lg">
+                  <span className="flex size-12 items-center justify-center rounded-[14px] bg-white/6">
                     <Icon
-                      className="size-6 text-accent"
+                      className="size-6 text-white"
                       strokeWidth={1.6}
                       aria-hidden="true"
                     />
                   </span>
-                  <h3 className="mt-6 text-lg font-semibold tracking-tight">
+                  <h3 className="mt-6 text-[18px] font-medium text-white">
                     {title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                  <p className="mt-2 text-[15px] leading-[1.6] text-pretty text-site-muted">
                     {text}
                   </p>
                 </article>
@@ -233,18 +238,23 @@ export default async function EarlyCoupleProgramPage({
         </div>
       </section>
 
-      <section className="relative px-4 py-24 sm:px-6 lg:py-32">
-        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+      <section className="py-16 tab:py-24">
+        <div
+          className={cn(
+            SITE_CONTAINER,
+            'grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16',
+          )}
+        >
           <div>
-            <span className="glass inline-flex rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
-              {current.exchangeEyebrow}
-            </span>
-            <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            <p className={SITE_KICKER}>{current.exchangeEyebrow}</p>
+            <h2 className={cn(SITE_HEADING, 'mt-5 text-balance')}>
               {current.exchangeHeading}
             </h2>
-            <div className="glass mt-8 rounded-2xl p-7">
-              <h3 className="font-semibold">{current.fitHeading}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-pretty text-muted-foreground">
+            <div className="mt-8 rounded-[20px] border border-site-line bg-site-surface p-7">
+              <h3 className="text-[16px] font-medium text-white">
+                {current.fitHeading}
+              </h3>
+              <p className="mt-3 text-[15px] leading-[1.6] text-pretty text-site-muted">
                 {current.fitBody}
               </p>
             </div>
@@ -254,14 +264,16 @@ export default async function EarlyCoupleProgramPage({
             {current.steps.map(([title, text], index) => (
               <li
                 key={title}
-                className="glass flex gap-4 rounded-2xl p-6 sm:gap-5 sm:p-7"
+                className="flex gap-4 rounded-[20px] border border-site-line bg-site-surface p-6 sm:gap-5 sm:p-7"
               >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">
+                <span className="host-figure w-8 shrink-0 text-[30px] leading-none text-white tabular-nums">
                   {index + 1}
                 </span>
                 <div>
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                  <h3 className="text-[16px] font-medium text-white">
+                    {title}
+                  </h3>
+                  <p className="mt-2 text-[15px] leading-[1.6] text-pretty text-site-muted">
                     {text}
                   </p>
                 </div>
@@ -271,24 +283,26 @@ export default async function EarlyCoupleProgramPage({
         </div>
       </section>
 
-      <section
-        id="apply"
-        className="relative scroll-mt-24 px-4 py-24 sm:px-6 lg:py-32"
-      >
-        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
+      <section id="apply" className="scroll-mt-24 py-16 tab:py-24">
+        <div
+          className={cn(
+            SITE_CONTAINER,
+            'grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16',
+          )}
+        >
           <div className="lg:pt-8">
-            <span className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide text-accent">
+            <p className={cn(SITE_KICKER, 'inline-flex items-center gap-2')}>
               <CalendarHeart
                 className="size-4"
                 strokeWidth={1.6}
                 aria-hidden="true"
               />
               {current.formEyebrow}
-            </span>
-            <h2 className="mt-6 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            </p>
+            <h2 className={cn(SITE_HEADING, 'mt-5 text-balance')}>
               {current.formHeading}
             </h2>
-            <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
+            <p className={cn(SITE_LEAD, 'mt-4 text-pretty')}>
               {current.formLead}
             </p>
           </div>

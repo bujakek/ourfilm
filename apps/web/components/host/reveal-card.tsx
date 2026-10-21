@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useOptimistic, useRef, useState, useTransition } from 'react'
 
 import { setReveal } from '@/app/(product)/host/events/[slug]/actions'
 import { RevealSelector } from '@/components/host/reveal-selector'
-import { Button } from '@/components/ui/button'
+import { useSettingsSave } from '@/components/host/settings-save'
+import {
+  HOST_PANEL,
+  HOST_PRIMARY,
+  HOST_ROW_QUESTION,
+  HOST_SECONDARY,
+} from '@/components/host/ui/classes'
 import type { RevealChoice } from '@/lib/camera'
+import { revealChoiceCommit } from '@/lib/host-ui'
 
 /**
  * When the album develops.
@@ -13,83 +20,123 @@ import type { RevealChoice } from '@/lib/camera'
  * Both choices are pinned to the capture window, and the database trigger
  * recomputes the instant whenever that window moves.
  *
- * Like the capture window beside it, there is no optimistic state: the saved
- * rule is something a host will read back and act on.
+ * Optimistic, like the roll length. It used to sit with the date cards, but
+ * there is no date in it any more: two named choices, the selected one visible
+ * at a glance, so showing the pick immediately cannot mislead. It saves on the
+ * pick and falls back on its own if the action throws.
+ *
+ * **Except the one pick that cannot be taken back.** "Azonnal" while the album
+ * is still closed opens it to every guest the moment it lands, and a native
+ * radio changes on an arrow key. So that pick asks first, inline
+ * (`revealChoiceCommit`): the row shows as chosen, nothing is sent, and
+ * "Mégsem" puts the selection back. Moving to the event end, or to "Azonnal"
+ * once the album is open anyway, saves at once.
  */
 export function RevealCard({
   slug,
-  mode: savedMode,
+  mode,
+  eventEndRevealAt,
   locale,
 }: {
   slug: string
   mode: RevealChoice
+  /** When the album opens if it is not "instant", as an ISO instant. */
+  eventEndRevealAt: string
   locale: 'en' | 'hu'
 }) {
   const en = locale === 'en'
-  const [mode, setMode] = useState<RevealChoice>(savedMode)
   const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { report } = useSettingsSave()
+  const [optimisticMode, setOptimisticMode] = useOptimistic(mode)
+  const [confirming, setConfirming] = useState(false)
+  const section = useRef<HTMLElement>(null)
+  const legend = useRef<HTMLLegendElement>(null)
+  // The confirm's buttons leave the page when either is pressed, so focus
+  // has to land somewhere. Cancel puts it back on the radio that holds the
+  // choice; "Megnyitás most" cannot, because the radios disable while the
+  // save is pending and a disabled control drops focus, so it goes to the
+  // question instead.
+  const focusChoice = (choice: RevealChoice) =>
+    section.current
+      ?.querySelector<HTMLInputElement>(`input[value="${choice}"]`)
+      ?.focus()
 
-  const dirty = mode !== savedMode
+  const apply = (next: RevealChoice) =>
+    startTransition(async () => {
+      setOptimisticMode(next)
+      try {
+        await setReveal(slug, next)
+        report('ok', () => apply(next))
+      } catch {
+        report('error', () => apply(next))
+      }
+    })
 
   return (
-    <div className="glass rounded-2xl px-5 py-4">
-      <p className="font-medium">{en ? 'Photo reveal' : 'Képek megjelenése'}</p>
-
-      <fieldset className="mt-4">
-        <legend className="sr-only">
-          {en ? 'Photo reveal time' : 'Leleplezés időpontja'}
+    <section ref={section} className={`${HOST_PANEL} p-5`}>
+      <fieldset>
+        <legend
+          ref={legend}
+          tabIndex={-1}
+          className={`${HOST_ROW_QUESTION} outline-none`}
+        >
+          {en ? 'When should photos appear?' : 'Mikor jelenjenek meg a képek?'}
         </legend>
-        <RevealSelector
-          value={mode}
-          onChange={(value) => {
-            setMode(value)
-            setSaved(false)
-          }}
-          name="reveal_mode_setting"
-          locale={locale}
-          disabled={pending}
-        />
+        <div className="mt-3">
+          <RevealSelector
+            value={confirming ? 'instant' : optimisticMode}
+            onChange={(value) => {
+              const decision = revealChoiceCommit({
+                from: optimisticMode,
+                to: value,
+                revealAt: new Date(eventEndRevealAt),
+                now: new Date(),
+              })
+              setConfirming(decision === 'confirm')
+              if (decision === 'save') apply(value)
+            }}
+            name="reveal_mode_setting"
+            locale={locale}
+            disabled={pending}
+          />
+        </div>
       </fieldset>
 
-      <Button
-        disabled={pending || !dirty}
-        onClick={() =>
-          startTransition(async () => {
-            setError(null)
-            try {
-              await setReveal(slug, mode)
-              setSaved(true)
-            } catch (e) {
-              setError(
-                e instanceof Error
-                  ? e.message
-                  : en
-                    ? 'Could not save changes.'
-                    : 'Nem sikerült módosítani.',
-              )
-            }
-          })
-        }
-        className="mt-4 w-full"
-      >
-        {pending
-          ? en
-            ? 'Saving…'
-            : 'Mentés…'
-          : en
-            ? 'Save changes'
-            : 'Változtatások mentése'}
-      </Button>
-
-      {error ? (
-        <p className="mt-2 text-xs text-destructive">{error}</p>
-      ) : saved ? (
-        <p className="mt-2 text-xs text-accent">
-          {en ? 'Saved.' : 'Elmentettük.'}
-        </p>
-      ) : null}
-    </div>
+      {/* Always mounted, so the question is announced when it appears. */}
+      <div aria-live="polite">
+        {confirming ? (
+          <div className="mt-4">
+            <p className="text-[15px] leading-[1.5] text-pretty text-white">
+              {en
+                ? 'Every guest will see the photos right away. Open the album?'
+                : 'Most rögtön látható lesz minden vendégnek. Megnyitod?'}
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirming(false)
+                  apply('instant')
+                  legend.current?.focus()
+                }}
+                className={`${HOST_PRIMARY} w-full sm:flex-1`}
+              >
+                {en ? 'Open now' : 'Megnyitás most'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirming(false)
+                  focusChoice(optimisticMode)
+                }}
+                className={`${HOST_SECONDARY} w-full sm:flex-1`}
+              >
+                {en ? 'Cancel' : 'Mégsem'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </section>
   )
 }

@@ -4,7 +4,10 @@ import Link from 'next/link'
 import { useEffect } from 'react'
 
 import { PageGrain } from '@/components/site/page-grain'
-import { Button, buttonVariants } from '@/components/ui/button'
+import {
+  SCREEN_PRIMARY,
+  SCREEN_SECONDARY,
+} from '@/components/site/not-found-screen'
 import { defaultLocale, localePath } from '@/lib/i18n'
 import { trackClientError } from '@/lib/telemetry'
 
@@ -35,26 +38,26 @@ export function ErrorScreen({
     <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
       <PageGrain />
       <main className="relative z-10 w-full max-w-md text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+        <h1 className="text-[30px] leading-[1.2] font-medium tracking-tight text-balance text-white">
           Something went wrong
         </h1>
-        <p className="mt-4 leading-relaxed text-pretty text-muted-foreground">
+        <p className="mt-4 text-[16px] leading-[1.6] text-pretty text-white/65">
           We could not load this page. Try again — if you were uploading photos,
           they have not been lost.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button type="button" onClick={reset}>
+          <button type="button" onClick={reset} className={SCREEN_PRIMARY}>
             Try again
-          </Button>
+          </button>
           <Link
             href={localePath(defaultLocale, '/')}
-            className={buttonVariants({ variant: 'secondary' })}
+            className={SCREEN_SECONDARY}
           >
             Back to home
           </Link>
         </div>
         {error.digest ? (
-          <p className="mt-6 text-xs text-muted-foreground/60">
+          <p className="mt-6 text-[12px] text-white/55">
             Error ID: {error.digest}
           </p>
         ) : null}

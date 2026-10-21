@@ -1,6 +1,9 @@
 'use client'
 
+import { ChevronDown } from 'lucide-react'
 import { useId, useState } from 'react'
+
+import { HOST_FIELD, HOST_FOCUS } from '@/components/host/ui/classes'
 
 import {
   type BillingCountry,
@@ -59,13 +62,13 @@ export function BillingCountryField({
     return (
       <div
         className={cn(
-          'flex flex-wrap items-center justify-between gap-x-3 text-sm',
+          'flex flex-wrap items-center justify-between gap-x-3 text-[15px] text-white',
           className,
         )}
       >
         <input type="hidden" name={name} value={country} />
         <p>
-          <span className="text-muted-foreground">
+          <span className="text-white/65">
             {en ? 'Billing country: ' : 'Számlázási ország: '}
           </span>
           {billingCountryName(country, locale)}
@@ -73,7 +76,7 @@ export function BillingCountryField({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="min-h-11 text-accent underline underline-offset-4"
+          className={`min-h-11 font-medium text-white underline underline-offset-4 ${HOST_FOCUS}`}
         >
           {en ? 'Change' : 'Módosítás'}
         </button>
@@ -85,44 +88,50 @@ export function BillingCountryField({
     <div className={className}>
       <label
         htmlFor={id}
-        className="block text-[12px] font-medium text-foreground"
+        className="block text-[13px] font-medium text-white/65"
       >
         {en ? 'Billing country' : 'Számlázási ország'}
       </label>
-      <select
-        id={id}
-        name={name}
-        required
-        value={country ?? ''}
-        onChange={(event) => {
-          onChange(parseBillingCountry(event.target.value))
-        }}
-        className={cn(
-          'mt-1.5 h-11 w-full rounded-lg border border-white/13 bg-transparent px-3 text-[14px] text-foreground',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-          !country && 'text-muted-foreground',
-        )}
-      >
-        <option value="" disabled>
-          {en ? 'Choose a country' : 'Válassz országot'}
-        </option>
-        {top.length > 0 ? (
-          <optgroup label={en ? 'Suggested' : 'Javasolt'}>
-            {top.map((option) => (
+      <div className="relative mt-1.5">
+        <select
+          id={id}
+          name={name}
+          required
+          value={country ?? ''}
+          onChange={(event) => {
+            onChange(parseBillingCountry(event.target.value))
+          }}
+          className={cn(
+            HOST_FIELD,
+            'appearance-none pr-11 [color-scheme:dark]',
+            !country && 'text-white/65',
+          )}
+        >
+          <option value="" disabled>
+            {en ? 'Choose a country' : 'Válassz országot'}
+          </option>
+          {top.length > 0 ? (
+            <optgroup label={en ? 'Suggested' : 'Javasolt'}>
+              {top.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.name}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+          <optgroup label={en ? 'All countries' : 'Minden ország'}>
+            {rest.map((option) => (
               <option key={option.code} value={option.code}>
                 {option.name}
               </option>
             ))}
           </optgroup>
-        ) : null}
-        <optgroup label={en ? 'All countries' : 'Minden ország'}>
-          {rest.map((option) => (
-            <option key={option.code} value={option.code}>
-              {option.name}
-            </option>
-          ))}
-        </optgroup>
-      </select>
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-white/65"
+          aria-hidden="true"
+        />
+      </div>
     </div>
   )
 }

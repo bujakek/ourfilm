@@ -23,8 +23,8 @@ import { cn } from '@/lib/utils'
  * The dot takes `currentColor`, so the row it sits in decides what it means.
  * That is what lets the guest's status row show the same 5px dot in amber when
  * the connection is gone — a second marker in a second shape would have read
- * as a second kind of thing. Every existing caller already sets `text-accent`
- * on the span around it, so nothing about the live dot changed colour.
+ * as a second kind of thing. Every caller sets the colour on the span around
+ * it: `text-landing-sky` while the film is live.
  */
 export function LiveDot({
   className,

@@ -11,6 +11,7 @@ import {
   hostReleaseCaptureAction,
   hostReserveShotAction,
 } from '@/app/(product)/host/events/[slug]/capture-actions'
+import { HOST_PRIMARY } from '@/components/host/ui/classes'
 import { QrSheetButton } from '@/components/host/qr-sheet'
 import { compressForStorage, prepareStoredShot } from '@/lib/image'
 import type { Locale } from '@/lib/i18n'
@@ -173,7 +174,7 @@ export function HostCamera({
           animate={{ opacity: handedOff || !canCapture ? 0.5 : 1 }}
           whileTap={canCapture && !reduceMotion ? { scale: 0.972 } : undefined}
           transition={reduceMotion ? still : { ...T.snap, opacity: T.settle }}
-          className="paper btn-shine flex min-h-[58px] flex-1 items-center justify-center gap-2.5 rounded-lg text-[15px] font-semibold disabled:pointer-events-none"
+          className={`${HOST_PRIMARY} flex-1 gap-2.5 disabled:pointer-events-none`}
         >
           <Camera
             className="size-[19px]"
@@ -219,7 +220,7 @@ export function HostCamera({
       <p
         aria-live="polite"
         className={`mt-3 min-h-5 text-center text-[13px] leading-[1.45] ${
-          error ? 'text-destructive' : 'text-muted-foreground'
+          error ? 'text-host-danger' : 'text-white/65'
         }`}
       >
         {error ??

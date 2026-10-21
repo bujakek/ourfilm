@@ -4,11 +4,13 @@ import {
   captureStatus,
   formatLine,
   longTimeRemaining,
-  offlineQueueNote,
+  capReachedNotice,
+  offlineQueueNotice,
   ownRollNote,
   queueClearedNote,
   revealSummary,
   shortTimeRemaining,
+  spentRollNotice,
 } from '@/lib/event-copy'
 
 /**
@@ -121,25 +123,83 @@ describe('captureStatus', () => {
   })
 })
 
-describe('offlineQueueNote', () => {
-  it('tells the guest to keep shooting only while they still can', () => {
-    expect(offlineQueueNote(3, true)).toBe(
-      'Nincs kapcsolat. 3 kép feltöltésre vár. Nyugodtan fotózhatsz tovább.',
-    )
-    // No film left, so the invitation would be a lie.
-    expect(offlineQueueNote(3, false)).toBe(
-      'Nincs kapcsolat. 3 kép feltöltésre vár.',
-    )
+describe('offlineQueueNotice', () => {
+  it('names the count and says the page must stay open', () => {
+    expect(offlineQueueNotice(3)).toEqual({
+      title: 'Nincs kapcsolat · 3 kép vár a feltöltésre',
+      body: 'A képeid a telefonon maradnak, és kapcsolat után maguktól feltöltődnek. Ne zárd be az oldalt.',
+    })
   })
 
   it('takes an English plural and no Hungarian one', () => {
-    expect(offlineQueueNote(1, true, 'en')).toBe(
-      'No connection. 1 photo waiting — keep shooting.',
+    expect(offlineQueueNotice(1, 'en').title).toBe(
+      'No connection · 1 photo waiting to upload',
     )
-    expect(offlineQueueNote(2, false, 'en')).toBe(
-      'No connection. 2 photos waiting to upload.',
+    expect(offlineQueueNotice(2, 'en').title).toBe(
+      'No connection · 2 photos waiting to upload',
     )
-    expect(offlineQueueNote(1, true)).toContain('1 kép feltöltésre vár')
+    expect(offlineQueueNotice(1).title).toContain('1 kép vár')
+  })
+
+  it('never mentions a deadline', () => {
+    for (const locale of ['hu', 'en'] as const) {
+      const { title, body } = offlineQueueNotice(4, locale)
+      expect(`${title} ${body}`).not.toMatch(/24|óra|hour/)
+    }
+  })
+})
+
+describe('capReachedNotice', () => {
+  it('interpolates the limit with the right article', () => {
+    expect(capReachedNotice(5).body).toContain('mind az 5 hely elfogyott')
+    expect(capReachedNotice(12).body).toContain('mind a 12 hely elfogyott')
+    expect(capReachedNotice(5, 'en').body).toContain('all 5 places are taken')
+  })
+
+  it('sends the guest to the host and offers no payment', () => {
+    for (const locale of ['hu', 'en'] as const) {
+      const { title, body } = capReachedNotice(5, locale)
+      expect(title).toBe(
+        locale === 'en' ? 'This event is full' : 'Ez az esemény betelt',
+      )
+      expect(body).toMatch(locale === 'en' ? /host/ : /szervező/)
+      expect(body).not.toMatch(/fizet|Ft|checkout|pay|price/i)
+    }
+  })
+})
+
+describe('spentRollNotice', () => {
+  const base = {
+    now,
+    captureStartAt: new Date(now.getTime() - HOUR),
+    captureEndAt: new Date(now.getTime() + HOUR),
+    revealAt: new Date(now.getTime() + HOUR),
+    guestsCanView: true,
+    timeZone: 'Europe/Budapest',
+  }
+
+  it('says when the gallery opens', () => {
+    const { title, body } = spentRollNotice(base, 24)
+    expect(title).toBe('Elhasználtad az összes képedet')
+    expect(body).toBe(
+      'Mind a 24 kép elkészült. A galéria 2026. jún. 13. 17:00-kor nyílik meg, és akkor láthatod az összes képet.',
+    )
+    expect(spentRollNotice(base, 5).body).toMatch(/^Mind az 5 kép/)
+    expect(spentRollNotice(base, 24, 'en').body).toContain(
+      'The gallery opens 13 Jun 2026, 17:00',
+    )
+  })
+
+  it('points at an open gallery instead of a time', () => {
+    const open = { ...base, revealAt: new Date(now.getTime() - HOUR) }
+    expect(spentRollNotice(open, 24).body).toContain('A galéria már nyitva')
+    expect(spentRollNotice(open, 24, 'en').body).toContain('already open')
+  })
+
+  it('promises no reveal when only the host can see the photos', () => {
+    const closed = { ...base, guestsCanView: false }
+    expect(spentRollNotice(closed, 24).body).toContain('csak a szervező')
+    expect(spentRollNotice(closed, 24, 'en').body).toContain('Only the host')
   })
 })
 

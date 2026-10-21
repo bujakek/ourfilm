@@ -2,6 +2,8 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+
+import { HOST_FOCUS } from '@/components/host/ui/classes'
 import type { Locale } from '@/lib/i18n'
 
 import {
@@ -86,6 +88,13 @@ export function MonthCalendar({
   const canGoBack =
     toDay(new Date(Date.UTC(visible.year, visible.month, 0))) >= earliest
 
+  // The day a panel opening this calendar focuses (`FloatingPanel`): the
+  // selected one, or the first that can be chosen when it cannot.
+  const focusDay =
+    value >= earliest && cells.some((date) => toDay(date) === value)
+      ? value
+      : cells.map(toDay).find((day) => day >= earliest)
+
   const step = (delta: number) =>
     setVisible(({ year, month }) => {
       const moved = new Date(Date.UTC(year, month + delta, 1))
@@ -100,20 +109,23 @@ export function MonthCalendar({
           onClick={() => step(-1)}
           disabled={!canGoBack}
           aria-label={locale === 'en' ? 'Previous month' : 'Előző hónap'}
-          className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className={`flex size-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:text-white disabled:opacity-40 ${HOST_FOCUS}`}
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
         {/* aria-live so a screen reader hears the month change: the arrows move
             focus nowhere, so nothing else would announce it. */}
-        <h2 aria-live="polite" className="text-lg font-medium">
+        <h2
+          aria-live="polite"
+          className="text-[13px] font-medium text-white/65"
+        >
           {heading}
         </h2>
         <button
           type="button"
           onClick={() => step(1)}
           aria-label={locale === 'en' ? 'Next month' : 'Következő hónap'}
-          className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+          className={`flex size-11 items-center justify-center rounded-[12px] text-white/65 transition-colors hover:text-white ${HOST_FOCUS}`}
         >
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>
@@ -121,14 +133,19 @@ export function MonthCalendar({
 
       <div
         aria-hidden="true"
-        className="mt-3 grid grid-cols-7 text-center text-xs text-muted-foreground/70"
+        className="mt-1 grid grid-cols-7 text-center text-[11px] font-medium tracking-[0.1em] text-white/55"
       >
         {weekdays.map((weekday, index) => (
-          <span key={`${weekday}-${index}`}>{weekday}</span>
+          <span
+            key={`${weekday}-${index}`}
+            className="flex h-7 items-center justify-center"
+          >
+            {weekday}
+          </span>
         ))}
       </div>
 
-      <ul className="mt-1 grid grid-cols-7">
+      <ul className="grid grid-cols-7">
         {cells.map((date) => {
           const day = toDay(date)
           const outside = date.getUTCMonth() !== visible.month
@@ -136,11 +153,12 @@ export function MonthCalendar({
           const selected = day === value
 
           return (
-            <li key={day} className="flex justify-center py-0.5">
+            <li key={day} className="flex min-w-0 justify-center">
               <button
                 type="button"
                 disabled={past}
                 aria-pressed={selected}
+                data-initial-focus={day === focusDay ? '' : undefined}
                 aria-label={
                   locale === 'en'
                     ? new Intl.DateTimeFormat('en-GB', {
@@ -157,22 +175,18 @@ export function MonthCalendar({
                   if (outside) setVisible(monthOf(day))
                 }}
                 className={[
-                  // `rounded-lg` (0.875rem), not `rounded-xl`: this project
-                  // rebinds the whole scale, and `--radius-xl` is 1.25rem,
-                  // which on a 44px cell is most of the way to a circle. The
-                  // selected day is a squircle, and that shape is one of the
-                  // two signals.
-                  'flex size-11 items-center justify-center rounded-lg text-base transition-colors',
-                  // Two signals, not one: the selected day is the only cell
-                  // wearing a ring, so the choice survives a colourblind reader
-                  // and a phone in bright sun.
+                  // Fluid width, so seven of them fit a phone-width panel at
+                  // 130% text; the height keeps the 44px tap target.
+                  `flex h-11 w-full max-w-11 items-center justify-center rounded-[12px] text-[14px] font-medium transition-colors ${HOST_FOCUS}`,
+                  // Two signals, not one: the selected day is the only white
+                  // cell, and the only one in ink.
                   selected
-                    ? 'bg-accent/10 font-semibold text-accent ring-2 ring-accent'
+                    ? 'bg-white text-landing-ink'
                     : past
-                      ? 'text-muted-foreground/25'
+                      ? 'text-white/25'
                       : outside
-                        ? 'text-muted-foreground/40'
-                        : 'text-foreground',
+                        ? 'text-white/55 hover:bg-white/8'
+                        : 'text-white hover:bg-white/8',
                 ].join(' ')}
               >
                 {date.getUTCDate()}

@@ -142,6 +142,7 @@ export default async function EventPage({ params }: Props) {
       photos={tiles}
       wall={wall}
       revealAt={event.reveal_at}
+      guestsCanView={event.guests_can_view}
     />
   )
 }

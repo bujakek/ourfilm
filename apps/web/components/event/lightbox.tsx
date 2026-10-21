@@ -3,7 +3,15 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
-import { useCallback, useEffect, useRef, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
+import { HOST_FOCUS } from '@/components/host/ui/classes'
+import { useToastLayer } from '@/components/host/ui/toast'
 import type { Locale } from '@/lib/i18n'
 import { T } from '@/lib/motion'
 import { useScrollLock } from '@/lib/use-scroll-lock'
@@ -29,10 +37,12 @@ export type ViewablePhoto = {
 /**
  * One photo, full-screen, with the album either side of it.
  *
- * The host opens the same viewer as the guest and gets a footer of controls in
- * it: `actions` is where save, hide and delete live, and it is the only reason
- * this component knows there is more than one caller. A guest passes nothing
- * and sees exactly what they saw before.
+ * The host opens the same viewer as the guest and fills its slots: `heading`
+ * (who took it and when), `overlay` (the hidden label) and `actions` (hide,
+ * save, delete). Passing a `heading` is what switches the frame to the host's
+ * layout — close at the left, the count at the right, the controls in a
+ * footer bar — and it is the only reason this component knows there is more
+ * than one caller. A guest passes none of them and sees the viewer as before.
  */
 export function Lightbox<Photo extends ViewablePhoto>({
   photos,
@@ -41,9 +51,10 @@ export function Lightbox<Photo extends ViewablePhoto>({
   onClose,
   onNavigate,
   locale = 'hu',
+  heading,
+  overlay,
   actions,
   dimmed = false,
-  caption: captionOverride,
 }: {
   photos: Photo[]
   /** Telemetry only. */
@@ -52,20 +63,26 @@ export function Lightbox<Photo extends ViewablePhoto>({
   onClose: () => void
   onNavigate: (next: number) => void
   locale?: Locale
-  /** Rendered above the nav row. The host's moderation controls; nothing for
-   *  a guest. */
+  /** The host's top line: uploader and time. Its presence selects the host
+   *  layout, in which the credit line under the photo is not drawn. */
+  heading?: ReactNode
+  /** Drawn over the top of the photo. The host's hidden label. */
+  overlay?: ReactNode
+  /** The footer under the photo. The host's moderation bar; nothing for a
+   *  guest. */
   actions?: ReactNode
-  /** Withheld from the album, drawn the way the grid draws it — so a host
-   *  cannot mistake which frame they are looking at. */
+  /** Withheld from the album: the photo is dimmed, so a host cannot mistake
+   *  which frame they are looking at. */
   dimmed?: boolean
-  /** Replaces the credit line under the photo. The host's version carries a
-   *  time and the hidden state, which a guest has no use for. */
-  caption?: string
 }) {
   // Mounted only while open — `AnimatePresence` removes it on close — so the
   // page is held for exactly as long as a photo is over it.
   useScrollLock(true)
   const dialogRef = useRef<HTMLDialogElement>(null)
+  // The dialog is modal, so host toasts (hide, undo, delete) must render
+  // inside it to be seen and tapped. Nothing happens on the guest side, which
+  // has no toast provider.
+  useToastLayer(dialogRef)
   const touchStartX = useRef<number | null>(null)
   const photo = photos[index]
 
@@ -108,13 +125,74 @@ export function Lightbox<Photo extends ViewablePhoto>({
     : locale === 'en'
       ? 'Photo'
       : 'Fotó'
-  const caption = captionOverride ?? credit
+  const host = heading !== undefined
+  // The host's screens use the white focus ring; the guest side keeps the
+  // global one, unchanged.
+  const hostFocus = host ? HOST_FOCUS : ''
+
+  const counter = host ? (
+    <p className="host-figure shrink-0 text-[22px] leading-none whitespace-nowrap text-white">
+      {index + 1}
+      <span className="text-white/60"> / {photos.length}</span>
+    </p>
+  ) : (
+    <p className="text-sm text-white/70">
+      {index + 1} / {photos.length}
+    </p>
+  )
+
+  const close = (
+    <motion.button
+      type="button"
+      onClick={onClose}
+      whileTap={{ scale: 0.9 }}
+      aria-label={locale === 'en' ? 'Close' : 'Bezárás'}
+      className={`flex size-11 shrink-0 items-center justify-center text-white backdrop-blur-md ${
+        host ? 'rounded-[14px] bg-white/12' : 'rounded-full bg-white/12'
+      } ${hostFocus}`}
+    >
+      <X className="size-5" />
+    </motion.button>
+  )
+
+  const previous = (
+    <motion.button
+      type="button"
+      onClick={() => go(-1)}
+      disabled={index === 0}
+      whileTap={index === 0 ? undefined : { scale: 0.9 }}
+      aria-label={locale === 'en' ? 'Previous photo' : 'Előző kép'}
+      className={`flex size-12 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur-md disabled:opacity-30 ${hostFocus}`}
+    >
+      <ChevronLeft className="size-6" />
+    </motion.button>
+  )
+
+  const next = (
+    <motion.button
+      type="button"
+      onClick={() => go(1)}
+      disabled={index === photos.length - 1}
+      whileTap={index === photos.length - 1 ? undefined : { scale: 0.9 }}
+      aria-label={locale === 'en' ? 'Next photo' : 'Következő kép'}
+      className={`flex size-12 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur-md disabled:opacity-30 ${hostFocus}`}
+    >
+      <ChevronRight className="size-6" />
+    </motion.button>
+  )
 
   return (
     <dialog
       ref={dialogRef}
       aria-label={locale === 'en' ? 'Photo viewer' : 'Fotó nagyban'}
       className="max-h-none max-w-none bg-transparent backdrop:bg-black/90 backdrop:backdrop-blur-sm"
+      // Host toasts render in here (see `useToastLayer`); this lifts them
+      // above the footer bar instead of over its buttons.
+      style={
+        host
+          ? ({ '--host-toast-offset': '6.5rem' } as CSSProperties)
+          : undefined
+      }
       onClose={onClose}
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0]?.clientX ?? null
@@ -134,20 +212,18 @@ export function Lightbox<Photo extends ViewablePhoto>({
         transition={T.settle}
         className="fixed inset-0 flex flex-col"
       >
-        <div className="flex items-center justify-between px-4 py-3">
-          <p className="text-sm text-white/70">
-            {index + 1} / {photos.length}
-          </p>
-          <motion.button
-            type="button"
-            onClick={onClose}
-            whileTap={{ scale: 0.9 }}
-            aria-label={locale === 'en' ? 'Close' : 'Bezárás'}
-            className="glass flex size-11 items-center justify-center rounded-full text-white"
-          >
-            <X className="size-5" />
-          </motion.button>
-        </div>
+        {host ? (
+          <div className="flex items-center gap-3 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3">
+            {close}
+            <div className="min-w-0 flex-1">{heading}</div>
+            {counter}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-4 py-3">
+            {counter}
+            {close}
+          </div>
+        )}
 
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <AnimatePresence mode="popLayout" initial={false}>
@@ -176,41 +252,44 @@ export function Lightbox<Photo extends ViewablePhoto>({
                   })
                 }
                 className={`object-contain transition-opacity ${
-                  dimmed ? 'opacity-50 grayscale' : ''
+                  dimmed ? 'opacity-55' : ''
                 }`}
                 priority
               />
             </motion.div>
           </AnimatePresence>
+          {overlay ? (
+            <div className="pointer-events-none absolute top-2 left-4 z-10 max-w-[calc(100%-2rem)]">
+              {overlay}
+            </div>
+          ) : null}
         </div>
 
-        {actions ? <div className="px-4 pt-2">{actions}</div> : null}
-
-        <div className="flex items-center justify-between gap-4 px-4 py-4">
-          <motion.button
-            type="button"
-            onClick={() => go(-1)}
-            disabled={index === 0}
-            whileTap={index === 0 ? undefined : { scale: 0.9 }}
-            aria-label={locale === 'en' ? 'Previous photo' : 'Előző kép'}
-            className="glass flex size-12 items-center justify-center rounded-full text-white disabled:opacity-30"
-          >
-            <ChevronLeft className="size-6" />
-          </motion.button>
-          <p className="min-w-0 truncate text-center text-sm text-white/70">
-            {caption}
-          </p>
-          <motion.button
-            type="button"
-            onClick={() => go(1)}
-            disabled={index === photos.length - 1}
-            whileTap={index === photos.length - 1 ? undefined : { scale: 0.9 }}
-            aria-label={locale === 'en' ? 'Next photo' : 'Következő kép'}
-            className="glass flex size-12 items-center justify-center rounded-full text-white disabled:opacity-30"
-          >
-            <ChevronRight className="size-6" />
-          </motion.button>
-        </div>
+        {host ? (
+          // Swipe and the arrow keys carry a phone; a pointer gets arrows.
+          <>
+            <div className="pointer-events-none absolute inset-x-3 top-1/2 hidden -translate-y-1/2 justify-between sm:flex [&>*]:pointer-events-auto">
+              {previous}
+              {next}
+            </div>
+            {actions ? (
+              <div className="px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+                {actions}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
+            {actions ? <div className="px-4 pt-2">{actions}</div> : null}
+            <div className="flex items-center justify-between gap-4 px-4 py-4">
+              {previous}
+              <p className="min-w-0 truncate text-center text-sm text-white/70">
+                {credit}
+              </p>
+              {next}
+            </div>
+          </>
+        )}
       </motion.div>
     </dialog>
   )

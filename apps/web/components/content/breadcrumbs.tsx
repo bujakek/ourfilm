@@ -21,7 +21,7 @@ export function Breadcrumbs({
 }) {
   return (
     <nav aria-label={locale === 'en' ? 'Breadcrumbs' : 'Morzsamenü'}>
-      <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
+      <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-site-muted">
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1
           return (
@@ -33,13 +33,13 @@ export function Breadcrumbs({
                 />
               ) : null}
               {isLast ? (
-                <span aria-current="page" className="text-foreground/70">
+                <span aria-current="page" className="text-white/75">
                   {crumb.name}
                 </span>
               ) : (
                 <Link
                   href={localePath(locale, crumb.path)}
-                  className="transition-colors hover:text-foreground"
+                  className="transition-colors hover:text-white"
                 >
                   {crumb.name}
                 </Link>
