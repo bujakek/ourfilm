@@ -98,28 +98,28 @@ export const EMAIL_PROVIDER = 'Resend'
  * order, and stored on the purchase. Keep this stable until the terms
  * materially change; a display date is not a useful audit trail on its own.
  *
- * Bumped from `2026-08-31-mor-hu` when Hungarian events left Managed
- * Payments: the seller of record, who issues the invoice and who handles a
- * refund all changed for a Hungarian buyer, which is as material as it gets.
+ * Bumped from `2026-09-09-direct-hu` to record the 12-month event retention
+ * terms and optional 24-hour after-event uploads. Deploy with the retention
+ * enforcement and transition process in docs/photo-retention.md.
  * Nothing *gates* on this value — the webhook records what the Session
  * reported rather than comparing — so bumping it cannot refuse an in-flight
  * checkout.
  */
-export const LEGAL_VERSION = '2026-09-09-direct-hu'
+export const LEGAL_VERSION = '2026-09-30-photo-retention'
 
 /** The imprint's last update; legal documents have their own dates below. */
 export const LAST_UPDATED = '2026. szeptember 9.'
 
-/** Sign-in clarification; the paid-order terms in LEGAL_VERSION are unchanged. */
+/** Contractual retention and after-event upload terms; matches LEGAL_VERSION. */
 export const TERMS_LAST_UPDATED = {
-  hu: '2026. szeptember 21.',
-  en: '21 September 2026',
+  hu: '2026. szeptember 30.',
+  en: '30 September 2026',
 } as const
 
 /** The privacy notice changes independently from the contractual terms. */
 export const PRIVACY_LAST_UPDATED = {
-  hu: '2026. szeptember 21.',
-  en: '21 September 2026',
+  hu: '2026. szeptember 30.',
+  en: '30 September 2026',
 } as const
 
 /**

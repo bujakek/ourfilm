@@ -36,9 +36,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// Lean pilot terms. They describe the service that exists today and avoid
-// promises which would require a moderation back office, a retention worker or
-// a separate enterprise contract process.
+// Bilingual service terms. Deploy the retention clauses only with the
+// enforcement and transition process described in docs/photo-retention.md.
 const sections: LegalSection[] = [
   {
     title: 'Szolgáltató és kapcsolat',
@@ -52,6 +51,7 @@ const sections: LegalSection[] = [
     body: [
       'Az OurFilm egy eseményhez használható digitális eldobható fényképezőgép. A házigazda létrehozza az eseményt, beállítja a fotózási időszakot, a vendégenkénti képszámot és a képek felfedésének időpontját, majd QR-kódot vagy linket oszt meg a vendégekkel.',
       'A vendég alkalmazás és fiók nélkül, a mobilböngésző kamerájával készít képeket. Nincs előnézet és újrafotózás. A képek a beállított felfedési szabály szerint válnak láthatóvá. A házigazda az esemény képeit megtekintheti, elrejtheti, letöltheti, az eseményt pedig törölheti.',
+      'A fotózási időszak alatt a vendégek közvetlenül a kamerával készíthetnek képeket. Ha a házigazda bekapcsolja az esemény utáni galériás feltöltést, a beállított fotózási időszak végét követő 24 órában a vendégek a telefonjukon már meglévő képeket is hozzáadhatják. Ez ugyanazt a vendégenkénti képkockakeretet használja, nem ad új tekercset, és nem módosítja a fotózási időszakot vagy a felfedés szabályait.',
       'A szolgáltatás használatához megfelelő eszköz, internetkapcsolat, támogatott böngésző és kameraengedély szükséges. Folyamatos, hibamentes elérhetőséget nem garantálunk.',
     ],
   },
@@ -107,6 +107,16 @@ const sections: LegalSection[] = [
     ],
   },
   {
+    title: 'A képek elérhetősége és megőrzése',
+    body: [
+      'Az esemény feltöltött képei a házigazda által beállított fotózási időszak végétől számított 12 naptári hónapig érhetők el és tölthetők le. Ez az ingyenes és a fizetős eseményekre is vonatkozik; a megőrzésért ezen időszakon belül nem számítunk fel külön díjat. A vendégek a képeket továbbra is csak a házigazda által engedélyezett hozzáférés és felfedés szerint láthatják.',
+      'A 12 hónap elteltével a galéria elérhetősége megszűnik, és az esemény képeit, valamint a kapcsolódó esemény- és vendégadatokat töröljük az aktív szolgáltatásból. Az esemény utáni 24 órás galériás feltöltés és az egyes képek későbbi feltöltése nem indít új megőrzési időszakot.',
+      'Ez a megőrzési szabály a jelen ÁSZF szerint létrehozott eseményekre vonatkozik. Korábban létrehozott eseménynél a létrehozáskor, illetve a vásárláskor elfogadott megőrzési feltételek irányadók.',
+      'A házigazda az eseményt korábban is véglegesen törölheti. Ez nem érinti az érintettek törléshez való jogát, a jogsértő tartalom eltávolítását vagy az indokolt korlátozásokat. A gyorsítótárakra, biztonsági másolatokra és a jogszabály alapján megőrzendő adatokra az Adatkezelési tájékoztatóban leírt szabályok vonatkoznak.',
+      'A házigazdának a megőrzési idő lejárta vagy az esemény korábbi törlése előtt le kell töltenie a megtartani kívánt képeket. Az OurFilm nem vállal korlátlan idejű tárolást; a törölt esemény és képek a szolgáltatásban nem állíthatók vissza.',
+    ],
+  },
+  {
     title: 'Adatok, rendelkezésre állás és felelősség',
     body: [
       'Az OurFilm nem helyettesíti a saját biztonsági mentést. A házigazdának érdemes az esemény után letöltenie a képeket. Az esemény törlése végleges.',
@@ -143,6 +153,7 @@ const englishSections: LegalSection[] = [
     title: 'The service',
     body: [
       'OurFilm is a browser-based disposable camera for events. A host creates an event, sets its shooting window, number of shots per guest and reveal time, then shares a QR code or link. Guests can take photos without an app or account. The host can view, hide, download and delete event photos.',
+      'During the shooting window, guests take photos directly with the camera. If the host enables after-event gallery uploads, guests can also select existing photos from their phone during the 24 hours following the configured end of the shooting window. These uploads use each guest’s remaining frames from the same roll; they do not provide a new roll or change the shooting window or reveal rules.',
       'A compatible device, internet connection, browser and camera permission are required. We do not promise uninterrupted or error-free availability.',
     ],
   },
@@ -173,6 +184,16 @@ const englishSections: LegalSection[] = [
     body: [
       'The host must share the event link only with the intended audience and inform attendees about the shared photography. Users may only create or upload content they are entitled to create and share. Illegal, rights-infringing, hateful, severely violent or sexual content, automated abuse and interference with the service are prohibited.',
       'Users retain their rights in photos and grant OurFilm only the non-exclusive permission needed to store, display and make them downloadable as part of the service. We may hide, remove or restrict content or events where required by law, safety or serious or repeated misuse.',
+    ],
+  },
+  {
+    title: 'Photo availability and retention',
+    body: [
+      'Uploaded event photos are available to view and download for 12 calendar months from the end of the shooting window configured by the host. This applies to free and paid events, with no separate storage fee during that period. Guest access remains subject to the host’s access settings and reveal rules.',
+      'At the end of the 12 months, gallery access ends and we delete the event photos and associated event and guest data from the active service. The optional 24-hour after-event upload window and later uploads of individual photos do not restart the retention period.',
+      'This retention rule applies to events created under the current Terms. For earlier events, the retention terms accepted at creation or purchase continue to apply.',
+      'The host can permanently delete the event earlier. This does not affect data subjects’ erasure rights, removal of unlawful content or justified restrictions. The Privacy Notice explains how caches, backup copies and records required by law are handled.',
+      'The host must download any photos they want to keep before the retention period ends or the event is deleted earlier. OurFilm does not provide indefinite storage; deleted events and photos cannot be restored through the service.',
     ],
   },
   {
