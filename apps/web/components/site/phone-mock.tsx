@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 
 import type { Locale } from '@/lib/i18n'
 import { EXAMPLE_SLUG } from '@/lib/slug'
@@ -184,6 +184,41 @@ const MONO_LABEL = 'font-mono font-medium tracking-[0.14em]'
 const NAME = 'Anna & Péter'
 
 /**
+ * How much larger than 254px the phone is drawn, so the photos inside it ask
+ * `next/image` for enough pixels. The homepage shows these screens at up to
+ * 2.2× (`components/landing/scaled-phone.tsx`); at the default `sizes` a
+ * 102px tile would be fetched for a 225px slot and look soft.
+ */
+export const PhoneScaleContext = createContext(1)
+
+function useSizes() {
+  const scale = useContext(PhoneScaleContext)
+  return (px: number) => `${Math.ceil(px * scale)}px`
+}
+
+/**
+ * Who the screen belongs to and what is on its roll. The defaults are the
+ * wedding every mock has always shown; the homepage's occasion tabs pass a
+ * birthday, a trip or a party instead, and nothing else about the screen
+ * changes — it is the same product whatever the event.
+ */
+export interface ScreenContent {
+  name?: string
+  /** Public image paths, cycled through every photo slot on the screen. */
+  photos?: readonly string[]
+}
+
+function pick(
+  photos: readonly string[] | undefined,
+  fallback: readonly string[],
+): readonly string[] {
+  if (!photos?.length) return fallback
+  return fallback.map((_, i) => photos[i % photos.length])
+}
+
+const landingPhoto = (name: string) => `/images/landing/${name}.webp`
+
+/**
  * Step 01 — question three of `/host/events/new`.
  *
  * The third question rather than the first because the reveal is the decision
@@ -193,6 +228,7 @@ const NAME = 'Anna & Péter'
  */
 export function ScreenReveal({ locale }: { locale: Locale }) {
   const en = locale === 'en'
+  const sizes = useSizes()
 
   return (
     <PhoneMock>
@@ -244,7 +280,7 @@ export function ScreenReveal({ locale }: { locale: Locale }) {
               src={guest.src}
               alt=""
               fill
-              sizes="102px"
+              sizes={sizes(102)}
               className="scale-105 object-cover blur-[8px]"
             />
             <span className="absolute top-2 left-2 text-[10px] font-medium text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]">
@@ -327,9 +363,18 @@ export function ScreenReveal({ locale }: { locale: Locale }) {
 }
 
 /** Step 02 — the host console at `/host/events/[slug]`. */
-export function ScreenTicket({ locale }: { locale: Locale }) {
+export function ScreenTicket({
+  locale,
+  name = NAME,
+  photos,
+}: { locale: Locale } & ScreenContent) {
   const en = locale === 'en'
-  const url = eventUrl(EXAMPLE_SLUG, locale)
+  const url = eventUrl(EXAMPLE_SLUG)
+  const sizes = useSizes()
+  const tiles = pick(photos, [
+    landingPhoto('reveal-bride-friends'),
+    landingPhoto('reveal-celebration'),
+  ])
 
   const figures: [string, string][] = [
     ['84', en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'],
@@ -372,7 +417,7 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
       </span>
 
       <p className="mt-2 font-display text-[24px] leading-none tracking-[-0.012em]">
-        {NAME}
+        {name}
       </p>
 
       {/* Ruled top *and* bottom, and divided by uprights — the console's figure
@@ -396,7 +441,7 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
       </div>
 
       <div className="paper mt-2.5 rounded-xs p-2.5 text-center">
-        <p className="font-display text-[15px] leading-[1.1]">{NAME}</p>
+        <p className="font-display text-[15px] leading-[1.1]">{name}</p>
         <p
           className={`paper-muted mt-1 ${MONO_LABEL} text-[6.5px] tracking-[0.2em]`}
         >
@@ -450,19 +495,16 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
           </span>
         </div>
         <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-          {[
-            ['reveal-bride-friends', 'NÓRA'],
-            ['reveal-celebration', 'BENCE'],
-          ].map(([photo, who]) => (
+          {['NÓRA', 'BENCE'].map((who, i) => (
             <span
-              key={photo}
+              key={who}
               className="relative block aspect-square overflow-hidden rounded-sm"
             >
               <Image
-                src={`/images/landing/${photo}.webp`}
+                src={tiles[i]}
                 alt=""
                 fill
-                sizes="102px"
+                sizes={sizes(102)}
                 className="object-cover"
               />
               <span className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent px-1.5 pt-5 pb-1">
@@ -480,8 +522,13 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
 }
 
 /** Step 03 — the guest screen at `/e/[slug]`: counter, roll, shutter. */
-export function ScreenCamera({ locale }: { locale: Locale }) {
+export function ScreenCamera({
+  locale,
+  name = NAME,
+  photos,
+}: { locale: Locale } & ScreenContent) {
   const en = locale === 'en'
+  const sizes = useSizes()
   const exposed = 7
   const total = 24
   // The real strip parks the exposed/unexposed boundary against the right
@@ -489,7 +536,26 @@ export function ScreenCamera({ locale }: { locale: Locale }) {
   // blank. Six whole cells is what 212px holds — the same six the phone holds
   // at 350px, which is why they are 27px here and 52px there. Six, not seven:
   // a strip clipped mid-cell reads as a rendering fault rather than a scroll.
-  const roll = ['how-guest-photo', 'reveal-limbo', 'how-couple', 'final-rings']
+  const roll = pick(
+    photos,
+    ['how-guest-photo', 'reveal-limbo', 'how-couple', 'final-rings'].map(
+      landingPhoto,
+    ),
+  )
+  const gallery = pick(
+    photos,
+    [
+      'reveal-celebration',
+      'hero-dance-crowd',
+      'hero-sunglasses-couple',
+      'final-couple-table',
+      'hero-bride-party',
+      'final-dance-circle',
+      'hero-couple-dance',
+      'reveal-couple-toast',
+      'hero-bride-portrait',
+    ].map(landingPhoto),
+  )
 
   return (
     <PhoneMock fade>
@@ -508,7 +574,7 @@ export function ScreenCamera({ locale }: { locale: Locale }) {
       </div>
 
       <p className="mt-2.5 font-display text-[23px] leading-[1.02] tracking-[-0.005em]">
-        {NAME}
+        {name}
       </p>
 
       <div className="mt-4 flex items-end gap-2">
@@ -544,16 +610,16 @@ export function ScreenCamera({ locale }: { locale: Locale }) {
       <div className="film mt-3.5 overflow-hidden rounded-xs py-1">
         <Perfs />
         <div className="flex gap-[3px] px-1.5 py-1">
-          {roll.map((photo) => (
+          {roll.map((photo, i) => (
             <span
-              key={photo}
+              key={i}
               className="relative size-[27px] shrink-0 overflow-hidden rounded-[3px] bg-white/8"
             >
               <Image
-                src={`/images/landing/${photo}.webp`}
+                src={photo}
                 alt=""
                 fill
-                sizes="27px"
+                sizes={sizes(27)}
                 className="object-cover"
               />
             </span>
@@ -598,26 +664,16 @@ export function ScreenCamera({ locale }: { locale: Locale }) {
           </span>
         </div>
         <div className="mt-2.5 grid grid-cols-3 gap-1">
-          {[
-            'reveal-celebration',
-            'hero-dance-crowd',
-            'hero-sunglasses-couple',
-            'final-couple-table',
-            'hero-bride-party',
-            'final-dance-circle',
-            'hero-couple-dance',
-            'reveal-couple-toast',
-            'hero-bride-portrait',
-          ].map((photo) => (
+          {gallery.map((photo, i) => (
             <span
-              key={photo}
+              key={i}
               className="relative block aspect-square overflow-hidden rounded-sm"
             >
               <Image
-                src={`/images/landing/${photo}.webp`}
+                src={photo}
                 alt=""
                 fill
-                sizes="68px"
+                sizes={sizes(68)}
                 className="object-cover"
               />
             </span>
