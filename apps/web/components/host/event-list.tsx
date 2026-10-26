@@ -1,207 +1,342 @@
-import { HostBlock } from '@/components/host/host-block'
-import {
-  HOST_FOCUS,
-  HOST_KICKER,
-  HOST_KICKER_BASE,
-  HOST_PRIMARY,
-} from '@/components/host/ui/classes'
-import { StateNotice } from '@/components/host/ui/state-notice'
-import { LiveDot } from '@/components/ui/live-dot'
-import type { EventListItem } from '@/lib/events'
-import { captureIsOpen } from '@/lib/events'
-import { shortTimeRemaining } from '@/lib/event-copy'
-import { formatEventDay } from '@/lib/format'
-import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
+import { Camera, Plus, UserRound } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
+import { HostBlock } from '@/components/host/host-block'
+import { QrSheetButton } from '@/components/host/qr-sheet'
+import {
+  HOST_FOCUS,
+  HOST_PANEL,
+  HOST_PRIMARY,
+} from '@/components/host/ui/classes'
+import type { EventListItem } from '@/lib/events'
+import { longTimeRemaining } from '@/lib/event-copy'
+import { formatAlbumDate } from '@/lib/format'
+import { eventUrl } from '@/lib/site'
+
 /**
- * The host's events, as contact sheets.
+ * The host's events: what is running now, then the albums.
  *
- * A row used to be four stacked paragraphs — deadline, slug, guest count,
- * gallery visibility — each in the same 12px grey, above a strip of three
- * thumbnails. Four sentences is not something anyone reads at a glance, and
- * the photos, which are the one thing that tells two events apart instantly,
- * were the smallest part of the card.
+ * The two halves answer different questions, so they get different shapes. A
+ * running event is something to act on — take a photo, hand out the code — and
+ * is a tall card with the camera on it. A closed one is a record to go back to,
+ * and is a name, a date and a fan of its photos with nothing around them.
  *
- * So the photos become the row and the four sentences become one short line.
- * The strip bleeds to the card's edge because a contact sheet is a sheet: the
- * frames run to the paper's edge, and a margin around them would make them
- * illustrations of the event rather than the event itself.
+ * There are no counts on this screen, on purpose. Photos, guests and the roll
+ * are the event page's figure row; here they were three numbers per row that
+ * nobody acts on from a list. What is left is the time a running event has
+ * and the day an album closed.
  */
 
-/** Eight across, which is what `owned_events_with_previews` now returns. The
- *  last cell is the overflow count when there are more photos than frames. */
-const STRIP_COLUMNS = 8
+/** The page title's face, shared with the skeleton so the two line up. */
+export const LIST_TITLE =
+  'landing-serif font-landing-display text-[30px] leading-[1.1] tracking-[-0.01em] text-white'
 
-function PreviewStrip({ event }: { event: EventListItem }) {
-  if (event.previewUrls.length === 0) return null
+/** Section labels here are a step quieter than `HOST_KICKER`, per the mockup. */
+const KICKER =
+  'text-[12px] leading-[1.3] font-medium tracking-[0.24em] uppercase text-white/55'
 
-  // The overflow count covers hidden photos too, so the number matches what the
-  // moderation grid shows rather than only what is on display here.
-  const overflow = event.photoCount - event.previewUrls.length
-  const shown =
-    overflow > 0
-      ? event.previewUrls.slice(0, STRIP_COLUMNS - 1)
-      : event.previewUrls.slice(0, STRIP_COLUMNS)
+const CARD_SHAPE = 'aspect-[3/4] w-[276px] rounded-[32px]'
+
+const SERIF = 'landing-serif font-landing-display'
+
+/** The fan's tilt, in order; a fifth photo would repeat it, but there is none. */
+const FAN_TILT = ['-3deg', '2deg', '-2deg', '3deg'] as const
+
+/**
+ * Darkens the photo where the name and the time sit, and a little behind the
+ * camera button. The top stop is held to half the card because a 40-character
+ * name wraps to three or four lines, and white on the brightest photo still
+ * clears 4.5:1 at `.62` over `#0d0d0d`.
+ */
+const COVER_SCRIM =
+  'linear-gradient(180deg, rgba(13,13,13,.82), rgba(13,13,13,.62) 50%, transparent 72%, transparent 78%, rgba(13,13,13,.55))'
+
+function eventHref(slug: string, locale: 'en' | 'hu') {
+  return `/host/events/${slug}?lang=${locale}`
+}
+
+function timeLeft(event: EventListItem, locale: 'en' | 'hu') {
+  const left = longTimeRemaining(
+    new Date(event.capture_end_at),
+    new Date(),
+    locale,
+  )
+  return locale === 'en' ? `${left} left` : `Még ${left}`
+}
+
+export function ListHeader({
+  locale,
+  showNew = true,
+}: {
+  locale: 'en' | 'hu'
+  /** Off on the empty screen, whose own white button is the one primary. */
+  showNew?: boolean
+}) {
+  const en = locale === 'en'
+  return (
+    <header className="flex min-h-14 items-center gap-2 px-5">
+      <h1 className={`flex-1 ${LIST_TITLE}`}>
+        {en ? 'Your events' : 'Eseményeid'}
+      </h1>
+      <Link
+        href={`/host/account?lang=${locale}`}
+        aria-label={en ? 'Account' : 'Fiók'}
+        className={`inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-host-tile text-white transition-colors hover:bg-white/10 ${HOST_FOCUS}`}
+      >
+        <UserRound
+          className="size-[19px]"
+          strokeWidth={1.7}
+          aria-hidden="true"
+        />
+      </Link>
+      {showNew ? (
+        <Link
+          href={`/host/events/new?lang=${locale}`}
+          className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-[14px] bg-white px-[18px] text-[15px] font-medium text-landing-ink transition-colors hover:bg-white/90 ${HOST_FOCUS}`}
+        >
+          <Plus className="size-[18px]" strokeWidth={1.8} aria-hidden="true" />
+          {en ? 'New' : 'Új'}
+        </Link>
+      ) : null}
+    </header>
+  )
+}
+
+/** The white camera button on a running event's card. */
+function CameraLink({
+  slug,
+  locale,
+  className = '',
+}: {
+  slug: string
+  locale: 'en' | 'hu'
+  className?: string
+}) {
+  // The host's camera is the event page's: the upload queue that carries its
+  // photos lives there, so the button goes where the shutter is.
+  return (
+    <Link
+      href={eventHref(slug, locale)}
+      className={`relative z-10 inline-flex h-14 items-center justify-center gap-2.5 rounded-[16px] bg-white px-[22px] text-[15px] font-medium text-landing-ink transition-colors hover:bg-white/90 ${HOST_FOCUS} ${className}`}
+    >
+      <Camera className="size-[18px]" strokeWidth={1.9} aria-hidden="true" />
+      {locale === 'en' ? 'Camera' : 'Kamera'}
+    </Link>
+  )
+}
+
+/**
+ * One running event.
+ *
+ * Links cannot nest, so the card is not one. The name is the link, and its
+ * `::after` is stretched over the whole card so a tap anywhere opens the event;
+ * the camera button sits above that layer as a link of its own. A screen reader
+ * hears the card as the event's name, then "Kamera".
+ */
+function OpenCard({
+  event,
+  locale,
+  first,
+}: {
+  event: EventListItem
+  locale: 'en' | 'hu'
+  /** The first card's cover is the screen's largest paint; load it at once. */
+  first: boolean
+}) {
+  const en = locale === 'en'
+  const cover = event.previewUrls[0]
 
   return (
-    <div
-      className="grid gap-[2px] px-[2px] pb-[2px]"
-      style={{
-        gridTemplateColumns: `repeat(${STRIP_COLUMNS}, minmax(0, 1fr))`,
-      }}
+    <article
+      className={`relative isolate flex flex-col overflow-hidden p-4 text-white ${CARD_SHAPE} ${
+        cover ? 'bg-host-tile' : 'bg-host-panel'
+      }`}
     >
-      {shown.map((url) => (
-        <span
-          key={url}
-          className="relative aspect-square overflow-hidden rounded-[2px]"
-        >
+      {cover ? (
+        <div aria-hidden="true" className="absolute inset-0 -z-10">
           <Image
-            src={url}
+            src={cover}
             alt=""
             fill
-            sizes="96px"
+            sizes="276px"
             unoptimized
+            loading={first ? 'eager' : 'lazy'}
             className="object-cover"
           />
+          <span
+            className="absolute inset-0"
+            style={{ background: COVER_SCRIM }}
+          />
+        </div>
+      ) : null}
+
+      <div className="px-1.5 pt-1.5">
+        <h3 className={`text-[26px] leading-[1.15] ${SERIF}`}>
+          <Link
+            href={eventHref(event.slug, locale)}
+            className="text-balance [overflow-wrap:anywhere] outline-none after:absolute after:inset-0 after:rounded-[32px] focus-visible:after:ring-2 focus-visible:after:ring-white focus-visible:after:ring-inset"
+          >
+            {event.event_name}
+          </Link>
+        </h3>
+        <p className="mt-2 flex items-center gap-2 text-[13px] leading-[1.4] font-medium">
+          <span
+            aria-hidden="true"
+            className="size-1.5 shrink-0 rounded-full bg-landing-sky"
+          />
+          {timeLeft(event, locale)}
+        </p>
+      </div>
+
+      {cover ? (
+        <CameraLink
+          slug={event.slug}
+          locale={locale}
+          className="mt-auto self-start"
+        />
+      ) : (
+        <>
+          {/* 9c: nothing to show yet, so the card says what starts it. */}
+          <div className="my-auto px-2 py-4 text-center">
+            <p className={`text-[22px] leading-[1.25] ${SERIF}`}>
+              {en ? 'No photos yet' : 'Még nem érkezett kép'}
+            </p>
+            <p className="mt-2 text-[14px] leading-[1.5] text-white/65">
+              {en
+                ? 'Share the QR code to get it started.'
+                : 'Oszd meg a QR-kódot, hogy elinduljon.'}
+            </p>
+          </div>
+          <div className="relative z-10 flex gap-2">
+            <CameraLink slug={event.slug} locale={locale} className="flex-1" />
+            <QrSheetButton
+              name={event.event_name}
+              url={eventUrl(event.slug)}
+              eventId={event.id}
+              shots={event.shots_per_participant}
+              locale={locale}
+            />
+          </div>
+        </>
+      )}
+    </article>
+  )
+}
+
+/** 9b: nothing running, albums below. */
+function NothingOpen({ locale }: { locale: 'en' | 'hu' }) {
+  const en = locale === 'en'
+  return (
+    <section className={`mx-5 mt-6 px-6 py-7 ${HOST_PANEL}`}>
+      <h2 className={`text-[24px] leading-[1.2] text-balance ${SERIF}`}>
+        {en ? 'Nothing is open right now' : 'Most nincs nyitott esemény'}
+      </h2>
+      <p className="mt-2.5 text-[15px] leading-[1.6] text-pretty text-white/65">
+        {en
+          ? 'Your closed albums stay below. You can start a new event any time.'
+          : 'A lezárt albumaid lent maradnak. Új eseményt bármikor indíthatsz.'}
+      </p>
+      <Link
+        href={`/host/events/new?lang=${locale}`}
+        className={`${HOST_PRIMARY} mt-5 h-[52px] w-full`}
+      >
+        {en ? 'Create an event' : 'Esemény létrehozása'}
+      </Link>
+    </section>
+  )
+}
+
+/** One closed event: its name, the day it closed, and up to four photos. */
+function AlbumRow({
+  event,
+  locale,
+}: {
+  event: EventListItem
+  locale: 'en' | 'hu'
+}) {
+  const fan = event.previewUrls.slice(0, FAN_TILT.length)
+
+  return (
+    <Link
+      href={eventHref(event.slug, locale)}
+      className={`block rounded-[24px] pt-5 pb-2 text-white focus-visible:outline-offset-[-2px] ${HOST_FOCUS}`}
+    >
+      <span className="flex items-baseline gap-3 px-5">
+        <span
+          className={`min-w-0 flex-1 text-[24px] leading-[1.2] text-balance [overflow-wrap:anywhere] ${SERIF}`}
+        >
+          {event.event_name}
         </span>
-      ))}
-      {overflow > 0 ? (
-        <span className="host-figure flex aspect-square items-center justify-center rounded-[2px] bg-white/5 text-[16px] text-white/65">
-          +{overflow}
+        <span className="shrink-0 text-[13px] whitespace-nowrap text-white/65">
+          {formatAlbumDate(event.capture_end_at, event.time_zone, locale)}
+        </span>
+      </span>
+      {fan.length > 0 ? (
+        <span aria-hidden="true" className="flex h-[164px] px-5 pt-4">
+          {fan.map((url, i) => (
+            <span
+              key={url}
+              className="relative -mr-3.5 h-[132px] w-24 shrink-0 overflow-hidden rounded-[18px] bg-[#1c1c1c] shadow-[0_12px_24px_-12px_rgba(0,0,0,.9)]"
+              style={{ transform: `rotate(${FAN_TILT[i]})` }}
+            >
+              <Image
+                src={url}
+                alt=""
+                fill
+                sizes="96px"
+                unoptimized
+                className="object-cover"
+              />
+            </span>
+          ))}
         </span>
       ) : null}
-      {/* An event with fewer than eight photos still gets a full-width sheet.
-          The empty cells are the same idea as the guest strip's unexposed
-          frames — the roll has room left — and without them the strip stops
-          mid-card and reads as a failed load. */}
-      {Array.from(
-        {
-          length: Math.max(
-            0,
-            STRIP_COLUMNS - shown.length - (overflow > 0 ? 1 : 0),
-          ),
-        },
-        (_, i) => (
-          <span
-            key={`empty-${i}`}
+    </Link>
+  )
+}
+
+/** 7a: no events at all. */
+function NoEvents({ locale }: { locale: 'en' | 'hu' }) {
+  const en = locale === 'en'
+  return (
+    <div className="px-5">
+      <div className="flex min-h-11 items-center justify-between gap-2">
+        <p className={KICKER}>{en ? 'Your events' : 'Eseményeid'}</p>
+        <Link
+          href={`/host/account?lang=${locale}`}
+          aria-label={en ? 'Account' : 'Fiók'}
+          className={`inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-host-tile text-white transition-colors hover:bg-white/10 ${HOST_FOCUS}`}
+        >
+          <UserRound
+            className="size-[19px]"
+            strokeWidth={1.7}
             aria-hidden="true"
-            className="aspect-square rounded-[2px] bg-white/3"
           />
-        ),
-      )}
+        </Link>
+      </div>
+      <section className={`mt-3 px-6 py-8 ${HOST_PANEL}`}>
+        <h1 className={`text-balance ${LIST_TITLE} leading-[1.15]`}>
+          {en ? 'No events yet' : 'Még nincs eseményed'}
+        </h1>
+        <p className="mt-3 text-[15px] leading-[1.6] text-pretty text-white/65">
+          {en
+            ? 'Create your first event and share the QR code with your guests. The photos they take appear here.'
+            : 'Hozd létre az első eseményt, és oszd meg a QR-kódot a vendégekkel. Az elkészült képek itt jelennek meg.'}
+        </p>
+        <Link
+          href={`/host/events/new?lang=${locale}`}
+          className={`${HOST_PRIMARY} mt-6 h-[52px] w-full`}
+        >
+          {en ? 'Create an event' : 'Esemény létrehozása'}
+        </Link>
+      </section>
     </div>
   )
 }
 
-/**
- * What tells one card from the next, and nothing else.
- *
- * It used to carry the photo count, the guest count, the roll length and the
- * slug as well — four readouts a row, down a column of them. None was
- * something a host does anything about from this screen: the counts are the
- * event page's figure row, the roll length is a setting, and the address is on
- * the QR sheet where it can be scanned rather than spelled out in caps. What
- * is left is the two facts that separate one card from another at a glance —
- * whether it is still running, and whether the gallery is closed to guests.
- */
-function metadataParts(event: EventListItem, en: boolean): string[] {
-  const parts: string[] = []
-
-  if (!captureIsOpen(event)) {
-    parts.push(
-      `${en ? 'CLOSED' : 'LEZÁRT'} ${formatEventDay(
-        event.capture_end_at,
-        event.time_zone,
-        en ? 'en' : 'hu',
-      ).toUpperCase()}`,
-    )
-  }
-  if (!event.guests_can_view) {
-    parts.push(en ? 'ONLY YOU SEE IT' : 'CSAK TE LÁTOD')
-  }
-  return parts
-}
-
-function EventRow({
-  event,
-  locale,
-  index,
-}: {
-  event: EventListItem
-  locale: 'en' | 'hu'
-  /** Position in the load sequence. Rows stagger; the cells inside never do. */
-  index: number
-}) {
-  const en = locale === 'en'
-  const open = captureIsOpen(event)
-  const meta = metadataParts(event, en)
-
-  return (
-    <li>
-      {/* The row animates inside the list item rather than as one, so the
-          markup stays a real `<ul>` of `<li>`s. */}
-      <HostBlock index={index}>
-        <Link
-          href={`/host/events/${event.slug}?lang=${locale}`}
-          className={`block overflow-hidden rounded-lg border transition-colors ${HOST_FOCUS} ${
-            open
-              ? 'border-white/12 hover:border-white/25'
-              : 'border-white/9 hover:border-white/20'
-          }`}
-        >
-          <div className="flex items-start justify-between gap-5 px-5 pt-4.5 pb-3.5">
-            <div className="min-w-0 flex-1">
-              <h3
-                className={`landing-serif font-landing-display text-[24px] leading-[1.15] text-balance [overflow-wrap:anywhere] ${
-                  // A closed event is still the host's, just no longer the thing
-                  // they are watching. It drops a step rather than greying out.
-                  open ? 'text-white' : 'text-white/85'
-                }`}
-              >
-                {event.event_name}
-              </h3>
-              <p className="mt-2 text-[12px] leading-[1.5] font-medium tracking-[0.08em] text-white/65">
-                {/* Only a running event breathes. A closed one is a record,
-                    and a record that pulses is asking to be looked at. */}
-                {open ? (
-                  <span className="inline-flex items-center gap-1.5 text-landing-sky">
-                    <LiveDot />
-                    {en ? 'LIVE' : 'NYITVA'}{' '}
-                    {shortTimeRemaining(
-                      new Date(event.capture_end_at),
-                      new Date(),
-                      locale,
-                    )}
-                  </span>
-                ) : null}
-                {/* The line can now be empty — a running event whose gallery
-                    guests can see has nothing further to say — so the
-                    separator waits on there being something after it rather
-                    than on the event being open. */}
-                {open && meta.length > 0 ? ' · ' : ''}
-                {meta.join(' · ')}
-              </p>
-            </div>
-
-            {/* An event that has stopped admitting guests is the one thing
-                on this screen a host has to act on, so it gets the
-                danger treatment rather than another clause in the line. */}
-            {!event.isFullPlan &&
-            event.participantCount >= FREE_PARTICIPANT_LIMIT ? (
-              <span className="shrink-0 rounded-full bg-host-danger-fill px-3 py-1.5 text-[11px] font-medium tracking-[0.12em] text-host-danger">
-                {en ? 'GUEST CAP FULL' : 'KERET BETELT'}
-              </span>
-            ) : null}
-          </div>
-
-          <PreviewStrip event={event} />
-        </Link>
-      </HostBlock>
-    </li>
-  )
-}
+/** Rows stagger 60ms each, up to this many; a long archive does not queue. */
+const STAGGER_CAP = 8
 
 export function EventList({
   active,
@@ -214,70 +349,91 @@ export function EventList({
 }) {
   const en = locale === 'en'
 
-  // 7a: what an empty list means, and the one thing to do about it.
   if (active.length === 0 && closed.length === 0) {
-    return (
-      <div className="mt-6">
-        <StateNotice
-          tone="neutral"
-          title={en ? 'No events yet' : 'Még nincs eseményed'}
-          body={
-            en
-              ? 'Create your first event and share the QR code with your guests. The photos they take appear here.'
-              : 'Hozd létre az első eseményt, és oszd meg a QR-kódot a vendégekkel. Az elkészült képek itt jelennek meg.'
-          }
-          actions={
-            <Link
-              href={`/host/events/new?lang=${locale}`}
-              className={`${HOST_PRIMARY} w-full`}
-            >
-              {en ? 'Create an event' : 'Esemény létrehozása'}
-            </Link>
-          }
-        />
-      </div>
-    )
+    return <NoEvents locale={locale} />
   }
 
-  return (
-    <div className="mt-6 flex flex-col gap-7">
-      {active.length > 0 ? (
-        <section>
-          {/* Sky on the running section only — the same rule the rest of the
-              product follows: the colour means the film is live. */}
-          <h2 className={`${HOST_KICKER_BASE} text-landing-sky`}>
-            {en ? 'RUNNING NOW' : 'MOST FUT'}
-          </h2>
-          <ul className="mt-3.5 flex flex-col gap-3">
-            {active.map((event, i) => (
-              <EventRow
-                key={event.id}
-                event={event}
-                locale={locale}
-                index={i}
-              />
-            ))}
-          </ul>
-        </section>
-      ) : null}
+  // Newest album first, by the day it closed rather than the day it was made.
+  const albums = [...closed].sort(
+    (a, b) =>
+      new Date(b.capture_end_at).getTime() -
+      new Date(a.capture_end_at).getTime(),
+  )
 
-      {closed.length > 0 ? (
-        <section>
-          <h2 className={HOST_KICKER}>{en ? 'CLOSED' : 'LEZÁRULT'}</h2>
-          <ul className="mt-3.5 flex flex-col gap-3">
-            {/* The closed section continues the count rather than restarting
-                it, so the page assembles top to bottom as one sheet. */}
-            {closed.map((event, i) => (
-              <EventRow
-                key={event.id}
-                event={event}
-                locale={locale}
-                index={active.length + i}
-              />
+  return (
+    <>
+      <ListHeader locale={locale} />
+
+      {active.length > 0 ? (
+        <section aria-labelledby="host-list-open">
+          <h2 id="host-list-open" className={`mx-5 mt-7 ${KICKER}`}>
+            {en ? 'Open' : 'Nyitva'}
+          </h2>
+          {/* Cards arrive together; only the album rows stagger. */}
+          <HostBlock index={0}>
+            <ul className="mt-3 flex snap-x snap-mandatory scroll-px-5 scrollbar-none gap-3 overflow-x-auto px-5">
+              {active.map((event, i) => (
+                <li key={event.id} className="shrink-0 snap-start">
+                  <OpenCard event={event} locale={locale} first={i === 0} />
+                </li>
+              ))}
+            </ul>
+          </HostBlock>
+        </section>
+      ) : (
+        <NothingOpen locale={locale} />
+      )}
+
+      {albums.length > 0 ? (
+        <section aria-labelledby="host-list-albums">
+          <h2
+            id="host-list-albums"
+            className={`mx-5 mt-10 border-t border-dashed border-white/12 pt-7 ${KICKER}`}
+          >
+            {en ? 'Albums' : 'Albumok'}
+          </h2>
+          <ul className="mt-2">
+            {albums.map((event, i) => (
+              <li key={event.id}>
+                <HostBlock index={Math.min(i, STAGGER_CAP)}>
+                  <AlbumRow event={event} locale={locale} />
+                </HostBlock>
+              </li>
             ))}
           </ul>
         </section>
       ) : null}
-    </div>
+    </>
+  )
+}
+
+/** The list could not be read. Nothing was lost, and the next load may work. */
+export function EventListError({ locale }: { locale: 'en' | 'hu' }) {
+  const en = locale === 'en'
+  return (
+    <>
+      <ListHeader locale={locale} />
+      <section role="status" className={`mx-5 mt-6 px-6 py-7 ${HOST_PANEL}`}>
+        <h2
+          className={`text-[24px] leading-[1.2] text-balance text-host-warn ${SERIF}`}
+        >
+          {en
+            ? 'Your events did not load'
+            : 'Nem sikerült betölteni az eseményeidet'}
+        </h2>
+        <p className="mt-2.5 text-[15px] leading-[1.6] text-pretty text-white/65">
+          {en
+            ? 'Your events and photos are safe. Check your connection and try again.'
+            : 'Az eseményeid és a képeid biztonságban vannak. Ellenőrizd a kapcsolatot, és próbáld újra.'}
+        </p>
+        {/* A plain anchor: a full load re-runs the server read. */}
+        <a
+          href={`/host?lang=${locale}`}
+          className={`${HOST_PRIMARY} mt-5 h-[52px] w-full`}
+        >
+          {en ? 'Try again' : 'Újra'}
+        </a>
+      </section>
+    </>
   )
 }

@@ -1,13 +1,11 @@
-import { EventList } from '@/components/host/event-list'
+import { EventList, EventListError } from '@/components/host/event-list'
 import { getHostLocale } from '@/lib/host-locale'
 import { EventListSkeleton } from '@/components/host/skeletons'
 import { captureIsOpen, getEventListItems } from '@/lib/events'
 import { localeTag } from '@/lib/i18n'
-import { cn } from '@/lib/utils'
-import { HOST_SECONDARY, HOST_TITLE } from '@/components/host/ui/classes'
-import { Plus, UserRound } from 'lucide-react'
+import { reportServerIssue } from '@/lib/telemetry-server'
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import { unstable_rethrow } from 'next/navigation'
 import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
@@ -35,47 +33,18 @@ export default async function AdminPage({
   const { lang } = await searchParams
   // The profile's language; `?lang` only for an account with none yet.
   const locale = await getHostLocale(lang)
-  const en = locale === 'en'
   return (
     <main
-      className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-16"
+      className="mx-auto w-full max-w-3xl pt-5 pb-10 sm:pt-12"
       // See the note in `app/(product)/layout.tsx`: `/host` has no locale
       // segment, so the document is the site default and the page marks the
       // language it actually resolved on its own subtree.
       lang={localeTag[locale]}
     >
-      {/* The name of the page with the two things a host does from here
-          beside it. Both are secondary: the list layout is not designed yet,
-          and an empty list carries its own white "create" (7a), which must
-          stay the one white action on that screen. Sign-out lives on the
-          account screen. */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className={HOST_TITLE}>{en ? 'Your events' : 'Eseményeid'}</h1>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/host/account?lang=${locale}`}
-            className={cn(
-              HOST_SECONDARY,
-              'h-11 gap-2 rounded-[14px] px-4 text-[14px]',
-            )}
-          >
-            <UserRound className="size-4" aria-hidden="true" />
-            {en ? 'Account' : 'Fiók'}
-          </Link>
-          <Link
-            href={`/host/events/new?lang=${locale}`}
-            className={cn(
-              HOST_SECONDARY,
-              'h-11 gap-2 rounded-[14px] px-4 text-[14px]',
-            )}
-          >
-            <Plus className="size-4" strokeWidth={2.2} aria-hidden="true" />
-            {en ? 'New event' : 'Új esemény'}
-          </Link>
-        </div>
-      </div>
-
-      <Suspense fallback={<EventListSkeleton />}>
+      {/* The header renders with the list: the empty screen (7a) swaps the
+          title for a kicker and drops "Új", whose white would be a second
+          primary beside its own "create". */}
+      <Suspense fallback={<EventListSkeleton locale={locale} />}>
         <OwnedEventList locale={locale} />
       </Suspense>
     </main>
@@ -83,7 +52,21 @@ export default async function AdminPage({
 }
 
 async function OwnedEventList({ locale }: { locale: 'en' | 'hu' }) {
-  const events = await getEventListItems()
+  let events: Awaited<ReturnType<typeof getEventListItems>>
+  try {
+    events = await getEventListItems()
+  } catch (error) {
+    // Let Next's own control flow through; everything else is a failed read.
+    unstable_rethrow(error)
+    console.error('Could not load the host event list', error)
+    await reportServerIssue(error, {
+      operation: 'host_event_list',
+      route: '/host',
+      routeType: 'page',
+      method: 'GET',
+    })
+    return <EventListError locale={locale} />
+  }
   // An empty list is `EventList`'s own 7a state.
   return (
     <EventList

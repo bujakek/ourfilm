@@ -385,6 +385,38 @@ export function formatEventDay(
   ).format(new Date(iso))
 }
 
+const ALBUM_DATE_CACHE = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * `2026. 06. 14.` (`14 Jun 2026` in English) — the day an album closed.
+ *
+ * For the host's list of closed albums, where the year is what separates last
+ * summer's wedding from this one. Numeric in Hungarian because that is the
+ * shape a Hungarian reads a date in a list; English spells the month so a day
+ * and a month cannot be mistaken for each other.
+ */
+export function formatAlbumDate(
+  iso: string,
+  zone = EVENT_TIME_ZONE,
+  locale: KnownLocale = 'hu',
+): string {
+  return memoFormatter(ALBUM_DATE_CACHE, `${locale}:${zone}`, () =>
+    locale === 'en'
+      ? new Intl.DateTimeFormat('en-GB', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          timeZone: zone,
+        })
+      : new Intl.DateTimeFormat('hu-HU', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: zone,
+        }),
+  ).format(new Date(iso))
+}
+
 const REVEAL_BADGE_CACHE = new Map<string, Intl.DateTimeFormat>()
 
 /**
