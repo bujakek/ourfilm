@@ -47,12 +47,12 @@ export function eventNameSuggestions(
   ]
 }
 
-/** The two dated chips on the end screen. "Másik nap" is the third, and is
- *  whatever these two are not. */
+/** The two nights an end can be read as while its day has not been picked:
+ *  the one starting today, and the one after. Anything else is `other`. */
 export type EndQuickPick = 'tonight' | 'tomorrow'
 
 /** Before this hour a time belongs to the night that started the day before:
- *  "Ma éjjel 02:00" is after midnight, not fourteen hours ago. */
+ *  tonight's 02:00 is after midnight, not fourteen hours ago. */
 const NIGHT_ROLLOVER_HOUR = 12
 
 /** A bare `YYYY-MM-DD` moved by whole days. Calendar arithmetic in UTC, where
@@ -65,7 +65,7 @@ function addDays(day: string, days: number): string {
 }
 
 /**
- * The end a quick pick stands for, as a `datetime-local` value in the event's
+ * The end one of those nights stands for, as a `datetime-local` value in the event's
  * zone.
  *
  * "Tonight" is the night that starts today where the host is standing: a time
@@ -92,8 +92,8 @@ export function endQuickPick(
   return `${kind === 'tonight' ? tonight : addDays(tonight, 1)}T${time}`
 }
 
-/** Which chip an end reads as: the inverse of `endQuickPick` at the end's own
- *  time, so the chips and the day tile can never disagree. */
+/** Which night an end reads as: the inverse of `endQuickPick` at the end's
+ *  own time. */
 export function activeQuickPick(
   endLocal: string,
   now: Date,
@@ -107,14 +107,14 @@ export function activeQuickPick(
   return 'other'
 }
 
-/** Where the end's day came from: a quick pick, or the month. */
-export type EndDaySource = 'chip' | 'calendar'
+/** Where the end's day came from: the suggested default, or the date picker. */
+export type EndDaySource = 'suggested' | 'picked'
 
 /**
- * The end after its time is edited. "Ma éjjel" at 02:00 is after midnight, so
- * while a quick pick is what the host chose, a new time keeps meaning that
- * pick and the day follows it. A day picked from the month stays put, even
- * when it happens to be tonight's or tomorrow's date.
+ * The end after its time is edited. Tonight at 02:00 is after midnight, so
+ * while the day is still the suggested one, a new time keeps meaning the same
+ * night and the day follows it. A day the host picked stays put, even when it
+ * happens to be tonight's or tomorrow's date.
  */
 export function endAfterTimeEdit(
   endLocal: string,
@@ -124,7 +124,7 @@ export function endAfterTimeEdit(
   timeZone: string,
 ): string {
   const picked =
-    source === 'chip' ? activeQuickPick(endLocal, now, timeZone) : 'other'
+    source === 'suggested' ? activeQuickPick(endLocal, now, timeZone) : 'other'
   return picked === 'other'
     ? `${endLocal.slice(0, 10)}T${time}`
     : endQuickPick(picked, time, now, timeZone)

@@ -1,22 +1,13 @@
 'use client'
 
-import { motion, useReducedMotion } from 'motion/react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 import { EventEndFields } from '@/components/host/event-end-fields'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
-import { HOST_FOCUS } from '@/components/host/ui/classes'
 import type { Locale } from '@/lib/i18n'
-import { T, still } from '@/lib/motion'
-import {
-  activeQuickPick,
-  endAfterTimeEdit,
-  type EndDaySource,
-  endQuickPick,
-  type EndQuickPick,
-} from '@/lib/onboarding'
+import { endAfterTimeEdit, type EndDaySource } from '@/lib/onboarding'
 
-/** What a quick pick lands on while the time field is mid-edit and empty. */
+/** What a picked day lands on while the time field is mid-edit and empty. */
 const FALLBACK_TIME = '23:00'
 
 /**
@@ -39,8 +30,8 @@ export function endScreen({
   canAdvance,
   locale,
 }: {
-  /** `YYYY-MM-DDTHH:mm` in `timeZone`. The quick picks, the day tile and the
-   *  time tile all read and write this one value. */
+  /** `YYYY-MM-DDTHH:mm` in `timeZone`. The day tile and the time tile both
+   *  read and write this one value. */
   endLocal: string
   setEndLocal: (value: string) => void
   /** The server's instant, so a render reads no clock. */
@@ -88,106 +79,35 @@ function EndFields({
   today: string
   locale: Locale
 }) {
-  const dayInput = useRef<HTMLInputElement>(null)
-  // Not stored with the draft: coming back to this screen treats the day as
-  // a quick pick's again, which is what a fresh draft starts on.
-  const [source, setSource] = useState<EndDaySource>('chip')
-  const reduceMotion = useReducedMotion()
+  // Until the host picks a day, the draft's day follows the time: an end
+  // at 02:00 is after tonight's midnight, not this morning. A picked day
+  // stays put. Not stored with the draft, so coming back starts over.
+  const [source, setSource] = useState<EndDaySource>('suggested')
   const en = locale === 'en'
 
   const day = endLocal.slice(0, 10)
   const time = endLocal.slice(11)
-  const picked = activeQuickPick(endLocal, now, timeZone)
-  // A day from the picker stays "another day", even on tonight's date.
-  const active = source === 'calendar' ? 'other' : picked
-
-  const pick = (kind: EndQuickPick, at: string) =>
-    setEndLocal(endQuickPick(kind, at || FALLBACK_TIME, now, timeZone))
-
-  const chips: { key: EndQuickPick | 'other'; label: string }[] = [
-    { key: 'tonight', label: en ? 'Tonight' : 'Ma éjjel' },
-    { key: 'tomorrow', label: en ? 'Tomorrow' : 'Holnap' },
-    { key: 'other', label: en ? 'Another day' : 'Másik nap' },
-  ]
 
   return (
-    <>
-      <ul
-        aria-label={en ? 'Quick picks' : 'Gyors választás'}
-        className="flex flex-wrap gap-2"
-      >
-        {chips.map(({ key, label }) => {
-          const on = active === key
-          return (
-            <li key={key}>
-              <motion.button
-                type="button"
-                aria-pressed={key === 'other' ? undefined : on}
-                whileTap={reduceMotion ? undefined : { scale: 0.96 }}
-                transition={reduceMotion ? still : T.snap}
-                onClick={() => {
-                  if (key === 'other') {
-                    openDayPicker(dayInput.current)
-                    return
-                  }
-                  setSource('chip')
-                  pick(key, time)
-                }}
-                className={`inline-flex min-h-11 items-center rounded-[14px] px-[18px] py-2 text-[14px] transition-colors ${HOST_FOCUS} ${
-                  on
-                    ? 'bg-white text-landing-ink'
-                    : 'bg-host-tile text-white/80 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {label}
-              </motion.button>
-            </li>
-          )
-        })}
-      </ul>
-
-      <div className="mt-3">
-        <EventEndFields
-          day={day}
-          time={time}
-          minDay={today}
-          dayInputRef={dayInput}
-          onDayChange={(value) => {
-            setSource('calendar')
-            setEndLocal(`${value}T${time || FALLBACK_TIME}`)
-          }}
-          onTimeChange={(value) => {
-            if (!value) {
-              setEndLocal(`${day}T`)
-              return
-            }
-            // A quick pick's day follows its time; a picked day stays put.
-            setEndLocal(
-              endAfterTimeEdit(endLocal, value, source, now, timeZone),
-            )
-          }}
-          timeStep={900}
-          locale={locale}
-          timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
-          labels={
-            en ? { day: 'Day', time: 'Time' } : { day: 'Nap', time: 'Idő' }
-          }
-        />
-      </div>
-    </>
+    <EventEndFields
+      day={day}
+      time={time}
+      minDay={today}
+      onDayChange={(value) => {
+        setSource('picked')
+        setEndLocal(`${value}T${time || FALLBACK_TIME}`)
+      }}
+      onTimeChange={(value) => {
+        if (!value) {
+          setEndLocal(`${day}T`)
+          return
+        }
+        setEndLocal(endAfterTimeEdit(endLocal, value, source, now, timeZone))
+      }}
+      timeStep={900}
+      locale={locale}
+      timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
+      labels={en ? { day: 'Day', time: 'Time' } : { day: 'Nap', time: 'Idő' }}
+    />
   )
-}
-
-/**
- * "Másik nap" opens the date tile's own picker. `showPicker()` needs the tap
- * that called it, which the chip's click is. A browser without it gets the
- * field focused instead, one tap from its picker.
- */
-function openDayPicker(input: HTMLInputElement | null) {
-  if (!input) return
-  try {
-    input.showPicker()
-  } catch {
-    input.focus()
-  }
 }

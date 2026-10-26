@@ -37,7 +37,7 @@ describe('eventNameSuggestions', () => {
   })
 })
 
-describe('end quick picks', () => {
+describe('the suggested end', () => {
   // 15:00 in Budapest on 3 September (CEST, UTC+2).
   const NOW = new Date('2026-09-03T13:00:00Z')
   const ZONE = 'Europe/Budapest'
@@ -83,7 +83,7 @@ describe('end quick picks', () => {
     )
   })
 
-  it('after midnight, the chips still read back as the pick that made them', () => {
+  it('after midnight, an end still reads back as the night that made it', () => {
     const afterMidnight = new Date('2026-09-03T22:30:00Z')
     expect(activeQuickPick('2026-09-04T02:00', afterMidnight, ZONE)).toBe(
       'tonight',
@@ -125,27 +125,27 @@ describe('end quick picks', () => {
     }
   })
 
-  it('a time edit on a quick pick keeps meaning that pick', () => {
+  it('a time edit on the suggested day keeps meaning the same night', () => {
     expect(
-      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'chip', NOW, ZONE),
+      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'suggested', NOW, ZONE),
     ).toBe('2026-09-04T02:00')
     expect(
-      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'chip', NOW, ZONE),
+      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'suggested', NOW, ZONE),
     ).toBe('2026-09-05T02:00')
   })
 
-  it('a day from the calendar stays put, even on tonight’s date', () => {
+  it('a picked day stays put, even on tonight’s date', () => {
     expect(
-      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'calendar', NOW, ZONE),
+      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'picked', NOW, ZONE),
     ).toBe('2026-09-03T02:00')
     expect(
-      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'calendar', NOW, ZONE),
+      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'picked', NOW, ZONE),
     ).toBe('2026-09-04T02:00')
   })
 
-  it('a day that is no quick pick stays put whatever the source', () => {
+  it('a day that is neither night stays put whatever the source', () => {
     expect(
-      endAfterTimeEdit('2026-09-06T23:00', '02:00', 'chip', NOW, ZONE),
+      endAfterTimeEdit('2026-09-06T23:00', '02:00', 'suggested', NOW, ZONE),
     ).toBe('2026-09-06T02:00')
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronDown } from 'lucide-react'
-import { type Ref, useRef } from 'react'
+import { useRef } from 'react'
 
 import { HOST_KICKER_BASE } from '@/components/host/ui/classes'
 import { formatEventDate } from '@/lib/format'
@@ -30,7 +30,6 @@ export function EventEndFields({
   time,
   minDay,
   onDayChange,
-  dayInputRef,
   onTimeChange,
   locale,
   timeLabel,
@@ -51,8 +50,6 @@ export function EventEndFields({
    * segment — `0002-…`, `0020-…` — on the way to the one being typed.
    */
   onDayChange: (day: string) => void
-  /** For a control elsewhere (onboarding's "Másik nap") to open the picker. */
-  dayInputRef?: Ref<HTMLInputElement>
   onTimeChange: (time: string) => void
   locale: Locale
   timeLabel: string
@@ -99,7 +96,6 @@ export function EventEndFields({
           aria-hidden="true"
         />
         <input
-          ref={dayInputRef}
           type="date"
           required
           min={minDay}

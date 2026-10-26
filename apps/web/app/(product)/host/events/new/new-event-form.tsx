@@ -213,7 +213,7 @@ function OnboardingFlow({
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
-  // apart between the quick picks, the calendar and the time tile. Null means
+  // apart between the day tile and the time tile. Null means
   // "not chosen yet", and the suggested end is re-derived from the server's
   // instant in whatever zone this browser turns out to be in — which is what
   // lets the timezone arrive one render late without moving a value the host
