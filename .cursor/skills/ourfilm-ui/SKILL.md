@@ -75,8 +75,10 @@ Loaded by `components/landing/fonts.ts`. The product root layout and
   header uses `PageShell`.
 - **Homepage sections:** `components/landing/layout.ts`.
 - **Shared host pieces** in `components/host/ui/`: `StateNotice` for empty,
-  error and limit states, `useHostToast` for confirmations, `SavedIndicator`,
-  `FloatingPanel`.
+  error and limit states, `useHostToast` for confirmations, `SavedIndicator`.
+- **Dates and times** use the phone's own pickers (`EventEndFields`): a native
+  `type="time"`, and a native `type="date"` laid invisibly over a tile that
+  draws the date, because a visible one overflows on iOS.
 - **Articles:** MDX bodies render through `proseComponents` inside a
   `.site-prose` wrapper; `<Cta>`, `<Faq>` and `<Comparison>` need no import.
 

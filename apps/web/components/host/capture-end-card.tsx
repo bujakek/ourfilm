@@ -4,7 +4,6 @@ import { useRef, useState, useTransition } from 'react'
 
 import { setCaptureEnd } from '@/app/(product)/host/events/[slug]/actions'
 import { EventEndFields } from '@/components/host/event-end-fields'
-import { MonthCalendar } from '@/components/host/month-calendar'
 import { useSettingsSave } from '@/components/host/settings-save'
 import {
   HOST_PANEL,
@@ -12,7 +11,6 @@ import {
   HOST_ROW_QUESTION,
   HOST_SECONDARY,
 } from '@/components/host/ui/classes'
-import { FloatingPanel } from '@/components/host/ui/floating-panel'
 import {
   eventLocalToIso,
   formatEventLocalInput,
@@ -36,14 +34,9 @@ import {
  *
  * **No `<input type="datetime-local">`.** iOS Safari lays a native date control
  * out from its own shadow tree and draws the control around that intrinsic
- * width, so the field ran off the side of the phone; `min-width`, `max-width`
- * and `box-sizing` all failed because they act on a box the shadow tree never
- * consulted. The visible day is ours, `MonthCalendar` is ours, and the only
- * native control left is `type="time"`, which is a fixed-width `HH:mm`.
- *
- * The calendar is a `FloatingPanel` under the card rather than a sheet: it
- * overlays the cards below without moving them, and the day it is changing
- * stays in view above it.
+ * width, so the field ran off the side of the phone. The day and the time are
+ * two native pickers instead, and the day's input is invisible over a tile
+ * that draws the date itself (`EventEndFields` says how).
  *
  * It saves when a day is picked, and when the time field is blurred or Enter
  * is pressed — never on the native `change`, which desktop Chrome fires per
@@ -64,7 +57,7 @@ import {
  * revalidated page's state line then reads "A fotózás véget ért".
  *
  * Setting the end in the past is allowed and is the fastest way to stop a
- * camera early. That is why the calendar's floor is the day the event
+ * camera early. That is why the date picker's floor is the day the event
  * *started* rather than today — the server refuses only `end <= start`, and
  * the picker refuses exactly what the server does.
  */
@@ -109,7 +102,6 @@ export function CaptureEndCard({
   // closed) commits nothing, so it cannot turn a hold into a save.
   const shownTime = useRef(endValue.slice(11, 16))
   const section = useRef<HTMLElement>(null)
-  const [calendarOpen, setCalendarOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
   const show = (value: string) => {
@@ -213,8 +205,12 @@ export function CaptureEndCard({
         <EventEndFields
           day={day}
           time={time}
-          onChooseDay={() => setCalendarOpen((open) => !open)}
-          dayExpanded={calendarOpen}
+          minDay={startValue.slice(0, 10)}
+          onDayChange={(value) =>
+            // A time field caught mid-edit is empty; the day still commits
+            // against the stored time rather than sending half a value.
+            commit(`${value}T${time || ledger.current.stored.slice(11, 16)}`)
+          }
           onTimeChange={setTime}
           onTimeCommit={(value) => {
             if (value !== shownTime.current) commit(`${day}T${value}`)
@@ -262,25 +258,6 @@ export function CaptureEndCard({
           </div>
         ) : null}
       </div>
-
-      <FloatingPanel
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        anchorClassName="inset-x-2 top-[calc(100%-8px)]"
-      >
-        <MonthCalendar
-          value={day}
-          earliest={startValue.slice(0, 10)}
-          label={en ? 'Shooting ends' : 'A fotózás vége'}
-          locale={locale}
-          onChange={(value) => {
-            setCalendarOpen(false)
-            // A time field caught mid-edit is empty; the day still commits
-            // against the stored time rather than sending half a value.
-            commit(`${value}T${time || ledger.current.stored.slice(11, 16)}`)
-          }}
-        />
-      </FloatingPanel>
     </section>
   )
 }

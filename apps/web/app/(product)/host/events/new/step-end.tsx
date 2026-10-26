@@ -1,13 +1,11 @@
 'use client'
 
 import { motion, useReducedMotion } from 'motion/react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { EventEndFields } from '@/components/host/event-end-fields'
-import { MonthCalendar } from '@/components/host/month-calendar'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import { HOST_FOCUS } from '@/components/host/ui/classes'
-import { FloatingPanel } from '@/components/host/ui/floating-panel'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import {
@@ -90,7 +88,7 @@ function EndFields({
   today: string
   locale: Locale
 }) {
-  const [calendarOpen, setCalendarOpen] = useState(false)
+  const dayInput = useRef<HTMLInputElement>(null)
   // Not stored with the draft: coming back to this screen treats the day as
   // a quick pick's again, which is what a fresh draft starts on.
   const [source, setSource] = useState<EndDaySource>('chip')
@@ -100,9 +98,8 @@ function EndFields({
   const day = endLocal.slice(0, 10)
   const time = endLocal.slice(11)
   const picked = activeQuickPick(endLocal, now, timeZone)
-  // An open month is "another day" being chosen, whatever the value says yet,
-  // and a day picked from it stays "another day" even on tonight's date.
-  const active = calendarOpen || source === 'calendar' ? 'other' : picked
+  // A day from the picker stays "another day", even on tonight's date.
+  const active = source === 'calendar' ? 'other' : picked
 
   const pick = (kind: EndQuickPick, at: string) =>
     setEndLocal(endQuickPick(kind, at || FALLBACK_TIME, now, timeZone))
@@ -126,15 +123,13 @@ function EndFields({
               <motion.button
                 type="button"
                 aria-pressed={key === 'other' ? undefined : on}
-                aria-expanded={key === 'other' ? calendarOpen : undefined}
                 whileTap={reduceMotion ? undefined : { scale: 0.96 }}
                 transition={reduceMotion ? still : T.snap}
                 onClick={() => {
                   if (key === 'other') {
-                    setCalendarOpen((open) => !open)
+                    openDayPicker(dayInput.current)
                     return
                   }
-                  setCalendarOpen(false)
                   setSource('chip')
                   pick(key, time)
                 }}
@@ -151,29 +146,24 @@ function EndFields({
         })}
       </ul>
 
-      {/* The anchor for the month: absolute under the tiles, over whatever
-          is below, so opening it moves nothing. */}
-      <div className="relative mt-3">
+      <div className="mt-3">
         <EventEndFields
           day={day}
           time={time}
-          onChooseDay={() => setCalendarOpen((open) => !open)}
-          dayExpanded={calendarOpen}
+          minDay={today}
+          dayInputRef={dayInput}
+          onDayChange={(value) => {
+            setSource('calendar')
+            setEndLocal(`${value}T${time || FALLBACK_TIME}`)
+          }}
           onTimeChange={(value) => {
             if (!value) {
               setEndLocal(`${day}T`)
               return
             }
-            // A quick pick's day follows its time; a day from the month
-            // stays put. An open month is a day being chosen, so it stays too.
+            // A quick pick's day follows its time; a picked day stays put.
             setEndLocal(
-              endAfterTimeEdit(
-                endLocal,
-                value,
-                calendarOpen ? 'calendar' : source,
-                now,
-                timeZone,
-              ),
+              endAfterTimeEdit(endLocal, value, source, now, timeZone),
             )
           }}
           timeStep={900}
@@ -183,25 +173,21 @@ function EndFields({
             en ? { day: 'Day', time: 'Time' } : { day: 'Nap', time: 'Idő' }
           }
         />
-
-        <FloatingPanel
-          open={calendarOpen}
-          onClose={() => setCalendarOpen(false)}
-          anchorClassName="inset-x-0 top-[calc(100%+8px)]"
-        >
-          <MonthCalendar
-            value={day}
-            earliest={today}
-            label={en ? 'Event end' : 'Az esemény vége'}
-            locale={locale}
-            onChange={(value) => {
-              setCalendarOpen(false)
-              setSource('calendar')
-              setEndLocal(`${value}T${time || FALLBACK_TIME}`)
-            }}
-          />
-        </FloatingPanel>
       </div>
     </>
   )
+}
+
+/**
+ * "Másik nap" opens the date tile's own picker. `showPicker()` needs the tap
+ * that called it, which the chip's click is. A browser without it gets the
+ * field focused instead, one tap from its picker.
+ */
+function openDayPicker(input: HTMLInputElement | null) {
+  if (!input) return
+  try {
+    input.showPicker()
+  } catch {
+    input.focus()
+  }
 }
