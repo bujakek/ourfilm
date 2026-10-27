@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { developingWash } from '@/lib/developing-wash'
+import { sketchDataUrl } from '@/lib/sketch'
 import { developingTileLabel, moreDevelopingLabel } from '@/lib/event-copy'
 import type { Locale } from '@/lib/i18n'
 import type { DevelopingTile } from '@/lib/photos'
@@ -42,31 +43,46 @@ export function DevelopingGallery({
   return (
     <ul className="grid grid-cols-3 gap-1.5">
       {leading}
-      {tiles.map((tile, i) => (
-        <li
-          key={i}
-          className="relative aspect-square overflow-hidden rounded-[12px] bg-film"
-        >
-          {/* Oversized under the blur for the same reason the real tile scales
+      {tiles.map((tile, i) => {
+        const sketch = sketchDataUrl(tile.sketch)
+        return (
+          <li
+            key={i}
+            className="relative aspect-square overflow-hidden rounded-[12px] bg-film"
+          >
+            {/* Oversized under the blur for the same reason the real tile scales
               to 1.04: a blur inside `overflow-hidden` pulls transparent edges
-              into frame. */}
-          <span
-            aria-hidden="true"
-            className="absolute -inset-3 blur-lg"
-            style={{ background: developingWash(tile.seed) }}
-          />
-          <span className="absolute inset-x-1.5 top-1/2 flex -translate-y-1/2 justify-center">
-            <span className="truncate rounded-full bg-landing/50 px-2 py-0.5 text-[10px] leading-[1.4] font-medium text-white/85 backdrop-blur-sm">
-              {label}
+              into frame. The sketch is a ~32px summary of the photo with no
+              detail in it (`lib/sketch.ts`), blurred so its pixels do not
+              read as a mosaic; a tile without one keeps the seeded wash. */}
+            {sketch ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={sketch}
+                alt=""
+                aria-hidden="true"
+                className="absolute -inset-3 size-[calc(100%+1.5rem)] max-w-none object-cover blur-lg"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="absolute -inset-3 blur-lg"
+                style={{ background: developingWash(tile.seed) }}
+              />
+            )}
+            <span className="absolute inset-x-1.5 top-1/2 flex -translate-y-1/2 justify-center">
+              <span className="truncate rounded-full bg-landing/50 px-2 py-0.5 text-[10px] leading-[1.4] font-medium text-white/85 backdrop-blur-sm">
+                {label}
+              </span>
             </span>
-          </span>
-          {tile.uploaderName ? (
-            <span className="absolute inset-x-2 bottom-1.5 truncate font-landing-quote text-[14px] leading-tight text-white/85 italic">
-              {tile.uploaderName}
-            </span>
-          ) : null}
-        </li>
-      ))}
+            {tile.uploaderName ? (
+              <span className="absolute inset-x-2 bottom-1.5 truncate font-landing-quote text-[14px] leading-tight text-white/85 italic">
+                {tile.uploaderName}
+              </span>
+            ) : null}
+          </li>
+        )
+      })}
       {more > 0 ? (
         <li className="flex aspect-square items-center justify-center rounded-[12px] bg-host-tile text-[12px] font-medium text-white/65 tabular-nums">
           {moreDevelopingLabel(more, locale)}

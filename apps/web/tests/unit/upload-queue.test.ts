@@ -37,6 +37,7 @@ const prepared: PreparedPhoto = {
   width: 4032,
   height: 3024,
   takenAt: new Date('2026-08-15T14:32:10.000Z'),
+  sketch: 'IggKDQSHd3iId3eIeAeHeHd4',
 }
 
 const signed = (path: string) => ({ path, token: 'signed' })
@@ -748,6 +749,18 @@ describe('compressing a capture', () => {
 
     expect(h.deps.commit).toHaveBeenCalledWith(
       expect.objectContaining({ takenAt: prepared.takenAt!.toISOString() }),
+    )
+  })
+
+  it('sends the sketch of the master it prepared', async () => {
+    const h = harness()
+    const q = queueFor(h)
+
+    q.enqueue('shot-1', file(), NOW)
+    await q.drain()
+
+    expect(h.deps.commit).toHaveBeenCalledWith(
+      expect.objectContaining({ sketch: prepared.sketch }),
     )
   })
 
@@ -1622,7 +1635,9 @@ describe('a retry that picks up where the last attempt stopped', () => {
       2,
     )
     expect(h.deps.commit).toHaveBeenCalledWith(
-      expect.objectContaining({ byteSize: 2 }),
+      // Nothing was decoded, so there is nothing to sketch from; the server
+      // keeps whatever an earlier commit left.
+      expect.objectContaining({ byteSize: 2, sketch: null }),
     )
   })
 

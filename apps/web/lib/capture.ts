@@ -184,6 +184,7 @@ export async function commitShot({
   height,
   byteSize,
   takenAt,
+  sketch = null,
 }: {
   photoId: string
   tokenHash: string
@@ -191,6 +192,8 @@ export async function commitShot({
   height: number
   byteSize: number
   takenAt: string | null
+  /** Already validated by the caller; null keeps whatever the row has. */
+  sketch?: string | null
 }): Promise<CommitShotResult> {
   const db = createAdminClient()
 
@@ -205,6 +208,7 @@ export async function commitShot({
       // one genuinely takes null: a native camera file does not always carry a
       // readable EXIF timestamp, and those photos fall back to `created_at`.
       p_taken_at: takenAt as string,
+      ...(sketch ? { p_sketch: sketch } : {}),
     })
     .maybeSingle()
 

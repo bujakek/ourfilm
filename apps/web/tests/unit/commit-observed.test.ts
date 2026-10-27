@@ -81,6 +81,26 @@ afterEach(() => {
 })
 
 describe('a commit that lands', () => {
+  it('passes a sketch through and drops a malformed one', async () => {
+    const sketch = 'IggKDQSHd3iId3eIeAeHeHd4'
+    for (const [sent, expected] of [
+      [sketch, sketch],
+      ['../../not a sketch', null],
+      ['A'.repeat(200), null],
+    ] as const) {
+      const t = setup()
+      await observeCommitShot({
+        surface: 'guest',
+        route: '/e/[slug]',
+        input: { ...input, sketch: sent },
+        deps: t.deps,
+      })
+      expect(t.deps.commit).toHaveBeenCalledWith(
+        expect.objectContaining({ sketch: expected }),
+      )
+    }
+  })
+
   it('answers exactly what the RPC said, and reports arrival and success', async () => {
     const t = setup()
 
@@ -97,6 +117,7 @@ describe('a commit that lands', () => {
       height: 2400,
       byteSize: 2_000_000,
       takenAt: '2026-09-12T18:21:39.983Z',
+      sketch: null,
     })
 
     const ref = await photoRef(PHOTO)

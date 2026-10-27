@@ -5,6 +5,7 @@ import 'client-only'
 
 import { readCaptureTime } from './exif'
 import { atStep } from './prepare-error'
+import { encodeSketch, SKETCH_EDGE } from './sketch'
 import type { StoredShot } from './upload-store'
 
 /**
@@ -68,6 +69,8 @@ export type PreparedPhoto = {
   /** When the shutter fired, or null when the file carried no EXIF — a
    *  screenshot, a download, or anything already through a chat app. */
   takenAt: Date | null
+  /** The colour sketch the locked wall draws (`lib/sketch.ts`), or null. */
+  sketch: string | null
 }
 
 /**
@@ -157,6 +160,41 @@ async function resizedBitmap(
       return null
     }
     return resized
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The photo's colour sketch, from a bitmap already in memory.
+ *
+ * Drawn into a canvas no larger than `SKETCH_EDGE` and summarised there, so it
+ * costs one more tiny resize. sRGB on purpose: the wall draws it into an sRGB
+ * page, and ThumbHash expects plain 8-bit channels. Null on any failure — the
+ * upload never waits on this.
+ */
+async function sketchOf(bitmap: ImageBitmap): Promise<string | null> {
+  try {
+    const { width, height } = scaledSize(bitmap, SKETCH_EDGE)
+    const source = (await resizedBitmap(bitmap, width, height)) ?? bitmap
+    try {
+      const canvas =
+        typeof OffscreenCanvas !== 'undefined'
+          ? new OffscreenCanvas(width, height)
+          : Object.assign(document.createElement('canvas'), { width, height })
+      const ctx = canvas.getContext('2d', { willReadFrequently: true }) as
+        OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null
+      if (!ctx) return null
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(source, 0, 0, width, height)
+      return encodeSketch(
+        width,
+        height,
+        ctx.getImageData(0, 0, width, height).data,
+      )
+    } finally {
+      if (source !== bitmap) source.close()
+    }
   } catch {
     return null
   }
@@ -337,6 +375,7 @@ export async function prepareStoredShot(
       width,
       height,
       takenAt: shot.takenAt ? new Date(shot.takenAt) : null,
+      sketch: await sketchOf(bitmap),
     }
   } finally {
     bitmap.close()
@@ -397,7 +436,9 @@ async function prepareFromBitmap(
       THUMB_QUALITY,
     )
 
-    return { full, thumb, view, width, height, takenAt }
+    const sketch = await sketchOf(bitmap)
+
+    return { full, thumb, view, width, height, takenAt, sketch }
   } finally {
     // Phones are memory-tight and the next file is queued right behind this
     // one. Release in `finally` so a mid-pipeline throw cannot leak it.

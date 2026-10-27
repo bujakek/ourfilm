@@ -107,6 +107,7 @@ export async function hostCommitShotAction({
   height,
   byteSize,
   takenAt,
+  sketch,
   captureId,
   attemptId,
 }: {
@@ -116,6 +117,7 @@ export async function hostCommitShotAction({
   height: number
   byteSize: number
   takenAt: string | null
+  sketch?: string | null
   captureId?: string
   attemptId?: string
 }): Promise<CommitShotAnswer> {
@@ -125,7 +127,16 @@ export async function hostCommitShotAction({
   const result = await observeCommitShot({
     surface: 'host',
     route: '/host/events/[slug]',
-    input: { photoId, width, height, byteSize, takenAt, captureId, attemptId },
+    input: {
+      photoId,
+      width,
+      height,
+      byteSize,
+      takenAt,
+      sketch,
+      captureId,
+      attemptId,
+    },
     deps: liveCommitDeps(async () => {
       const event = await getOwnedEventBySlug(slug)
       if (!event) return { ok: false, refusal: 'not_owner' }

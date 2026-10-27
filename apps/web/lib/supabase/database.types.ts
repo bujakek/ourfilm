@@ -411,6 +411,7 @@ export type Database = {
           mime_type: string | null
           participant_id: string
           reserved_at: string | null
+          sketch: string | null
           status: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at: string | null
@@ -430,6 +431,7 @@ export type Database = {
           mime_type?: string | null
           participant_id: string
           reserved_at?: string | null
+          sketch?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
           storage_path: string
           taken_at?: string | null
@@ -449,6 +451,7 @@ export type Database = {
           mime_type?: string | null
           participant_id?: string
           reserved_at?: string | null
+          sketch?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
           storage_path?: string
           taken_at?: string | null
@@ -827,6 +830,7 @@ export type Database = {
           p_byte_size: number
           p_height: number
           p_photo_id: string
+          p_sketch?: string
           p_taken_at: string
           p_token_hash: string
           p_width: number
@@ -881,6 +885,7 @@ export type Database = {
       event_developing_gallery_by_slug: {
         Args: { p_slug: string }
         Returns: {
+          sketch: string
           tile_seed: number
           total_count: number
           uploader_name: string

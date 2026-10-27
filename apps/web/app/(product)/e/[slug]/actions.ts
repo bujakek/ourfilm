@@ -257,6 +257,7 @@ export async function commitShotAction({
   height,
   byteSize,
   takenAt,
+  sketch,
   captureId,
   attemptId,
 }: {
@@ -266,13 +267,23 @@ export async function commitShotAction({
   height: number
   byteSize: number
   takenAt: string | null
+  sketch?: string | null
   captureId?: string
   attemptId?: string
 }): Promise<CommitShotAnswer> {
   const result = await observeCommitShot({
     surface: 'guest',
     route: '/e/[slug]',
-    input: { photoId, width, height, byteSize, takenAt, captureId, attemptId },
+    input: {
+      photoId,
+      width,
+      height,
+      byteSize,
+      takenAt,
+      sketch,
+      captureId,
+      attemptId,
+    },
     deps: liveCommitDeps(async () => {
       const tokenHash = await readParticipantTokenHash()
       return tokenHash

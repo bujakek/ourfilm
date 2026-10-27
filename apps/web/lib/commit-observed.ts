@@ -4,6 +4,7 @@ import { after } from 'next/server'
 
 import { commitShot, type CommitShotResult } from './capture'
 import { photoRef } from './photo-ref'
+import { isSketch } from './sketch'
 import { createAdminClient } from './supabase/admin'
 import {
   reportServerEvent,
@@ -60,6 +61,8 @@ export type CommitShotInput = {
   height: number
   byteSize: number
   takenAt: string | null
+  /** The locked wall's sketch (`lib/sketch.ts`); validated before it is sent. */
+  sketch?: string | null
   /** The browser's capture id and attempt id. Claims, used only to join
    *  reports — never to decide anything. */
   captureId?: string | null
@@ -205,6 +208,7 @@ export async function observeCommitShot({
       height: input.height,
       byteSize: input.byteSize,
       takenAt: input.takenAt,
+      sketch: isSketch(input.sketch) ? input.sketch : null,
     })
   } catch (error) {
     finish(

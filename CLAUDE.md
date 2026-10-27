@@ -1300,16 +1300,26 @@ editing `_thumb` out of a URL `my_frames` returned. What was **not** given up:
 the bucket cannot be listed (below), and no anonymous request can find out
 what paths exist.
 
-**Before the reveal the album is a wall, and a tile carries no photo.** The
+**Before the reveal the album is a wall, and a tile carries no detail.** The
 guest page draws the locked gallery from `event_developing_gallery_by_slug`
-(`20260914120000`): each tile is an uploader name and a 32-bit seed hashed
-from the photo id, plus the total — newest 24, only while `now() < reveal_at`
-and `guests_can_view`. Never an id or a path: either one beside the event id
-the page already holds is the photo. That is why the tiles are washes of the
-palette (`apps/web/lib/developing-wash.ts`) and not CSS-blurred thumbnails — a
-blurred `thumb_path` would put every guest's photo one long-press away before
-the reveal. `apps/web/tests/db/developing-gallery.test.ts` pins the shape; a
-new column on that function needs the same scrutiny.
+(`20260914120000`, `20261027213046`): each tile is an uploader name, a 32-bit
+seed hashed from the photo id and the photo's **sketch**, plus the total —
+newest 24, only while `now() < reveal_at` and `guests_can_view`. Never an id
+or a path: either one beside the event id the page already holds is the photo.
+That is why a tile is never a CSS-blurred thumbnail — a blurred `thumb_path`
+would put every guest's photo one long-press away before the reveal.
+
+The sketch is a ThumbHash (`apps/web/lib/sketch.ts`, `photos.sketch`): about
+25 bytes of low-frequency colour and layout, computed on the uploading phone
+from the bitmap `prepareStoredShot` already holds, sent with `commit_shot`
+and drawn as a ~32px image under a blur. There is no detail in it to recover,
+which is the whole reason it may cross the reveal line when a thumbnail may
+not. It is optional at every step — photos from before it, a resume that
+skipped the decode, a phone whose canvas refused — and a tile without one is
+the seeded wash of the palette (`apps/web/lib/developing-wash.ts`).
+`commit_shot` drops a malformed sketch rather than refusing the photo, and a
+replay without one keeps the stored one. `apps/web/tests/db/developing-gallery.test.ts`
+pins the shape; a new column on that function needs the same scrutiny.
 
 **Guests hold no direct write access to Supabase at all.** Both anon insert
 policies — on `photos` and on `storage.objects` — are gone. Uploads go to signed

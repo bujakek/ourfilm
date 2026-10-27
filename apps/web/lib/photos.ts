@@ -49,7 +49,12 @@ export async function getGalleryPhotosBySlug(
  * the event id this page already hands the browser is the photo — see
  * `20260914120000_developing_gallery.sql`.
  */
-export type DevelopingTile = { seed: number; uploaderName: string | null }
+export type DevelopingTile = {
+  seed: number
+  /** The photo's colour sketch (`lib/sketch.ts`); null draws the seeded wash. */
+  sketch: string | null
+  uploaderName: string | null
+}
 
 export type DevelopingWall = {
   /** Newest first, at most 24. */
@@ -79,6 +84,7 @@ export async function getDevelopingGalleryBySlug(
   return {
     tiles: rows.map((row) => ({
       seed: row.tile_seed,
+      sketch: row.sketch || null,
       uploaderName: row.uploader_name || null,
     })),
     total: rows[0]?.total_count ?? 0,

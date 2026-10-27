@@ -38,7 +38,6 @@ import { uploadShotRenders } from '@/lib/upload-shot'
 import { uploadStore } from '@/lib/upload-store'
 import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
-import { tileSeed } from '@/lib/tile-seed'
 import { useEntrance } from '@/lib/use-entrance'
 import { useOnline } from '@/lib/use-online'
 import { HOST_KICKER_BASE, HOST_PANEL } from '@/components/host/ui/classes'
@@ -64,7 +63,7 @@ const SLOW_PREPARATION_MS = 5_000
 
 /**
  * How long a landed shot stays on screen before the page asks for the real
- * tile: long enough for `T.develop` to finish sinking it into its wash on a
+ * tile: long enough for `T.develop` to finish blurring it into its sketch on a
  * locked album, so the swap lands on a tile that already looks like it.
  */
 const CONFIRMED_HOLD_MS = 1_000
@@ -360,7 +359,6 @@ export function GuestEventView({
       confirmed: c.confirmed,
       receipt: c.receipt,
       durable: c.durable,
-      seed: c.photoId ? tileSeed(c.photoId) : null,
     }))
 
   /**

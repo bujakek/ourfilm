@@ -73,6 +73,9 @@ export type UploadQueueDeps = {
     height: number
     byteSize: number
     takenAt: string | null
+    /** The locked wall's colour sketch, when this attempt decoded the master.
+     *  A resume that skipped the decode sends null and keeps any earlier one. */
+    sketch: string | null
     /** Sent only so the server's reports join this device's. */
     captureId: string
     attemptId: string
@@ -824,6 +827,7 @@ export function createUploadQueue({
 
       let master: MasterFacts
       let takenAt: string | null
+      let sketch: string | null = null
       if (plan.kind === 'commit') {
         master = plan.master
         takenAt = shot.takenAt
@@ -847,6 +851,7 @@ export function createUploadQueue({
         takenAt = prepared
           ? (prepared.takenAt?.toISOString() ?? null)
           : shot.takenAt
+        sketch = prepared?.sketch ?? null
 
         const body = (kind: RenderKind): Blob => {
           // Always the stored master, never `prepared.full`: they are the same
@@ -920,6 +925,7 @@ export function createUploadQueue({
               // however long compression, the queue or a dead tab delayed the
               // upload. Never null from here on.
               takenAt: takenAt ?? new Date(shot.capturedAt).toISOString(),
+              sketch,
             }),
           limits.commit,
           'Confirming a photo',

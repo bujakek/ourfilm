@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
-import { developingWash } from '@/lib/developing-wash'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
@@ -42,11 +41,6 @@ export type PendingFrame = {
   receipt: CaptureReceiptState
   /** Whether IndexedDB has acknowledged a copy that outlives this tab. */
   durable: boolean
-  /**
-   * The locked wall's seed for this photo (`lib/tile-seed.ts`), once
-   * `reserve_shot` has named it. Null before then.
-   */
-  seed: number | null
 }
 
 /** The ring's radius in a 28px box. */
@@ -64,11 +58,11 @@ const RING_R = 11
  * How it ends depends on whether the album is open, because a sharp photo
  * before the reveal is a preview and the format has none:
  *
- * - **Locked.** The photo never resolves past a heavy blur. On the server's
- *   200 it sinks into the same wash the locked wall draws for it — the seed is
- *   the one the database will send. The caller holds the tile until the wash
- *   has settled before refreshing, so the wall tile that replaces it is the
- *   same colour in the same place and nothing visibly changes.
+ * - **Locked.** The photo never resolves past a heavy grey blur. On the
+ *   server's 200 its colour comes back under a deeper blur — the way the wall
+ *   draws it from its sketch (`lib/sketch.ts`). The caller holds the tile
+ *   until that has settled before refreshing, so the tile that replaces it
+ *   looks the same in the same place.
  * - **Open.** It snaps clear on the 200 and wears the white confirmation edge
  *   until the real thumbnail takes its place.
  */
@@ -83,11 +77,16 @@ export function PendingTile({
   locked: boolean
 }) {
   const reduceMotion = useReducedMotion()
-  const { previewUrl, progress, confirmed, seed } = pending
+  const { previewUrl, progress, confirmed } = pending
   const stalled = offline && !confirmed
   const p = Math.max(0, Math.min(1, progress))
+  // Locked and landed: colour back, detail gone — the way the wall will draw
+  // this photo from its sketch, so the refresh swaps in a tile that already
+  // looks like it. Never sharper than that before the reveal.
   const filter = locked
-    ? `grayscale(1) blur(${6 - 2 * p}px)`
+    ? confirmed
+      ? 'grayscale(0) blur(16px)'
+      : `grayscale(1) blur(${6 - 2 * p}px)`
     : confirmed
       ? 'grayscale(0) blur(0px)'
       : `grayscale(${1 - 0.6 * p}) blur(${6 - 4.6 * p}px)`
@@ -101,7 +100,7 @@ export function PendingTile({
       transition={T.settle}
     >
       <motion.span
-        className="absolute inset-0 block"
+        className={`absolute block ${locked ? '-inset-3' : 'inset-0'}`}
         initial={{ filter: 'grayscale(1) blur(6px)' }}
         animate={{ filter }}
         transition={confirmed && !locked ? T.settle : T.develop}
@@ -113,22 +112,7 @@ export function PendingTile({
       </motion.span>
 
       <AnimatePresence>
-        {confirmed && locked ? (
-          <motion.span
-            key="sealed"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={reduceMotion ? still : T.develop}
-            className="absolute inset-0"
-          >
-            {/* Drawn exactly as `DevelopingGallery` draws the tile, oversized
-                under the blur for the same reason. */}
-            <span
-              className="absolute -inset-3 blur-lg"
-              style={{ background: developingWash(seed ?? 0) }}
-            />
-          </motion.span>
-        ) : confirmed ? (
+        {confirmed && locked ? null : confirmed ? (
           <motion.span
             key="confirmed"
             initial={{ opacity: 0, scale: 1.14 }}
