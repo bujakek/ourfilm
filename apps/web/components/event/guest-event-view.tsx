@@ -16,7 +16,6 @@ import {
 } from '@/app/(product)/e/[slug]/actions'
 import {
   captureStatus,
-  formatLine,
   heldInMemoryNotice,
   lostPhotoTitle,
   offlineQueueNotice,
@@ -65,10 +64,10 @@ const SLOW_PREPARATION_MS = 5_000
 
 /**
  * How long a landed shot stays on screen before the page asks for the real
- * tile. Long enough to read the "Kész" mark on a locked album, or the white
- * edge on an open one; the refresh that ends it swaps in the same tile.
+ * tile: long enough for `T.develop` to finish sinking it into its wash on a
+ * locked album, so the swap lands on a tile that already looks like it.
  */
-const CONFIRMED_HOLD_MS = 1_600
+const CONFIRMED_HOLD_MS = 1_000
 
 /**
  * What the screen says when something goes wrong.
@@ -144,7 +143,6 @@ export function GuestEventView({
   initialShotsRemaining,
   shotsPerParticipant,
   frames,
-  participantCount,
   gallery,
   photos,
   wall,
@@ -165,7 +163,6 @@ export function GuestEventView({
   initialShotsRemaining: number
   shotsPerParticipant: number
   frames: Frame[]
-  participantCount: number
   gallery: GalleryState
   photos: GalleryTile[]
   /** The locked album as tiles; null when there is no wall to draw. */
@@ -881,7 +878,6 @@ export function GuestEventView({
               pending={pending}
               offline={!online}
               locked={!gallery.open}
-              locale={locale}
             />
           ))
       : null
@@ -1166,18 +1162,10 @@ export function GuestEventView({
         />
       </motion.div>
 
-      {/* One line under the shutter, and it is one line on purpose.
-
-          It says what the product is — the guest count, no preview, no retakes
-          — until something more urgent needs the space, and then it says that
-          instead: a refused upload, or the receipt when an outage ends. The
-          outage itself, a photo held only by this tab and a lost photo are the
-          banner at the top of the page, not this slot.
-
-          The height is reserved in every state, which is what stops the panels
-          below jumping each time a line comes and goes. The entrance fires
-          once, on first paint; after that the only transition here is the
-          colour, so a guest tapping the shutter repeatedly sees no motion. */}
+      {/* The line under the shutter, only when there is something to say: a
+          refused upload, or the receipt when an outage ends. The outage
+          itself, a photo held only by this tab and a lost photo are the
+          banner at the top of the page, not this slot. */}
       {/* A spent roll (7m) or an untouched one (7c) takes the slot as a block
           when no line needs it, in that order. */}
       {/* The slot's one live region, always mounted: a region that mounts
@@ -1212,18 +1200,14 @@ export function GuestEventView({
           )}
         </motion.div>
       ) : (
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={stage(4)}
-          className={`mt-3 min-h-9 text-center text-pretty transition-colors ${
-            statusLine
-              ? `text-[13px] leading-[1.45] ${statusLine.tone}`
-              : 'text-[13px] leading-[1.45] text-white/60'
-          }`}
-        >
-          {statusLine ? statusLine.text : formatLine(participantCount, locale)}
-        </motion.p>
+        statusLine && (
+          <p
+            aria-hidden="true"
+            className={`mt-3 text-center text-[13px] leading-[1.45] text-pretty ${statusLine.tone}`}
+          >
+            {statusLine.text}
+          </p>
+        )
       )}
 
       <motion.section

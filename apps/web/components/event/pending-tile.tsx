@@ -1,6 +1,5 @@
 'use client'
 
-import { Check } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
 import { developingWash } from '@/lib/developing-wash'
@@ -67,10 +66,9 @@ const RING_R = 11
  *
  * - **Locked.** The photo never resolves past a heavy blur. On the server's
  *   200 it sinks into the same wash the locked wall draws for it — the seed is
- *   the one the database will send — and a "Kész" mark says it landed. The
- *   caller holds the tile for a beat before refreshing, so the guest sees the
- *   mark, and the wall tile that replaces it is the same colour in the same
- *   place.
+ *   the one the database will send. The caller holds the tile until the wash
+ *   has settled before refreshing, so the wall tile that replaces it is the
+ *   same colour in the same place and nothing visibly changes.
  * - **Open.** It snaps clear on the 200 and wears the white confirmation edge
  *   until the real thumbnail takes its place.
  */
@@ -78,13 +76,11 @@ export function PendingTile({
   pending,
   offline,
   locked,
-  locale,
 }: {
   pending: PendingFrame
   offline: boolean
   /** Whether the shared album is still waiting for its reveal. */
   locked: boolean
-  locale: Locale
 }) {
   const reduceMotion = useReducedMotion()
   const { previewUrl, progress, confirmed, seed } = pending
@@ -131,12 +127,6 @@ export function PendingTile({
               className="absolute -inset-3 blur-lg"
               style={{ background: developingWash(seed ?? 0) }}
             />
-            <span className="absolute inset-x-1.5 top-1/2 flex -translate-y-1/2 justify-center">
-              <span className="inline-flex items-center gap-1 rounded-full bg-landing/50 px-2 py-0.5 text-[10px] leading-[1.4] font-medium text-white/85 backdrop-blur-sm">
-                <Check className="size-3" strokeWidth={2.5} />
-                {locale === 'en' ? 'Done' : 'Kész'}
-              </span>
-            </span>
           </motion.span>
         ) : confirmed ? (
           <motion.span

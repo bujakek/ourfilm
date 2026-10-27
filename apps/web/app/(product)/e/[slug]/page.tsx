@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation'
 import { JoinForm } from '@/components/event/join-form'
 import { GuestEventView } from '@/components/event/guest-event-view'
 import {
-  getGuestParticipantCount,
   getGuestEventState,
   getPublicEventBySlug,
   hasJoined,
@@ -102,8 +101,7 @@ export default async function EventPage({ params }: Props) {
   // they are theirs, and the reveal exists so the *group* sees the night
   // together, not to withhold your own shots from you. `my_frames` is a
   // separate, narrower read than the gallery's; see `lib/frames.ts`.
-  const [participantCount, frames, tiles, wall] = await Promise.all([
-    getGuestParticipantCount(event.id),
+  const [frames, tiles, wall] = await Promise.all([
     getMyFrames(event.id),
     lock.open
       ? getGalleryPhotosBySlug(slug).then(toGalleryTiles)
@@ -137,7 +135,6 @@ export default async function EventPage({ params }: Props) {
       initialShotsRemaining={event.shots_remaining}
       shotsPerParticipant={event.shots_per_participant}
       frames={frames}
-      participantCount={participantCount}
       gallery={lock}
       photos={tiles}
       wall={wall}

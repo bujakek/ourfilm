@@ -1598,7 +1598,7 @@ claims are live and load-bearing:
 - **Every participant gets the host's chosen 5/10/16/24/36-shot roll** — paying
   never removes the per-person format
 - **No preview and no retakes** (the homepage FAQ and phone mocks, the guest event page's
-  format line, the join ticket) — this is the format rather than a feature, and
+  empty-roll notice, the join ticket) — this is the format rather than a feature, and
   it is true in the sense a guest reads it: there is no preview surface, and
   `reserve_shot` spends a frame per shutter press whatever anyone does with a
   URL. It is a property of the UI, not of the system: since the bucket went

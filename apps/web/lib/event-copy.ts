@@ -446,32 +446,6 @@ export function queueClearedNote(count: number, locale: Locale = 'hu'): string {
   return count === 1 ? 'A kép feltöltve.' : `Mind a ${count} kép feltöltve.`
 }
 
-/**
- * The format, stated rather than implied.
- *
- * This is where "no preview, no retakes" finally appears on the guest's own
- * screen — it was a landing-page claim and a thing the product did, and never a
- * sentence the person holding the camera actually read. The guest count rides
- * along because it is the third value the deleted `<dl>` carried and it belongs
- * next to the other two facts about the format rather than in a list of its
- * own.
- *
- * It is a sentence in the body face, not three clauses in tracked-out mono
- * caps. Approved in the v2 design review: the mono is for what the camera
- * counts, and this line is the one thing on the screen that is neither a
- * number nor a label — it is the product explaining itself to somebody who
- * has just been handed a camera with no undo.
- */
-export function formatLine(
-  participantCount: number,
-  locale: Locale = 'hu',
-): string {
-  // Hungarian takes no plural after a numeral, so only English branches.
-  return locale === 'en'
-    ? `${participantCount} guest${participantCount === 1 ? '' : 's'} took photos, with no preview and no retakes.`
-    : `${participantCount} vendég fotózott, előnézet és újrafotózás nélkül.`
-}
-
 /** How the guest's ticket names the reveal rule, in mono caps. The host's own
  *  screens use `revealModeLabel` below, which is sentence case and Hungarian
  *  only — a host and a guest are reading different surfaces. */

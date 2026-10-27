@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import {
   captureStatus,
-  formatLine,
   heldInMemoryNotice,
   longTimeRemaining,
   capReachedNotice,
@@ -222,25 +221,6 @@ describe('queueClearedNote', () => {
     expect(queueClearedNote(3)).toBe('Mind a 3 kép feltöltve.')
     expect(queueClearedNote(1, 'en')).toBe('Your photo uploaded.')
     expect(queueClearedNote(3, 'en')).toBe('All 3 photos uploaded.')
-  })
-})
-
-describe('formatLine', () => {
-  it('states the format the product actually is', () => {
-    expect(formatLine(7)).toBe(
-      '7 vendég fotózott, előnézet és újrafotózás nélkül.',
-    )
-    expect(formatLine(7, 'en')).toBe(
-      '7 guests took photos, with no preview and no retakes.',
-    )
-  })
-
-  it('keeps English singular honest', () => {
-    expect(formatLine(1, 'en')).toBe(
-      '1 guest took photos, with no preview and no retakes.',
-    )
-    // Hungarian takes no plural after a numeral.
-    expect(formatLine(1)).toContain('1 vendég ')
   })
 })
 
