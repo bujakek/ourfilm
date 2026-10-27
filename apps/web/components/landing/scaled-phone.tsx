@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { PhoneScaleContext } from '@/components/site/phone-mock'
 import { cn } from '@/lib/utils'
@@ -14,13 +14,14 @@ const PHONE_H = 528
  *
  * The screens are laid out in pixels at 254px, and redrawing them at every size
  * the homepage needs would be six copies of the same markup. So the phone is
- * rendered once at its own size and scaled to fill the width of this box —
- * the same idea as the design's phones, done in CSS so the server's markup is
- * already the right size and nothing jumps after hydration.
+ * rendered once at its own size and scaled to fill the width of this box.
  *
- * The ratio is `100cqw / 254px`. CSS will not divide a length by a length, so
- * `tan(atan2(a, b))` does it: the angle is only there to turn `a / b` into a
- * plain number `scale` accepts.
+ * The ratio is measured rather than computed in CSS. The CSS-only version,
+ * `scale: tan(atan2(100cqw, 254px))`, divided a container-query length by a
+ * pixel length inside trig functions, and Safari resolves that to a negative
+ * value — the phones came out rotated half a turn and mirrored. Until the
+ * first measurement the screen is hidden; it is decorative and `aria-hidden`,
+ * and the box already holds its aspect ratio, so nothing around it moves.
  *
  * `maxScale` is the largest this box is ever drawn at; it only tells the
  * photos inside how many pixels to fetch.
@@ -34,17 +35,35 @@ export function ScaledPhone({
   className?: string
   maxScale?: number
 }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState<number | null>(null)
+
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const measure = () => {
+      const width = el.offsetWidth
+      if (width > 0) setScale(width / PHONE_W)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div
+      ref={box}
       aria-hidden="true"
-      className={cn('@container relative aspect-[254/528] shrink-0', className)}
+      className={cn('relative aspect-[254/528] shrink-0', className)}
     >
       <div
         className="absolute top-0 left-0 origin-top-left text-left font-landing-sans text-white"
         style={{
           width: PHONE_W,
           height: PHONE_H,
-          scale: `tan(atan2(100cqw, ${PHONE_W}px))`,
+          transform: scale === null ? undefined : `scale(${scale})`,
+          visibility: scale === null ? 'hidden' : undefined,
         }}
       >
         <PhoneScaleContext value={maxScale}>{children}</PhoneScaleContext>
