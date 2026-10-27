@@ -20,7 +20,7 @@ const PHONE_H = 528
  * `scale: tan(atan2(100cqw, 254px))`, divided a container-query length by a
  * pixel length inside trig functions, and Safari resolves that to a negative
  * value — the phones came out rotated half a turn and mirrored. Until the
- * first measurement the screen is hidden; it is decorative and `aria-hidden`,
+ * first measurement the screen is transparent (not `visibility: hidden`, which keeps Safari from loading the lazy photos inside it); it is decorative and `aria-hidden`,
  * and the box already holds its aspect ratio, so nothing around it moves.
  *
  * `maxScale` is the largest this box is ever drawn at; it only tells the
@@ -63,7 +63,7 @@ export function ScaledPhone({
           width: PHONE_W,
           height: PHONE_H,
           transform: scale === null ? undefined : `scale(${scale})`,
-          visibility: scale === null ? 'hidden' : undefined,
+          opacity: scale === null ? 0 : undefined,
         }}
       >
         <PhoneScaleContext value={maxScale}>{children}</PhoneScaleContext>
