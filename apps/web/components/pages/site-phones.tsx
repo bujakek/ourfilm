@@ -19,17 +19,15 @@ export function SitePhone({
   locale,
   screen,
   content,
-  maxScale = 1.4,
   className,
 }: {
   locale: Locale
   screen: SiteScreen
   content?: ScreenContent
-  maxScale?: number
   className?: string
 }) {
   return (
-    <ScaledPhone maxScale={maxScale} className={className}>
+    <ScaledPhone className={className}>
       {screen === 'guest' ? (
         <ScreenCamera locale={locale} {...content} />
       ) : screen === 'host' ? (

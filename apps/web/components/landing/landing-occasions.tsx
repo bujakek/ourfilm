@@ -92,14 +92,14 @@ export function LandingOccasions({ locale }: { locale: Locale }) {
           </div>
 
           <div className="mx-auto mt-[42px] grid max-w-[808px] grid-cols-2 gap-[5px] lg:mt-[43px] lg:w-[70%] lg:gap-2.5">
-            <ScaledPhone maxScale={1.6}>
+            <ScaledPhone>
               <ScreenTicket
                 locale={locale}
                 name={tab.screenName}
                 photos={photos}
               />
             </ScaledPhone>
-            <ScaledPhone maxScale={1.6}>
+            <ScaledPhone>
               <ScreenCamera
                 locale={locale}
                 name={tab.screenName}

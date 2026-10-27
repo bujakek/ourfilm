@@ -38,14 +38,14 @@ export function LandingFinal({ locale }: { locale: Locale }) {
         </Link>
 
         <div className="mx-auto mt-[50px] hidden max-w-[1114px] grid-cols-2 lg:grid">
-          <ScaledPhone maxScale={1.4} className="mx-auto w-[63%]">
+          <ScaledPhone className="mx-auto w-[63%]">
             <ScreenTicket
               locale={locale}
               name={copy.screenName}
               photos={WEEKEND_PHOTOS}
             />
           </ScaledPhone>
-          <ScaledPhone maxScale={1.4} className="mx-auto w-[63%]">
+          <ScaledPhone className="mx-auto w-[63%]">
             <ScreenCamera
               locale={locale}
               name={copy.screenName}
@@ -56,10 +56,7 @@ export function LandingFinal({ locale }: { locale: Locale }) {
       </div>
 
       <div className="mt-[42px] lg:hidden">
-        <ScaledPhone
-          maxScale={1.3}
-          className="relative left-1/2 w-[315px] -translate-x-1/2 rotate-[15deg]"
-        >
+        <ScaledPhone className="relative left-1/2 w-[315px] -translate-x-1/2 rotate-[15deg]">
           <ScreenCamera
             locale={locale}
             name={copy.screenName}

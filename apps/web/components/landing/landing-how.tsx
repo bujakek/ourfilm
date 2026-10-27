@@ -85,10 +85,7 @@ export function LandingHow({ locale }: { locale: Locale }) {
                 <p className={cn(LANDING_EYEBROW, 'text-white/50')}>
                   {copy.step(i + 1)}
                 </p>
-                <ScaledPhone
-                  maxScale={1}
-                  className="mx-auto mt-[22px] w-[144px] lg:mt-[22px] lg:w-[65.5%] lg:max-w-[236px]"
-                >
+                <ScaledPhone className="mx-auto mt-[22px] w-[144px] lg:mt-[22px] lg:w-[65.5%] lg:max-w-[236px]">
                   <Screen locale={locale} />
                 </ScaledPhone>
                 <h3 className="mt-7 text-[18px] leading-[1.2] text-white/90 lg:mt-[22px] lg:text-[20px]">

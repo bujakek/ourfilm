@@ -11,7 +11,7 @@ import {
   Wifi,
 } from 'lucide-react'
 import Image from 'next/image'
-import { createContext, useContext, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 import type { Locale } from '@/lib/i18n'
 import { DEFAULT_SHOTS } from '@/lib/camera'
@@ -172,17 +172,13 @@ const KICKER =
 const SERIF = 'landing-serif font-landing-display'
 
 /**
- * How much larger than 254px the phone is drawn, so the photos inside it ask
- * `next/image` for enough pixels. The homepage shows these screens at up to
- * 2.2× (`components/landing/scaled-phone.tsx`); at the default `sizes` a
- * 102px tile would be fetched for a 225px slot and look soft.
+ * The phone mocks draw photos at 68–216 CSS px, so they use a pre-resized copy
+ * (`public/images/phone/`, 480px wide) served as a plain static file. Going
+ * through `next/image` meant a Vercel optimizer request per tile, which is
+ * metered, and which answered 400 for some of the widths the phones asked for.
+ * Regenerate a thumb with `cwebp -q 80 -resize 480 0 <src> -o <dest>`.
  */
-export const PhoneScaleContext = createContext(1)
-
-function useSizes() {
-  const scale = useContext(PhoneScaleContext)
-  return (px: number) => `${Math.ceil(px * scale)}px`
-}
+const phoneThumb = (src: string) => `/images/phone/${src.split('/').pop()}`
 
 /**
  * Who the screen belongs to and what is on its roll. The defaults are the
@@ -217,7 +213,6 @@ function PhotoPanel({
   count: number
   photos: readonly string[]
 }) {
-  const sizes = useSizes()
   return (
     <div className="mt-3 rounded-[18px] bg-white/4 px-2 pt-3 pb-2">
       <div className="flex items-baseline justify-between px-1">
@@ -231,10 +226,10 @@ function PhotoPanel({
             className="relative block aspect-square overflow-hidden rounded-[7px]"
           >
             <Image
-              src={photo}
+              src={phoneThumb(photo)}
               alt=""
               fill
-              sizes={sizes(68)}
+              unoptimized
               className="object-cover"
             />
           </span>
@@ -266,7 +261,6 @@ function LiveKicker({ children }: { children: ReactNode }) {
  */
 export function ScreenReveal({ locale }: { locale: Locale }) {
   const en = locale === 'en'
-  const sizes = useSizes()
   const options = [
     {
       label: en ? 'Right away' : 'Azonnal',
@@ -316,10 +310,10 @@ export function ScreenReveal({ locale }: { locale: Locale }) {
             className="relative block h-full overflow-hidden rounded-[14px]"
           >
             <Image
-              src={guest.src}
+              src={phoneThumb(guest.src)}
               alt=""
               fill
-              sizes={sizes(108)}
+              unoptimized
               className="scale-105 object-cover blur-[8px]"
             />
             <span className="absolute top-2 left-[9px] text-[8px] font-medium drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]">

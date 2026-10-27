@@ -59,7 +59,6 @@ export function LandingHero({ locale }: { locale: Locale }) {
           locale={locale}
           name={copy.screenName}
           photos={WEEKEND_PHOTOS}
-          maxScale={2}
           className="hidden w-full lg:block"
         />
       </div>
@@ -71,7 +70,6 @@ export function LandingHero({ locale }: { locale: Locale }) {
           locale={locale}
           name={copy.screenName}
           photos={WEEKEND_PHOTOS}
-          maxScale={1.2}
           className="relative left-1/2 w-[485px] -translate-x-1/2 rotate-[13deg]"
         />
       </div>

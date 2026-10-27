@@ -2,7 +2,6 @@
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
-import { PhoneScaleContext } from '@/components/site/phone-mock'
 import { cn } from '@/lib/utils'
 
 /** `PhoneMock`'s own outer size. Every screen is drawn at exactly this. */
@@ -22,18 +21,13 @@ const PHONE_H = 528
  * value — the phones came out rotated half a turn and mirrored. Until the
  * first measurement the screen is transparent (not `visibility: hidden`, which keeps Safari from loading the lazy photos inside it); it is decorative and `aria-hidden`,
  * and the box already holds its aspect ratio, so nothing around it moves.
- *
- * `maxScale` is the largest this box is ever drawn at; it only tells the
- * photos inside how many pixels to fetch.
  */
 export function ScaledPhone({
   children,
   className,
-  maxScale = 2,
 }: {
   children: ReactNode
   className?: string
-  maxScale?: number
 }) {
   const box = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState<number | null>(null)
@@ -66,7 +60,7 @@ export function ScaledPhone({
           opacity: scale === null ? 0 : undefined,
         }}
       >
-        <PhoneScaleContext value={maxScale}>{children}</PhoneScaleContext>
+        {children}
       </div>
     </div>
   )
