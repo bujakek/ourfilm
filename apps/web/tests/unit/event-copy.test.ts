@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   captureStatus,
   formatLine,
+  heldInMemoryNotice,
   longTimeRemaining,
   capReachedNotice,
   offlineQueueNotice,
-  ownRollNote,
   queueClearedNote,
   revealSummary,
   shortTimeRemaining,
@@ -124,21 +124,25 @@ describe('captureStatus', () => {
 })
 
 describe('offlineQueueNotice', () => {
-  it('names the count and says the page must stay open', () => {
-    expect(offlineQueueNotice(3)).toEqual({
-      title: 'Nincs kapcsolat · 3 kép vár a feltöltésre',
-      body: 'A képeid a telefonon maradnak, és kapcsolat után maguktól feltöltődnek. Ne zárd be az oldalt.',
+  it('says the photo is safe on the phone', () => {
+    expect(offlineQueueNotice(1)).toEqual({
+      title: 'Nincs kapcsolat',
+      body: '1 kép el van mentve a telefonon, nem veszhet el. Nyisd meg újra az oldalt jobb térerőn, és feltöltődik.',
     })
   })
 
-  it('takes an English plural and no Hungarian one', () => {
-    expect(offlineQueueNotice(1, 'en').title).toBe(
-      'No connection · 1 photo waiting to upload',
-    )
-    expect(offlineQueueNotice(2, 'en').title).toBe(
-      'No connection · 2 photos waiting to upload',
-    )
-    expect(offlineQueueNotice(1).title).toContain('1 kép vár')
+  it('pluralises the sentence in both languages', () => {
+    expect(offlineQueueNotice(3).body).toContain('3 kép el van mentve')
+    expect(offlineQueueNotice(3).body).toContain('feltöltődnek')
+    expect(offlineQueueNotice(1, 'en').body).toContain('1 photo is saved')
+    expect(offlineQueueNotice(2, 'en').body).toContain('2 photos are saved')
+  })
+
+  it('never asks the guest to keep the page open', () => {
+    for (const locale of ['hu', 'en'] as const) {
+      const { title, body } = offlineQueueNotice(2, locale)
+      expect(`${title} ${body}`).not.toMatch(/Ne zárd be|Do not close/)
+    }
   })
 
   it('never mentions a deadline', () => {
@@ -146,6 +150,15 @@ describe('offlineQueueNotice', () => {
       const { title, body } = offlineQueueNotice(4, locale)
       expect(`${title} ${body}`).not.toMatch(/24|óra|hour/)
     }
+  })
+})
+
+describe('heldInMemoryNotice', () => {
+  it('is the one notice that asks for the page to stay open', () => {
+    expect(heldInMemoryNotice(1).title).toBe('Ne zárd be az oldalt')
+    expect(heldInMemoryNotice(1, 'en').title).toBe('Do not close this page')
+    expect(heldInMemoryNotice(2).body).toContain('2 képet')
+    expect(heldInMemoryNotice(2, 'en').body).toContain('2 photos')
   })
 })
 
@@ -243,14 +256,5 @@ describe('revealSummary', () => {
     // Not a product setting any more, but rows predating the change still
     // carry it and a ticket must not render an empty cell.
     expect(revealSummary('custom')).toBe('KÉSŐBB')
-  })
-})
-
-describe('ownRollNote', () => {
-  it('separates the guest’s own frames from the shared gallery', () => {
-    // The strip is never reveal-gated and the gallery always is, so the locked
-    // state has to say which is which or it reads as a bug.
-    expect(ownRollNote()).toContain('már a tieid')
-    expect(ownRollNote('en')).toContain('already yours')
   })
 })

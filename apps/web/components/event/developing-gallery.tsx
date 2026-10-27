@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import { developingWash } from '@/lib/developing-wash'
 import { developingTileLabel, moreDevelopingLabel } from '@/lib/event-copy'
 import type { Locale } from '@/lib/i18n'
@@ -24,8 +26,11 @@ export function DevelopingGallery({
   revealAt,
   now,
   locale,
+  leading,
 }: {
   tiles: DevelopingTile[]
+  /** Tiles drawn before the wall: this guest's shots still on their way. */
+  leading?: ReactNode
   total: number
   revealAt: string
   now: number
@@ -36,10 +41,11 @@ export function DevelopingGallery({
 
   return (
     <ul className="grid grid-cols-3 gap-1.5">
+      {leading}
       {tiles.map((tile, i) => (
         <li
           key={i}
-          className="relative aspect-square overflow-hidden rounded-sm bg-film"
+          className="relative aspect-square overflow-hidden rounded-[12px] bg-film"
         >
           {/* Oversized under the blur for the same reason the real tile scales
               to 1.04: a blur inside `overflow-hidden` pulls transparent edges
@@ -62,7 +68,7 @@ export function DevelopingGallery({
         </li>
       ))}
       {more > 0 ? (
-        <li className="flex aspect-square items-center justify-center rounded-sm bg-host-tile text-[12px] font-medium text-white/65 tabular-nums">
+        <li className="flex aspect-square items-center justify-center rounded-[12px] bg-host-tile text-[12px] font-medium text-white/65 tabular-nums">
           {moreDevelopingLabel(more, locale)}
         </li>
       ) : null}

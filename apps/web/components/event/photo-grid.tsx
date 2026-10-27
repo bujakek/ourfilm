@@ -3,7 +3,7 @@
 import type { GalleryTile } from '@/lib/photos'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Lightbox } from './lightbox'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
@@ -13,8 +13,11 @@ export function PhotoGrid({
   photos,
   eventId,
   locale = 'hu',
+  leading,
 }: {
   photos: GalleryTile[]
+  /** Tiles drawn before the photos: this guest's shots still on their way. */
+  leading?: ReactNode
   /** Telemetry only. */
   eventId: string
   locale?: Locale
@@ -35,6 +38,7 @@ export function PhotoGrid({
           inside what a ~400px `thumb_path` can fill, and a contact sheet reads
           as a shared roll where a two-up grid reads as a feed. */}
       <ul className="grid grid-cols-3 gap-1.5">
+        {leading}
         {photos.map((photo, i) => (
           <motion.li
             key={photo.id}
@@ -65,7 +69,7 @@ export function PhotoGrid({
               }}
               whileTap={reduceMotion ? undefined : { scale: 0.975 }}
               transition={reduceMotion ? still : T.snap}
-              className="group relative block aspect-square w-full overflow-hidden rounded-sm"
+              className="group relative block aspect-square w-full overflow-hidden rounded-[12px]"
             >
               <Tile
                 photo={photo}

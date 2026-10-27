@@ -153,21 +153,6 @@ export function galleryLock(
 }
 
 /**
- * The camera's own line at the reveal-locked gallery.
- *
- * Needed because the guest surface now shows two things that obey different
- * rules on one screen: the strip above holds this guest's own frames, which are
- * never reveal-gated, and the gallery below holds everybody's, which is. A
- * guest looking at their own photos over a locked album would otherwise read
- * the lock as a bug.
- */
-export function ownRollNote(locale: Locale = 'hu'): string {
-  return locale === 'en'
-    ? 'The frames on your roll are already yours — only the shared gallery waits for developing.'
-    : 'A tekercseden lévő képek már a tieid — csak a közös galéria vár az előhívásra.'
-}
-
-/**
  * `Előhívás: 1N 5Ó` — the label on a tile in the locked gallery.
  *
  * The short spelling, because it sits on a 120px tile. Once the instant has
@@ -308,30 +293,71 @@ export function captureStatus(
 export type GuestNotice = { title: string; body: string }
 
 /**
- * "Nincs kapcsolat · 3 kép vár a feltöltésre" (7g).
+ * "Nincs kapcsolat" (7g, guest view `11c`).
  *
- * Shown above the film strip while the device is offline with shots still
- * owed. It is not a toast, and that is the whole design: a guest can be out of
- * signal for an entire wedding, so the sentence saying their photos are safe
- * has to stay on the screen the whole time rather than appear and leave.
+ * The banner at the top of the guest page while the device is offline with
+ * shots still owed. It is not a toast, and that is the whole design: a guest
+ * can be out of signal for an entire wedding, so the sentence saying their
+ * photos are safe has to stay on the screen the whole time.
  *
- * It names no deadline. `lib/upload-queue.ts` owns how long a stored shot is
- * kept, and a number here would be a promise about a device nobody controls.
- * "Ne zárd be az oldalt" covers the one case where the tab is the only copy.
+ * It does not ask the guest to keep the page open. Every shot it counts is in
+ * IndexedDB and replays when the page is opened again; the one case where the
+ * tab is the only copy is `heldInMemoryNotice`. It names no deadline either:
+ * `lib/upload-queue.ts` owns how long a stored shot is kept, and a number here
+ * would be a promise about a device nobody controls.
  */
 export function offlineQueueNotice(
   count: number,
   locale: Locale = 'hu',
 ): GuestNotice {
+  const one = count === 1
   return locale === 'en'
     ? {
-        title: `No connection · ${count} photo${count === 1 ? '' : 's'} waiting to upload`,
-        body: 'Your photos stay on this phone and upload by themselves once you are back online. Do not close this page.',
+        title: 'No connection',
+        body: one
+          ? '1 photo is saved on this phone and cannot be lost. Reopen the page with better signal and it will upload.'
+          : `${count} photos are saved on this phone and cannot be lost. Reopen the page with better signal and they will upload.`,
       }
     : {
-        title: `Nincs kapcsolat · ${count} kép vár a feltöltésre`,
-        body: 'A képeid a telefonon maradnak, és kapcsolat után maguktól feltöltődnek. Ne zárd be az oldalt.',
+        title: 'Nincs kapcsolat',
+        body: one
+          ? '1 kép el van mentve a telefonon, nem veszhet el. Nyisd meg újra az oldalt jobb térerőn, és feltöltődik.'
+          : `${count} kép el van mentve a telefonon, egyik sem veszhet el. Nyisd meg újra az oldalt jobb térerőn, és feltöltődnek.`,
       }
+}
+
+/**
+ * "Ne zárd be az oldalt" — IndexedDB refused, so this tab is the only copy.
+ *
+ * The one guest state that is a real data-loss risk, and the only place the
+ * page asks to be kept open. Shown online or offline: a held shot that is
+ * uploading normally is still lost if the tab goes away before it lands.
+ */
+export function heldInMemoryNotice(
+  count: number,
+  locale: Locale = 'hu',
+): GuestNotice {
+  const one = count === 1
+  return locale === 'en'
+    ? {
+        title: 'Do not close this page',
+        body: one
+          ? 'This phone could not save the photo, so this page is its only copy until it uploads.'
+          : `This phone could not save ${count} photos, so this page is their only copy until they upload.`,
+      }
+    : {
+        title: 'Ne zárd be az oldalt',
+        body: one
+          ? 'A telefon nem tudta elmenteni a képet, így amíg fel nem töltődik, csak ez az oldal őrzi.'
+          : `A telefon ${count} képet nem tudott elmenteni, így amíg fel nem töltődnek, csak ez az oldal őrzi őket.`,
+      }
+}
+
+/** The heading over a lost photo's message; the message is the body. */
+export function lostPhotoTitle(locale: Locale = 'hu'): string {
+  return locale === 'en'
+    ? 'A photo did not reach the album'
+    : 'Egy kép nem került az albumba'
 }
 
 /**

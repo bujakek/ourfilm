@@ -80,7 +80,6 @@
 
      The comments are the mapping. A caller picking a step by its name rather
      than by what it is on is how the scale inverts again. */
-  --radius-xs: 0.25rem; /* film frames, contact-sheet cells */
   --radius-sm: 0.5rem; /* photo tiles, thumbnails */
   --radius-md: 0.75rem; /* inputs, segmented controls */
   --radius-lg: 0.875rem; /* selection tiles, icon buttons */
@@ -122,8 +121,8 @@
   --warning: #e8c07a;
   --ring: rgba(255, 255, 255, 0.4);
 
-  /* Film: the strip a roll is drawn on. The utilities that spend it are at
-     the bottom of the file. */
+  /* Film: the near-black under a developing tile, darker than
+     `--background` so a locked album reads as unexposed film. */
   --film: #101012;
 
   /* The homepage. A lifted near-black rather than `--background`, because the
@@ -216,16 +215,6 @@
   .skeleton {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
-  }
-
-  /* Film. The strip a roll is drawn on, and the perforations down its edges.
-     Darker than `--background` so the strip reads as a thing lying on the page
-     rather than a hole cut in it. */
-  .film {
-    background: var(--film);
-  }
-  .film-perf {
-    background: rgba(255, 255, 255, 0.13);
   }
 
   /* The homepage's display voice: Roboto Serif opened out to the width of the

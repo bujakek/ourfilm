@@ -3,7 +3,7 @@
 import type { Frame } from '@/lib/frames'
 import type { DevelopingWall, GalleryTile } from '@/lib/photos'
 import { Camera, Images } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRef } from 'react'
@@ -17,8 +17,9 @@ import {
 import {
   captureStatus,
   formatLine,
+  heldInMemoryNotice,
+  lostPhotoTitle,
   offlineQueueNotice,
-  ownRollNote,
   queueClearedNote,
   spentRollNotice,
 } from '@/lib/event-copy'
@@ -40,14 +41,20 @@ import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 import { useEntrance } from '@/lib/use-entrance'
 import { useOnline } from '@/lib/use-online'
+import { HOST_KICKER_BASE, HOST_PANEL } from '@/components/host/ui/classes'
 import { StateNotice } from '@/components/host/ui/state-notice'
 import { LiveDot } from '@/components/ui/live-dot'
 import { Odometer } from '@/components/ui/odometer'
 
 import { CreateOwnAlbum } from './create-own-album'
 import { DevelopingGallery } from './developing-gallery'
-import { type CaptureReceiptState, FilmStrip } from './film-strip'
 import { InviteButton } from './invite-button'
+import {
+  type CaptureReceiptState,
+  isHeldInMemory,
+  PendingTile,
+  pendingSummary,
+} from './pending-tile'
 import { PhotoGrid } from './photo-grid'
 
 type GalleryState =
@@ -173,6 +180,10 @@ export function GuestEventView({
   const cameraOpenedAt = useRef<number | null>(null)
   const [remaining, setRemaining] = useState(initialShotsRemaining)
   const [flash, setFlash] = useState<Flash>(null)
+  // A photo that will not reach the album. Its own state rather than `flash`
+  // because it is drawn as the danger banner at the top, not the line under
+  // the shutter; it clears on the same timer.
+  const [lost, setLost] = useState<string | null>(null)
   const [now, setNow] = useState(initialNow)
   const [handedOff, setHandedOff] = useState(false)
   const [captures, setCaptures] = useState<Capture[]>([])
@@ -281,6 +292,12 @@ export function GuestEventView({
     return () => window.clearTimeout(timer)
   }, [flash])
 
+  useEffect(() => {
+    if (!lost) return
+    const timer = window.setTimeout(() => setLost(null), 2400)
+    return () => window.clearTimeout(timer)
+  }, [lost])
+
   const captureEnd = new Date(captureEndAt).getTime()
   const captureIsOpen = initialCanCapture && now <= captureEnd
 
@@ -371,13 +388,32 @@ export function GuestEventView({
         locale,
       )
     : null
-  // 7g: no signal and shots still owed. Counted from the same developing
-  // cells the strip draws with the waiting mark, so the number and the marks
-  // cannot disagree. No deadline is named; see `offlineQueueNotice`.
-  const waiting = online
-    ? 0
-    : developing.filter((c) => !c.confirmed && c.receipt !== 'lost').length
-  const offlineNotice = waiting > 0 ? offlineQueueNotice(waiting, locale) : null
+  // The one banner at the top of the page, worst news first. A lost photo
+  // outranks the rest because it has already happened; a photo held only by
+  // this tab outranks the outage because it is the one state where closing
+  // the page loses something. The outage (7g) counts the same developing
+  // tiles that dim and turn amber, so the number and the tiles cannot
+  // disagree. Nothing is said while a photo merely uploads — the ring on the
+  // tile is that.
+  const live = developing.filter((c) => !c.confirmed && c.receipt !== 'lost')
+  const held = live.filter(isHeldInMemory).length
+  const waiting = online ? 0 : live.length
+  const banner: {
+    key: string
+    tone: 'warn' | 'danger'
+    title: string
+    body: string
+  } | null = lost
+    ? { key: 'lost', tone: 'danger', title: lostPhotoTitle(locale), body: lost }
+    : held > 0
+      ? { key: 'held', tone: 'warn', ...heldInMemoryNotice(held, locale) }
+      : waiting > 0
+        ? {
+            key: 'offline',
+            tone: 'warn',
+            ...offlineQueueNotice(waiting, locale),
+          }
+        : null
   // 7c: an open camera and nothing on this guest's roll yet, on screen or on
   // its way. Says where the photos will appear and what the format is.
   const rollUntouched =
@@ -572,7 +608,7 @@ export function GuestEventView({
           // receipt, which is the safe direction to be wrong in.
           setOfflineBacklog((n) => Math.max(0, n - 1))
           if (reason === 'refused') return
-          setFlash(
+          setLost(
             frameWasReserved
               ? en
                 ? 'This photo could not be saved. Its frame returns within 10 minutes.'
@@ -636,7 +672,7 @@ export function GuestEventView({
               },
             ]
           })
-          setFlash(discardedMessage(reason, locale))
+          setLost(discardedMessage(reason, locale))
         },
         onRestored({ id, blob, capturedAt }) {
           startedAt.current.set(id, capturedAt)
@@ -794,6 +830,7 @@ export function GuestEventView({
         })
       }
       setFlash(null)
+      setLost(null)
       if (!online) {
         setOfflineBacklog((n) => n + 1)
       } else if (outstanding === 0) {
@@ -807,6 +844,22 @@ export function GuestEventView({
     [claimCell, eventId, online, remaining, outstanding],
   )
 
+  // This guest's shots on their way, newest first, as the leading tiles of
+  // whichever grid the album section is drawing. Null when there are none, so
+  // a grid with nothing pending is exactly the grid it was.
+  const pendingTiles =
+    developing.length > 0
+      ? [...developing]
+          .reverse()
+          .map((pending) => (
+            <PendingTile
+              key={pending.previewUrl}
+              pending={pending}
+              offline={!online}
+            />
+          ))
+      : null
+
   return (
     <main
       className="mx-auto min-h-dvh w-full max-w-3xl px-5 pt-[34px] pb-6"
@@ -815,41 +868,76 @@ export function GuestEventView({
       // event's own language is marked on its subtree instead.
       lang={localeTag[locale]}
     >
-      <motion.div
+      {/* The page's one banner (11c): an outage with shots owed, a photo held
+          by this tab alone, or a photo that was lost. It is the only text for
+          those states — the tiles carry the rest. It pushes the page down
+          rather than covering it, because it can stay for a whole wedding. */}
+      <AnimatePresence initial={false}>
+        {banner ? (
+          <motion.div
+            key={banner.key}
+            role="status"
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={
+              reduceMotion
+                ? { opacity: 0, transition: still }
+                : { opacity: 0, y: 8, transition: T.exit }
+            }
+            transition={reduceMotion ? still : T.settle}
+            className={`mb-5 rounded-[20px] px-[18px] py-3.5 ${
+              banner.tone === 'danger'
+                ? 'bg-host-danger-fill'
+                : 'bg-host-warn-fill'
+            }`}
+          >
+            <p
+              className={`text-[14px] leading-[1.5] font-medium ${
+                banner.tone === 'danger' ? 'text-host-danger' : 'text-host-warn'
+              }`}
+            >
+              {banner.title}
+            </p>
+            <p className="mt-1 text-[14px] leading-[1.6] text-pretty text-white/75">
+              {banner.body}
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* The window is the event's, the connection is this phone's. Amber
+          says the second one is gone and wins — unless the banner above is
+          already saying so, when the kicker goes back to the event. Sky is
+          left meaning only that the film is running. */}
+      <motion.p
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(0)}
-        className="flex items-center justify-between gap-3"
+        className={`flex items-center gap-2 ${HOST_KICKER_BASE} text-[12px] leading-[1.5] transition-colors ${
+          !online && !banner
+            ? 'text-host-warn'
+            : status.live
+              ? 'text-landing-sky'
+              : 'text-white/65'
+        }`}
       >
-        <span className="text-[12px] leading-[1.3] font-medium text-white/65">
-          OurFilm
-        </span>
-        {/* Two facts in one row, and they are not the same kind of fact: the
-            window is the event's, the connection is this phone's. Amber says
-            the second one is gone, and it wins — a guest with no signal does
-            not need to be told how long the camera stays open. Sky is left
-            meaning only that the film is running. */}
-        <span
-          className={`inline-flex items-center gap-[7px] text-[12px] leading-[1.3] font-medium transition-colors ${
-            !online
-              ? 'text-host-warn'
-              : status.live
-                ? 'text-landing-sky'
-                : 'text-white/65'
-          }`}
-        >
-          {/* Amber never breathes. The pulse means the film is running, and
-              on this row that would be answering a different question. */}
-          {!online || status.live ? <LiveDot pulse={online} /> : null}
-          {online ? status.label : en ? 'No connection' : 'Nincs kapcsolat'}
-        </span>
-      </motion.div>
+        {/* Amber never breathes. The pulse means the film is running, and
+            on this row that would be answering a different question. */}
+        {(!online && !banner) || status.live ? (
+          <LiveDot pulse={online} />
+        ) : null}
+        {online || banner
+          ? status.label
+          : en
+            ? 'No connection'
+            : 'Nincs kapcsolat'}
+      </motion.p>
 
       <motion.h1
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(1)}
-        className="landing-serif mt-3.5 font-landing-display text-[34px] leading-[1.15] text-balance text-white"
+        className="landing-serif mt-3 font-landing-display text-[32px] leading-[1.1] text-balance text-white"
       >
         {eventName}
       </motion.h1>
@@ -858,57 +946,52 @@ export function GuestEventView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(2)}
-        className="mt-5.5 flex items-end gap-2.5"
+        className={`mt-6 ${HOST_PANEL} px-5 py-[22px]`}
       >
-        {/* The number is the subject of the screen, and it is the same rolling
-            number the create flow and the host console use. What it shows is
-            `framesLeft` — see the note there for why that is not the same as a
-            client-side decrement. */}
-        <span aria-live="polite" className="flex items-end">
-          <Odometer
-            value={framesLeft}
-            dir="down"
-            className="host-figure text-[64px] leading-[0.9] tabular-nums"
-          />
-        </span>
-        <span className="host-figure pb-1 text-[24px] text-white/55">
-          /{shotsPerParticipant}
-        </span>
-        <span className="ml-auto pb-1.5 text-right text-[12px] leading-[1.5] font-medium tracking-[0.2em] text-white/55 uppercase">
-          {en ? (
-            <>
-              photos
-              <br />
-              left
-            </>
-          ) : (
-            <>
-              kép
-              <br />
-              maradt
-            </>
-          )}
-        </span>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={stage(3)}
-      >
-        {/* The perforations keep their place in the same count and arrive on
-            `advance` rather than `settle` — the strip is the one mechanical
-            object on the screen, and it should read as film being pulled
-            through rather than as another card landing. */}
-        <FilmStrip
-          className="mt-5"
-          frames={frames}
-          total={shotsPerParticipant}
-          locale={locale}
-          pending={developing}
-          offline={!online}
-          entrance={stage(6, T.advance)}
-        />
+        <div className="flex items-baseline gap-2">
+          {/* The number is the subject of the screen, and it is the same
+              rolling number the create flow and the host console use. What it
+              shows is `framesLeft` — see the note there for why that is not
+              the same as a client-side decrement. */}
+          <span aria-live="polite" className="flex items-end">
+            <Odometer
+              value={framesLeft}
+              dir="down"
+              className="host-figure text-[64px] leading-none tabular-nums"
+            />
+          </span>
+          <span className="host-figure text-[24px] text-white/55">
+            /{shotsPerParticipant}
+          </span>
+          <span className="ml-auto text-right text-[12px] leading-[1.5] font-medium tracking-[0.2em] text-white/55 uppercase">
+            {en ? (
+              <>
+                photos
+                <br />
+                left
+              </>
+            ) : (
+              <>
+                kép
+                <br />
+                maradt
+              </>
+            )}
+          </span>
+        </div>
+        {/* What the strip used to say to a screen reader, kept now that the
+            strip is gone: how much of the roll is spent, counting a claimed
+            frame as spent the moment the shutter is handed off, and — politely,
+            so a guest is not interrupted mid-shutter — which photos are at
+            risk. The tiles that show the latter are `aria-hidden`. */}
+        <p className="sr-only">
+          {en
+            ? `${shotsPerParticipant - framesLeft} of ${shotsPerParticipant} frames used.`
+            : `${shotsPerParticipant} képkockából ${shotsPerParticipant - framesLeft} elhasználva.`}
+        </p>
+        <p className="sr-only" role="status" aria-live="polite">
+          {pendingSummary(developing, !online, locale)}
+        </p>
       </motion.div>
 
       {canAddPhotos ? (
@@ -1061,44 +1144,23 @@ export function GuestEventView({
 
           It says what the product is — the guest count, no preview, no retakes
           — until something more urgent needs the space, and then it says that
-          instead: a failed upload, an outage, the receipt when the outage
-          ends. Two stacked lines was the first attempt and it read as a wall;
-          these are the same slot in the design's own mocks, the format line on
-          the album screen and the connection line on the camera screen.
+          instead: a refused upload, or the receipt when an outage ends. The
+          outage itself, a photo held only by this tab and a lost photo are the
+          banner at the top of the page, not this slot.
 
-          The height is reserved in every state, which is what stops the strip
-          and the counter jumping each time the wifi comes and goes. It used to
-          be a pair of animated messages that entered and left, and that shape
-          cannot carry an outage that lasts the whole wedding — nor the rule
-          that a guest tapping the shutter repeatedly must not see motion each
-          time. The entrance below fires once, on first paint; after that the
-          only transition here is the colour. */}
-      {/* An outage with shots owed (7g), a spent roll (7m) or an untouched
-          one (7c) takes the slot as a block when no failure needs it, in that
-          order. The slot is under the shutter on purpose: whatever grows here
-          moves only what is below it, so a wifi drop never moves the
-          shutter or the strip. */}
+          The height is reserved in every state, which is what stops the panels
+          below jumping each time a line comes and goes. The entrance fires
+          once, on first paint; after that the only transition here is the
+          colour, so a guest tapping the shutter repeatedly sees no motion. */}
+      {/* A spent roll (7m) or an untouched one (7c) takes the slot as a block
+          when no line needs it, in that order. */}
       {/* The slot's one live region, always mounted: a region that mounts
-          with its text is often not announced at all, and the slot below
-          swaps between three shapes. It carries the failure flash, the
-          receipt and the outage; the visible blocks are not live, so nothing
-          is read twice. */}
+          with its text is often not announced at all. The visible blocks are
+          not live, so nothing is read twice. */}
       <p aria-live="polite" className="sr-only">
-        {statusLine
-          ? statusLine.text
-          : offlineNotice
-            ? `${offlineNotice.title}. ${offlineNotice.body}`
-            : ''}
+        {statusLine ? statusLine.text : ''}
       </p>
-      {!flash && offlineNotice ? (
-        <div className="mt-4">
-          <StateNotice
-            tone="warn"
-            title={offlineNotice.title}
-            body={offlineNotice.body}
-          />
-        </div>
-      ) : !statusLine && (spent || rollUntouched) ? (
+      {!statusLine && (spent || rollUntouched) ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1117,8 +1179,8 @@ export function GuestEventView({
               }
               body={
                 en
-                  ? 'Your photos appear here as they are taken. No preview and no retakes.'
-                  : 'A képeid itt jelennek meg, ahogy elkészülnek. Nincs előnézet és nincs újrafotózás.'
+                  ? 'Open the camera to take your first one. No preview and no retakes.'
+                  : 'Nyisd meg a kamerát az elsőhöz. Nincs előnézet és nincs újrafotózás.'
               }
             />
           )}
@@ -1128,23 +1190,23 @@ export function GuestEventView({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={stage(4)}
-          className={`mt-4 min-h-9 text-center text-pretty transition-colors ${
+          className={`mt-3 min-h-9 text-center text-pretty transition-colors ${
             statusLine
               ? `text-[13px] leading-[1.45] ${statusLine.tone}`
-              : 'text-[12px] leading-[1.55] text-white/55'
+              : 'text-[13px] leading-[1.45] text-white/60'
           }`}
         >
           {statusLine ? statusLine.text : formatLine(participantCount, locale)}
         </motion.p>
       )}
 
-      <motion.div
+      <motion.section
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={stage(5)}
-        className="mt-8"
+        className={`mt-6 ${HOST_PANEL} px-4 pt-[22px] pb-4`}
       >
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex items-baseline justify-between gap-4 px-2">
           <h2 className="landing-serif font-landing-display text-[24px] leading-[1.2] text-white">
             {en ? 'Shared photos' : 'Közös képek'}
           </h2>
@@ -1159,7 +1221,7 @@ export function GuestEventView({
 
         {!gallery.open && wall && wall.tiles.length > 0 ? (
           <div className="mt-4">
-            <p className="mb-3 text-[14px] leading-[1.5] text-pretty text-white/65">
+            <p className="mb-3 px-2 text-[14px] leading-[1.5] text-pretty text-white/65">
               {gallery.detail ?? gallery.heading}
             </p>
             <DevelopingGallery
@@ -1168,52 +1230,59 @@ export function GuestEventView({
               revealAt={revealAt}
               now={now}
               locale={locale}
+              leading={pendingTiles}
             />
-            <p className="mt-3 text-[12px] leading-[1.5] text-pretty text-white/55">
-              {ownRollNote(locale)}
-            </p>
           </div>
         ) : !gallery.open ? (
-          <div className="mt-4 rounded-[32px] bg-host-panel px-6 py-8 text-center">
-            <h3 className="text-[16px] leading-[1.5] font-medium text-balance text-white">
-              {gallery.heading}
-            </h3>
-            {gallery.detail ? (
-              <p className="mt-2 text-[14px] leading-[1.5] text-pretty text-white/65">
-                {gallery.detail}
-              </p>
+          <div className="mt-4">
+            {pendingTiles ? (
+              <ul className="mb-4 grid grid-cols-3 gap-1.5">{pendingTiles}</ul>
             ) : null}
-            {/* Two things on this screen now obey different rules — the strip
-                above is this guest's own film and is never reveal-gated — so the
-                lock says which is which rather than letting it read as a bug. */}
-            <p className="mt-3 text-[12px] leading-[1.5] text-pretty text-white/55">
-              {ownRollNote(locale)}
-            </p>
+            <div className="px-2 pb-4 text-center">
+              <h3 className="text-[16px] leading-[1.5] font-medium text-balance text-white">
+                {gallery.heading}
+              </h3>
+              {gallery.detail ? (
+                <p className="mt-2 text-[14px] leading-[1.5] text-pretty text-white/65">
+                  {gallery.detail}
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : photos.length === 0 ? (
-          <p className="mt-4 text-[14px] leading-[1.5] text-white/65">
-            {canAddPhotos
-              ? en
-                ? 'No photos yet. Add the first moments from your phone.'
-                : 'Még nincs kép. Add hozzá az első pillanatokat a telefonodról.'
-              : captureIsOpen
+          <div className="mt-4">
+            {pendingTiles ? (
+              <ul className="mb-4 grid grid-cols-3 gap-1.5">{pendingTiles}</ul>
+            ) : null}
+            <p className="px-2 pb-2 text-[14px] leading-[1.5] text-white/65">
+              {canAddPhotos
                 ? en
-                  ? 'No photos yet. Open the camera and take the first one.'
-                  : 'Még nincs kép. Nyisd meg a kamerát, és készítsd el az elsőt.'
-                : en
-                  ? 'No photos have arrived yet.'
-                  : 'Még nem érkezett kép.'}
-          </p>
+                  ? 'No photos yet. Add the first moments from your phone.'
+                  : 'Még nincs kép. Add hozzá az első pillanatokat a telefonodról.'
+                : captureIsOpen
+                  ? en
+                    ? 'No photos yet. Open the camera and take the first one.'
+                    : 'Még nincs kép. Nyisd meg a kamerát, és készítsd el az elsőt.'
+                  : en
+                    ? 'No photos have arrived yet.'
+                    : 'Még nem érkezett kép.'}
+            </p>
+          </div>
         ) : (
           <div className="mt-4">
-            <PhotoGrid photos={photos} eventId={eventId} locale={locale} />
+            <PhotoGrid
+              photos={photos}
+              eventId={eventId}
+              locale={locale}
+              leading={pendingTiles}
+            />
             {/* Below the grid, never above it: a guest who has just watched
                 the album develop is the only audience this bar has, and it
                 has to come after the thing it is trading on. */}
             <CreateOwnAlbum eventId={eventId} locale={locale} />
           </div>
         )}
-      </motion.div>
+      </motion.section>
     </main>
   )
 }
