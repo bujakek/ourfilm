@@ -1,7 +1,9 @@
 'use client'
 
+import { Check } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
+import { developingWash } from '@/lib/developing-wash'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
@@ -41,6 +43,11 @@ export type PendingFrame = {
   receipt: CaptureReceiptState
   /** Whether IndexedDB has acknowledged a copy that outlives this tab. */
   durable: boolean
+  /**
+   * The locked wall's seed for this photo (`lib/tile-seed.ts`), once
+   * `reserve_shot` has named it. Null before then.
+   */
+  seed: number | null
 }
 
 /** The ring's radius in a 28px box. */
@@ -52,29 +59,47 @@ const RING_R = 11
  *
  * Upload state is shown on the photo and nowhere else: the picture develops
  * from grayscale and blur as bytes land, and a determinate ring over it fills
- * with `progress`. Neither reaches done on its own — the blur bottoms out
- * short of clear and the ring stays until the server's 200, because a photo
- * that finished developing above a pending upload is a lie. On `confirmed` the
- * ring goes and the white confirmation edge takes its place.
+ * with `progress`. Offline, the tile dims and the ring turns amber at whatever
+ * fill it had reached; the words for that state are the page's banner.
  *
- * Offline, the tile dims and the ring turns amber at whatever fill it had
- * reached. The words for that state are the page's banner, not this tile.
+ * How it ends depends on whether the album is open, because a sharp photo
+ * before the reveal is a preview and the format has none:
+ *
+ * - **Locked.** The photo never resolves past a heavy blur. On the server's
+ *   200 it sinks into the same wash the locked wall draws for it — the seed is
+ *   the one the database will send — and a "Kész" mark says it landed. The
+ *   caller holds the tile for a beat before refreshing, so the guest sees the
+ *   mark, and the wall tile that replaces it is the same colour in the same
+ *   place.
+ * - **Open.** It snaps clear on the 200 and wears the white confirmation edge
+ *   until the real thumbnail takes its place.
  */
 export function PendingTile({
   pending,
   offline,
+  locked,
+  locale,
 }: {
   pending: PendingFrame
   offline: boolean
+  /** Whether the shared album is still waiting for its reveal. */
+  locked: boolean
+  locale: Locale
 }) {
   const reduceMotion = useReducedMotion()
-  const { previewUrl, progress, confirmed } = pending
+  const { previewUrl, progress, confirmed, seed } = pending
   const stalled = offline && !confirmed
+  const p = Math.max(0, Math.min(1, progress))
+  const filter = locked
+    ? `grayscale(1) blur(${6 - 2 * p}px)`
+    : confirmed
+      ? 'grayscale(0) blur(0px)'
+      : `grayscale(${1 - 0.6 * p}) blur(${6 - 4.6 * p}px)`
 
   return (
     <motion.li
       aria-hidden="true"
-      className="relative aspect-square overflow-hidden rounded-[12px] bg-host-tile"
+      className="relative aspect-square overflow-hidden rounded-[12px] bg-film"
       initial={false}
       animate={{ opacity: stalled ? 0.55 : 1 }}
       transition={T.settle}
@@ -82,12 +107,8 @@ export function PendingTile({
       <motion.span
         className="absolute inset-0 block"
         initial={{ filter: 'grayscale(1) blur(6px)' }}
-        animate={{
-          filter: confirmed
-            ? 'grayscale(0) blur(0px)'
-            : `grayscale(${1 - 0.6 * progress}) blur(${6 - 4.6 * progress}px)`,
-        }}
-        transition={confirmed ? T.settle : T.develop}
+        animate={{ filter }}
+        transition={confirmed && !locked ? T.settle : T.develop}
       >
         {/* A local object URL, so `next/image` has nothing to optimise and no
             dimensions to reason about. */}
@@ -96,7 +117,28 @@ export function PendingTile({
       </motion.span>
 
       <AnimatePresence>
-        {confirmed ? (
+        {confirmed && locked ? (
+          <motion.span
+            key="sealed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={reduceMotion ? still : T.develop}
+            className="absolute inset-0"
+          >
+            {/* Drawn exactly as `DevelopingGallery` draws the tile, oversized
+                under the blur for the same reason. */}
+            <span
+              className="absolute -inset-3 blur-lg"
+              style={{ background: developingWash(seed ?? 0) }}
+            />
+            <span className="absolute inset-x-1.5 top-1/2 flex -translate-y-1/2 justify-center">
+              <span className="inline-flex items-center gap-1 rounded-full bg-landing/50 px-2 py-0.5 text-[10px] leading-[1.4] font-medium text-white/85 backdrop-blur-sm">
+                <Check className="size-3" strokeWidth={2.5} />
+                {locale === 'en' ? 'Done' : 'Kész'}
+              </span>
+            </span>
+          </motion.span>
+        ) : confirmed ? (
           <motion.span
             key="confirmed"
             initial={{ opacity: 0, scale: 1.14 }}
@@ -138,7 +180,7 @@ export function PendingTile({
                 transform="rotate(-90 14 14)"
                 className={stalled ? 'stroke-host-warn' : 'stroke-landing-sky'}
                 initial={false}
-                animate={{ pathLength: Math.max(0, Math.min(1, progress)) }}
+                animate={{ pathLength: p }}
                 transition={reduceMotion ? still : T.advance}
               />
             </svg>

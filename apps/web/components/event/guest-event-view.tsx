@@ -39,6 +39,7 @@ import { uploadShotRenders } from '@/lib/upload-shot'
 import { uploadStore } from '@/lib/upload-store'
 import { type Locale, localeTag } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
+import { tileSeed } from '@/lib/tile-seed'
 import { useEntrance } from '@/lib/use-entrance'
 import { useOnline } from '@/lib/use-online'
 import { HOST_KICKER_BASE, HOST_PANEL } from '@/components/host/ui/classes'
@@ -61,6 +62,13 @@ type GalleryState =
   { open: true } | { open: false; heading: string; detail: string | null }
 
 const SLOW_PREPARATION_MS = 5_000
+
+/**
+ * How long a landed shot stays on screen before the page asks for the real
+ * tile. Long enough to read the "Kész" mark on a locked album, or the white
+ * edge on an open one; the refresh that ends it swaps in the same tile.
+ */
+const CONFIRMED_HOLD_MS = 1_600
 
 /**
  * What the screen says when something goes wrong.
@@ -178,6 +186,8 @@ export function GuestEventView({
   const reservedCaptures = useRef(new Set<string>())
   const reportedIssues = useRef(new Set<string>())
   const cameraOpenedAt = useRef<number | null>(null)
+  // The refreshes waiting out `CONFIRMED_HOLD_MS`, cleared on unmount.
+  const holds = useRef(new Set<number>())
   const [remaining, setRemaining] = useState(initialShotsRemaining)
   const [flash, setFlash] = useState<Flash>(null)
   // A photo that will not reach the album. Its own state rather than `flash`
@@ -293,6 +303,13 @@ export function GuestEventView({
   }, [flash])
 
   useEffect(() => {
+    const pending = holds.current
+    return () => {
+      for (const timer of pending) window.clearTimeout(timer)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!lost) return
     const timer = window.setTimeout(() => setLost(null), 2400)
     return () => window.clearTimeout(timer)
@@ -346,6 +363,7 @@ export function GuestEventView({
       confirmed: c.confirmed,
       receipt: c.receipt,
       durable: c.durable,
+      seed: c.photoId ? tileSeed(c.photoId) : null,
     }))
 
   /**
@@ -587,7 +605,13 @@ export function GuestEventView({
                 : c,
             ),
           )
-          router.refresh()
+          // Not at once: the refresh replaces this tile, and on a locked
+          // album that used to be the photo flashing sharp and vanishing.
+          const timer = window.setTimeout(() => {
+            holds.current.delete(timer)
+            router.refresh()
+          }, CONFIRMED_HOLD_MS)
+          holds.current.add(timer)
         },
         onDropped(id, reason) {
           const frameWasReserved = reservedCaptures.current.delete(id)
@@ -856,6 +880,8 @@ export function GuestEventView({
               key={pending.previewUrl}
               pending={pending}
               offline={!online}
+              locked={!gallery.open}
+              locale={locale}
             />
           ))
       : null
