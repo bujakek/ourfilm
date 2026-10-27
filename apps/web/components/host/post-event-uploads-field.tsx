@@ -1,5 +1,9 @@
 'use client'
 
+import {
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+} from '@/components/host/ui/classes'
 import { Switch } from '@/components/ui/switch'
 import type { Locale } from '@/lib/i18n'
 
@@ -17,10 +21,10 @@ export function PostEventUploadsField({
   const en = locale === 'en'
   const title = en ? 'After-event uploads' : 'Utólagos képfeltöltés'
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex min-h-[72px] items-center justify-between gap-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium">{title}</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        <p className={HOST_ROW_QUESTION}>{title}</p>
+        <p className={HOST_ROW_DETAIL}>
           {en
             ? 'Guests can add photos from their phones for 24 hours after the event, using their remaining shots.'
             : 'A vendégek az esemény után még 24 órán át hozzáadhatnak képeket a telefonjukról, a megmaradt képkeretet felhasználva.'}

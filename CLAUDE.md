@@ -102,11 +102,11 @@ written from the repository root.
 
 Project skills live in `.cursor/skills/`. Read the relevant one _before_ writing code in that area:
 
-| Skill              | Load when                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| `ourfilm-ui`       | Building or restyling any page or component (glass surfaces, tokens, Hungarian copy conventions) |
-| `ourfilm-supabase` | Touching the database, migrations, RLS, storage buckets, or auth                                 |
-| `ourfilm-upload`   | Working on the photo upload pipeline (HEIC, compression, direct-to-Storage)                      |
+| Skill              | Load when                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `ourfilm-ui`       | Building or restyling any page, component or email (the landing look, tokens, class modules, Hungarian copy) |
+| `ourfilm-supabase` | Touching the database, migrations, RLS, storage buckets, or auth                                             |
+| `ourfilm-upload`   | Working on the photo upload pipeline (HEIC, compression, direct-to-Storage)                                  |
 
 ## Tech stack
 
@@ -262,10 +262,30 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   it describes a product that no longer exists. Read it for the decisions that
   still hold (slug shape, region, ownership scoping, self-serve delete) and
   ignore the phase list.
-- **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the disposable
-  camera story from `apps/web/components/site/*`: hero, benefits, how-it-works,
-  qr-preview, photo-reveal, FAQ and final CTA. It is the permanent homepage at
-  camera story for `/en` and `/hu`. `/` is negotiated per visitor by
+- **Bilingual marketing site** — `apps/web/app/[locale]/page.tsx` composes the
+  homepage for `/en` and `/hu` from `apps/web/components/landing/*`: a bottom
+  navigation bar on desktop (top bar on phones), hero, proof and reviews,
+  occasion tabs, three steps, FAQ, closing CTA, footer card and a desktop QR
+  card. Its copy is `apps/web/lib/landing-copy.ts`; the phones are the
+  `components/site/phone-mock.tsx` screens drawn at scale by
+  `components/landing/scaled-phone.tsx`. It has its own fonts
+  (`components/landing/fonts.ts`: Roboto Serif at `wdth` 125, Inter, Crimson
+  Text) standing in for the design's Rosemartin and Pretendard, which are not
+  licensed here and lack Hungarian accents.
+
+  Pricing, the occasions index and its four pages, the blog and every
+  article, about, contact, legal notice, privacy and terms use the same
+  system from `components/pages/*`: `SiteShell` (the landing's fonts and
+  navigation, and the flat `SiteFooter`), `SiteFaq` (native `<details>`),
+  `SiteClosing`, `OccasionPage`, `BlogArticle` and `InfoPage`. Each route
+  still owns its own `generateMetadata` and canonical. Article bodies are the
+  existing MDX, rendered with `proseComponents` and styled by `.site-prose` in
+  `globals.css`; covers come from `lib/content/covers.ts`, not frontmatter,
+  because `image` is the Open Graph image. The contact page's withdrawal and
+  photo-removal forms are the real `submitLegalRequest` forms inside rows that
+  open on `#elallas` / `#kepeltavolitas`. Everything else (alternatives,
+  comparisons, the Early Couple page) still uses `components/site/navbar.tsx`
+  and `footer.tsx`. `/` is negotiated per visitor by
   `apps/web/proxy.ts` (`apps/web/lib/locale-preference.ts`): a saved switcher
   choice (`ourfilm_locale` cookie, written only by a switcher click), then
   `Accept-Language`, then English — a 307 that keeps the query and is
@@ -275,6 +295,7 @@ Deployed builds are unaffected: Vercel injects all of these at build and runtime
   `x-default`, `/llms.txt`, the shared 404 and error screens, and every
   `?lang`-less product page via `resolveLocale()` follow it. Neither decides
   anything about payment.
+
 - **The homepage and `/hu/arak` describe the disposable-camera product.** The
   old upload demo, technical quality comparison, occasions carousel and
   instant-arrival pitch are no longer in the homepage flow. The unused
@@ -443,7 +464,7 @@ onboarding screens, and `event_id` from the moment there is a row.
 | `onboarding_save_viewed`        | The save screen opened after `auth_required`, and for which plan               |
 | `draft_restored` / `_discarded` | Whether the restore prompt appears at all — it silently stopped once           |
 | `draft_missing_on_complete`     | A magic link opened in a browser with no draft: the event is lost              |
-| `quota_banner_viewed`           | An event met the free cap, seen by the person who can act on it                |
+| `quota_banner_viewed`           | Fires at limit−1 (`state: near`) and at the limit (`full`), seen by the host   |
 | `quota_upgrade_clicked`         | …and went to the billing card                                                  |
 | `photo_moderated`               | How much of an album a host takes out, after the round trip                    |
 | `album_export_requested`        | The Album button, and which path the endpoint chose: `browser` or `prepared`   |
@@ -520,8 +541,8 @@ Four of those pairs are read as gaps rather than as counts. A
 out or was cancelled; a `sign_in_started` with neither a `sign_in_blocked` nor
 a `sign_in_settled` is somebody who reached Google's consent screen and turned
 back — the one part of that path neither end can see alone; and
-`quota_banner_viewed` without a later `checkout_started` on the same
-`event_id` is a host watching guests be turned away. The last of those is the
+`quota_banner_viewed` with `state: full` and no later `checkout_started` on
+the same `event_id` is a host watching guests be turned away. The last of those is the
 number this product most needs.
 
 Everything reported from the browser about the host is **best effort by
@@ -734,8 +755,8 @@ and in the queue suite; sabotaging either direction turns them red.
 
 A host can let guests add photos **from their phone's gallery** for 24 hours
 after `capture_end_at`: `events.post_event_uploads_enabled`, off by default,
-offered on the last onboarding screen and in settings
-(`post-event-uploads-card.tsx`). It is not a second roll and not an extension
+turned on in settings only (`post-event-uploads-card.tsx`) — onboarding does
+not offer it. It is not a second roll and not an extension
 of the event — those photos spend the same fixed roll, land in the same album,
 and neither `capture_end_at` nor `reveal_at` moves.
 
@@ -774,14 +795,23 @@ off unless the host turns it on, and the landing page does not advertise it.
 
 `/host/events/new` asks four things, one per screen, in a shared shell
 (`apps/web/components/host/onboarding/*`): the name, when the event ends, when the
-photos appear, and — sharing the last screen — how many guests, how long a roll
-is, and who may look. Modelled closely on Once's onboarding: full-bleed dark
-screens, one question each, a back arrow top-left, progress dots and the CTA
-pinned to the bottom.
+photos appear, and how many guests. Modelled closely on Once's onboarding:
+full-bleed dark screens, one question each, a back arrow top-left, a step
+counter and the CTA pinned to the bottom.
 
-The last screen carries three controls rather than three screens because they
-are the same decision from three sides: how big is this party and how much film
-does it need. Neither of the other two depends on the first being answered.
+**Roll length and gallery visibility are not asked.** They used to share the
+last screen; now they take their defaults — `DEFAULT_SHOTS` (24) and visible —
+and settings is the only place to change them, as it is for after-event
+uploads. The draft schema still carries all three, defaulted, because the
+server action reads them and an older draft that holds an answer keeps it.
+
+**The free path accepts the Terms by pressing.** There is no checkbox: the
+CTA that commits the draft (signed-in "Létrehozás", signed-out "Tovább a
+mentéshez") sits over a line saying that creating the event accepts the ÁSZF
+and the privacy notice, and pressing it sets `legalAccepted` on the draft.
+The server still refuses a create without it. The paid path accepts the same way;
+its early-performance declaration is asked once, on the checkout screen beside
+the price, where `startEventCheckout` requires it — not a second time here.
 
 - **The camera opens the moment the event is created.** `capture_start_at` is
   stamped by the server action, not sent from the browser, so there is no clock
@@ -876,7 +906,7 @@ finally something to save. A host who is already signed in never sees it.
 
 ## Optimistic updates (settled)
 
-Three host-area controls show the result before the server has confirmed it. All
+Five host-area controls show the result before the server has confirmed it. All
 revert on their own — none carries hand-written rollback code.
 
 - **`apps/web/components/host/moderation-grid.tsx`** — `useOptimistic` is held on the
@@ -887,14 +917,31 @@ revert on their own — none carries hand-written rollback code.
   else a round trip behind, which reads as a bug.
 - **`apps/web/components/host/guests-toggle.tsx`** — same reasoning, one boolean. A
   switch that sits still for a round trip is one a host taps twice.
+  `post-event-uploads-card.tsx` is the same switch for the same reason.
 - **`apps/web/components/host/shots-card.tsx`** — a five-way choice whose selected value
   is visible at a glance, so showing it immediately cannot mislead.
+- **`apps/web/components/host/reveal-card.tsx`** — two named choices with no date in
+  them any more, so it is the shots card's case, not the date card's —
+  except "instant" while the album is still closed, which asks inline first
+  and sends nothing until confirmed (`revealChoiceCommit`).
 
-**The two date cards are deliberately _not_ optimistic.**
-`capture-end-card.tsx` and `reveal-card.tsx` show a saved/failed state
-instead. A field that displays the typed text while the stored answer is an hour
-off would be lying about the one value guests are held to — and unlike a boolean,
-there is no way to glance at it and notice.
+**Settings autosave, and has no Save button.** Every control reports to
+`SettingsSaveProvider` (`apps/web/components/host/settings-save.tsx`): a landed
+save flashes "✓ Mentve" in the header, a failed one shows the "Újra" toast,
+whose retry sends the same value again. That toast is the host's one toast
+(`HostToastProvider`, `apps/web/components/host/ui/toast.tsx`): one at a time,
+held open while a pointer or focus is on it, and rendered inside a modal
+dialog that registers with `useToastLayer` (the photo viewer, a sheet) so it
+stays visible and tappable. The event name saves on blur and Enter
+and is not optimistic — the field already shows the new name — so a failure
+restores the stored one.
+
+**The capture-end card is deliberately _not_ optimistic.** It saves on a picked
+day or a committed time, and a failure puts the stored value back; a refusal
+for an end before the event began outlines the field and names the value that
+stayed. A field that displays a value the server refused would be lying about
+the one value guests are held to — and unlike a boolean, there is no way to
+glance at it and notice.
 
 **Nothing on the guest side is optimistic any more.** The old `recent-uploads`
 store showed a guest their own photo the instant it uploaded, drawn from the
@@ -952,7 +999,7 @@ Plus one machine endpoint: `POST /api/stripe/webhook`, which is the only thing
 that marks a purchase paid. Under `/api/` rather than the Hungarian namespace
 because no human navigates to it and the URL is pasted into Stripe's dashboard.
 
-The `/e/` prefix is what the landing page already advertises in `qr-preview.tsx` and `how-it-works.tsx`, and it keeps the root namespace free for marketing pages.
+The `/e/` prefix is what the landing page's phone mocks and demo QR card already show, and it keeps the root namespace free for marketing pages.
 
 ## Locales and the blog (settled)
 
@@ -994,7 +1041,7 @@ editing a post rather than reconstructing the rules from here.
 `draft: true` renders in `next dev` and disappears from a production build —
 index, sitemap, RSS, related lists, and the URL itself 404s.
 
-Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`apps/web/components/blog/mdx-blocks.tsx`)
+Posts can use `<Cta>`, `<Faq>` and `<Comparison>` (`apps/web/components/pages/prose-components.tsx`)
 with no import line; they are injected through `apps/web/mdx-components.tsx`. Markdown
 tables work via `remark-gfm`. **Remark plugins must be named as strings** in
 `apps/web/next.config.mjs` — Turbopack runs the MDX pipeline in Rust and cannot accept a
@@ -1253,16 +1300,26 @@ editing `_thumb` out of a URL `my_frames` returned. What was **not** given up:
 the bucket cannot be listed (below), and no anonymous request can find out
 what paths exist.
 
-**Before the reveal the album is a wall, and a tile carries no photo.** The
+**Before the reveal the album is a wall, and a tile carries no detail.** The
 guest page draws the locked gallery from `event_developing_gallery_by_slug`
-(`20260914120000`): each tile is an uploader name and a 32-bit seed hashed
-from the photo id, plus the total — newest 24, only while `now() < reveal_at`
-and `guests_can_view`. Never an id or a path: either one beside the event id
-the page already holds is the photo. That is why the tiles are washes of the
-palette (`apps/web/lib/developing-wash.ts`) and not CSS-blurred thumbnails — a
-blurred `thumb_path` would put every guest's photo one long-press away before
-the reveal. `apps/web/tests/db/developing-gallery.test.ts` pins the shape; a
-new column on that function needs the same scrutiny.
+(`20260914120000`, `20261027213046`): each tile is an uploader name, a 32-bit
+seed hashed from the photo id and the photo's **sketch**, plus the total —
+newest 24, only while `now() < reveal_at` and `guests_can_view`. Never an id
+or a path: either one beside the event id the page already holds is the photo.
+That is why a tile is never a CSS-blurred thumbnail — a blurred `thumb_path`
+would put every guest's photo one long-press away before the reveal.
+
+The sketch is a ThumbHash (`apps/web/lib/sketch.ts`, `photos.sketch`): about
+25 bytes of low-frequency colour and layout, computed on the uploading phone
+from the bitmap `prepareStoredShot` already holds, sent with `commit_shot`
+and drawn as a ~32px image under a blur. There is no detail in it to recover,
+which is the whole reason it may cross the reveal line when a thumbnail may
+not. It is optional at every step — photos from before it, a resume that
+skipped the decode, a phone whose canvas refused — and a tile without one is
+the seeded wash of the palette (`apps/web/lib/developing-wash.ts`).
+`commit_shot` drops a malformed sketch rather than refusing the photo, and a
+replay without one keeps the stored one. `apps/web/tests/db/developing-gallery.test.ts`
+pins the shape; a new column on that function needs the same scrutiny.
 
 **Guests hold no direct write access to Supabase at all.** Both anon insert
 policies — on `photos` and on `storage.objects` — are gone. Uploads go to signed
@@ -1534,7 +1591,7 @@ claims are live and load-bearing:
   works. It was cited here as `benefits.tsx` for a while, which was already
   wrong — that section only ever held a heading and one sentence — and became
   wronger when the marketing page stopped rendering it.
-- **High-resolution, print-ready photos** (`photo-quality.tsx`, FAQ) — satisfied
+- **High-resolution, print-ready photos** (the FAQ) — satisfied
   by the 3200px/90% policy above. The pitch is "chat apps crush your photos, we
   don't", which stays true; never re-add claims of literally uncompressed
   originals
@@ -1546,12 +1603,12 @@ claims are live and load-bearing:
 - **Host can hide unwanted photos** (FAQ) — `hidden_at`
 
 - **Up to five participants are free; the paid event admits unlimited
-  participants** (`/hu/arak`, and now the hero's claim row) — enforced in
+  participants** (`/hu/arak`, and the homepage's counting row and FAQ) — enforced in
   `join_event`
 - **Every participant gets the host's chosen 5/10/16/24/36-shot roll** — paying
   never removes the per-person format
-- **No preview and no retakes** (`hero.tsx`'s claim row, the guest event page's
-  format line, the join ticket) — this is the format rather than a feature, and
+- **No preview and no retakes** (the homepage FAQ and phone mocks, the guest event page's
+  empty-roll notice, the join ticket) — this is the format rather than a feature, and
   it is true in the sense a guest reads it: there is no preview surface, and
   `reserve_shot` spends a frame per shutter press whatever anyone does with a
   URL. It is a property of the UI, not of the system: since the bucket went
@@ -1560,7 +1617,7 @@ claims are live and load-bearing:
   invite it. It moved onto the landing page in the "Ticket & Roll" pass; it had
   always been what the product does and was never stated where someone
   deciding whether to use it would read it.
-- **No app and no sign-up for guests** (`hero.tsx`, the join ticket) — the guest
+- **No app and no sign-up for guests** (the homepage hero, the join ticket) — the guest
   flow is one name field and an httpOnly cookie; there is no account to make
 
 Do not advertise unlimited photos or camera-roll upload. Gallery upload

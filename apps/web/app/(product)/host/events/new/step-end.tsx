@@ -3,17 +3,18 @@
 import { useState } from 'react'
 
 import { EventEndFields } from '@/components/host/event-end-fields'
-import { MonthCalendar } from '@/components/host/month-calendar'
-import { Sheet } from '@/components/host/sheet'
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
 import type { Locale } from '@/lib/i18n'
+import { endAfterTimeEdit, type EndDaySource } from '@/lib/onboarding'
+
+/** What a picked day lands on while the time field is mid-edit and empty. */
+const FALLBACK_TIME = '23:00'
 
 /**
- * Question two: when does the party end?
+ * Question two: when does the party end? (6b)
  *
  * Only the end. The camera opens the moment the event is created, so a start
- * field would be a question with one possible answer — and the screen it would
- * have shared with this one is the screen this flow exists to avoid.
+ * field would be a question with one possible answer.
  *
  * There is no timezone control either. The host is picking a wall clock and
  * means the one on the phone in their hand; the flow reads that zone off the
@@ -21,20 +22,21 @@ import type { Locale } from '@/lib/i18n'
  * settings page all agree without anyone being asked.
  */
 export function endScreen({
-  day,
-  setDay,
-  time,
-  setTime,
+  endLocal,
+  setEndLocal,
+  now,
+  timeZone,
   today,
   canAdvance,
   locale,
 }: {
-  /** `YYYY-MM-DD` */
-  day: string
-  setDay: (value: string) => void
-  /** `HH:mm`, 24-hour */
-  time: string
-  setTime: (value: string) => void
+  /** `YYYY-MM-DDTHH:mm` in `timeZone`. The day tile and the time tile both
+   *  read and write this one value. */
+  endLocal: string
+  setEndLocal: (value: string) => void
+  /** The server's instant, so a render reads no clock. */
+  now: Date
+  timeZone: string
   /** The host's today, `YYYY-MM-DD`. Nothing before it is selectable. */
   today: string
   canAdvance: boolean
@@ -42,19 +44,19 @@ export function endScreen({
 }): StepScreen {
   const en = locale === 'en'
   return {
-    eyebrow: en ? 'SHOOTING ENDS' : 'A FOTÓZÁS VÉGE',
-    title: en ? 'When should shooting end?' : 'Meddig lehessen fotózni?',
+    eyebrow: en ? 'Shooting ends' : 'A fotózás vége',
+    title: en ? 'When should the event end?' : 'Mikor érjen véget az esemény?',
     detail: en
-      ? 'The camera opens when you create the event.'
-      : 'A kamera létrehozáskor megnyílik.',
+      ? 'The camera opens now. Guests can take photos until this time.'
+      : 'A kamera most nyílik. A vendégek eddig az időpontig fotózhatnak.',
     cta: en ? 'Continue' : 'Tovább',
     ctaDisabled: !canAdvance,
     content: (
       <EndFields
-        day={day}
-        setDay={setDay}
-        time={time}
-        setTime={setTime}
+        endLocal={endLocal}
+        setEndLocal={setEndLocal}
+        now={now}
+        timeZone={timeZone}
         today={today}
         locale={locale}
       />
@@ -63,53 +65,49 @@ export function endScreen({
 }
 
 function EndFields({
-  day,
-  setDay,
-  time,
-  setTime,
+  endLocal,
+  setEndLocal,
+  now,
+  timeZone,
   today,
   locale,
 }: {
-  day: string
-  setDay: (value: string) => void
-  time: string
-  setTime: (value: string) => void
+  endLocal: string
+  setEndLocal: (value: string) => void
+  now: Date
+  timeZone: string
   today: string
   locale: Locale
 }) {
-  const [calendarOpen, setCalendarOpen] = useState(false)
+  // Until the host picks a day, the draft's day follows the time: an end
+  // at 02:00 is after tonight's midnight, not this morning. A picked day
+  // stays put. Not stored with the draft, so coming back starts over.
+  const [source, setSource] = useState<EndDaySource>('suggested')
   const en = locale === 'en'
 
-  return (
-    <>
-      <EventEndFields
-        day={day}
-        time={time}
-        onChooseDay={() => setCalendarOpen(true)}
-        onTimeChange={setTime}
-        locale={locale}
-        timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
-      />
+  const day = endLocal.slice(0, 10)
+  const time = endLocal.slice(11)
 
-      {/* A `<dialog>` opened with `showModal()` renders in the top layer, so it
-          is unaffected by the scrolling column it now sits inside. */}
-      <Sheet
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        closeLabel={en ? 'Close date picker' : 'Dátumválasztó bezárása'}
-        title={en ? 'Choose a date' : 'Válassz dátumot'}
-      >
-        <MonthCalendar
-          value={day}
-          earliest={today}
-          label="Az esemény vége"
-          locale={locale}
-          onChange={(value) => {
-            setDay(value)
-            setCalendarOpen(false)
-          }}
-        />
-      </Sheet>
-    </>
+  return (
+    <EventEndFields
+      day={day}
+      time={time}
+      minDay={today}
+      onDayChange={(value) => {
+        setSource('picked')
+        setEndLocal(`${value}T${time || FALLBACK_TIME}`)
+      }}
+      onTimeChange={(value) => {
+        if (!value) {
+          setEndLocal(`${day}T`)
+          return
+        }
+        setEndLocal(endAfterTimeEdit(endLocal, value, source, now, timeZone))
+      }}
+      timeStep={900}
+      locale={locale}
+      timeLabel={en ? 'Event end time' : 'Az esemény végének időpontja'}
+      labels={en ? { day: 'Day', time: 'Time' } : { day: 'Nap', time: 'Idő' }}
+    />
   )
 }

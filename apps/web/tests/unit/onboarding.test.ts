@@ -1,39 +1,152 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  activeQuickPick,
+  endAfterTimeEdit,
+  endQuickPick,
   eventNameSuggestions,
   FREE_PARTICIPANT_LIMIT,
   isEventPlan,
 } from '@/lib/onboarding'
 
 describe('eventNameSuggestions', () => {
-  it('always offers five', () => {
-    expect(eventNameSuggestions(null)).toHaveLength(5)
-    expect(eventNameSuggestions('Anna')).toHaveLength(5)
-  })
-
-  it('personalises the first two when the host has a name', () => {
-    expect(eventNameSuggestions('Anna').slice(0, 2)).toEqual([
-      'Anna bulija',
-      'Anna születésnapja',
+  it('offers three per locale', () => {
+    expect(eventNameSuggestions(null)).toEqual([
+      'Esküvőnk',
+      'Szülinapi buli',
+      'Egy felejthetetlen este',
     ])
-  })
-
-  it('falls back to generic titles without one — which is every account today', () => {
-    expect(eventNameSuggestions(null).slice(0, 2)).toEqual([
-      'A nagy bulink',
-      'Születésnapi buli',
+    expect(eventNameSuggestions(null, 'en')).toEqual([
+      'Our wedding',
+      'Birthday party',
+      'An unforgettable night',
     ])
+    for (const locale of ['hu', 'en'] as const) {
+      expect(eventNameSuggestions(null, locale)).toHaveLength(3)
+      expect(eventNameSuggestions('Anna', locale)).toHaveLength(3)
+    }
   })
 
-  it('treats a blank name as no name', () => {
+  it('personalises the birthday when the host has a name', () => {
+    expect(eventNameSuggestions('Anna')[1]).toBe('Anna szülinapja')
+    expect(eventNameSuggestions('Anna', 'en')[1]).toBe('Anna’s birthday')
+  })
+
+  it('treats a blank name as no name — which is every account today', () => {
     expect(eventNameSuggestions('   ')).toEqual(eventNameSuggestions(null))
   })
+})
 
-  it('keeps the three impersonal titles either way', () => {
-    const tail = ['Az esküvőnk', 'Az évfordulónk', 'A mi kis bulink']
-    expect(eventNameSuggestions(null).slice(2)).toEqual(tail)
-    expect(eventNameSuggestions('Anna').slice(2)).toEqual(tail)
+describe('the suggested end', () => {
+  // 15:00 in Budapest on 3 September (CEST, UTC+2).
+  const NOW = new Date('2026-09-03T13:00:00Z')
+  const ZONE = 'Europe/Budapest'
+
+  it('lands a small-hours time tonight on tomorrow’s date', () => {
+    expect(endQuickPick('tonight', '02:00', NOW, ZONE)).toBe('2026-09-04T02:00')
+  })
+
+  it('lands an evening time tonight on today’s date', () => {
+    expect(endQuickPick('tonight', '23:00', NOW, ZONE)).toBe('2026-09-03T23:00')
+    expect(endQuickPick('tonight', '12:00', NOW, ZONE)).toBe('2026-09-03T12:00')
+  })
+
+  it('puts tomorrow one day after tonight', () => {
+    expect(endQuickPick('tomorrow', '02:00', NOW, ZONE)).toBe(
+      '2026-09-05T02:00',
+    )
+    expect(endQuickPick('tomorrow', '23:00', NOW, ZONE)).toBe(
+      '2026-09-04T23:00',
+    )
+  })
+
+  it('reads today in the event’s zone, not UTC', () => {
+    // 23:30 UTC on the 3rd is already 01:30 on the 4th in Budapest.
+    const late = new Date('2026-09-03T23:30:00Z')
+    expect(endQuickPick('tonight', '23:00', late, ZONE)).toBe(
+      '2026-09-04T23:00',
+    )
+  })
+
+  it('after midnight, a small-hours time still ahead is tonight on today’s date', () => {
+    // 00:30 in Budapest on 4 September: the night is still going.
+    const afterMidnight = new Date('2026-09-03T22:30:00Z')
+    expect(endQuickPick('tonight', '02:00', afterMidnight, ZONE)).toBe(
+      '2026-09-04T02:00',
+    )
+    expect(endQuickPick('tomorrow', '02:00', afterMidnight, ZONE)).toBe(
+      '2026-09-05T02:00',
+    )
+    // A small-hours time already behind is the next night's.
+    expect(endQuickPick('tonight', '00:15', afterMidnight, ZONE)).toBe(
+      '2026-09-05T00:15',
+    )
+  })
+
+  it('after midnight, an end still reads back as the night that made it', () => {
+    const afterMidnight = new Date('2026-09-03T22:30:00Z')
+    expect(activeQuickPick('2026-09-04T02:00', afterMidnight, ZONE)).toBe(
+      'tonight',
+    )
+    expect(activeQuickPick('2026-09-05T02:00', afterMidnight, ZONE)).toBe(
+      'tomorrow',
+    )
+    expect(activeQuickPick('2026-09-04T23:00', afterMidnight, ZONE)).toBe(
+      'tonight',
+    )
+    expect(activeQuickPick('2026-09-06T02:00', afterMidnight, ZONE)).toBe(
+      'other',
+    )
+  })
+
+  it('crosses a month end', () => {
+    const lastDay = new Date('2026-09-30T13:00:00Z')
+    expect(endQuickPick('tomorrow', '02:00', lastDay, ZONE)).toBe(
+      '2026-10-02T02:00',
+    )
+  })
+
+  it('maps each pick back to its kind', () => {
+    expect(activeQuickPick('2026-09-04T02:00', NOW, ZONE)).toBe('tonight')
+    expect(activeQuickPick('2026-09-03T23:00', NOW, ZONE)).toBe('tonight')
+    expect(activeQuickPick('2026-09-05T02:00', NOW, ZONE)).toBe('tomorrow')
+    expect(activeQuickPick('2026-09-04T23:00', NOW, ZONE)).toBe('tomorrow')
+  })
+
+  it('calls anything else another day', () => {
+    for (const other of [
+      '2026-09-03T02:00',
+      '2026-09-06T23:00',
+      '2026-09-05T23:00',
+      '2026-10-04T02:00',
+      '',
+    ]) {
+      expect(activeQuickPick(other, NOW, ZONE)).toBe('other')
+    }
+  })
+
+  it('a time edit on the suggested day keeps meaning the same night', () => {
+    expect(
+      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'suggested', NOW, ZONE),
+    ).toBe('2026-09-04T02:00')
+    expect(
+      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'suggested', NOW, ZONE),
+    ).toBe('2026-09-05T02:00')
+  })
+
+  it('a picked day stays put, even on tonight’s date', () => {
+    expect(
+      endAfterTimeEdit('2026-09-03T23:00', '02:00', 'picked', NOW, ZONE),
+    ).toBe('2026-09-03T02:00')
+    expect(
+      endAfterTimeEdit('2026-09-04T23:00', '02:00', 'picked', NOW, ZONE),
+    ).toBe('2026-09-04T02:00')
+  })
+
+  it('a day that is neither night stays put whatever the source', () => {
+    expect(
+      endAfterTimeEdit('2026-09-06T23:00', '02:00', 'suggested', NOW, ZONE),
+    ).toBe('2026-09-06T02:00')
   })
 })
 

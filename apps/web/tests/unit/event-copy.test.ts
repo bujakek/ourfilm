@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import {
   captureStatus,
-  formatLine,
+  heldInMemoryNotice,
   longTimeRemaining,
-  offlineQueueNote,
-  ownRollNote,
+  capReachedNotice,
+  offlineQueueNotice,
   queueClearedNote,
   revealSummary,
   shortTimeRemaining,
+  spentRollNotice,
 } from '@/lib/event-copy'
 
 /**
@@ -121,25 +122,96 @@ describe('captureStatus', () => {
   })
 })
 
-describe('offlineQueueNote', () => {
-  it('tells the guest to keep shooting only while they still can', () => {
-    expect(offlineQueueNote(3, true)).toBe(
-      'Nincs kapcsolat. 3 kép feltöltésre vár. Nyugodtan fotózhatsz tovább.',
+describe('offlineQueueNotice', () => {
+  it('says the photo is safe on the phone', () => {
+    expect(offlineQueueNotice(1)).toEqual({
+      title: 'Nincs kapcsolat',
+      body: '1 kép el van mentve a telefonon, nem veszhet el. Nyisd meg újra az oldalt jobb térerőn, és feltöltődik.',
+    })
+  })
+
+  it('pluralises the sentence in both languages', () => {
+    expect(offlineQueueNotice(3).body).toContain('3 kép el van mentve')
+    expect(offlineQueueNotice(3).body).toContain('feltöltődnek')
+    expect(offlineQueueNotice(1, 'en').body).toContain('1 photo is saved')
+    expect(offlineQueueNotice(2, 'en').body).toContain('2 photos are saved')
+  })
+
+  it('never asks the guest to keep the page open', () => {
+    for (const locale of ['hu', 'en'] as const) {
+      const { title, body } = offlineQueueNotice(2, locale)
+      expect(`${title} ${body}`).not.toMatch(/Ne zárd be|Do not close/)
+    }
+  })
+
+  it('never mentions a deadline', () => {
+    for (const locale of ['hu', 'en'] as const) {
+      const { title, body } = offlineQueueNotice(4, locale)
+      expect(`${title} ${body}`).not.toMatch(/24|óra|hour/)
+    }
+  })
+})
+
+describe('heldInMemoryNotice', () => {
+  it('is the one notice that asks for the page to stay open', () => {
+    expect(heldInMemoryNotice(1).title).toBe('Ne zárd be az oldalt')
+    expect(heldInMemoryNotice(1, 'en').title).toBe('Do not close this page')
+    expect(heldInMemoryNotice(2).body).toContain('2 képet')
+    expect(heldInMemoryNotice(2, 'en').body).toContain('2 photos')
+  })
+})
+
+describe('capReachedNotice', () => {
+  it('interpolates the limit with the right article', () => {
+    expect(capReachedNotice(5).body).toContain('mind az 5 hely elfogyott')
+    expect(capReachedNotice(12).body).toContain('mind a 12 hely elfogyott')
+    expect(capReachedNotice(5, 'en').body).toContain('all 5 places are taken')
+  })
+
+  it('sends the guest to the host and offers no payment', () => {
+    for (const locale of ['hu', 'en'] as const) {
+      const { title, body } = capReachedNotice(5, locale)
+      expect(title).toBe(
+        locale === 'en' ? 'This event is full' : 'Ez az esemény betelt',
+      )
+      expect(body).toMatch(locale === 'en' ? /host/ : /szervező/)
+      expect(body).not.toMatch(/fizet|Ft|checkout|pay|price/i)
+    }
+  })
+})
+
+describe('spentRollNotice', () => {
+  const base = {
+    now,
+    captureStartAt: new Date(now.getTime() - HOUR),
+    captureEndAt: new Date(now.getTime() + HOUR),
+    revealAt: new Date(now.getTime() + HOUR),
+    guestsCanView: true,
+    timeZone: 'Europe/Budapest',
+  }
+
+  it('says when the gallery opens', () => {
+    const { title, body } = spentRollNotice(base, 24)
+    expect(title).toBe('Elhasználtad az összes képedet')
+    expect(body).toBe(
+      'Mind a 24 kép elkészült. A galéria 2026. jún. 13. 17:00-kor nyílik meg, és akkor láthatod az összes képet.',
     )
-    // No film left, so the invitation would be a lie.
-    expect(offlineQueueNote(3, false)).toBe(
-      'Nincs kapcsolat. 3 kép feltöltésre vár.',
+    expect(spentRollNotice(base, 5).body).toMatch(/^Mind az 5 kép/)
+    expect(spentRollNotice(base, 24, 'en').body).toContain(
+      'The gallery opens 13 Jun 2026, 17:00',
     )
   })
 
-  it('takes an English plural and no Hungarian one', () => {
-    expect(offlineQueueNote(1, true, 'en')).toBe(
-      'No connection. 1 photo waiting — keep shooting.',
-    )
-    expect(offlineQueueNote(2, false, 'en')).toBe(
-      'No connection. 2 photos waiting to upload.',
-    )
-    expect(offlineQueueNote(1, true)).toContain('1 kép feltöltésre vár')
+  it('points at an open gallery instead of a time', () => {
+    const open = { ...base, revealAt: new Date(now.getTime() - HOUR) }
+    expect(spentRollNotice(open, 24).body).toContain('A galéria már nyitva')
+    expect(spentRollNotice(open, 24, 'en').body).toContain('already open')
+  })
+
+  it('promises no reveal when only the host can see the photos', () => {
+    const closed = { ...base, guestsCanView: false }
+    expect(spentRollNotice(closed, 24).body).toContain('csak a szervező')
+    expect(spentRollNotice(closed, 24, 'en').body).toContain('Only the host')
   })
 })
 
@@ -149,25 +221,6 @@ describe('queueClearedNote', () => {
     expect(queueClearedNote(3)).toBe('Mind a 3 kép feltöltve.')
     expect(queueClearedNote(1, 'en')).toBe('Your photo uploaded.')
     expect(queueClearedNote(3, 'en')).toBe('All 3 photos uploaded.')
-  })
-})
-
-describe('formatLine', () => {
-  it('states the format the product actually is', () => {
-    expect(formatLine(7)).toBe(
-      '7 vendég fotózott, előnézet és újrafotózás nélkül.',
-    )
-    expect(formatLine(7, 'en')).toBe(
-      '7 guests took photos, with no preview and no retakes.',
-    )
-  })
-
-  it('keeps English singular honest', () => {
-    expect(formatLine(1, 'en')).toBe(
-      '1 guest took photos, with no preview and no retakes.',
-    )
-    // Hungarian takes no plural after a numeral.
-    expect(formatLine(1)).toContain('1 vendég ')
   })
 })
 
@@ -183,14 +236,5 @@ describe('revealSummary', () => {
     // Not a product setting any more, but rows predating the change still
     // carry it and a ticket must not render an empty cell.
     expect(revealSummary('custom')).toBe('KÉSŐBB')
-  })
-})
-
-describe('ownRollNote', () => {
-  it('separates the guest’s own frames from the shared gallery', () => {
-    // The strip is never reveal-gated and the gallery always is, so the locked
-    // state has to say which is which or it reads as a bug.
-    expect(ownRollNote()).toContain('már a tieid')
-    expect(ownRollNote('en')).toContain('already yours')
   })
 })

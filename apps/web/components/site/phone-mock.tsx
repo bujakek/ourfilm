@@ -4,56 +4,41 @@ import {
   ArrowLeft,
   ArrowRight,
   Camera,
-  Clock,
-  Download,
-  ExternalLink,
-  EyeOff,
-  Hourglass,
+  Eye,
+  QrCode,
   Settings,
   Share2,
   Wifi,
 } from 'lucide-react'
 import Image from 'next/image'
-import { QRCodeSVG } from 'qrcode.react'
 import type { ReactNode } from 'react'
 
 import type { Locale } from '@/lib/i18n'
-import { EXAMPLE_SLUG } from '@/lib/slug'
-import { eventUrl } from '@/lib/site'
+import { DEFAULT_SHOTS } from '@/lib/camera'
+import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
+
+/** The guests in the mocked event, on the console and on the guest's roll
+ *  alike. One under the free cap, so the mock shows a free event with room
+ *  left rather than one at its limit. */
+const MOCK_GUESTS = FREE_PARTICIPANT_LIMIT - 1
 
 /**
- * Three real product screens, drawn at phone size.
- *
- * The step section used to be three photographs of a wedding and a caption
- * each — pictures of the *occasion*, which a visitor can already imagine, and
- * nothing at all of the thing being sold. These are the screens they will
- * actually get: the third create-flow question, the host's console, and the
- * guest's roll.
+ * Three real product screens, drawn at phone size: the reveal question of the
+ * create flow, the host's event page, and the guest's camera.
  *
  * **They are depictions, not the components.** `OnboardingShell` is
  * `h-[100dvh]` and takes navigation callbacks; `GuestEventView` owns an upload
- * pipeline. Neither survives being dropped into a 252px box, and importing
+ * pipeline. Neither survives being dropped into a 254px box, and importing
  * host and guest components into a marketing page would tie the landing page's
- * layout to the product's internals. So the markup is reproduced here —
- * element for element, against a screenshot of each shipped screen at 390px,
- * which is the only way a mock stays a mock rather than becoming a picture of
- * a screen nobody will be shown.
+ * layout to the product's internals. So the markup is drawn here, from the
+ * approved phone design (`OurFilm Phone` in the v5 handoff), in the same
+ * landing look the product screens wear: white washes on the `#0d0d0d`
+ * ground, Roboto Serif names, Crimson figures, Inter kickers, one white
+ * button, and sky only for what is live or chosen.
  *
- * **Only the type scale is not literal.** Content is 212px wide here against
- * 350px on a phone, so a linear 0.6 would put every mono label at 6px — a grey
- * smudge, which is a *less* faithful depiction of a legible label than a
- * slightly large one. Display sizes are scaled; labels bottom out around 7px.
- * Everything else — order, materials, radii, rules, colour — is what ships.
- *
- * Two places the earlier drawing simplified and this one does not, because the
- * whole argument for the section is that a visitor sees the real thing:
- *
- * - The guest's roll is the film strip, with perforations, 30px cells and the
- *   exposed/unexposed boundary. It was a row of dashes, on the grounds that
- *   the real strip would only show four frames at this width. It shows six,
- *   and the boundary is exactly what it is there for.
- * - The reveal question's two answers are the product's side-by-side cards
- *   with an icon, a title and a line of explanation, not radio rows.
+ * **Only the type scale is not literal.** Content is 226px wide here against
+ * 350px on a phone, so kickers bottom out around 6px rather than shrinking
+ * linearly into a grey smudge.
  */
 
 /**
@@ -101,7 +86,7 @@ export function PhoneMock({
             the film strip: its cells have no intrinsic height to defend, so it
             collapses to a smear. In block flow the content keeps its own
             height and the screen simply clips what does not fit. */}
-        <div className="relative h-[510px] overflow-hidden rounded-[38px] bg-background px-3.5 pt-[50px]">
+        <div className="relative h-[510px] overflow-hidden rounded-[38px] bg-landing px-3.5 pt-[48px]">
           {children}
           {fade ? <BottomFade /> : null}
           <StatusBar />
@@ -130,7 +115,7 @@ function BottomFade() {
       aria-hidden="true"
       className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[52px]"
       style={{
-        backgroundImage: 'linear-gradient(180deg,transparent,#050505 72%)',
+        backgroundImage: 'linear-gradient(180deg,transparent,#0d0d0d 72%)',
       }}
     />
   )
@@ -153,18 +138,15 @@ function StatusBar() {
       <span className="flex items-center gap-[4px]">
         <span className="flex items-end gap-[1.5px]">
           {['h-[4px]', 'h-[6px]', 'h-[8px]', 'h-[10px]'].map((h) => (
-            <span
-              key={h}
-              className={`w-[2.5px] rounded-[1px] bg-foreground ${h}`}
-            />
+            <span key={h} className={`w-[2.5px] rounded-[1px] bg-white ${h}`} />
           ))}
         </span>
         <Wifi className="size-[13px]" strokeWidth={2.2} />
         {/* 72%: a phone someone has been using all day, which is the phone
             this product is held on. */}
-        <span className="relative flex h-[11px] w-[21px] items-center rounded-[3px] border border-foreground/45 p-[1.5px]">
-          <span className="h-full w-[72%] rounded-[1.5px] bg-foreground" />
-          <span className="absolute -right-[3px] h-[4px] w-[1.5px] rounded-r-[1px] bg-foreground/45" />
+        <span className="relative flex h-[11px] w-[21px] items-center rounded-[3px] border border-white/45 p-[1.5px]">
+          <span className="h-full w-[72%] rounded-[1.5px] bg-white" />
+          <span className="absolute -right-[3px] h-[4px] w-[1.5px] rounded-r-[1px] bg-white/45" />
         </span>
       </span>
     </div>
@@ -180,8 +162,94 @@ function DynamicIsland() {
   )
 }
 
-const MONO_LABEL = 'font-mono font-medium tracking-[0.14em]'
 const NAME = 'Anna & Péter'
+
+/** A kicker at phone scale: Inter 500, tracked capitals. */
+const KICKER =
+  'text-[6px] leading-[1.3] font-medium tracking-[0.24em] uppercase'
+
+/** A name or a question in the display serif. */
+const SERIF = 'landing-serif font-landing-display'
+
+/**
+ * The phone mocks draw photos at 68–216 CSS px, so they use a pre-resized copy
+ * (`public/images/phone/`, 480px wide) served as a plain static file. Going
+ * through `next/image` meant a Vercel optimizer request per tile, which is
+ * metered, and which answered 400 for some of the widths the phones asked for.
+ * Regenerate a thumb with `cwebp -q 80 -resize 480 0 <src> -o <dest>`.
+ */
+const phoneThumb = (src: string) => `/images/phone/${src.split('/').pop()}`
+
+/**
+ * Who the screen belongs to and what is on its roll. The defaults are the
+ * wedding every mock has always shown; the homepage's occasion tabs pass a
+ * birthday, a trip or a party instead, and nothing else about the screen
+ * changes — it is the same product whatever the event.
+ */
+export interface ScreenContent {
+  name?: string
+  /** Public image paths, cycled through every photo slot on the screen. */
+  photos?: readonly string[]
+}
+
+function pick(
+  photos: readonly string[] | undefined,
+  fallback: readonly string[],
+): readonly string[] {
+  if (!photos?.length) return fallback
+  return fallback.map((_, i) => photos[i % photos.length])
+}
+
+const landingPhoto = (name: string) => `/images/landing/${name}.webp`
+
+/** A 3-across grid of photos inside a panel, under a serif heading and a
+ *  Crimson count: the host's photos and the guest's shared album alike. */
+function PhotoPanel({
+  title,
+  count,
+  photos,
+}: {
+  title: string
+  count: number
+  photos: readonly string[]
+}) {
+  return (
+    <div className="mt-3 rounded-[18px] bg-white/4 px-2 pt-3 pb-2">
+      <div className="flex items-baseline justify-between px-1">
+        <span className={`${SERIF} text-[13px] leading-[1.2]`}>{title}</span>
+        <span className="host-figure text-[13px] text-white/60">{count}</span>
+      </div>
+      <div className="mt-[9px] grid grid-cols-3 gap-[3px]">
+        {photos.map((photo, i) => (
+          <span
+            key={i}
+            className="relative block aspect-square overflow-hidden rounded-[7px]"
+          >
+            <Image
+              src={phoneThumb(photo)}
+              alt=""
+              fill
+              unoptimized
+              className="object-cover"
+            />
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** A live kicker: the sky dot and the words, both sky. */
+function LiveKicker({ children }: { children: ReactNode }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 ${KICKER} text-landing-sky`}
+    >
+      <span className="size-[3px] rounded-full bg-landing-sky" />
+      {children}
+    </span>
+  )
+}
 
 /**
  * Step 01 — question three of `/host/events/new`.
@@ -193,119 +261,100 @@ const NAME = 'Anna & Péter'
  */
 export function ScreenReveal({ locale }: { locale: Locale }) {
   const en = locale === 'en'
+  const options = [
+    {
+      label: en ? 'Right away' : 'Azonnal',
+      detail: en
+        ? 'Photos appear during the event.'
+        : 'A képek az esemény alatt megjelennek.',
+      active: false,
+    },
+    {
+      label: en ? 'When the event ends' : 'Az esemény végén',
+      detail: en
+        ? 'The gallery opens when shooting ends.'
+        : 'A galéria a fotózás végén nyílik meg.',
+      active: true,
+    },
+  ]
 
   return (
     <PhoneMock>
-      {/* `onboarding-shell.tsx`: back button left, the count right. It is not
-          centred — the header is a row with two ends. */}
       <div className="flex items-center justify-between">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/15">
-          <ArrowLeft className="size-[14px]" />
+        <span className="flex size-[22px] items-center justify-center rounded-[7px] bg-white/6">
+          <ArrowLeft className="size-[11px]" />
         </span>
-        <span
-          className={`flex items-center ${MONO_LABEL} text-[8px] text-foreground/40`}
-        >
-          03<span className="px-0.5">/</span>04
-        </span>
+        <span className="host-figure text-[13px] text-white/60">3 / 4</span>
       </div>
 
-      <p
-        className={`mt-4 ${MONO_LABEL} text-[7.5px] tracking-[0.2em] text-accent`}
-      >
-        {en ? 'DEVELOPING' : 'AZ ELŐHÍVÁS'}
+      <p className={`mt-3.5 ${KICKER} text-landing-sky`}>
+        {en ? 'Developing' : 'Az előhívás'}
       </p>
-      <p className="mt-2 font-display text-[23px] leading-[1.04] tracking-[-0.01em] text-balance">
+      <p
+        className={`mt-[7px] ${SERIF} text-[21px] leading-[1.15] text-balance`}
+      >
         {en
           ? 'When should the photos appear?'
           : 'Mikor jelenjenek meg a képek?'}
       </p>
-      <p className="mt-2 text-[10.5px] leading-[1.5] text-pretty text-muted-foreground">
-        {en
-          ? 'Keep them hidden while everyone shoots, or reveal them as they arrive. You decide.'
-          : 'Maradjanak rejtve, amíg mindenki fotózik, vagy jelenjenek meg azonnal. Te döntöd el.'}
-      </p>
 
-      {/* `reveal-preview.tsx`: two portrait cards, each blurred behind its own
-          guest's name, and one badge lying across the gap between them. The
-          badge is what makes the pair a *state* rather than two dark photos. */}
-      {/* A measured height rather than `flex-1`: in block flow there is no
-          free space to claim, and this pair is what tunes the screen to fill
-          exactly 510px, so the step needs no bottom fade. */}
-      <div className="relative mt-3.5 grid h-[124px] grid-cols-2 gap-1.5">
+      {/* `reveal-preview.tsx`: two cards, each blurred behind its own guest's
+          name, and one badge lying across the gap between them. */}
+      <div className="relative mt-3.5 grid h-[112px] grid-cols-2 gap-1">
         {[
           { src: '/images/guests-laughing.webp', name: 'Nóra' },
           { src: '/images/evening-party.webp', name: 'Bence' },
         ].map((guest) => (
           <span
             key={guest.name}
-            className="relative block h-full overflow-hidden rounded-[13px] border border-border"
+            className="relative block h-full overflow-hidden rounded-[14px]"
           >
             <Image
-              src={guest.src}
+              src={phoneThumb(guest.src)}
               alt=""
               fill
-              sizes="102px"
+              unoptimized
               className="scale-105 object-cover blur-[8px]"
             />
-            <span className="absolute top-2 left-2 text-[10px] font-medium text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]">
+            <span className="absolute top-2 left-[9px] text-[8px] font-medium drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]">
               {guest.name}
             </span>
           </span>
         ))}
         <span
-          className={`pointer-events-none absolute inset-x-0 top-1/2 mx-auto flex w-fit max-w-full -translate-y-1/2 items-center gap-1.5 rounded-full border border-border-strong bg-background/80 px-2.5 py-1.5 text-center ${MONO_LABEL} text-[7px] leading-[1.5] tracking-[0.08em] text-balance`}
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-landing/85 px-[9px] py-[5px] whitespace-nowrap ${KICKER} text-[5.5px] tracking-[0.2em]`}
         >
-          <Clock className="size-2.5 shrink-0" />
-          {en ? 'OPENS · 3 SEPT, 20:00' : 'MEGNYÍLIK · SZEPT. 3. 20:00'}
+          {en ? 'Opens · 3 Sept, 20:00' : 'Megnyílik · szept. 3. 20:00'}
         </span>
       </div>
 
-      {/* `reveal-selector.tsx`: two cards, not two radio rows. The selected one
-          is a lilac ring over a lilac wash — the film is live in it. */}
-      <div className="mt-5 grid grid-cols-2 gap-1.5">
-        {[
-          {
-            Icon: Hourglass,
-            label: en ? 'Right away' : 'Azonnal',
-            detail: en
-              ? 'Photos appear while the event is happening.'
-              : 'A képek már az esemény alatt megjelennek.',
-            active: false,
-          },
-          {
-            Icon: Clock,
-            label: en ? 'When the event ends' : 'Az esemény végén',
-            detail: en
-              ? 'The gallery opens when shooting ends.'
-              : 'A galéria a fotózás végén nyílik meg.',
-            active: true,
-          },
-        ].map(({ Icon, label, detail, active }) => (
+      {/* `reveal-selector.tsx`: two rows, the chosen one in sky. */}
+      <div className="mt-3 flex flex-col gap-[5px]">
+        {options.map(({ label, detail, active }) => (
           <span
             key={label}
-            className={`relative flex min-h-[74px] flex-col justify-between overflow-hidden rounded-[10px] border p-2.5 ${
-              active ? 'border-transparent' : 'border-border'
+            className={`flex min-h-10 items-center gap-2 rounded-[12px] px-[11px] py-1.5 ${
+              active ? 'bg-landing-sky/12' : 'bg-white/4'
             }`}
           >
-            {active ? (
-              <span className="absolute inset-0 rounded-[10px] bg-accent/10 ring-2 ring-accent ring-inset" />
-            ) : null}
-            <Icon
-              className={`relative z-10 size-3.5 ${active ? 'text-accent' : 'text-foreground/70'}`}
-            />
-            <span className="relative z-10">
+            <span
+              className={`flex size-[9px] shrink-0 items-center justify-center rounded-full border-[1.2px] ${
+                active ? 'border-landing-sky' : 'border-white/40'
+              }`}
+            >
+              {active ? (
+                <span className="size-1 rounded-full bg-landing-sky" />
+              ) : null}
+            </span>
+            <span>
               <span
-                className={`block text-[10.5px] leading-snug font-semibold text-balance ${
-                  active ? 'text-accent' : ''
+                className={`block text-[8.5px] leading-[1.4] font-medium ${
+                  active ? 'text-landing-sky' : 'text-white'
                 }`}
               >
                 {label}
               </span>
-              <span
-                className={`mt-0.5 block text-[8px] leading-[1.4] ${
-                  active ? 'text-accent/70' : 'text-muted-foreground'
-                }`}
-              >
+              <span className="block text-[6.5px] leading-[1.4] text-white/55">
                 {detail}
               </span>
             </span>
@@ -313,81 +362,86 @@ export function ScreenReveal({ locale }: { locale: Locale }) {
         ))}
       </div>
 
-      <div className="mt-4 flex items-center gap-2.5">
+      <div className="mt-3 flex items-center gap-2">
         <span className="h-0.5 flex-1 overflow-hidden rounded-[2px] bg-white/10">
-          <span className="block h-full w-3/4 bg-accent" />
+          <span className="block h-full w-3/4 bg-landing-sky" />
         </span>
-        <span className="paper inline-flex min-h-[42px] shrink-0 items-center justify-center gap-2 rounded-[12px] px-4 text-[12.5px] font-semibold">
+        <span className="inline-flex h-[30px] items-center gap-1 rounded-[9px] bg-white px-3 text-[9.5px] font-medium text-landing-ink">
           {en ? 'Continue' : 'Tovább'}
-          <ArrowRight className="size-3.5" />
+          <ArrowRight className="size-[10px]" />
         </span>
       </div>
     </PhoneMock>
   )
 }
 
-/** Step 02 — the host console at `/host/events/[slug]`. */
-export function ScreenTicket({ locale }: { locale: Locale }) {
+/** Step 02 — the host's event page at `/host/events/[slug]`. */
+export function ScreenTicket({
+  locale,
+  name = NAME,
+  photos,
+}: { locale: Locale } & ScreenContent) {
   const en = locale === 'en'
-  const url = eventUrl(EXAMPLE_SLUG, locale)
+  const tiles = pick(
+    photos,
+    [
+      'reveal-celebration',
+      'guests-laughing',
+      'evening-party',
+      'hero-dance-floor',
+      'hero-couple-dance',
+      'final-couple-table',
+    ].map(landingPhoto),
+  )
 
   const figures: [string, string][] = [
-    ['84', en ? 'PHOTOS TAKEN' : 'KÉP KÉSZÜLT'],
-    ['12', en ? 'GUESTS' : 'VENDÉG'],
-    ['24', en ? 'SHOTS EACH' : 'KÉP FEJENKÉNT'],
+    ['84', en ? 'photos' : 'kép'],
+    [String(MOCK_GUESTS), en ? 'guests' : 'vendég'],
+    [String(DEFAULT_SHOTS), en ? 'each' : 'kép / fő'],
   ]
 
-  // Everything in this row is `whitespace-nowrap`: on a phone it is one line,
-  // and a wrapped "Guest / view" would be a layout this screen never has.
-  const pill =
-    'inline-flex shrink-0 items-center gap-1 rounded-full border border-white/14 px-1.5 py-0.5 text-[7px] font-medium whitespace-nowrap text-foreground/80'
+  // The event page's two icon buttons — guest view and settings. It has no
+  // overflow menu, so the mock does not draw one.
+  const iconTile =
+    'flex size-5 items-center justify-center rounded-[7px] bg-white/6'
 
   return (
     <PhoneMock fade>
-      {/* The console's own top bar — a way back and the two places a host goes
-          from here. The mock used to open with a bare "OURFILM", which is the
-          guest's header, on the host's screen. */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[7px] tracking-[0.1em] whitespace-nowrap text-foreground/45">
+      <div className="flex items-center justify-between">
+        <span
+          className={`inline-flex items-center gap-1 ${KICKER} text-[6.5px] text-white/60`}
+        >
           <ArrowLeft className="size-2" />
-          {en ? 'YOUR EVENTS' : 'ESEMÉNYEID'}
+          {en ? 'Your events' : 'Eseményeid'}
         </span>
-        <span className="flex shrink-0 items-center gap-1">
-          <span className={pill}>
-            <ExternalLink className="size-2" />
-            {en ? 'Guest view' : 'Vendégnézet'}
+        <span className="flex gap-1">
+          <span className={iconTile}>
+            <Eye className="size-[9px]" />
           </span>
-          <span className={pill}>
-            <Settings className="size-2" />
-            {en ? 'Settings' : 'Beállítások'}
+          <span className={iconTile}>
+            <Settings className="size-[9px]" />
           </span>
         </span>
       </div>
 
-      <span
-        className={`mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/35 px-2.5 py-1 ${MONO_LABEL} text-[7px] tracking-[0.16em] text-accent`}
-      >
-        <span className="size-[4px] rounded-full bg-accent" />
-        {en ? 'CAMERA OPEN · 6H 20M' : 'A KAMERA NYITVA · 6Ó 20P'}
-      </span>
-
-      <p className="mt-2 font-display text-[24px] leading-none tracking-[-0.012em]">
-        {NAME}
+      <p className="mt-2.5">
+        <LiveKicker>
+          {en ? 'Open · 6h 20m left' : 'Nyitva · még 6:20'}
+        </LiveKicker>
       </p>
+      <p className={`mt-1.5 ${SERIF} text-[21px] leading-[1.12]`}>{name}</p>
 
-      {/* Ruled top *and* bottom, and divided by uprights — the console's figure
-          row is a table rule, not three floating columns. */}
-      <div className="mt-3 grid grid-cols-3 border-y border-border">
-        {figures.map(([value, label], i) => (
+      <div className="mt-3 grid grid-cols-3 gap-1">
+        {figures.map(([value, label]) => (
           <span
             key={label}
-            className={`py-1.5 ${i > 0 ? 'border-l border-border px-3' : 'pr-3'}`}
+            className="flex flex-col rounded-[11px] bg-white/4 px-[7px] py-2"
           >
-            <span className="block font-mono text-[19px] leading-none font-medium tracking-[-0.05em]">
+            <span className="host-figure text-[21px] leading-[1.05]">
               {value}
             </span>
             <span
-              className={`mt-1 block ${MONO_LABEL} text-[6.5px] tracking-[0.16em] text-foreground/45`}
+              className={`mt-[3px] ${KICKER} text-[5.5px] tracking-[0.16em] text-white/50`}
             >
               {label}
             </span>
@@ -395,249 +449,88 @@ export function ScreenTicket({ locale }: { locale: Locale }) {
         ))}
       </div>
 
-      <div className="paper mt-2.5 rounded-xs p-2.5 text-center">
-        <p className="font-display text-[15px] leading-[1.1]">{NAME}</p>
-        <p
-          className={`paper-muted mt-1 ${MONO_LABEL} text-[6.5px] tracking-[0.2em]`}
-        >
-          {en ? 'DISPOSABLE CAMERA · 24 SHOTS' : 'ELDOBHATÓ KAMERA · 24 KÉP'}
-        </p>
-        <span className="mx-auto mt-2 block w-fit bg-white p-1 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]">
-          <QRCodeSVG
-            value={url}
-            size={72}
-            level="M"
-            bgColor="#ffffff"
-            fgColor="#050505"
-            marginSize={0}
-          />
+      <div className="mt-2.5 flex gap-[5px]">
+        <span className="flex h-[30px] flex-1 items-center justify-center rounded-[9px] bg-white text-[9.5px] font-medium text-landing-ink">
+          {en ? 'Camera' : 'Kamera'}
         </span>
-        {/* Wrapping, not truncating — the same decision the real ticket makes,
-            because this address is what a guest types when a code will not
-            scan. */}
-        <p className="paper-muted mt-1.5 font-mono text-[7.5px] leading-[1.35] font-medium break-all">
-          {url.replace('https://', '')}
-        </p>
-        <div className="paper-rule mt-2 flex gap-1.5 border-t pt-2">
-          <span className="inline-flex flex-1 items-center justify-center gap-1 rounded-[9px] bg-[color:var(--paper-foreground)] py-1.5 text-[9.5px] font-semibold text-[color:var(--paper)]">
-            <Download className="size-2.5" />
-            {en ? 'Download' : 'Letöltés'}
-          </span>
-          <span className="inline-flex flex-1 items-center justify-center gap-1 rounded-[9px] border border-[rgba(20,19,18,.2)] py-1.5 text-[9.5px] font-semibold">
-            <Share2 className="size-2.5" />
-            {en ? 'Share' : 'Megosztás'}
-          </span>
-        </div>
+        <span className="flex size-[30px] items-center justify-center rounded-[9px] bg-white/6">
+          <QrCode className="size-3" strokeWidth={1.8} />
+        </span>
       </div>
 
-      {/* `moderation-grid.tsx` — two across on a phone, every tile credited to
-          the guest who shot it and carrying the one control a host needs. The
-          mock had four unlabelled squares, which is a gallery; this is the
-          screen where a host hides a photo. */}
-      <div className="mt-2 border-t border-border pt-1.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="font-display text-[14px] leading-none">
-            {en ? 'Photos' : 'Elkészült képek'}
-          </span>
-          <span
-            className={`ml-auto font-mono text-[7px] tracking-[0.1em] text-foreground/45`}
-          >
-            84 {en ? 'PHOTOS' : 'KÉP'}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-white/14 px-2 py-1 text-[8px] font-medium text-foreground/80">
-            <Download className="size-2.5" />
-            Album
-          </span>
-        </div>
-        <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-          {[
-            ['reveal-bride-friends', 'NÓRA'],
-            ['reveal-celebration', 'BENCE'],
-          ].map(([photo, who]) => (
-            <span
-              key={photo}
-              className="relative block aspect-square overflow-hidden rounded-sm"
-            >
-              <Image
-                src={`/images/landing/${photo}.webp`}
-                alt=""
-                fill
-                sizes="102px"
-                className="object-cover"
-              />
-              <span className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent px-1.5 pt-5 pb-1">
-                <span className="truncate font-mono text-[7px] tracking-[0.06em] text-white/85">
-                  {who}
-                </span>
-                <EyeOff className="size-2.5 shrink-0 text-white/70" />
-              </span>
-            </span>
-          ))}
-        </div>
-      </div>
+      <PhotoPanel title={en ? 'Photos' : 'Képek'} count={84} photos={tiles} />
     </PhoneMock>
   )
 }
 
-/** Step 03 — the guest screen at `/e/[slug]`: counter, roll, shutter. */
-export function ScreenCamera({ locale }: { locale: Locale }) {
+/** Step 03 — the guest screen at `/e/[slug]`: counter, shutter, album. */
+export function ScreenCamera({
+  locale,
+  name = NAME,
+  photos,
+}: { locale: Locale } & ScreenContent) {
   const en = locale === 'en'
-  const exposed = 7
-  const total = 24
-  // The real strip parks the exposed/unexposed boundary against the right
-  // edge, so what a guest sees is the last frames they shot and the first
-  // blank. Six whole cells is what 212px holds — the same six the phone holds
-  // at 350px, which is why they are 27px here and 52px there. Six, not seven:
-  // a strip clipped mid-cell reads as a rendering fault rather than a scroll.
-  const roll = ['how-guest-photo', 'reveal-limbo', 'how-couple', 'final-rings']
+  const total = DEFAULT_SHOTS
+  const left = 17
+  const gallery = pick(
+    photos,
+    [
+      'reveal-celebration',
+      'hero-dance-crowd',
+      'hero-sunglasses-couple',
+      'final-couple-table',
+      'hero-bride-party',
+      'final-dance-circle',
+      'hero-couple-dance',
+      'reveal-couple-toast',
+      'hero-bride-portrait',
+    ].map(landingPhoto),
+  )
 
   return (
     <PhoneMock fade>
       <div className="flex items-center justify-between">
-        <span
-          className={`${MONO_LABEL} text-[7.5px] tracking-[0.18em] text-foreground/40`}
-        >
-          OURFILM
-        </span>
-        <span
-          className={`inline-flex items-center gap-1.5 ${MONO_LABEL} text-[7.5px] text-accent`}
-        >
-          <span className="size-[4px] rounded-full bg-accent" />
-          {en ? 'LIVE · 6H 20M' : 'NYITVA · 6Ó 20P'}
-        </span>
+        <span className={`${KICKER} text-[6.5px] text-white/50`}>OurFilm</span>
+        <LiveKicker>{en ? 'Live · 6h 20m' : 'Nyitva · 6:20'}</LiveKicker>
       </div>
 
-      <p className="mt-2.5 font-display text-[23px] leading-[1.02] tracking-[-0.005em]">
-        {NAME}
-      </p>
+      <p className={`mt-2.5 ${SERIF} text-[21px] leading-[1.12]`}>{name}</p>
 
-      <div className="mt-4 flex items-end gap-2">
-        <span className="font-mono text-[42px] leading-[0.82] font-medium tracking-[-0.06em]">
-          {total - exposed}
-        </span>
-        <span className="pb-1 font-mono text-[13px] tracking-[-0.03em] text-foreground/35">
+      <div className="mt-3 flex items-end gap-2 rounded-[16px] bg-white/4 px-3 pt-3 pb-2.5">
+        <span className="host-figure text-[52px] leading-[0.85]">{left}</span>
+        <span className="pb-[3px] font-landing-quote text-[20px] text-white/40 italic">
           /{total}
         </span>
         <span
-          className={`ml-auto pb-1 text-right ${MONO_LABEL} text-[7px] leading-[1.5] text-foreground/50`}
+          className={`ml-auto pb-1 text-right ${KICKER} text-[5.5px] leading-[1.5] tracking-[0.2em] text-white/50`}
         >
-          {en ? (
-            <>
-              FRAMES
-              <br />
-              REMAINING
-            </>
-          ) : (
-            <>
-              MARADT
-              <br />
-              KÉPKOCKA
-            </>
-          )}
+          {en ? 'Frames' : 'Maradt'}
+          <br />
+          {en ? 'remaining' : 'képkocka'}
         </span>
       </div>
 
-      {/* `film-strip.tsx`, at 30px cells. Perforations top and bottom on a
-          pitch that divides a frame exactly, exposed cells holding this
-          guest's own photos, the rest numbered blanks — and the boundary
-          between them, which is the whole reason the element exists. */}
-      <div className="film mt-3.5 overflow-hidden rounded-xs py-1">
-        <Perfs />
-        <div className="flex gap-[3px] px-1.5 py-1">
-          {roll.map((photo) => (
-            <span
-              key={photo}
-              className="relative size-[27px] shrink-0 overflow-hidden rounded-[3px] bg-white/8"
-            >
-              <Image
-                src={`/images/landing/${photo}.webp`}
-                alt=""
-                fill
-                sizes="27px"
-                className="object-cover"
-              />
-            </span>
-          ))}
-          {[exposed + 1, exposed + 2].map((frame) => (
-            <span
-              key={frame}
-              className="flex size-[27px] shrink-0 items-end justify-end rounded-[3px] border border-white/10 p-[2px] font-mono text-[6px] text-white/20"
-            >
-              {String(frame).padStart(2, '0')}
-            </span>
-          ))}
-        </div>
-        <Perfs />
-      </div>
-
-      {/* The shutter sits directly under the roll it spends, above the gallery
-          — not pinned to the bottom of the screen. */}
-      <div className="mt-3.5 flex items-center gap-2">
-        <span className="paper inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-[13px] text-[12.5px] font-semibold">
-          <Camera className="size-3.5" strokeWidth={1.8} />
+      <div className="mt-2 flex items-center gap-[5px]">
+        <span className="flex h-[34px] flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-white text-[10.5px] font-medium text-landing-ink">
+          <Camera className="size-3" strokeWidth={1.8} />
           {en ? 'Camera' : 'Kamera'}
         </span>
-        <span className="flex size-[42px] shrink-0 items-center justify-center rounded-[13px] border border-white/14 text-foreground/75">
-          <Share2 className="size-3.5" strokeWidth={1.8} />
+        <span className="flex size-[34px] items-center justify-center rounded-[10px] bg-white/6">
+          <Share2 className="size-3" strokeWidth={1.8} />
         </span>
       </div>
 
-      <p className="mt-2.5 text-center font-mono text-[7px] tracking-[0.02em] text-foreground/35">
+      <p className="mt-2 text-center text-[6.5px] text-white/45">
         {en
-          ? '7 GUESTS · NO PREVIEW · NO RETAKES'
-          : '7 VENDÉG · NINCS ELŐNÉZET · NINCS ÚJRAPRÓBÁLÁS'}
+          ? `${MOCK_GUESTS} guests · no preview · no retakes`
+          : `${MOCK_GUESTS} vendég · nincs előnézet · nincs újrapróbálás`}
       </p>
 
-      <div className="mt-4 border-t border-border pt-3">
-        <div className="flex items-baseline justify-between">
-          <span className="font-display text-[15px] leading-none">
-            {en ? 'Shared photos' : 'Közös képek'}
-          </span>
-          <span className="font-mono text-[7px] tracking-[0.1em] text-foreground/40">
-            42 {en ? 'PHOTOS' : 'KÉP'}
-          </span>
-        </div>
-        <div className="mt-2.5 grid grid-cols-3 gap-1">
-          {[
-            'reveal-celebration',
-            'hero-dance-crowd',
-            'hero-sunglasses-couple',
-            'final-couple-table',
-            'hero-bride-party',
-            'final-dance-circle',
-            'hero-couple-dance',
-            'reveal-couple-toast',
-            'hero-bride-portrait',
-          ].map((photo) => (
-            <span
-              key={photo}
-              className="relative block aspect-square overflow-hidden rounded-sm"
-            >
-              <Image
-                src={`/images/landing/${photo}.webp`}
-                alt=""
-                fill
-                sizes="68px"
-                className="object-cover"
-              />
-            </span>
-          ))}
-        </div>
-      </div>
+      <PhotoPanel
+        title={en ? 'Shared photos' : 'Közös képek'}
+        count={42}
+        photos={gallery}
+      />
     </PhoneMock>
-  )
-}
-
-/** One perforation row. 5px on a 4px gap, so four of them span a 30px cell. */
-function Perfs() {
-  return (
-    <div className="flex gap-1 px-1.5">
-      {Array.from({ length: 26 }, (_, i) => (
-        <span
-          key={i}
-          className="film-perf h-[4px] w-[5px] shrink-0 rounded-[1.5px]"
-        />
-      ))}
-    </div>
   )
 }

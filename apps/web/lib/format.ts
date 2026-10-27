@@ -312,47 +312,6 @@ export function eventLocalToIso(
   return Number.isNaN(exact.getTime()) ? null : exact.toISOString()
 }
 
-/**
- * `H K Sze Cs P Szo V` — the onboarding calendar's column headers, Monday-first.
- *
- * Written out rather than derived from `Intl`: hu-HU's narrow weekdays are
- * `V H K Sz Cs P Sz`, where szerda and szombat are both `Sz`. A calendar header
- * whose two columns carry the same label is not a header.
- */
-export const HU_WEEKDAYS_SHORT = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V']
-
-const HU_MONTH_YEAR = new Intl.DateTimeFormat('hu-HU', {
-  year: 'numeric',
-  month: 'long',
-  timeZone: 'UTC',
-})
-
-/**
- * `2026. augusztus` — the calendar's month heading.
- *
- * Takes the year and a 0-indexed month rather than a `Date`, because a calendar
- * grid is a calendar, not an instant: the month being drawn has no timezone to
- * get wrong. Formatted in UTC for the same reason `formatEventDate` is.
- */
-export function formatHuMonthYear(year: number, month: number): string {
-  return HU_MONTH_YEAR.format(new Date(Date.UTC(year, month, 1)))
-}
-
-const HU_LONG_DAY = new Intl.DateTimeFormat('hu-HU', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-  weekday: 'long',
-  timeZone: 'UTC',
-})
-
-/** `2026. augusztus 24., hétfő` — the accessible name of one calendar cell.
- *  A screen reader user tabbing the grid gets the whole date; the visible
- *  label is only ever the number. */
-export function formatHuCalendarDay(day: string): string {
-  return HU_LONG_DAY.format(new Date(`${day}T00:00:00Z`))
-}
-
 const EVENT_DAY_CACHE = new Map<string, Intl.DateTimeFormat>()
 
 /**
@@ -382,6 +341,38 @@ export function formatEventDay(
         day: 'numeric',
         timeZone: zone,
       }),
+  ).format(new Date(iso))
+}
+
+const ALBUM_DATE_CACHE = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * `2026. 06. 14.` (`14 Jun 2026` in English) — the day an album closed.
+ *
+ * For the host's list of closed albums, where the year is what separates last
+ * summer's wedding from this one. Numeric in Hungarian because that is the
+ * shape a Hungarian reads a date in a list; English spells the month so a day
+ * and a month cannot be mistaken for each other.
+ */
+export function formatAlbumDate(
+  iso: string,
+  zone = EVENT_TIME_ZONE,
+  locale: KnownLocale = 'hu',
+): string {
+  return memoFormatter(ALBUM_DATE_CACHE, `${locale}:${zone}`, () =>
+    locale === 'en'
+      ? new Intl.DateTimeFormat('en-GB', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          timeZone: zone,
+        })
+      : new Intl.DateTimeFormat('hu-HU', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: zone,
+        }),
   ).format(new Date(iso))
 }
 

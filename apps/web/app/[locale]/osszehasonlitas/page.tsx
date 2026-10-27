@@ -45,24 +45,24 @@ export default async function ComparisonHubPage({ params }: Props) {
     <>
       <PageHeader eyebrow={copy.eyebrow} title={copy.title} lead={copy.lead} />
 
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
+      <section className="mx-auto w-[90%] max-w-[800px] pb-[70px] tab:pb-[120px]">
+        <div>
           {/* Said once, at the top of the shelf. The five
               competitor-versus-competitor pages state their sources and the
               date they were checked, but none of them says whose site this is
               — and that is a template's job rather than a reason to rewrite
               copy that is otherwise final. */}
-          <p className="glass rounded-2xl px-6 py-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="rounded-[16px] bg-site-note px-6 py-4 text-[14px] leading-[1.6] text-site-muted">
             Ezek az összevetések az OurFilm oldalán jelennek meg, nem független
             tesztek. A versenytársak nyilvános adatait a megjelölt napon
             ellenőriztük; az árak és a funkciók azóta változhattak.
           </p>
 
           <section className="mt-14">
-            <h2 className="text-2xl font-semibold tracking-tight text-balance">
+            <h2 className="landing-serif font-landing-display text-[28px] leading-[1.2] text-balance text-white">
               Az OurFilm a többiekhez képest
             </h2>
-            <p className="mt-2 leading-relaxed text-pretty text-muted-foreground">
+            <p className="mt-2 text-[16px] leading-[1.6] text-pretty text-site-muted">
               Saját oldalunkon írt összevetések. Ott is megírjuk, amikor a másik
               szolgáltatás a jobb választás.
             </p>
@@ -70,10 +70,10 @@ export default async function ComparisonHubPage({ params }: Props) {
           </section>
 
           <section className="mt-14">
-            <h2 className="text-2xl font-semibold tracking-tight text-balance">
+            <h2 className="landing-serif font-landing-display text-[28px] leading-[1.2] text-balance text-white">
               Szolgáltatások egymás ellen
             </h2>
-            <p className="mt-2 leading-relaxed text-pretty text-muted-foreground">
+            <p className="mt-2 text-[16px] leading-[1.6] text-pretty text-site-muted">
               Két másik szolgáltatás összevetése, ha még nem az OurFilm és
               valami között választotok.
             </p>

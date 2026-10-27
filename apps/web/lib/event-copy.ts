@@ -5,6 +5,7 @@ import {
   postEventUploadsAreOpen,
 } from './camera'
 import { formatDeadline } from './format'
+import { huNumberArticle } from './host-ui'
 import type { Locale } from './i18n'
 
 /**
@@ -152,21 +153,6 @@ export function galleryLock(
 }
 
 /**
- * The camera's own line at the reveal-locked gallery.
- *
- * Needed because the guest surface now shows two things that obey different
- * rules on one screen: the strip above holds this guest's own frames, which are
- * never reveal-gated, and the gallery below holds everybody's, which is. A
- * guest looking at their own photos over a locked album would otherwise read
- * the lock as a bug.
- */
-export function ownRollNote(locale: Locale = 'hu'): string {
-  return locale === 'en'
-    ? 'The frames on your roll are already yours — only the shared gallery waits for developing.'
-    : 'A tekercseden lévő képek már a tieid — csak a közös galéria vár az előhívásra.'
-}
-
-/**
  * `Előhívás: 1N 5Ó` — the label on a tile in the locked gallery.
  *
  * The short spelling, because it sits on a 120px tile. Once the instant has
@@ -303,30 +289,139 @@ export function captureStatus(
   }
 }
 
+/** A state block's two lines: a heading and the sentence under it. */
+export type GuestNotice = { title: string; body: string }
+
 /**
- * "Nincs kapcsolat. 3 kép feltöltésre vár. Nyugodtan fotózhatsz tovább."
+ * "Nincs kapcsolat" (7g, guest view `11c`).
  *
- * The line under the shutter while the device is offline with shots still
- * owed. It is not a toast, and that is the whole design: a guest can be out of
- * signal for an entire wedding, so the sentence saying their photos are safe
- * has to stay on the screen the whole time rather than appear and leave.
+ * The banner at the top of the guest page while the device is offline with
+ * shots still owed. It is not a toast, and that is the whole design: a guest
+ * can be out of signal for an entire wedding, so the sentence saying their
+ * photos are safe has to stay on the screen the whole time.
  *
- * The last clause goes when there is no film left, because "keep shooting" is
- * then untrue. Nothing here promises delivery — `lib/upload-queue.ts` owns
- * that, and it has its own budget — only that the shots taken are still in
- * hand.
+ * It does not ask the guest to keep the page open. Every shot it counts is in
+ * IndexedDB and replays when the page is opened again; the one case where the
+ * tab is the only copy is `heldInMemoryNotice`. It names no deadline either:
+ * `lib/upload-queue.ts` owns how long a stored shot is kept, and a number here
+ * would be a promise about a device nobody controls.
  */
-export function offlineQueueNote(
+export function offlineQueueNotice(
   count: number,
-  canShoot: boolean,
   locale: Locale = 'hu',
-): string {
-  if (locale === 'en') {
-    const waiting = `No connection. ${count} photo${count === 1 ? '' : 's'} waiting`
-    return canShoot ? `${waiting} — keep shooting.` : `${waiting} to upload.`
+): GuestNotice {
+  const one = count === 1
+  return locale === 'en'
+    ? {
+        title: 'No connection',
+        body: one
+          ? '1 photo is saved on this phone and cannot be lost. Reopen the page with better signal and it will upload.'
+          : `${count} photos are saved on this phone and cannot be lost. Reopen the page with better signal and they will upload.`,
+      }
+    : {
+        title: 'Nincs kapcsolat',
+        body: one
+          ? '1 kép el van mentve a telefonon, nem veszhet el. Nyisd meg újra az oldalt jobb térerőn, és feltöltődik.'
+          : `${count} kép el van mentve a telefonon, egyik sem veszhet el. Nyisd meg újra az oldalt jobb térerőn, és feltöltődnek.`,
+      }
+}
+
+/**
+ * "Ne zárd be az oldalt" — IndexedDB refused, so this tab is the only copy.
+ *
+ * The one guest state that is a real data-loss risk, and the only place the
+ * page asks to be kept open. Shown online or offline: a held shot that is
+ * uploading normally is still lost if the tab goes away before it lands.
+ */
+export function heldInMemoryNotice(
+  count: number,
+  locale: Locale = 'hu',
+): GuestNotice {
+  const one = count === 1
+  return locale === 'en'
+    ? {
+        title: 'Do not close this page',
+        body: one
+          ? 'This phone could not save the photo, so this page is its only copy until it uploads.'
+          : `This phone could not save ${count} photos, so this page is their only copy until they upload.`,
+      }
+    : {
+        title: 'Ne zárd be az oldalt',
+        body: one
+          ? 'A telefon nem tudta elmenteni a képet, így amíg fel nem töltődik, csak ez az oldal őrzi.'
+          : `A telefon ${count} képet nem tudott elmenteni, így amíg fel nem töltődnek, csak ez az oldal őrzi őket.`,
+      }
+}
+
+/** The heading over a lost photo's message; the message is the body. */
+export function lostPhotoTitle(locale: Locale = 'hu'): string {
+  return locale === 'en'
+    ? 'A photo did not reach the album'
+    : 'Egy kép nem került az albumba'
+}
+
+/**
+ * The free tier's edge, seen from the guest's side (7l).
+ *
+ * No checkout, no price and no payment: a wedding guest holding a phone is not
+ * the person who can fix this. It names the limit, says what the host can do
+ * and what to do after, because a guest told only "full" closes the tab.
+ */
+export function capReachedNotice(
+  limit: number,
+  locale: Locale = 'hu',
+): GuestNotice {
+  return locale === 'en'
+    ? {
+        title: 'This event is full',
+        body: `Up to ${limit} guests can join this event, and all ${limit} places are taken. Ask the host to unlock the event, then scan the QR code again.`,
+      }
+    : {
+        title: 'Ez az esemény betelt',
+        body: `Erre az eseményre legfeljebb ${limit} vendég csatlakozhat, és mind ${huNumberArticle(limit)} ${limit} hely elfogyott. Kérd meg a szervezőt, hogy oldja fel az eseményt, aztán olvasd be újra a QR-kódot.`,
+      }
+}
+
+/**
+ * The spent roll (7m): every frame is taken, and when the guest gets to see
+ * them. The gallery is a separate permission from the camera, so this says
+ * which of its three states the event is in rather than promising a reveal
+ * the host has switched off.
+ */
+export function spentRollNotice(
+  timing: EventTiming,
+  shots: number,
+  locale: Locale = 'hu',
+): GuestNotice {
+  const en = locale === 'en'
+  const taken = en
+    ? `All ${shots} photos are taken.`
+    : `Mind ${huNumberArticle(shots)} ${shots} kép elkészült.`
+  let after: string
+  if (guestGalleryIsOpen(timing)) {
+    after = en
+      ? 'The gallery is already open, and every photo is below.'
+      : 'A galéria már nyitva, lent láthatod az összes képet.'
+  } else if (!timing.guestsCanView) {
+    after = en
+      ? 'Only the host can see the photos at this event.'
+      : 'Ennél az eseménynél a képeket csak a szervező láthatja.'
+  } else {
+    const at = formatDeadline(
+      timing.revealAt.toISOString(),
+      timing.timeZone,
+      locale,
+    )
+    after = en
+      ? `The gallery opens ${at}, and you can see every photo then.`
+      : `A galéria ${at}-kor nyílik meg, és akkor láthatod az összes képet.`
   }
-  const waiting = `Nincs kapcsolat. ${count} kép feltöltésre vár.`
-  return canShoot ? `${waiting} Nyugodtan fotózhatsz tovább.` : waiting
+  return {
+    title: en
+      ? 'You have used all your photos'
+      : 'Elhasználtad az összes képedet',
+    body: `${taken} ${after}`,
+  }
 }
 
 /**
@@ -349,32 +444,6 @@ export function queueClearedNote(count: number, locale: Locale = 'hu'): string {
       : `All ${count} photos uploaded.`
   }
   return count === 1 ? 'A kép feltöltve.' : `Mind a ${count} kép feltöltve.`
-}
-
-/**
- * The format, stated rather than implied.
- *
- * This is where "no preview, no retakes" finally appears on the guest's own
- * screen — it was a landing-page claim and a thing the product did, and never a
- * sentence the person holding the camera actually read. The guest count rides
- * along because it is the third value the deleted `<dl>` carried and it belongs
- * next to the other two facts about the format rather than in a list of its
- * own.
- *
- * It is a sentence in the body face, not three clauses in tracked-out mono
- * caps. Approved in the v2 design review: the mono is for what the camera
- * counts, and this line is the one thing on the screen that is neither a
- * number nor a label — it is the product explaining itself to somebody who
- * has just been handed a camera with no undo.
- */
-export function formatLine(
-  participantCount: number,
-  locale: Locale = 'hu',
-): string {
-  // Hungarian takes no plural after a numeral, so only English branches.
-  return locale === 'en'
-    ? `${participantCount} guest${participantCount === 1 ? '' : 's'} took photos, with no preview and no retakes.`
-    : `${participantCount} vendég fotózott, előnézet és újrafotózás nélkül.`
 }
 
 /** How the guest's ticket names the reveal rule, in mono caps. The host's own

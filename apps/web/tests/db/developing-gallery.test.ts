@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   anonClient,
+  commitShot,
   createEvent,
   createUser,
   deleteEvent,
@@ -79,6 +80,7 @@ describe('before the reveal', () => {
 
       for (const row of rows) {
         expect(Object.keys(row).sort()).toEqual([
+          'sketch',
           'tile_seed',
           'total_count',
           'uploader_name',
@@ -99,6 +101,31 @@ describe('before the reveal', () => {
         expect(secret).toBeTruthy()
         expect(answer).not.toContain(secret as string)
       }
+    } finally {
+      await deleteEvent(event.id)
+    }
+  }, 60_000)
+
+  it('carries the sketch the commit stored, and drops a malformed one', async () => {
+    const sketch = 'IggKDQSHd3iId3eIeAeHeHd4'
+    const event = await lockedEvent()
+    try {
+      const session = newSession()
+      await joinEvent(event.slug, 'Réka', session)
+      const kept = await reserveShot(event.id, session)
+      await commitShot(kept?.photo_id as string, session, sketch)
+      const dropped = await reserveShot(event.id, session)
+      await commitShot(dropped?.photo_id as string, session, '../x y z')
+      const none = await takeShot(event.id, session)
+
+      // Newest first: the shot with no sketch, the malformed one, the kept one.
+      const rows = await wall(event.slug)
+      expect(rows.map((row) => row.sketch)).toEqual([null, null, sketch])
+
+      // A replay without one keeps what the first commit stored.
+      await commitShot(kept?.photo_id as string, session)
+      expect((await wall(event.slug))[2].sketch).toBe(sketch)
+      expect(none?.photo_id).toBeTruthy()
     } finally {
       await deleteEvent(event.id)
     }

@@ -1,7 +1,5 @@
 'use client'
 
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { Check, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import type { Locale } from '@/lib/i18n'
@@ -22,22 +20,12 @@ export function InviteButton({
   url,
   eventId,
   locale = 'hu',
-  iconOnly = false,
 }: {
   url: string
   /** For telemetry only. The link itself is never reported — it contains the
    *  slug, which is the album's whole lock. */
   eventId: string
   locale?: Locale
-  /**
-   * The guest surface's shape: a 58px bordered square beside the shutter, with
-   * no label. The whole share/clipboard mechanism below is unchanged — what
-   * goes is `.glass` (no longer what a secondary control wears) and the word,
-   * which was competing with the one button on the screen that matters. The
-   * copied state still reads as a tick, and the `aria-live` line below still
-   * announces it.
-   */
-  iconOnly?: boolean
 }) {
   const en = locale === 'en'
   const [copied, setCopied] = useState(false)
@@ -97,59 +85,24 @@ export function InviteButton({
     </span>
   )
 
-  if (iconOnly) {
-    return (
-      <button
-        type="button"
-        onClick={invite}
-        aria-label={en ? 'Share invite link' : 'Meghívólink megosztása'}
-        className={cn(
-          'flex size-[58px] shrink-0 items-center justify-center rounded-lg border border-white/15 transition-colors hover:border-white/30',
-          copied ? 'text-accent' : 'text-foreground/60',
-        )}
-      >
-        {copied ? (
-          <Check className="size-5" strokeWidth={2.2} aria-hidden="true" />
-        ) : (
-          <Share2
-            className="size-[18px]"
-            strokeWidth={1.8}
-            aria-hidden="true"
-          />
-        )}
-        {announcement}
-      </button>
-    )
-  }
-
+  // The guest surface's shape: a 58px square beside the shutter, with no
+  // label, so it does not compete with the one button on the screen that
+  // matters. A tile like every other secondary control in the landing look,
+  // and no border. The copied state reads as a tick, and the `aria-live`
+  // line announces it.
   return (
-    <Button
+    <button
       type="button"
       onClick={invite}
       aria-label={en ? 'Share invite link' : 'Meghívólink megosztása'}
-      variant="secondary"
-      size="lg"
-      className={cn(
-        'w-full px-3 text-sm',
-        copied ? 'text-accent' : 'text-foreground',
-      )}
+      className="flex size-[58px] shrink-0 items-center justify-center rounded-[16px] bg-host-tile text-white transition-colors duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white/10"
     >
       {copied ? (
-        <>
-          <Check
-            className="size-4 text-accent"
-            strokeWidth={2.2}
-            aria-hidden="true"
-          />
-          {en ? 'Link copied' : 'Link másolva'}
-        </>
+        <Check className="size-5" strokeWidth={2.2} aria-hidden="true" />
       ) : (
-        <>
-          <Share2 className="size-5" strokeWidth={1.8} aria-hidden="true" />
-          {en ? 'Invite' : 'Meghívás'}
-        </>
+        <Share2 className="size-[18px]" strokeWidth={1.8} aria-hidden="true" />
       )}
       {announcement}
-    </Button>
+    </button>
   )
 }

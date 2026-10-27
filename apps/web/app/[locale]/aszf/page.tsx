@@ -1,9 +1,7 @@
 import { DraftNotice } from '@/components/site/draft-notice'
-import {
-  LegalSections,
-  type LegalSection,
-} from '@/components/site/legal-sections'
-import { PageShell } from '@/components/site/page-shell'
+import type { LegalSection } from '@/components/site/legal-sections'
+import { InfoPage, InfoSections } from '@/components/pages/info-page'
+import { SiteShell } from '@/components/pages/site-shell'
 import {
   COMPANY,
   REGISTRY,
@@ -14,6 +12,7 @@ import {
   PAYMENT_PROCESSOR,
 } from '@/lib/company'
 import { isLocale } from '@/lib/i18n'
+import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import { EVENT_PRICE_LABEL, EVENT_PRICE_LABELS } from '@/lib/pricing'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { localizedPageAlternates } from '@/lib/seo'
@@ -67,7 +66,7 @@ const sections: LegalSection[] = [
   {
     title: 'Díj és fizetés',
     body: [
-      `Az ingyenes eseményhez legfeljebb 5 vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél megszünteti a vendégkorlátot. Nem előfizetés, és nem jelent vendégenkénti díjat. Az alábbi feltételek a magyarországi számlázási címmel történő vásárlásra vonatkoznak, a felület nyelvétől függetlenül; Magyarországon kívüli számlázási cím esetén a vásárlás ${EVENT_PRICE_LABELS.en} áron, a ${PAYMENT_PROCESSOR.merchantOfRecord} közreműködésével, az angol nyelvű feltételek szerint történik.`,
+      `Az ingyenes eseményhez legfeljebb ${FREE_PARTICIPANT_LIMIT} vendég csatlakozhat. A teljes esemény magyarországi fogyasztói végösszege ${EVENT_PRICE_LABEL}; ez az adott eseménynél megszünteti a vendégkorlátot. Nem előfizetés, és nem jelent vendégenkénti díjat. Az alábbi feltételek a magyarországi számlázási címmel történő vásárlásra vonatkoznak, a felület nyelvétől függetlenül; Magyarországon kívüli számlázási cím esetén a vásárlás ${EVENT_PRICE_LABELS.en} áron, a ${PAYMENT_PROCESSOR.merchantOfRecord} közreműködésével, az angol nyelvű feltételek szerint történik.`,
       `A szolgáltató ${DIRECT_SALE.vatStatus}, ezért a feltüntetett ${EVENT_PRICE_LABEL} a fizetendő végösszeg. Az ár nem tartalmaz áfát, így abból áfa nem vonható le. A számla az „AAM” (alanyi adómentes) jelölést tartalmazza.`,
       `A fizetést a ${DIRECT_SALE.processorName} (${DIRECT_SALE.processorAddress}) fizetési szolgáltatóként dolgozza fel. A bankkártyaadatokat az OurFilm nem látja és nem tárolja. A számlázási névre és címre azért van szükség, mert a magyar számla kötelező tartalmi eleme.`,
       `A fizetés után a számlát az OurFilm állítja ki elektronikus számlaként, a ${DIRECT_SALE.invoiceProvider} számlázórendszerén keresztül, és a megadott e-mail-címre küldjük meg. A számlaadatokat a NAV Online Számla rendszerébe is továbbítjuk, ahogy azt jogszabály előírja. A vendégkorlátot a Stripe sikeres fizetési visszaigazolása után szüntetjük meg.`,
@@ -157,7 +156,7 @@ const englishSections: LegalSection[] = [
   {
     title: 'Price and payment',
     body: [
-      `Up to 5 distinct guests may join a free event. Unlocking the full event removes this participant cap for that event; it is a one-off purchase, not a subscription or per-guest fee. The final price, currency and applicable taxes are shown in Stripe Checkout before purchase. For a billing address outside Hungary the price is ${EVENT_PRICE_LABELS.en}. With a Hungarian billing address the purchase is made directly from OurFilm for ${EVENT_PRICE_LABEL} under the Hungarian terms (ÁSZF), whichever language the site is shown in.`,
+      `Up to ${FREE_PARTICIPANT_LIMIT} distinct guests may join a free event. Unlocking the full event removes this participant cap for that event; it is a one-off purchase, not a subscription or per-guest fee. The final price, currency and applicable taxes are shown in Stripe Checkout before purchase. For a billing address outside Hungary the price is ${EVENT_PRICE_LABELS.en}. With a Hungarian billing address the purchase is made directly from OurFilm for ${EVENT_PRICE_LABEL} under the Hungarian terms (ÁSZF), whichever language the site is shown in.`,
       `For a billing address outside Hungary, ${PAYMENT_PROCESSOR.merchantOfRecord} handles the transaction through ${PAYMENT_PROCESSOR.name}. OurFilm does not receive or store card details. Link sends the transaction confirmation and applicable invoice or receipt.`,
     ],
   },
@@ -204,20 +203,20 @@ export default async function AszfPage({ params }: Props) {
   if (!isLocale(locale)) notFound()
 
   return (
-    <PageShell
-      locale={locale}
-      eyebrow={locale === 'en' ? 'TERMS' : 'ÁSZF'}
-      title={
-        locale === 'en' ? 'Terms of Service' : 'Általános szerződési feltételek'
-      }
-      lead={
-        locale === 'en'
-          ? 'The terms for creating and joining an OurFilm event, including payment, cancellation and fair use.'
-          : 'Röviden és a mostani termékhez igazítva: mit nyújt az OurFilm, hogyan fizetsz, és miért felelnek a résztvevők.'
-      }
-    >
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
+    <SiteShell locale={locale}>
+      <InfoPage
+        title={
+          locale === 'en'
+            ? 'Terms of Service'
+            : 'Általános szerződési feltételek'
+        }
+        intro={
+          locale === 'en'
+            ? 'The terms for creating and joining an OurFilm event, including payment, cancellation and fair use.'
+            : 'Röviden és a mostani termékhez igazítva: mit nyújt az OurFilm, hogyan fizetsz, és miért felelnek a résztvevők.'
+        }
+      >
+        <>
           {hasRealCompanyDetails ? null : (
             <DraftNotice>
               <strong className="font-semibold text-foreground">
@@ -228,16 +227,16 @@ export default async function AszfPage({ params }: Props) {
             </DraftNotice>
           )}
 
-          <LegalSections
+          <InfoSections
             sections={locale === 'en' ? englishSections : sections}
           />
 
-          <p className="mt-12 text-sm text-muted-foreground">
+          <p>
             {locale === 'en' ? 'Last updated' : 'Utolsó frissítés'}:{' '}
             {TERMS_LAST_UPDATED[locale]}
           </p>
-        </div>
-      </section>
-    </PageShell>
+        </>
+      </InfoPage>
+    </SiteShell>
   )
 }

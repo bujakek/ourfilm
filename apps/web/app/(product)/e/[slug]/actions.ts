@@ -23,6 +23,8 @@ import {
 } from '@/lib/participants'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLocale } from '@/lib/i18n'
+import { capReachedNotice } from '@/lib/event-copy'
+import { FREE_PARTICIPANT_LIMIT } from '@/lib/onboarding'
 import { reportGraceReservation } from '@/lib/grace-telemetry'
 import { reportAfterEventReservation } from '@/lib/after-event-telemetry'
 import { reportServerIssue } from '@/lib/telemetry-server'
@@ -103,10 +105,7 @@ export async function joinEventAction(
   if (!result.ok) {
     if (result.reason === 'cap_reached') {
       return {
-        error:
-          lang === 'en'
-            ? 'This free event supports up to 5 guests. Ask the host to unlock the full event.'
-            : 'Ez az ingyenes esemény legfeljebb 5 résztvevővel használható. Kérd meg a szervezőt, hogy oldja fel a teljes eseményt.',
+        error: capReachedNotice(FREE_PARTICIPANT_LIMIT, lang).body,
         capReached: true,
         reason: 'cap_reached',
       }
@@ -258,6 +257,7 @@ export async function commitShotAction({
   height,
   byteSize,
   takenAt,
+  sketch,
   captureId,
   attemptId,
 }: {
@@ -267,13 +267,23 @@ export async function commitShotAction({
   height: number
   byteSize: number
   takenAt: string | null
+  sketch?: string | null
   captureId?: string
   attemptId?: string
 }): Promise<CommitShotAnswer> {
   const result = await observeCommitShot({
     surface: 'guest',
     route: '/e/[slug]',
-    input: { photoId, width, height, byteSize, takenAt, captureId, attemptId },
+    input: {
+      photoId,
+      width,
+      height,
+      byteSize,
+      takenAt,
+      sketch,
+      captureId,
+      attemptId,
+    },
     deps: liveCommitDeps(async () => {
       const tokenHash = await readParticipantTokenHash()
       return tokenHash

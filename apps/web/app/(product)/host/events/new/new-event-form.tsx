@@ -12,7 +12,7 @@ import {
   invalidateStoredDraft,
   useStoredDraft,
 } from '@/components/host/onboarding/use-stored-draft'
-import type { RevealChoice, ShotOption } from '@/lib/camera'
+import type { RevealChoice } from '@/lib/camera'
 import {
   clearDraft,
   draftHasAnswers,
@@ -21,7 +21,7 @@ import {
   type EventDraft,
 } from '@/lib/event-draft'
 import { eventLocalToIso, formatEventLocalInput } from '@/lib/format'
-import type { EventPlan } from '@/lib/onboarding'
+import { eventNameSuggestions, type EventPlan } from '@/lib/onboarding'
 import { type Locale, resolveLocale } from '@/lib/i18n'
 import { track, type OnboardingStep } from '@/lib/telemetry'
 import type { CheckoutReadiness } from '@/lib/billing-country'
@@ -31,8 +31,9 @@ import { guestsScreen } from './step-guests'
 import { nameScreen } from './step-name'
 import { revealScreen } from './step-reveal'
 
-/** Four questions: name, end, reveal, and guest count. Roll length and gallery
- *  access are optional settings on the last screen. */
+/** Four questions: name, end, reveal, and guest count. Roll length, gallery
+ *  access and after-event uploads are not asked: the draft's defaults stand,
+ *  and settings is where a host changes them. */
 const STEP_COUNT = 4
 const LAST_STEP = STEP_COUNT - 1
 const END_STEP = 1
@@ -54,8 +55,6 @@ const STEP_NAMES: readonly OnboardingStep[] = [
 type Props = {
   nowIso: string
   defaultEndIso: string
-  /** The five ÖTLETEK titles, resolved on the server. */
-  suggestions: string[]
   /** Whether a paid event can actually be sold here, per side of the
    *  billing-country boundary. Deployed environments without `STRIPE_*`
    *  variables offer no paid tier at all; a Hungarian billing address
@@ -175,7 +174,6 @@ export function NewEventForm(props: Props) {
 function OnboardingFlow({
   nowIso,
   defaultEndIso,
-  suggestions,
   readiness,
   initial,
   initialCreationKey,
@@ -207,27 +205,24 @@ function OnboardingFlow({
   const [step, setStep] = useState(Math.min(LAST_STEP, Math.max(0, startStep)))
   const [name, setName] = useState(initial.name)
   const [revealMode, setRevealMode] = useState<RevealChoice>(initial.revealMode)
-  const [shots, setShots] = useState<ShotOption>(initial.shots)
   const [plan, setPlan] = useState<EventPlan>(initial.plan)
-  const [guestsCanView, setGuestsCanView] = useState(initial.guestsCanView)
-  const [postEventUploads, setPostEventUploads] = useState(
-    initial.postEventUploads,
-  )
+  // No longer asked. Carried from the draft — the defaults for a new one, the
+  // old answers for a draft written before the questions went away — because
+  // the server action still reads all three.
+  const { shots, guestsCanView, postEventUploads } = initial
   const [legalAccepted, setLegalAccepted] = useState(initial.legalAccepted)
 
   // `YYYY-MM-DDTHH:mm`, held as one string so the day and the time cannot drift
-  // apart between the calendar and the time pill. Null means "not chosen yet",
-  // and the suggested end is re-derived from the server's instant in whatever
-  // zone this browser turns out to be in — which is what lets the timezone
-  // arrive one render late without moving a value the host has already picked.
+  // apart between the day tile and the time tile. Null means
+  // "not chosen yet", and the suggested end is re-derived from the server's
+  // instant in whatever zone this browser turns out to be in — which is what
+  // lets the timezone arrive one render late without moving a value the host
+  // has already picked.
   const [chosenEnd, setChosenEnd] = useState<string | null>(
     initial.endLocal || null,
   )
   const endLocal =
     chosenEnd ?? formatEventLocalInput(new Date(defaultEndIso), timeZone)
-
-  const day = endLocal.slice(0, 10)
-  const time = endLocal.slice(11)
 
   const endIso = eventLocalToIso(endLocal, timeZone)
   const today = formatEventLocalInput(new Date(nowIso), timeZone).slice(0, 10)
@@ -299,8 +294,12 @@ function OnboardingFlow({
   // `now` at insert time and refuses that with a message naming it.
   const endIsFuture = endIso ? endIso > nowIso : false
 
-  function create() {
+  /** `accepted` is the onboarding's consent: pressing the CTA under the terms
+   *  line is the acceptance, so it is passed in rather than read from state
+   *  the same click is still setting. */
+  function create(accepted: boolean) {
     setError(null)
+    setLegalAccepted(accepted)
     startTransition(async () => {
       const result = await createEventFromDraft({
         locale,
@@ -312,7 +311,7 @@ function OnboardingFlow({
         plan,
         guestsCanView,
         postEventUploads,
-        legalAccepted,
+        legalAccepted: accepted,
         creationKey: initialCreationKey,
       })
 
@@ -348,7 +347,10 @@ function OnboardingFlow({
       if (result.reason === 'auth') {
         // Remembered across the round trip: the mail client is a different app,
         // and what comes back is a fresh page load with nothing but this.
-        saveDraft({ ...draft, pendingCreate: true }, new Date())
+        saveDraft(
+          { ...draft, legalAccepted: accepted, pendingCreate: true },
+          new Date(),
+        )
         track('onboarding_save_viewed', {
           creation_key: initialCreationKey,
           plan,
@@ -404,25 +406,18 @@ function OnboardingFlow({
           name,
           setName,
           onAdvance: advance,
-          suggestions:
-            locale === 'en'
-              ? [
-                  'Our wedding',
-                  'The big day',
-                  'Birthday party',
-                  'Anniversary',
-                  'One unforgettable night',
-                ]
-              : suggestions,
+          // Null until a sign-in provider supplies a first name; see the
+          // note on `page.tsx` for why the page cannot read one.
+          suggestions: eventNameSuggestions(null, locale),
           canAdvance: name.trim().length > 0,
         })
       : step === END_STEP
         ? endScreen({
             locale,
-            day,
-            setDay: (value) => setChosenEnd(`${value}T${time}`),
-            time,
-            setTime: (value) => setChosenEnd(`${day}T${value}`),
+            endLocal,
+            setEndLocal: setChosenEnd,
+            now: new Date(nowIso),
+            timeZone,
             today,
             canAdvance: endIsFuture,
           })
@@ -449,17 +444,7 @@ function OnboardingFlow({
                   plan: value,
                   payments_enabled: paymentsAvailable,
                 })
-                // Changing the offer requires a fresh acceptance.
-                setLegalAccepted(false)
               },
-              shots,
-              setShots,
-              guestsCanView,
-              postEventUploads,
-              setGuestsCanView,
-              setPostEventUploads,
-              legalAccepted,
-              setLegalAccepted,
               paymentsEnabled: paymentsAvailable,
               pending,
             })
@@ -491,7 +476,10 @@ function OnboardingFlow({
                 step: STEP_NAMES[LAST_STEP],
                 index: LAST_STEP,
               })
-              create()
+              // No checkbox on either path: this press is the acceptance,
+              // under the line that says so. The paid declaration is asked
+              // once, on the checkout screen.
+              create(true)
             }
           : advance
       }

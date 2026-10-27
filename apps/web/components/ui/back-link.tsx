@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import { HOST_FOCUS } from '@/components/host/ui/classes'
 import { cn } from '@/lib/utils'
 
 /**
@@ -22,22 +23,28 @@ import { cn } from '@/lib/utils'
  * (`onboarding-shell.tsx`) and is not a caller. It goes back through *state*
  * rather than to a URL, it sits in a full-bleed header with a progress
  * counter, and there is no destination it could name.
+ *
+ * `tone="host"` gives it the host app's white focus mark in place of the
+ * global lilac outline. Every caller today is a host screen and passes it.
  */
 export function BackLink({
   href,
   children,
   className,
+  tone = 'default',
 }: {
   href: string
   /** Where this goes, in the host's words. Not "Back". */
   children: ReactNode
   className?: string
+  tone?: 'default' | 'host'
 }) {
   return (
     <Link
       href={href}
       className={cn(
         'inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground',
+        tone === 'host' && HOST_FOCUS,
         className,
       )}
     >

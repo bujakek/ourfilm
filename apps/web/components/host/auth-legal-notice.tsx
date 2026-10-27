@@ -1,11 +1,14 @@
 import Link from 'next/link'
 
+import { HOST_LINK } from '@/components/host/ui/classes'
 import { localePath, type Locale } from '@/lib/i18n'
 
+/** The terms line under both ways in: the login screen and the onboarding
+ *  save screen. */
 export function AuthLegalNotice({ locale }: { locale: Locale }) {
   const en = locale === 'en'
   return (
-    <div className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+    <div className="mt-4 text-center text-[12px] leading-[1.6] text-pretty text-white/60">
       <p>
         {en
           ? 'How we handle your sign-in data and the terms for using OurFilm:'
@@ -16,7 +19,7 @@ export function AuthLegalNotice({ locale }: { locale: Locale }) {
           href={localePath(locale, '/adatvedelem')}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-foreground"
+          className={`inline-flex min-h-11 items-center ${HOST_LINK}`}
         >
           {en ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
           <span className="sr-only">
@@ -27,7 +30,7 @@ export function AuthLegalNotice({ locale }: { locale: Locale }) {
           href={localePath(locale, '/aszf')}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-foreground"
+          className={`inline-flex min-h-11 items-center ${HOST_LINK}`}
         >
           {en ? 'Terms of Service' : 'ÁSZF'}
           <span className="sr-only">

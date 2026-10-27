@@ -50,15 +50,24 @@ const draftSchema = z.object({
    *  the same device in a different place still means what it meant. */
   timeZone: z.string().max(64),
   revealMode: z.enum(REVEAL_CHOICES),
-  shots: z.union(
-    SHOT_OPTIONS.map((n) => z.literal(n)) as unknown as [
-      z.ZodLiteral<number>,
-      z.ZodLiteral<number>,
-      ...z.ZodLiteral<number>[],
-    ],
-  ),
+  /** No longer asked during onboarding — settings is where a host changes
+   *  it. Kept on the draft because the server action still reads it, and
+   *  defaulted so a draft written after the question went away parses; an
+   *  older draft that still carries an answer keeps it. */
+  shots: z
+    .union(
+      SHOT_OPTIONS.map((n) => z.literal(n)) as unknown as [
+        z.ZodLiteral<number>,
+        z.ZodLiteral<number>,
+        ...z.ZodLiteral<number>[],
+      ],
+    )
+    .default(DEFAULT_SHOTS),
   plan: z.enum(['free', 'full']),
-  guestsCanView: z.boolean(),
+  /** Same as `shots`: a default now, an answer only in older drafts. */
+  guestsCanView: z.boolean().default(true),
+  /** Not offered during onboarding at all; settings is the only place to
+   *  turn it on. */
   postEventUploads: z.boolean().default(false),
   /** Required on the final screen. Persisted so the explicit choice survives
    *  the magic-link round trip together with the rest of the draft. */

@@ -223,12 +223,15 @@ export type TelemetryEventProperties = {
     surface: 'guest' | 'host'
     method: 'share_sheet' | 'clipboard' | 'unavailable'
   }
-  /** The free cap, seen by the person who can act on it. */
+  /** The free cap, seen by the person who can act on it: one seat from it
+   *  (`near`) or at it (`full`). `full` is kept beside `state` so older
+   *  insights keep reading. */
   quota_banner_viewed: {
     event_id: string
     participant_count: number
     participant_limit: number
     full: boolean
+    state: 'near' | 'full'
   }
   quota_upgrade_clicked: { event_id: string; full: boolean }
   photo_moderated: { event_id: string; hidden: boolean }

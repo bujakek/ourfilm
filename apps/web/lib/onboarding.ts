@@ -10,26 +10,124 @@
  * server can re-derive every one of these from the FormData it is handed.
  */
 
+import { formatEventLocalInput } from '@/lib/format'
+import type { Locale } from '@/lib/i18n'
+
 /**
- * The five titles offered under ÖTLETEK on the first screen.
+ * The three titles offered under the name field on the first screen.
  *
  * They are prompts, not event types: tapping one fills the field with something
  * a host would plausibly keep, and the point is removing the blank-field pause
- * rather than classifying the party.
+ * rather than classifying the party. Three rather than five, so the chips fit
+ * two rows at 390px and 130% text.
  *
- * Two of them are personalised when the host's first name is known. Today it
+ * The birthday is personalised when the host's first name is known. Today it
  * never is — a magic-link signup carries only an email, and reading the account
  * on the create page would make that segment suspend into the admin loading
  * boundary, which is a hydration bug rather than a nicety (see the note on
- * `app/host/events/new/page.tsx`). So every caller passes null for now, and
- * the generic pair is what a host actually sees.
+ * `app/(product)/host/events/new/page.tsx`). So every caller passes null for
+ * now, and the generic titles are what a host actually sees.
  */
-export function eventNameSuggestions(firstName: string | null): string[] {
+export function eventNameSuggestions(
+  firstName: string | null,
+  locale: Locale = 'hu',
+): string[] {
   const name = firstName?.trim()
-  const opening = name
-    ? [`${name} bulija`, `${name} születésnapja`]
-    : ['A nagy bulink', 'Születésnapi buli']
-  return [...opening, 'Az esküvőnk', 'Az évfordulónk', 'A mi kis bulink']
+  if (locale === 'en') {
+    return [
+      'Our wedding',
+      name ? `${name}’s birthday` : 'Birthday party',
+      'An unforgettable night',
+    ]
+  }
+  return [
+    'Esküvőnk',
+    name ? `${name} szülinapja` : 'Szülinapi buli',
+    'Egy felejthetetlen este',
+  ]
+}
+
+/** The two nights an end can be read as while its day has not been picked:
+ *  the one starting today, and the one after. Anything else is `other`. */
+export type EndQuickPick = 'tonight' | 'tomorrow'
+
+/** Before this hour a time belongs to the night that started the day before:
+ *  tonight's 02:00 is after midnight, not fourteen hours ago. */
+const NIGHT_ROLLOVER_HOUR = 12
+
+/** A bare `YYYY-MM-DD` moved by whole days. Calendar arithmetic in UTC, where
+ *  no day is 23 or 25 hours long — the zone was settled when the day was read. */
+function addDays(day: string, days: number): string {
+  const [year, month, date] = day.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, date + days))
+    .toISOString()
+    .slice(0, 10)
+}
+
+/**
+ * The end one of those nights stands for, as a `datetime-local` value in the event's
+ * zone.
+ *
+ * "Tonight" is the night that starts today where the host is standing: a time
+ * of 12:00 or later lands on today's date, an earlier one on tomorrow's —
+ * unless it is still ahead today, which is a host creating after midnight
+ * with the night still going.
+ * "Tomorrow" is the same, one day later. Takes `now` like everything here.
+ */
+export function endQuickPick(
+  kind: EndQuickPick,
+  time: string,
+  now: Date,
+  timeZone: string,
+): string {
+  const nowLocal = formatEventLocalInput(now, timeZone)
+  const today = nowLocal.slice(0, 10)
+  const hour = Number(time.slice(0, 2))
+  // A host creating at 00:30 is inside tonight already: a small-hours time
+  // still ahead of them is today's, not the following night's.
+  const tonight =
+    hour >= NIGHT_ROLLOVER_HOUR || `${today}T${time}` > nowLocal
+      ? today
+      : addDays(today, 1)
+  return `${kind === 'tonight' ? tonight : addDays(tonight, 1)}T${time}`
+}
+
+/** Which night an end reads as: the inverse of `endQuickPick` at the end's
+ *  own time. */
+export function activeQuickPick(
+  endLocal: string,
+  now: Date,
+  timeZone: string,
+): EndQuickPick | 'other' {
+  const time = endLocal.slice(11, 16)
+  if (!/^\d{2}:\d{2}$/.test(time)) return 'other'
+  for (const kind of ['tonight', 'tomorrow'] as const) {
+    if (endQuickPick(kind, time, now, timeZone) === endLocal) return kind
+  }
+  return 'other'
+}
+
+/** Where the end's day came from: the suggested default, or the date picker. */
+export type EndDaySource = 'suggested' | 'picked'
+
+/**
+ * The end after its time is edited. Tonight at 02:00 is after midnight, so
+ * while the day is still the suggested one, a new time keeps meaning the same
+ * night and the day follows it. A day the host picked stays put, even when it
+ * happens to be tonight's or tomorrow's date.
+ */
+export function endAfterTimeEdit(
+  endLocal: string,
+  time: string,
+  source: EndDaySource,
+  now: Date,
+  timeZone: string,
+): string {
+  const picked =
+    source === 'suggested' ? activeQuickPick(endLocal, now, timeZone) : 'other'
+  return picked === 'other'
+    ? `${endLocal.slice(0, 10)}T${time}`
+    : endQuickPick(picked, time, now, timeZone)
 }
 
 /**

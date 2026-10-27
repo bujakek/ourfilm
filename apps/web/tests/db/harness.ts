@@ -235,7 +235,11 @@ export async function reserveShot(
   return data
 }
 
-export async function commitShot(photoId: string, session: Session) {
+export async function commitShot(
+  photoId: string,
+  session: Session,
+  sketch?: string,
+) {
   const { data, error } = await serviceClient()
     .rpc('commit_shot', {
       p_photo_id: photoId,
@@ -244,6 +248,7 @@ export async function commitShot(photoId: string, session: Session) {
       p_height: 3024,
       p_byte_size: 1_500_000,
       p_taken_at: new Date().toISOString(),
+      ...(sketch === undefined ? {} : { p_sketch: sketch }),
     })
     .maybeSingle()
   if (error) throw error

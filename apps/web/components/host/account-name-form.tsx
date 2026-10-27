@@ -3,8 +3,12 @@
 import { useState, useTransition } from 'react'
 
 import { updateHostDisplayName } from '@/app/(product)/host/account/actions'
-import { Button } from '@/components/ui/button'
-import { inputClassName } from '@/components/ui/input'
+import {
+  HOST_FIELD,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+  HOST_SECONDARY,
+} from '@/components/host/ui/classes'
 import {
   HOST_DISPLAY_NAME_MAX_LENGTH,
   hostDisplayNameProblem,
@@ -30,19 +34,16 @@ export function AccountNameForm({
 
   return (
     <div>
-      <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[5rem_minmax(0,1fr)] sm:gap-6">
+      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-end gap-4">
         <span
           aria-hidden="true"
-          className="flex size-18 items-center justify-center rounded-full border border-border bg-white/6 font-display text-[32px] text-foreground sm:size-20 sm:text-[36px]"
+          className="host-figure flex size-14 items-center justify-center rounded-full bg-host-tile text-[24px] text-white"
         >
           {hostInitials(trimmed || savedName)}
         </span>
 
         <div className="min-w-0">
-          <label
-            htmlFor="host-display-name"
-            className="text-sm text-muted-foreground"
-          >
+          <label htmlFor="host-display-name" className={HOST_ROW_QUESTION}>
             {en ? 'Display name' : 'Megjelenített név'}
           </label>
           <input
@@ -59,21 +60,21 @@ export function AccountNameForm({
               setValue(event.target.value)
               setError(null)
             }}
-            className={`mt-2 ${inputClassName}`}
+            className={`mt-2 ${HOST_FIELD}`}
           />
         </div>
       </div>
 
-      <p className="mt-3 pl-22 text-sm leading-relaxed text-pretty text-muted-foreground sm:pl-26">
+      <p className={`mt-3 ${HOST_ROW_DETAIL}`}>
         {en
           ? 'This name appears on the photos you upload.'
           : 'Ez a név jelenik meg az általad feltöltött képeknél.'}
       </p>
 
-      <Button
+      <button
         type="button"
         disabled={pending || unchanged || problem !== null}
-        className="mt-5 w-full"
+        className={`mt-4 w-full ${HOST_SECONDARY}`}
         onClick={() =>
           startTransition(async () => {
             setError(null)
@@ -98,14 +99,17 @@ export function AccountNameForm({
           : en
             ? 'Save name'
             : 'Név mentése'}
-      </Button>
+      </button>
 
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mt-2 text-[14px] leading-[1.5] text-host-danger"
+        >
           {error}
         </p>
       ) : problem === 'required' || problem === 'too_short' ? (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className={`mt-2 ${HOST_ROW_DETAIL}`}>
           {en
             ? 'Enter at least 2 characters.'
             : 'Adj meg legalább 2 karaktert.'}

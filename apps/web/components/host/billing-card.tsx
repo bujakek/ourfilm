@@ -10,16 +10,24 @@ import {
   initialBillingCountry,
 } from '@/lib/billing-country'
 import { eventPriceLabelFor } from '@/lib/pricing'
-import { cn } from '@/lib/utils'
-import { CreditCard, Loader2, Users } from 'lucide-react'
-import { useActionState, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Check, Loader2 } from 'lucide-react'
+import { useActionState, useEffect, useId, useRef, useState } from 'react'
 import { BillingCountryField } from '@/components/host/billing-country-field'
 import {
   LegalDetails,
   PaidTermsAcceptance,
 } from '@/components/host/paid-terms-acceptance'
+import {
+  HOST_PANEL,
+  HOST_PAY,
+  HOST_ROW_DETAIL,
+  HOST_ROW_QUESTION,
+  HOST_SECONDARY,
+} from '@/components/host/ui/classes'
+import { StateNotice } from '@/components/host/ui/state-notice'
 import { useSettlePolling } from '@/components/host/use-settle-polling'
+import { CONTACT_EMAIL } from '@/lib/site'
+import { cn } from '@/lib/utils'
 
 const INITIAL: CheckoutState = { error: null }
 
@@ -43,6 +51,9 @@ export type BillingCardProps = {
   /** A suggested default on the checkout screen; always editable. */
   suggestedBillingCountry: BillingCountry | null
   checkout: 'success' | 'cancelled' | null
+  /** The 7f state, from `paymentNotice()`: the latest attempt failed, or the
+   *  host came back from Stripe without paying. */
+  paymentNotice?: 'failed' | 'cancelled' | null
   presentation?: 'settings' | 'checkout'
 }
 
@@ -54,7 +65,19 @@ export type BillingCardProps = {
  * more guests. So the question this card answers is "can another friend join",
  * which is also the only way a host ever runs into the limit.
  *
- * No per-guest price and no tiers anywhere: one event, one payment.
+ * In settings it is one quiet row — "Ingyenes esemény · 4/5 vendég" and a
+ * "Feloldás" button — and the country, the withdrawal waiver and the sky pay
+ * button appear only after that tap. It opens already expanded when the URL
+ * says `#billing`, which is where the event page's quota banner links, so the
+ * host lands ready to pay. A failed or cancelled payment (7f) puts a notice
+ * above the row instead, saying nothing was charged; its "Másik kártya →"
+ * opens the same form, because a new attempt still needs the country and the
+ * waiver, and the server checks both. The post-save checkout screen shows the
+ * form straight away.
+ *
+ * The pay button stays at 40% until the waiver is ticked and a country is
+ * chosen. The checkbox is still a real `required` input named
+ * `legal_acceptance`: `startEventCheckout` checks it on the server.
  */
 export function BillingCard({
   locale,
@@ -67,15 +90,17 @@ export function BillingCard({
   savedBillingCountry,
   suggestedBillingCountry,
   checkout,
+  paymentNotice = null,
   presentation = 'settings',
 }: BillingCardProps) {
   const en = locale === 'en'
   const standalone = presentation === 'checkout'
+  const formId = useId()
   const [state, submit, pending] = useActionState(startEventCheckout, INITIAL)
   const stripeReady = readiness.domestic || readiness.international
-  // Controlled, so the price on the button follows the choice before
-  // anything is submitted. Where it starts is `initialBillingCountry`'s
-  // decision, the same on the checkout screen and in settings.
+  // Controlled, so the price follows the choice before anything is
+  // submitted. Where it starts is `initialBillingCountry`'s decision, the
+  // same on the checkout screen and in settings.
   const [country, setCountry] = useState<BillingCountry | null>(() =>
     initialBillingCountry({
       saved: savedBillingCountry,
@@ -83,6 +108,44 @@ export function BillingCard({
       ipCountry: suggestedBillingCountry,
     }),
   )
+  const [accepted, setAccepted] = useState(false)
+  const [open, setOpen] = useState(false)
+  const formRef = useRef<HTMLDivElement>(null)
+
+  // The hash only exists in the browser, so it is read after mount — in a
+  // timeout, because a synchronous setState in an effect body is a cascading
+  // render. `hashchange` covers a page already open when the link is followed.
+  useEffect(() => {
+    const read = () => {
+      if (window.location.hash === '#billing') setOpen(true)
+    }
+    const timer = window.setTimeout(read, 0)
+    window.addEventListener('hashchange', read)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('hashchange', read)
+    }
+  }, [])
+
+  // A host back from Stripe without paying is brought to the card, which the
+  // cancel URL alone does not do. Only on that return: a failed purchase
+  // keeps its notice on every later visit, and a later visit should open at
+  // the top of settings. A `#billing` link is scrolled by the browser itself.
+  // Scrolled, not expanded: an open form would hide "Másik kártya →".
+  const scrollToNotice = !standalone && checkout === 'cancelled'
+  useEffect(() => {
+    if (!scrollToNotice) return
+    const timer = window.setTimeout(() => {
+      const reduce = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches
+      document.getElementById('billing')?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'start',
+      })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [scrollToNotice])
 
   // Stripe's redirect lands before the webhook does; `useSettlePolling` says
   // why that gap is polled rather than waited out.
@@ -91,202 +154,237 @@ export function BillingCard({
 
   if (unlimited) {
     return (
-      <div className="glass rounded-2xl px-5 py-4">
-        <div className="flex items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/20">
-            <Users className="size-5 text-accent" strokeWidth={1.8} />
-          </span>
-          <div className="min-w-0">
-            <p className="font-medium">
-              {en ? 'Full event' : 'Teljes esemény'}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {planNote ??
-                (en
-                  ? 'Unlimited guests — this account has no participant cap.'
-                  : 'Ehhez a fiókhoz nem tartozik vendégkorlát.')}
-            </p>
-          </div>
-        </div>
-      </div>
+      <section className={`${HOST_PANEL} p-5`}>
+        <p className={HOST_ROW_QUESTION}>
+          {en ? 'Full event' : 'Teljes esemény'}
+        </p>
+        <p className={HOST_ROW_DETAIL}>
+          {planNote ??
+            (en
+              ? 'Unlimited guests — this account has no participant cap.'
+              : 'Ehhez a fiókhoz nem tartozik vendégkorlát.')}
+        </p>
+      </section>
     )
   }
 
-  const used = Math.min(participantCount, participantLimit)
-  const left = Math.max(participantLimit - participantCount, 0)
-  const full = left === 0
+  const full = participantCount >= participantLimit
+  const expanded = standalone || open
+  const notice = settling ? null : paymentNotice
+
+  // Opening the form from the notice moves focus into it, so a keyboard or
+  // screen reader user lands where the next step is rather than on a button
+  // that has just disappeared.
+  function retryWithAnotherCard() {
+    setOpen(true)
+    window.setTimeout(() => formRef.current?.focus(), 0)
+  }
+
+  const form = stripeReady ? (
+    <form action={submit} className="flex flex-col gap-3">
+      <input type="hidden" name="slug" value={slug} />
+      <input type="hidden" name="locale" value={locale} />
+      <input
+        type="hidden"
+        name="source"
+        value={standalone ? 'onboarding' : 'settings'}
+      />
+      <p className={HOST_ROW_DETAIL}>
+        {en
+          ? 'A one-time fee for this event, with unlimited guests.'
+          : 'Egyszeri díj ennél az eseménynél, korlátlan vendéggel.'}
+      </p>
+      <BillingCountryField
+        locale={locale}
+        name="billing_country"
+        value={country}
+        onChange={setCountry}
+        suggested={suggestedBillingCountry}
+        compact={standalone}
+      />
+      {country ? (
+        <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-2">
+          <span className="host-figure text-[28px] leading-none whitespace-nowrap text-white">
+            {eventPriceLabelFor(country)}
+          </span>
+          <span className="text-[14px] text-white/65">
+            {en ? 'one-time payment' : 'egyszeri díj'}
+          </span>
+        </p>
+      ) : null}
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[13px] leading-[1.5] text-white/65">
+        <input
+          type="checkbox"
+          name="legal_acceptance"
+          required
+          checked={accepted}
+          onChange={(event) => setAccepted(event.target.checked)}
+          className="peer sr-only"
+        />
+        <span
+          aria-hidden="true"
+          className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[6px] transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-white/60 ${
+            accepted ? 'bg-white text-landing-ink' : 'bg-white/14'
+          }`}
+        >
+          {accepted ? <Check className="size-3.5" strokeWidth={3} /> : null}
+        </span>
+        <PaidTermsAcceptance locale={locale} />
+      </label>
+      <div className="-mt-2 ml-8">
+        <LegalDetails locale={locale} />
+      </div>
+      <button
+        type="submit"
+        // A country the deployment cannot sell to is refused by the action
+        // with a sentence, which is the explanation the host needs.
+        disabled={pending || !country || !accepted}
+        aria-busy={pending}
+        className={`${HOST_PAY} w-full gap-2 whitespace-normal`}
+      >
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        ) : null}
+        {pending
+          ? en
+            ? 'Redirecting…'
+            : 'Átirányítás…'
+          : standalone
+            ? en
+              ? 'Continue to payment →'
+              : 'Tovább a fizetéshez →'
+            : en
+              ? 'Unlock with payment →'
+              : 'Feloldás fizetéssel →'}
+      </button>
+      <p className="text-center text-[13px] text-white/65">
+        {en
+          ? 'No subscription. No app for guests.'
+          : 'Nincs előfizetés. A vendégeknek nem kell app.'}
+      </p>
+    </form>
+  ) : (
+    // Honest about the state of the world rather than offering a button
+    // that would 500 — no STRIPE_* variables are set in this environment.
+    <p className="rounded-[16px] bg-host-tile px-4 py-3 text-[14px] leading-[1.5] text-white/65">
+      {en
+        ? 'Payments are not enabled yet. Contact us and we can unlock the event manually.'
+        : 'A fizetés még nincs beállítva. Addig is használhatod az albumot, segítségért pedig írj nekünk.'}
+    </p>
+  )
 
   return (
-    <div className="glass rounded-2xl px-5 py-4">
+    <section className={`${HOST_PANEL} p-5`}>
       {!standalone ? (
-        <>
-          <div className="flex items-baseline justify-between gap-4">
-            <p className="font-medium">
+        <div className="flex items-center gap-4">
+          <div className="min-w-0 flex-1">
+            <p className={HOST_ROW_QUESTION}>
               {en ? 'Free event' : 'Ingyenes esemény'}
             </p>
-            <p
-              className={cn(
-                'text-sm tabular-nums',
-                full ? 'text-destructive' : 'text-muted-foreground',
-              )}
-            >
-              {participantCount} / {participantLimit} {en ? 'guests' : 'vendég'}
+            <p className={HOST_ROW_DETAIL}>
+              <span className="host-figure text-[18px] text-white">
+                {participantCount}/{participantLimit}
+              </span>{' '}
+              {en ? 'guests' : 'vendég'}
+              {full ? (
+                <span className="text-host-warn">
+                  {en ? ' · Full' : ' · Betelt'}
+                </span>
+              ) : null}
             </p>
           </div>
-
-          <div
-            className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10"
-            role="progressbar"
-            aria-valuenow={used}
-            aria-valuemin={0}
-            aria-valuemax={participantLimit}
-            aria-label={en ? 'Guest allowance used' : 'Csatlakozott vendégek'}
-          >
-            <div
+          {stripeReady ? (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={formId}
+              onClick={() => setOpen((value) => !value)}
               className={cn(
-                'h-full rounded-full transition-[width]',
-                full ? 'bg-destructive' : 'bg-accent',
+                HOST_SECONDARY,
+                'h-11 shrink-0 rounded-[14px] px-4 text-[14px]',
               )}
-              style={{
-                width: `${Math.min((used / participantLimit) * 100, 100)}%`,
-              }}
-            />
-          </div>
+            >
+              {open ? (en ? 'Cancel' : 'Mégsem') : en ? 'Unlock' : 'Feloldás'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            {full
-              ? en
-                ? 'The allowance is full. Existing guests can still take photos.'
-                : 'Betelt a vendégkeret. Új vendég egyelőre nem tud csatlakozni, aki pedig már csatlakozott, továbbra is fotózhat.'
-              : en
-                ? `${left} more guests can join before you need to unlock the event.`
-                : `Még ${left} vendég csatlakozhat az ingyenes csomagban.`}
-          </p>
-        </>
+      {full && !standalone ? (
+        <p className={`mt-2 ${HOST_ROW_DETAIL}`}>
+          {en
+            ? 'New guests cannot join. Everyone already in can keep shooting.'
+            : 'Új vendég nem tud csatlakozni, aki pedig már csatlakozott, továbbra is fotózhat.'}
+        </p>
       ) : null}
 
       {settling ? (
-        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+        <p className="mt-3 flex items-center gap-2 text-[14px] text-white/65">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           {en
             ? 'Processing the payment — this takes a few seconds.'
             : 'Feldolgozzuk a fizetést. Ez általában csak néhány másodpercig tart.'}
         </p>
       ) : null}
 
-      {checkout === 'cancelled' && !settling ? (
-        <p className="mt-4 text-xs text-muted-foreground">
-          {en
-            ? 'Payment was cancelled. You were not charged.'
-            : 'A fizetést megszakítottad. Nem történt terhelés.'}
-        </p>
+      {notice ? (
+        <div className="mt-4 flex flex-col gap-2">
+          <StateNotice
+            tone="warn"
+            // Hosted Checkout does not say why a payment failed, so neither
+            // does this: no guessing at a declined card or an empty balance.
+            title={
+              notice === 'failed'
+                ? en
+                  ? 'The payment did not go through'
+                  : 'A fizetés nem ment át'
+                : en
+                  ? 'The payment was not completed'
+                  : 'A fizetés nem fejeződött be'
+            }
+            body={en ? 'You have not been charged.' : 'Nem vontunk le pénzt.'}
+          />
+          {stripeReady && !expanded ? (
+            <button
+              type="button"
+              aria-controls={formId}
+              aria-expanded={false}
+              onClick={retryWithAnotherCard}
+              className={`${HOST_PAY} mt-2 w-full`}
+            >
+              {en ? 'Try another card →' : 'Másik kártya →'}
+            </button>
+          ) : null}
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className={`${HOST_SECONDARY} w-full`}
+          >
+            {en ? 'Get help' : 'Segítség kérése'}
+          </a>
+        </div>
       ) : null}
 
-      {stripeReady ? (
-        <form action={submit} className={standalone ? '' : 'mt-4'}>
-          <input type="hidden" name="slug" value={slug} />
-          <input type="hidden" name="locale" value={locale} />
-          <input
-            type="hidden"
-            name="source"
-            value={standalone ? 'onboarding' : 'settings'}
-          />
-          <div
-            className={cn('mb-5', !standalone && 'border-t border-border pt-5')}
-          >
-            <h3 className="text-lg leading-snug font-semibold text-balance">
-              {en
-                ? 'Activate your unlimited OurFilm event'
-                : 'Aktiváld a korlátlan OurFilm eseményt'}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-              {en
-                ? 'Everyone can join, and you can collect all your guest photos in one place.'
-                : 'Minden vendég csatlakozhat, és egy helyen gyűjthetitek össze az összes fotót.'}
-            </p>
-          </div>
-          <BillingCountryField
-            locale={locale}
-            name="billing_country"
-            value={country}
-            onChange={setCountry}
-            suggested={suggestedBillingCountry}
-            compact={standalone}
-            className="mb-4"
-          />
-          {country ? (
-            <p
-              aria-live="polite"
-              className="mb-5 flex flex-wrap items-baseline gap-x-2"
-            >
-              <span className="text-2xl font-semibold whitespace-nowrap tabular-nums">
-                {eventPriceLabelFor(country)}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {en ? 'one-time payment' : 'egyszeri díj'}
-              </span>
-            </p>
-          ) : null}
-          <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
-            <input
-              type="checkbox"
-              name="legal_acceptance"
-              required
-              className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]"
-            />
-            <PaidTermsAcceptance locale={locale} />
-          </label>
-          <div className="mt-2 mb-2 ml-7">
-            <LegalDetails locale={locale} />
-          </div>
-          <Button
-            type="submit"
-            // A country the deployment cannot sell to is refused by the
-            // action with a sentence, which is the explanation the host needs.
-            disabled={pending || !country}
-            aria-busy={pending}
-            className="min-h-11 w-full whitespace-normal"
-          >
-            {pending ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <CreditCard
-                className="size-4"
-                strokeWidth={1.8}
-                aria-hidden="true"
-              />
-            )}
-            {pending
-              ? en
-                ? 'Redirecting…'
-                : 'Átirányítás…'
-              : standalone
-                ? en
-                  ? 'Continue to payment'
-                  : 'Tovább a fizetéshez'
-                : en
-                  ? 'Activate unlimited event'
-                  : 'Korlátlan esemény aktiválása'}
-          </Button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            {en
-              ? 'No subscription. No app for guests.'
-              : 'Nincs előfizetés. A vendégeknek nem kell app.'}
-          </p>
-        </form>
+      {!stripeReady ? (
+        <div className={standalone ? '' : 'mt-4'}>{form}</div>
       ) : (
-        // Honest about the state of the world rather than offering a button
-        // that would 500 — no STRIPE_* variables are set in this environment.
-        <p className="mt-4 rounded-xl bg-white/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          {en
-            ? 'Payments are not enabled yet. Contact us and we can unlock the event manually.'
-            : 'A fizetés még nincs beállítva. Addig is használhatod az albumot, segítségért pedig írj nekünk.'}
-        </p>
+        <div
+          id={formId}
+          ref={formRef}
+          tabIndex={-1}
+          hidden={!expanded}
+          className={cn(standalone ? '' : 'mt-4', 'outline-none')}
+        >
+          {expanded ? form : null}
+        </div>
       )}
 
+      {/* At card level rather than inside the form, so "Mégsem" closing the
+          form does not take the reason the checkout was refused with it. */}
       {state.error ? (
-        <p className="mt-3 text-xs text-destructive">{state.error}</p>
+        <p role="alert" className="mt-3 text-[14px] text-host-danger">
+          {state.error}
+        </p>
       ) : null}
-    </div>
+    </section>
   )
 }

@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { useId, useState } from 'react'
 
+import { HOST_FOCUS } from '@/components/host/ui/classes'
+
 import { localePath, type Locale } from '@/lib/i18n'
 
-const detailsButtonClassName =
-  'min-h-11 underline underline-offset-2 hover:text-foreground'
+const detailsButtonClassName = `min-h-11 underline underline-offset-2 hover:text-white ${HOST_FOCUS}`
 
 /**
  * Shared early-performance declaration for onboarding and billing.
@@ -45,13 +46,13 @@ export function LegalDetails({
 
   if (paid) {
     return (
-      <div className="text-xs leading-relaxed text-muted-foreground">
+      <div className="text-[13px] leading-[1.5] text-white/65">
         <div className="flex flex-wrap items-center gap-x-1.5">
           <Link
             href={localePath(locale, '/aszf')}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-foreground"
+            className={`inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white ${HOST_FOCUS}`}
           >
             {en ? 'Terms' : 'ÁSZF'}
           </Link>
@@ -70,12 +71,12 @@ export function LegalDetails({
             href={localePath(locale, '/adatvedelem')}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-foreground"
+            className={`inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white ${HOST_FOCUS}`}
           >
             {en ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
           </Link>
         </div>
-        <p id={detailsId} hidden={!open} className="pb-3 text-xs">
+        <p id={detailsId} hidden={!open} className="pb-3">
           {en
             ? 'If you cancel within 14 days, before full performance, you pay a proportionate fee for the service already provided. The Terms explain your right to cancel and how to exercise it.'
             : 'Ha 14 napon belül, a maradéktalan teljesítés előtt mondod fel a szolgáltatást, az addig teljesített szolgáltatással arányos díj fizetendő. A felmondási jog és annak gyakorlása részletesen az ÁSZF-ben található.'}
@@ -85,7 +86,7 @@ export function LegalDetails({
   }
 
   return (
-    <div className="text-xs leading-relaxed text-muted-foreground">
+    <div className="text-[13px] leading-[1.5] text-white/65">
       <button
         type="button"
         aria-expanded={open}
@@ -100,7 +101,7 @@ export function LegalDetails({
           href={localePath(locale, '/adatvedelem')}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-foreground"
+          className={`inline-flex min-h-11 items-center underline underline-offset-2 hover:text-white ${HOST_FOCUS}`}
         >
           {en ? 'Privacy Notice' : 'Adatkezelési tájékoztató'}
         </Link>

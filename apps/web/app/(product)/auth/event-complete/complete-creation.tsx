@@ -7,7 +7,7 @@ import { localeTag, type Locale } from '@/lib/i18n'
 import { clearDraft, loadDraft, saveDraft } from '@/lib/event-draft'
 import { track } from '@/lib/telemetry'
 import { createEventFromDraft } from '@/app/(product)/host/events/new/actions'
-import { buttonVariants } from '@/components/ui/button'
+import { HOST_PRIMARY, HOST_QUESTION } from '@/components/host/ui/classes'
 
 /**
  * What this screen can end up showing. Success is not among them: it navigates
@@ -38,15 +38,6 @@ const GENERIC_ERROR =
  * description of what it was.
  */
 let started = false
-
-const dbg = (m: string) => {
-  try {
-    window.localStorage.setItem(
-      '__dbg',
-      (window.localStorage.getItem('__dbg') ?? '') + m + ' | ',
-    )
-  } catch {}
-}
 
 async function run(): Promise<Outcome> {
   const draft = loadDraft(new Date())
@@ -115,7 +106,6 @@ async function run(): Promise<Outcome> {
     source: 'magic_link',
   })
 
-  dbg('result:' + JSON.stringify(result).slice(0, 120))
   if (result.ok) {
     // Only now, and only here. Until this line the draft is the one copy of
     // these answers.
@@ -248,21 +238,16 @@ function Outcome({
 }) {
   return (
     <main
-      className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center px-5 text-center"
+      className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center px-5 text-center text-white"
       // The draft's language, on a route with no locale segment to read it
       // from. See `app/(product)/layout.tsx`.
       lang={localeTag[locale]}
     >
-      <h1 className="font-display text-2xl tracking-tight text-balance">
-        {title}
-      </h1>
-      <p className="mt-3 text-sm leading-relaxed text-pretty text-muted-foreground">
+      <h1 className={HOST_QUESTION}>{title}</h1>
+      <p className="mt-3 text-[15px] leading-[1.6] text-pretty text-white/65">
         {detail}
       </p>
-      <a
-        href={href}
-        className={buttonVariants({ size: 'lg', className: 'mt-7' })}
-      >
+      <a href={href} className={`${HOST_PRIMARY} mt-7`}>
         {cta}
       </a>
     </main>

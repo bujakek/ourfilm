@@ -3,17 +3,18 @@
 import { motion, useAnimationControls, useReducedMotion } from 'motion/react'
 
 import type { StepScreen } from '@/components/host/onboarding/onboarding-shell'
+import { HOST_FOCUS, HOST_KICKER } from '@/components/host/ui/classes'
 import { EVENT_NAME_MAX_LENGTH } from '@/lib/camera'
 import type { Locale } from '@/lib/i18n'
 import { T, still } from '@/lib/motion'
 
 /**
- * Question one: what is this film called?
+ * Question one: what is this film called? (6a)
  *
  * One field, and nothing else on the screen — no cover picker, no event-type
- * chooser, no second setting. The suggestions underneath are prompts rather
- * than categories: tapping one fills the field and leaves it editable, because
- * the point is removing the blank-field pause, not making the choice.
+ * chooser, no second setting. The three suggestions underneath are prompts
+ * rather than categories: tapping one fills the field and leaves it editable,
+ * because the point is removing the blank-field pause, not making the choice.
  */
 export function nameScreen({
   name,
@@ -33,10 +34,13 @@ export function nameScreen({
 }): StepScreen {
   const en = locale === 'en'
   return {
-    eyebrow: en ? 'THE FILM NAME' : 'A FILM NEVE',
+    eyebrow: en ? 'The film name' : 'A film neve',
     title: en
       ? 'What should we call your event?'
       : 'Mi legyen az esemény neve?',
+    detail: en
+      ? 'Give your film a name. It’s what your guests will see.'
+      : 'Adj nevet a filmednek. Ezt látják majd a vendégeid.',
     cta: en ? 'Continue' : 'Tovább',
     ctaDisabled: !canAdvance,
     content: (
@@ -73,15 +77,12 @@ function NameFields({
 
   return (
     <>
-      {/* A rule under a 22px field, not a filled box. The `Pencil` icon went
-          with the box: at this size the rule is already unambiguous, and the
-          icon was a second thing saying "you may type here". No visible label
-          either — the heading two lines up is the question, and a second
-          "Esemény neve" above the field would be the same words twice.
-
-          The rule lives on the wrapper rather than the input so that a tapped
-          suggestion moves the text and not the line under it. */}
-      <div className="w-full border-b-[1.5px] border-white/20 pb-3 transition-colors has-[:focus]:border-white/45">
+      {/* A filled 64px well rather than a rule: it is the one answer on the
+          screen, and the suggestions below fill it. No visible label — the
+          question above is the label, and the input carries it for a screen
+          reader. The well is the wrapper so a tapped suggestion moves the text
+          and not the box around it. */}
+      <div className="flex h-16 w-full items-center overflow-hidden rounded-[20px] bg-host-tile px-5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-white/40">
         <motion.input
           aria-label={en ? 'Event name' : 'Az esemény neve'}
           maxLength={EVENT_NAME_MAX_LENGTH}
@@ -93,55 +94,53 @@ function NameFields({
           onChange={(event) => setName(event.target.value)}
           onKeyDown={(event) => {
             if (event.key !== 'Enter') return
-            // A lone text field in a form submits on Enter. Here that would
-            // post a half-answered draft from the first of four screens, so
-            // the key advances instead — and the keyboard's own "next" is
-            // what closes it.
+            // A lone text field in a form submits on Enter. Here that would post
+            // a half-answered draft from the first of four screens, so the key
+            // advances instead — and the keyboard's own "next" is what closes it.
             event.preventDefault()
             if (canAdvance) onAdvance?.()
           }}
-          placeholder={en ? 'Enter your event name' : 'Írd be a filmed nevét'}
-          className="w-full bg-transparent text-[22px] outline-none placeholder:text-foreground/28"
+          placeholder={en ? 'Enter your event name' : 'Írd be az esemény nevét'}
+          className="w-full bg-transparent text-[20px] text-white outline-none placeholder:text-white/55"
         />
       </div>
 
-      <p
-        id="name-suggestions-label"
-        className="mt-8.5 font-mono text-[9.5px] font-medium tracking-[0.2em] text-foreground/38"
-      >
-        {en ? 'IDEAS' : 'ÖTLETEK'}
+      <p id="name-suggestions-label" className={`mt-6 ${HOST_KICKER}`}>
+        {en ? 'Ideas' : 'Ötletek'}
       </p>
-      {/* Wrapping in a row rather than stacking: three suggestions cost one or
-          two lines instead of four, which is the room the 40px question needs. */}
       <ul
         aria-labelledby="name-suggestions-label"
-        className="mt-3.5 flex flex-wrap gap-2"
+        className="mt-3 flex flex-wrap gap-2"
       >
-        {suggestions.map((suggestion) => (
-          <li key={suggestion}>
-            <motion.button
-              type="button"
-              whileTap={reduceMotion ? undefined : { scale: 0.96 }}
-              transition={reduceMotion ? still : T.snap}
-              onClick={() => {
-                setName(suggestion)
-                if (reduceMotion) return
-                // The text arrives in the field from 4px, rather than a clone
-                // of the chip flying across the screen. What changed is the
-                // answer, and the answer is the four words in the field.
-                field.set({ y: 4, opacity: 0.35 })
-                void field.start({
-                  y: 0,
-                  opacity: 1,
-                  transition: T.settle,
-                })
-              }}
-              className="rounded-full border border-white/13 px-3.5 py-2.5 text-[13px] text-foreground/72 transition-colors hover:border-white/30 hover:text-foreground"
-            >
-              {suggestion}
-            </motion.button>
-          </li>
-        ))}
+        {suggestions.map((suggestion) => {
+          const chosen = name === suggestion
+          return (
+            <li key={suggestion}>
+              <motion.button
+                type="button"
+                aria-pressed={chosen}
+                whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                transition={reduceMotion ? still : T.snap}
+                onClick={() => {
+                  setName(suggestion)
+                  if (reduceMotion) return
+                  // The text arrives in the field from 4px, rather than a
+                  // clone of the chip flying across the screen. What changed is
+                  // the answer, and the answer is the words in the field.
+                  field.set({ y: 4, opacity: 0.35 })
+                  void field.start({ y: 0, opacity: 1, transition: T.settle })
+                }}
+                className={`inline-flex min-h-11 items-center rounded-[14px] px-[18px] py-2 text-left text-[14px] transition-colors ${HOST_FOCUS} ${
+                  chosen
+                    ? 'bg-white text-landing-ink'
+                    : 'bg-host-tile text-white/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {suggestion}
+              </motion.button>
+            </li>
+          )
+        })}
       </ul>
     </>
   )

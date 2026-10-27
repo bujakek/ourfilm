@@ -256,3 +256,26 @@ it('restores older drafts with after-event uploads disabled', () => {
   expect(loadDraft(NOW)?.postEventUploads).toBe(false)
   expect(emptyDraft(NOW, 'Europe/Budapest', KEY).postEventUploads).toBe(false)
 })
+
+describe('the roll and gallery defaults onboarding no longer asks', () => {
+  it('fills them in for a draft that never had them', () => {
+    const legacy: Partial<EventDraft> = draft()
+    delete legacy.shots
+    delete legacy.guestsCanView
+    storage.setItem(DRAFT_KEY, JSON.stringify(legacy))
+    expect(loadDraft(NOW)).toMatchObject({ shots: 24, guestsCanView: true })
+  })
+
+  it('keeps the answers an older draft already holds', () => {
+    storage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ ...draft(), shots: 10, guestsCanView: false }),
+    )
+    expect(loadDraft(NOW)).toMatchObject({ shots: 10, guestsCanView: false })
+  })
+
+  it('still refuses a roll that is not one of the five', () => {
+    storage.setItem(DRAFT_KEY, JSON.stringify({ ...draft(), shots: 7 }))
+    expect(loadDraft(NOW)).toBeNull()
+  })
+})

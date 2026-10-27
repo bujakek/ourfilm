@@ -1,12 +1,17 @@
 'use client'
 
-import { Clock, Hourglass } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
-
 import type { RevealChoice } from '@/lib/camera'
 import type { Locale } from '@/lib/i18n'
-import { T, still } from '@/lib/motion'
 
+/**
+ * When the album develops, as two radio rows.
+ *
+ * Rows rather than tiles: each choice is a label and a sentence, and a row
+ * gives the sentence the width it needs at 390px and 130% text. The selected
+ * row takes a sky wash and a sky dot — selected state is one of the two things
+ * sky may mean — and the dot is the second signal, so the choice survives a
+ * reader who cannot tell the wash apart.
+ */
 export function RevealSelector({
   value,
   onChange,
@@ -20,7 +25,6 @@ export function RevealSelector({
   locale: Locale
   disabled?: boolean
 }) {
-  const reduceMotion = useReducedMotion()
   const en = locale === 'en'
   const choices = [
     {
@@ -29,7 +33,6 @@ export function RevealSelector({
       detail: en
         ? 'Photos appear while the event is happening.'
         : 'A képek már az esemény alatt megjelennek.',
-      Icon: Hourglass,
     },
     {
       value: 'event_end' as const,
@@ -37,29 +40,20 @@ export function RevealSelector({
       detail: en
         ? 'The gallery opens when shooting ends.'
         : 'A galéria a fotózás végén nyílik meg.',
-      Icon: Clock,
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      {choices.map(({ value: choice, label, detail, Icon }) => {
+    <div className="flex flex-col gap-2">
+      {choices.map(({ value: choice, label, detail }) => {
         const active = choice === value
         return (
           <label
             key={choice}
-            className={`relative flex min-h-28 cursor-pointer flex-col justify-between overflow-hidden rounded-lg border p-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
-              active ? 'border-transparent text-accent' : 'border-white/13'
-            } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+            className={`flex min-h-16 cursor-pointer items-center gap-3.5 rounded-[16px] px-4 py-2.5 text-white transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-white/60 ${
+              active ? 'bg-landing-sky/12' : 'bg-host-tile hover:bg-white/8'
+            } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
           >
-            {active ? (
-              <motion.span
-                layoutId={`${name}-selection`}
-                aria-hidden="true"
-                className="absolute inset-0 rounded-lg bg-accent/10 ring-2 ring-accent ring-inset"
-                transition={reduceMotion ? still : T.snap}
-              />
-            ) : null}
             <input
               type="radio"
               name={name}
@@ -69,20 +63,21 @@ export function RevealSelector({
               onChange={() => onChange(choice)}
               className="sr-only"
             />
-            <Icon
-              className="relative z-10 size-5"
-              strokeWidth={active ? 2 : 1.6}
+            <span
               aria-hidden="true"
-            />
-            <span className="relative z-10">
-              <span className="block text-sm leading-snug font-semibold text-balance">
+              className={`flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] ${
+                active ? 'border-landing-sky' : 'border-white/55'
+              }`}
+            >
+              {active ? (
+                <span className="size-2 rounded-full bg-landing-sky" />
+              ) : null}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[15px] leading-[1.5] font-medium text-balance">
                 {label}
               </span>
-              <span
-                className={`mt-1 block text-[0.6875rem] leading-relaxed ${
-                  active ? 'text-accent/80' : 'text-muted-foreground'
-                }`}
-              >
+              <span className="block text-[13px] leading-[1.5] text-pretty text-white/65">
                 {detail}
               </span>
             </span>

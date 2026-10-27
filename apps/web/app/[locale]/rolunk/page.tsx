@@ -1,9 +1,9 @@
-import { PageShell } from '@/components/site/page-shell'
-import { Camera, Heart, MapPin } from 'lucide-react'
+import { InfoPage } from '@/components/pages/info-page'
+import { SiteShell } from '@/components/pages/site-shell'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
 import { isLocale, localePath } from '@/lib/i18n'
+import { localizedPageAlternates } from '@/lib/seo'
 import { notFound } from 'next/navigation'
 
 const copy = {
@@ -64,7 +64,6 @@ const copy = {
     contact: 'Írj nekünk',
   },
 } as const
-const icons = [MapPin, Camera, Heart]
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params
@@ -74,6 +73,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: current.title,
     description: current.description,
     openGraph: { title: current.title, description: current.description },
+    alternates: localizedPageAlternates(locale, '/rolunk'),
     robots: { index: false, follow: true },
   }
 }
@@ -84,64 +84,29 @@ export default async function RolunkPage({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
   const current = copy[locale]
-  const facts = current.facts.map(([title, text], index) => ({
-    title,
-    text,
-    icon: icons[index],
-  }))
 
   return (
-    <PageShell
-      locale={locale}
-      eyebrow={current.eyebrow}
-      title={current.heading}
-      lead={current.lead}
-    >
-      <section className="relative px-4 pb-24 sm:px-6 lg:pb-32">
-        <div className="mx-auto max-w-3xl">
-          <div className="mt-12 space-y-5 text-lg leading-relaxed text-pretty text-muted-foreground">
-            {current.paragraphs.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
-            ))}
-          </div>
-
-          <div className="mt-14 grid gap-4 sm:grid-cols-3">
-            {facts.map((fact) => (
-              <article
-                key={fact.title}
-                className="glass flex h-full flex-col rounded-2xl p-7"
-              >
-                <span className="glass flex size-12 items-center justify-center rounded-lg">
-                  <fact.icon
-                    className="size-6 text-accent"
-                    strokeWidth={1.6}
-                    aria-hidden="true"
-                  />
-                </span>
-                <h2 className="mt-6 text-base font-semibold">{fact.title}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-                  {fact.text}
-                </p>
-              </article>
-            ))}
-          </div>
-
-          <div className="glass-strong mt-14 rounded-2xl p-8 sm:p-10">
-            <h2 className="text-2xl font-semibold tracking-tight text-balance">
-              {current.question}
-            </h2>
-            <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">
-              {current.questionBody}
-            </p>
-            <Link
-              href={localePath(locale, '/kapcsolat')}
-              className={buttonVariants({ className: 'mt-7' })}
-            >
+    <SiteShell locale={locale}>
+      <InfoPage title={current.heading} intro={current.lead}>
+        {current.paragraphs.map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+        {current.facts.map(([title, text]) => (
+          <section key={title}>
+            <h2>{title}</h2>
+            <p>{text}</p>
+          </section>
+        ))}
+        <section>
+          <h2>{current.question}</h2>
+          <p>{current.questionBody}</p>
+          <p>
+            <Link href={localePath(locale, '/kapcsolat')}>
               {current.contact}
             </Link>
-          </div>
-        </div>
-      </section>
-    </PageShell>
+          </p>
+        </section>
+      </InfoPage>
+    </SiteShell>
   )
 }

@@ -9,10 +9,7 @@ import {
   formatDeadline,
   formatEventLocalInput,
   formatFileStamp,
-  formatHuCalendarDay,
-  formatHuMonthYear,
   formatRevealBadge,
-  HU_WEEKDAYS_SHORT,
   isValidTimeZone,
 } from '@/lib/format'
 
@@ -171,25 +168,6 @@ describe('timezone validation', () => {
     for (const bad of ['', 'Mars/Olympus', 'Budapest', 'UTC+2']) {
       expect(isValidTimeZone(bad)).toBe(false)
     }
-  })
-})
-
-describe('the onboarding calendar', () => {
-  it('labels the columns Monday-first and unambiguously', () => {
-    // hu-HU's own narrow weekdays are `V H K Sz Cs P Sz` — szerda and szombat
-    // collide, which is why these are written out rather than derived.
-    expect(HU_WEEKDAYS_SHORT).toEqual(['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'])
-    expect(new Set(HU_WEEKDAYS_SHORT).size).toBe(7)
-  })
-
-  it('heads a month in Hungarian, from a bare year and month', () => {
-    expect(formatHuMonthYear(2026, 7)).toBe('2026. augusztus')
-    expect(formatHuMonthYear(2026, 0)).toBe('2026. január')
-    expect(formatHuMonthYear(2027, 11)).toBe('2027. december')
-  })
-
-  it('gives a cell an accessible name a screen reader can act on', () => {
-    expect(formatHuCalendarDay('2026-08-24')).toBe('2026. augusztus 24., hétfő')
   })
 })
 

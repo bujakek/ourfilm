@@ -1,4 +1,4 @@
-import { ContentLayout } from '@/components/content/content-layout'
+import { SiteShell } from '@/components/pages/site-shell'
 import { isLocale } from '@/lib/i18n'
 import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
@@ -13,5 +13,5 @@ export default async function Layout({
   const { locale } = await params
   if (!isLocale(locale)) notFound()
 
-  return <ContentLayout locale={locale}>{children}</ContentLayout>
+  return <SiteShell locale={locale}>{children}</SiteShell>
 }
