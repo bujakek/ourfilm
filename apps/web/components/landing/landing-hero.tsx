@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Locale } from '@/lib/i18n'
 import { landingCopy } from '@/lib/landing-copy'
 import { CREATE_EVENT_PATH } from '@/lib/routes'
+import { demoEventUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
 
 import { LANDING_CONTAINER } from './layout'
@@ -14,7 +15,8 @@ export const LANDING_PRIMARY_BUTTON =
   'inline-flex h-12 min-w-[180px] items-center justify-center rounded-[16px] bg-white px-[18px] text-[14px] font-medium whitespace-nowrap text-landing-ink transition-colors hover:bg-white/90 lg:h-14 lg:min-w-[190px] lg:px-[22px] lg:text-[16px]'
 
 /**
- * The headline, one sentence under it, one button — and the product.
+ * The headline, one sentence under it, the create button and a quieter way
+ * to try the guest camera first — and the product.
  *
  * The two phones are the host's console and a guest's camera for the same
  * weekend, because that is the whole claim: one event, two sides of it. On a
@@ -47,12 +49,20 @@ export function LandingHero({ locale }: { locale: Locale }) {
           <p className="max-w-[400px] text-[14px] leading-[1.6] text-pretty text-white/60 lg:text-[16px]">
             {copy.lead}
           </p>
-          <Link
-            href={`${CREATE_EVENT_PATH}?lang=${locale}`}
-            className={cn(LANDING_PRIMARY_BUTTON, 'mt-[22px] lg:mt-[26px]')}
-          >
-            {copy.create}
-          </Link>
+          <div className="mt-[22px] flex flex-col items-center gap-3 lg:mt-[26px] lg:flex-row lg:flex-wrap lg:gap-x-5">
+            <Link
+              href={`${CREATE_EVENT_PATH}?lang=${locale}`}
+              className={LANDING_PRIMARY_BUTTON}
+            >
+              {copy.create}
+            </Link>
+            <Link
+              href={demoEventUrl(locale)}
+              className="px-2 py-2 text-[14px] font-medium whitespace-nowrap text-white/70 underline underline-offset-4 transition-colors hover:text-white lg:text-[16px]"
+            >
+              {copy.tryAsGuest}
+            </Link>
+          </div>
         </div>
 
         <PhoneDuo

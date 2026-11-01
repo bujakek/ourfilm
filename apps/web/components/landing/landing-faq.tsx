@@ -4,13 +4,15 @@ import {
   ArrowDownToLine,
   Camera,
   ChevronRight,
+  EyeOff,
   Film,
   Loader,
   LockKeyhole,
+  Printer,
   Smartphone,
-  ThumbsUp,
-  Timer,
+  Tag,
   UsersRound,
+  WifiOff,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -24,19 +26,21 @@ import { LANDING_CONTAINER, LANDING_EYEBROW, LANDING_H2 } from './layout'
 
 /** One per question, in `landingCopy.faq.items` order. */
 const ICONS: LucideIcon[] = [
-  Camera,
   Smartphone,
-  Film,
   UsersRound,
-  LockKeyhole,
+  Film,
+  Camera,
   Loader,
+  LockKeyhole,
+  EyeOff,
+  WifiOff,
+  Printer,
   ArrowDownToLine,
-  ThumbsUp,
-  Timer,
+  Tag,
 ]
 
 /**
- * Nine questions as a list of rows that open in place. Several can be open
+ * The questions as a list of rows that open in place. Several can be open
  * at once: someone comparing two answers should not have to close one to
  * read the other.
  */
