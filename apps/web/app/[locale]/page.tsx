@@ -17,7 +17,7 @@ type Props = { params: Promise<{ locale: string }> }
 
 const metadataCopy = {
   en: {
-    title: 'OurFilm | Your days, through everyone’s eyes',
+    title: 'OurFilm | Your day, through everyone’s eyes',
     description:
       'One shared digital disposable camera for weddings, birthdays, trips and parties. Guests scan a QR code and shoot — no app, no accounts, every photo in one album.',
   },

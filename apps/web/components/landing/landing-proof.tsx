@@ -11,7 +11,8 @@ import { LANDING_CONTAINER, LANDING_EYEBROW, LANDING_H2 } from './layout'
  * What a host gets, in three numbers, and what three couples said about it.
  *
  * The numbers are the product's own facts rather than usage figures: one
- * album, no app, and the free guest limit the database enforces. The guest
+ * album, no app and no guest sign-up. The free guest limit used to be the
+ * third, and was dropped: beside a 100-guest wedding, "5" reads as a cap. The guest
  * demo sits in the same row on a desktop, and after the reviews on a phone,
  * where the row has no room left for it.
  */

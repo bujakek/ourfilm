@@ -2,6 +2,7 @@ import { shotRollList } from './camera'
 import type { Locale } from './i18n'
 import type { OccasionId } from './occasions'
 import { FREE_PARTICIPANT_LIMIT } from './onboarding'
+import { EVENT_PRICE_LABELS } from './pricing'
 
 /**
  * Every string on the homepage, in both languages.
@@ -11,8 +12,9 @@ import { FREE_PARTICIPANT_LIMIT } from './onboarding'
  * those pages have not been rewritten around that yet.
  *
  * Numbers the product enforces are not typed into sentences here. The free
- * guest limit and the roll lengths come from the constants that mirror the
- * database, so the day either changes this page changes with it.
+ * guest limit, the roll lengths and the price come from the constants that
+ * mirror the database and Stripe, so the day one changes this page changes
+ * with it.
  */
 
 /** The fifth tab. Not an `OccasionId`: it has no page of its own to link to. */
@@ -47,17 +49,21 @@ export const landingCopy = {
       } satisfies Record<OccasionId, string>,
     },
     hero: {
-      titleLines: ['Your days,', 'through everyone’s eyes.'],
-      lead: 'One shared camera for the whole group. Scan the QR code, shoot, and discover your day together. No app and no guest sign-up.',
+      titleLines: ['Your day,', 'through everyone’s eyes.'],
+      lead: 'A disposable camera for the whole group, on everyone’s phone. Guests scan a QR code and get a roll of film. No preview, no retakes — the photos develop when you say so. No app, no sign-up.',
       create: 'Create for free',
+      tryAsGuest: 'Try it as a guest',
       screenName: 'A weekend together',
     },
     proof: {
-      titleLines: ['Want to live it again?', 'Every photo in one place.'],
+      titleLines: [
+        'No more chasing photos in group chats.',
+        'Every shot, in high resolution, in one album.',
+      ],
       stats: [
         ['1', 'SHARED ALBUM'],
         ['0', 'APPS TO DOWNLOAD'],
-        [String(FREE_PARTICIPANT_LIMIT), 'GUESTS FREE'],
+        ['0', 'GUEST SIGN-UPS'],
       ],
       tryAsGuest: 'TRY IT AS A GUEST',
       reviews: [
@@ -127,7 +133,7 @@ export const landingCopy = {
       steps: [
         [
           'Create an event',
-          'Name your event and choose when the photos become visible.',
+          'Name your event and choose when the photos are developed.',
         ],
         [
           'Share the QR code',
@@ -135,7 +141,7 @@ export const landingCopy = {
         ],
         [
           'Shoot together',
-          'Everyone shoots from their own point of view. The memories land in one shared album.',
+          'Everyone shoots from their own point of view. The photos develop together, in one shared album.',
         ],
       ],
       swipe: 'SWIPE',
@@ -147,47 +153,55 @@ export const landingCopy = {
       title: 'Frequently asked questions',
       items: [
         [
-          'What is OurFilm for?',
-          'OurFilm is a shared digital disposable camera. Guests join with a QR code, and the photos they take from their own point of view land in one private album.',
-        ],
-        [
           'Do I need to download an app?',
           'No. The camera opens in the phone’s browser, on iPhone and Android alike.',
-        ],
-        [
-          'How do I create an event?',
-          'Give your event a name, set when shooting ends and when the photos appear, then share your own QR code.',
         ],
         [
           'Do guests need to sign up?',
           'No. They scan the QR code, enter their name and can start shooting.',
         ],
         [
-          'Who can see the photos?',
-          'The gallery is private. As the host you see every photo, and you decide whether guests can open it too.',
-        ],
-        [
-          'When do the photos appear?',
-          'You choose: right away, or when the event ends. That way you can discover the whole album together.',
-        ],
-        [
-          'Can I download the whole album?',
-          'Yes. You can download every photo from the event at once, then share or print them.',
+          'How do I create an event?',
+          'Give your event a name, set when shooting ends and when the photos appear, then share your own QR code.',
         ],
         [
           'How many photos can a guest take?',
           `You choose ${rolls('en')} shots per guest for each event. No preview and no retakes: every frame is a moment.`,
         ],
         [
-          'Can I try it for free?',
-          `Yes. OurFilm is free for up to ${FREE_PARTICIPANT_LIMIT} guests. For a bigger group, one payment per event admits unlimited guests — see Pricing.`,
+          'When do the photos appear?',
+          'You choose: right away, or when the event ends. If you wait, guests see no shot before then — so the whole group discovers the album together, like picking up a developed film.',
+        ],
+        [
+          'Who can see the photos?',
+          'The gallery is private. As the host you see every photo, and you decide whether guests can open it too.',
+        ],
+        [
+          'Can I remove a photo?',
+          'Yes. As the host you can hide any photo from the album, or delete it for good.',
+        ],
+        [
+          'What if a guest has no signal?',
+          'The photo waits on their phone and uploads once the connection is back. If they closed the page, it carries on the next time they open it.',
+        ],
+        [
+          'Is the quality good enough to print?',
+          'Yes. Photos are kept in high resolution, ready for an A4 print or a photo book — not shrunk the way chat apps do it.',
+        ],
+        [
+          'Can I download the whole album?',
+          'Yes. You can download every photo from the event at once, then share or print them.',
+        ],
+        [
+          'How much does it cost?',
+          `OurFilm is free for up to ${FREE_PARTICIPANT_LIMIT} guests. For a bigger group, one payment of ${EVENT_PRICE_LABELS.en} per event admits unlimited guests — no subscription. See Pricing.`,
         ],
       ],
       pricingLink: 'Pricing',
     },
     final: {
       titleLines: ['Live it together.', 'Keep it together.'],
-      create: 'Create an event',
+      create: 'Create for free',
       screenName: 'A weekend together',
     },
     footer: {
@@ -252,16 +266,20 @@ export const landingCopy = {
     },
     hero: {
       titleLines: ['A ti napotok,', 'mindenki szemével.'],
-      lead: 'Egy közös kamera az egész társaságnak. Olvassátok be a QR-kódot, fotózzatok, és fedezzétek fel együtt a napotokat. App és vendégregisztráció nélkül.',
+      lead: 'Eldobható kamera az egész társaságnak, mindenki telefonján. A vendégek beolvassák a QR-kódot, és kapnak egy tekercs filmet. Nincs előnézet, nincs újrafotózás — a képek akkor hívódnak elő, amikor te szeretnéd. App és regisztráció nélkül.',
       create: 'Hozd létre ingyen',
+      tryAsGuest: 'Próbáld ki vendégként',
       screenName: 'Egy hétvége együtt',
     },
     proof: {
-      titleLines: ['Újra átélnétek?', 'Minden kép egy helyen.'],
+      titleLines: [
+        'Nem kell többé képekre vadászni a csoportchatekben.',
+        'Minden kép, nagy felbontásban, egy albumban.',
+      ],
       stats: [
         ['1', 'KÖZÖS ALBUM'],
         ['0', 'LETÖLTENDŐ APP'],
-        [String(FREE_PARTICIPANT_LIMIT), 'VENDÉGIG INGYEN'],
+        ['0', 'FIÓK A VENDÉGEKNEK'],
       ],
       tryAsGuest: 'PRÓBÁLD KI VENDÉGKÉNT',
       reviews: [
@@ -328,7 +346,7 @@ export const landingCopy = {
       steps: [
         [
           'Hozz létre egy eseményt',
-          'Adj nevet az eseménynek, és válaszd ki, mikor váljanak láthatóvá a képek.',
+          'Adj nevet az eseménynek, és válaszd ki, mikor hívódjanak elő a képek.',
         ],
         [
           'Oszd meg a QR-kódot',
@@ -336,7 +354,7 @@ export const landingCopy = {
         ],
         [
           'Fotózzatok együtt',
-          'Mindenki a saját szemszögéből fotóz. Az emlékek egy közös albumba kerülnek.',
+          'Mindenki a saját szemszögéből fotóz. A képek együtt, egy közös albumban hívódnak elő.',
         ],
       ],
       swipe: 'LAPOZZ',
@@ -348,47 +366,55 @@ export const landingCopy = {
       title: 'Gyakori kérdések',
       items: [
         [
-          'Mire jó az OurFilm?',
-          'Az OurFilm egy közös digitális eldobható kamera. A vendégek egy QR-kóddal csatlakoznak, és a saját szemszögükből készített képeik egy privát albumba kerülnek.',
-        ],
-        [
           'Kell alkalmazást letölteni?',
           'Nem. A kamera a telefon böngészőjében nyílik meg, iPhone-on és Androidon is.',
-        ],
-        [
-          'Hogyan hozhatok létre egy eseményt?',
-          'Add meg az esemény nevét, állítsd be, meddig tart a fotózás és mikor jelenjenek meg a képek, majd oszd meg a saját QR-kódodat.',
         ],
         [
           'A vendégeknek kell regisztrálniuk?',
           'Nem. Beolvassák a QR-kódot, megadják a nevüket, és már fotózhatnak is.',
         ],
         [
-          'Ki láthatja az elkészült képeket?',
-          'A galéria privát. Házigazdaként minden képet látsz, és te döntöd el, hogy a vendégek is megnyithatják-e.',
-        ],
-        [
-          'Mikor jelennek meg a fotók?',
-          'Te választod ki: a képek megjelenhetnek azonnal vagy az esemény végén. Így akár együtt is felfedezhetitek az egész albumot.',
-        ],
-        [
-          'Letölthető a teljes album?',
-          'Igen. Az esemény összes képét egyben is letöltheted, majd megoszthatod vagy kinyomtathatod őket.',
+          'Hogyan hozhatok létre egy eseményt?',
+          'Add meg az esemény nevét, állítsd be, meddig tart a fotózás és mikor jelenjenek meg a képek, majd oszd meg a saját QR-kódodat.',
         ],
         [
           'Hány képet készíthet egy vendég?',
           `Eseményenként ${rolls('hu')} képet engedélyezhetsz vendégenként. Nincs előnézet és újrafotózás: minden képkocka egy pillanat.`,
         ],
         [
-          'Ingyen is kipróbálhatom?',
-          `Igen. Az OurFilmet ${FREE_PARTICIPANT_LIMIT} vendégig ingyen használhatod. Nagyobb társasághoz egyetlen eseményenkénti díjjal korlátlan vendéget engedhetsz be — részletek az Árak oldalon.`,
+          'Mikor jelennek meg a fotók?',
+          'Te választod ki: azonnal, vagy az esemény végén. Ha vártok, addig a vendégek egyetlen képet sem látnak — így az egész társaság együtt fedezi fel az albumot, mint egy frissen előhívott filmet.',
+        ],
+        [
+          'Ki láthatja az elkészült képeket?',
+          'A galéria privát. Házigazdaként minden képet látsz, és te döntöd el, hogy a vendégek is megnyithatják-e.',
+        ],
+        [
+          'Eltávolíthatok egy képet?',
+          'Igen. Házigazdaként bármelyik képet elrejtheted az albumból, vagy véglegesen törölheted.',
+        ],
+        [
+          'Mi van, ha egy vendégnek nincs térereje?',
+          'A kép a telefonján vár, és feltöltődik, amint visszajön a kapcsolat. Ha közben bezárta az oldalt, a következő megnyitáskor folytatódik.',
+        ],
+        [
+          'Elég jó a minőség a nyomtatáshoz?',
+          'Igen. A képeket nagy felbontásban őrizzük meg, A4-es nyomtatáshoz vagy fotókönyvhöz is — nem nyomjuk össze őket úgy, ahogy a csevegőalkalmazások.',
+        ],
+        [
+          'Letölthető a teljes album?',
+          'Igen. Az esemény összes képét egyben is letöltheted, majd megoszthatod vagy kinyomtathatod őket.',
+        ],
+        [
+          'Mennyibe kerül?',
+          `Az OurFilmet ${FREE_PARTICIPANT_LIMIT} vendégig ingyen használhatod. Nagyobb társasághoz eseményenként egyszeri ${EVENT_PRICE_LABELS.hu} díjjal korlátlan vendéget engedhetsz be — előfizetés nélkül. Részletek az Árak oldalon.`,
         ],
       ],
       pricingLink: 'Árak',
     },
     final: {
       titleLines: ['Együtt megélni.', 'Együtt megőrizni.'],
-      create: 'Esemény létrehozása',
+      create: 'Hozd létre ingyen',
       screenName: 'Egy hétvége együtt',
     },
     footer: {

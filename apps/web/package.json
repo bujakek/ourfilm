@@ -12,6 +12,7 @@
     "seed": "node --env-file=.env.local --experimental-strip-types scripts/seed.ts",
     "grant": "node --env-file=.env.local --experimental-strip-types scripts/grant-event.ts",
     "takedown": "node --env-file=.env.local --experimental-strip-types scripts/takedown-photo.ts",
+    "delete:account": "node --env-file=.env.local --experimental-strip-types scripts/delete-account.ts",
     "reset:data": "node --env-file=.env.local --experimental-strip-types scripts/reset-data.ts",
     "test": "vitest run",
     "test:watch": "vitest",
