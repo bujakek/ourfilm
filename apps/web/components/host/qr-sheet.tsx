@@ -2,7 +2,7 @@
 
 import { Check, Download, QrCode, Share2 } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   HOST_FOCUS,
@@ -10,7 +10,7 @@ import {
   HOST_SECONDARY,
   HOST_TILE,
 } from '@/components/host/ui/classes'
-import { Sheet } from '@/components/host/sheet'
+import { Sheet, SHEET_EXIT_MS } from '@/components/host/sheet'
 import type { Locale } from '@/lib/i18n'
 import { downloadQrCanvas } from '@/lib/qr-file'
 import { shareEventLink } from '@/lib/share-link'
@@ -31,9 +31,14 @@ import { cn } from '@/lib/utils'
  * and not one.
  *
  * The canvas is 1024px whatever it is displayed at, so what downloads is print
- * resolution. It is mounted only while the sheet is open — an offscreen 1024px
- * canvas on a page a host leaves open all evening is a megabyte of texture
- * doing nothing.
+ * resolution. It is mounted only while the sheet is open (and for its exit
+ * animation): `Sheet` keeps its `<dialog>` and children mounted when closed,
+ * so rendering the canvas unconditionally drew a 4MB bitmap per button at
+ * mount. The host list renders one button per open event without photos, and
+ * on the operator's account — which lists every event — that was ~40 canvases
+ * and ~160MB of pixels, enough for iOS Safari to kill the tab on a back
+ * navigation to `/host` ("A problem repeatedly occurred"), when the outgoing
+ * page's canvases had not been collected yet.
  */
 export function QrSheetButton({
   name,
@@ -55,8 +60,21 @@ export function QrSheetButton({
 }) {
   const en = locale === 'en'
   const [open, setOpen] = useState(false)
+  // Separate from `open` so the canvas outlives the close by the exit curve.
+  const [qrMounted, setQrMounted] = useState(false)
   const [copied, setCopied] = useState(false)
   const canvas = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    if (open || !qrMounted) return
+    const timer = window.setTimeout(() => setQrMounted(false), SHEET_EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [open, qrMounted])
+
+  function show() {
+    setQrMounted(true)
+    setOpen(true)
+  }
 
   async function share() {
     const outcome = await shareEventLink({ url, title: name })
@@ -79,7 +97,7 @@ export function QrSheetButton({
       {label ? (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={show}
           className={`${HOST_SECONDARY} w-full gap-2`}
         >
           <QrCode
@@ -92,7 +110,7 @@ export function QrSheetButton({
       ) : (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={show}
           aria-label={en ? 'QR code and link' : 'QR-kód és link'}
           className={`flex size-14 shrink-0 items-center justify-center rounded-[16px] bg-host-tile text-white transition-colors hover:bg-white/10 ${HOST_FOCUS}`}
         >
@@ -153,16 +171,20 @@ export function QrSheetButton({
           {/* White square: scanners need the contrast. */}
           <div className="my-5 flex justify-center">
             <div className="rounded-[16px] bg-white p-4">
-              <QRCodeCanvas
-                ref={canvas}
-                value={url}
-                size={1024}
-                level="M"
-                bgColor="#ffffff"
-                fgColor="#050505"
-                marginSize={4}
-                style={{ height: 176, width: 176 }}
-              />
+              {qrMounted ? (
+                <QRCodeCanvas
+                  ref={canvas}
+                  value={url}
+                  size={1024}
+                  level="M"
+                  bgColor="#ffffff"
+                  fgColor="#050505"
+                  marginSize={4}
+                  style={{ height: 176, width: 176 }}
+                />
+              ) : (
+                <div className="size-[176px]" />
+              )}
             </div>
           </div>
 
