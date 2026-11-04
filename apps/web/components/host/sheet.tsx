@@ -14,6 +14,11 @@ import { useScrollLock } from '@/lib/use-scroll-lock'
  *  exactly the drift `lib/motion.ts` exists to stop. */
 const EXIT_MS = T.exit.duration * 1000
 
+/** How long a closed sheet stays painted while it leaves. Content that is
+ *  expensive to keep mounted (the QR sheet's canvas) unmounts after this,
+ *  rather than vanishing from a panel that is still on its way out. */
+export const SHEET_EXIT_MS = EXIT_MS
+
 export function Sheet({
   open,
   onClose,
