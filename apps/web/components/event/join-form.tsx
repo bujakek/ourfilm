@@ -174,31 +174,29 @@ export function JoinForm({
             {byline}
           </p>
 
-          <div className="mt-6 flex items-end justify-between gap-4">
-            <div>
-              <p className={HOST_KICKER}>{en ? 'Your roll' : 'A tekercsed'}</p>
-              <p className="host-figure mt-1 text-[44px] leading-[0.9] text-white tabular-nums">
-                {shotsPerParticipant}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className={HOST_KICKER}>
-                {revealed
-                  ? en
-                    ? 'Photos'
-                    : 'A képek'
-                  : en
-                    ? 'Developing'
-                    : 'Előhívás'}
-              </p>
-              <p className="mt-1.5 text-[14px] leading-[1.4] font-medium text-white">
-                {revealed
-                  ? en
-                    ? 'Developed'
-                    : 'Előhívva'
-                  : revealSummary(revealMode, locale)}
-              </p>
-            </div>
+          {/* Two rows rather than two columns, so both kickers share a line
+              and the figure shares a baseline with the reveal word beside it. */}
+          <div className="mt-6 grid grid-cols-[auto_auto] items-baseline justify-between gap-x-4 gap-y-1">
+            <p className={HOST_KICKER}>{en ? 'Your roll' : 'A tekercsed'}</p>
+            <p className={`${HOST_KICKER} text-right`}>
+              {revealed
+                ? en
+                  ? 'Photos'
+                  : 'A képek'
+                : en
+                  ? 'Developing'
+                  : 'Előhívás'}
+            </p>
+            <p className="host-figure text-[44px] leading-[0.9] text-white tabular-nums">
+              {shotsPerParticipant}
+            </p>
+            <p className="text-right text-[14px] leading-[1.4] font-medium text-white">
+              {revealed
+                ? en
+                  ? 'Developed'
+                  : 'Előhívva'
+                : revealSummary(revealMode, locale)}
+            </p>
           </div>
 
           {/* The tear line. The only ornament in the design, and it earns its

@@ -115,7 +115,7 @@ export function LandingFooter({ locale }: { locale: Locale }) {
           ))}
         </nav>
 
-        <div className="mt-8 flex flex-col gap-2 border-t border-dashed border-white/12 pt-5 text-[13px] text-white/40 lg:mt-9 lg:flex-row lg:items-center lg:gap-6">
+        <div className="mt-8 flex flex-col gap-2 border-t border-dashed border-white/12 pt-5 text-[13px] text-white/55 lg:mt-9 lg:flex-row lg:items-center lg:gap-6">
           {/* Never a literal year: a hardcoded one goes stale on 1 January. */}
           <p>
             © {new Date().getFullYear()} OurFilm · {copy.copyright}
