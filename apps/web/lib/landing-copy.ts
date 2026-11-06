@@ -34,7 +34,7 @@ export const landingCopy = {
       allOccasions: 'All occasions',
       blog: 'Blog',
       login: 'Log in',
-      create: 'Create for free',
+      create: 'Create your free camera',
       tryAsGuest: 'Try it as a guest',
       faq: 'Questions',
       explore: 'Explore',
@@ -50,8 +50,9 @@ export const landingCopy = {
     },
     hero: {
       titleLines: ['Your day,', 'through everyone’s eyes.'],
-      lead: 'A disposable camera for the whole group, on everyone’s phone. Guests scan a QR code and get a roll of film. No preview, no retakes — the photos develop when you say so. No app, no sign-up.',
-      create: 'Create for free',
+      lead: 'Give everyone at your event a disposable camera on their own phone. Guests scan a QR code, type their name and get a roll of film. The photos develop when you say: right away, or when the party ends.',
+      note: 'No app or sign-up for guests.',
+      create: 'Create your free camera',
       tryAsGuest: 'Try it as a guest',
       screenName: 'A weekend together',
     },
@@ -95,30 +96,27 @@ export const landingCopy = {
       tabs: {
         wedding: {
           label: 'Wedding',
-          title: ['“Moments only', 'your guests saw.”'],
+          title: ['Moments only', 'your guests saw.'],
           screenName: 'Anna & Peter',
         },
         birthday: {
           label: 'Birthday',
-          title: ['“A birthday, through', 'all your friends’ eyes.”'],
+          title: ['A birthday, through', 'all your friends’ eyes.'],
           screenName: 'Lily’s birthday',
         },
         travel: {
           label: 'Trip',
-          title: [
-            '“You travelled together.',
-            'Yet you all saw it differently.”',
-          ],
+          title: ['You travelled together.', 'Yet you all saw it differently.'],
           screenName: 'Our Balaton trip',
         },
         party: {
           label: 'Party',
-          title: ['“The night everyone', 'has a photo of.”'],
+          title: ['The night everyone', 'has a photo of.'],
           screenName: 'Friday night',
         },
         everyday: {
           label: 'Just because',
-          title: ['“No big occasion needed.', 'Just be together.”'],
+          title: ['No big occasion needed.', 'Just be together.'],
           screenName: 'Just a good day',
         },
       } satisfies Record<
@@ -166,15 +164,19 @@ export const landingCopy = {
         ],
         [
           'How many photos can a guest take?',
-          `You choose ${rolls('en')} shots per guest for each event. No preview and no retakes: every frame is a moment.`,
+          `You choose ${rolls('en')} shots per guest for each event. No preview and no retakes.`,
         ],
         [
           'When do the photos appear?',
           'You choose: right away, or when the event ends. If you wait, guests see no shot before then — so the whole group discovers the album together, like picking up a developed film.',
         ],
         [
+          'What do guests see before the photos develop?',
+          'Guests who can open the album see a wall of blurred colour sketches, one per photo, with the name of whoever took it. No real photo appears until the film develops.',
+        ],
+        [
           'Who can see the photos?',
-          'The gallery is private. As the host you see every photo, and you decide whether guests can open it too.',
+          'Only people with your event link can open the album. It isn’t listed or indexed anywhere. As the host you see every photo, and you decide whether guests can open it too.',
         ],
         [
           'Can I remove a photo?',
@@ -193,6 +195,10 @@ export const landingCopy = {
           'Yes. You can download every photo from the event at once, then share or print them.',
         ],
         [
+          `What happens if more than ${FREE_PARTICIPANT_LIMIT} guests scan the code?`,
+          'The next guest is asked to let the host know. You can switch the event to unlimited guests at any time, even while it’s running.',
+        ],
+        [
           'How much does it cost?',
           `OurFilm is free for up to ${FREE_PARTICIPANT_LIMIT} guests. For a bigger group, one payment of ${EVENT_PRICE_LABELS.en} per event admits unlimited guests — no subscription. See Pricing.`,
         ],
@@ -201,15 +207,12 @@ export const landingCopy = {
     },
     final: {
       titleLines: ['Live it together.', 'Keep it together.'],
-      create: 'Create for free',
+      create: 'Create your free camera',
       screenName: 'A weekend together',
     },
     footer: {
       aria: 'Footer',
-      taglineLines: [
-        'One shared day. Every point of view.',
-        'This is your film.',
-      ],
+      taglineLines: ['One shared day. Every point of view.'],
       columns: {
         product: 'OurFilm',
         occasions: 'Occasions',
@@ -251,7 +254,7 @@ export const landingCopy = {
       allOccasions: 'Minden alkalom',
       blog: 'Blog',
       login: 'Belépés',
-      create: 'Hozd létre ingyen',
+      create: 'Készítsd el a kamerádat ingyen',
       tryAsGuest: 'Próbáld ki vendégként',
       faq: 'Kérdések',
       explore: 'Fedezd fel',
@@ -266,8 +269,9 @@ export const landingCopy = {
     },
     hero: {
       titleLines: ['A ti napotok,', 'mindenki szemével.'],
-      lead: 'Eldobható kamera az egész társaságnak, mindenki telefonján. A vendégek beolvassák a QR-kódot, és kapnak egy tekercs filmet. Nincs előnézet, nincs újrafotózás — a képek akkor hívódnak elő, amikor te szeretnéd. App és regisztráció nélkül.',
-      create: 'Hozd létre ingyen',
+      lead: 'Adj mindenkinek egy eldobható kamerát, a saját telefonján. A vendégek beolvassák a QR-kódot, megadják a nevüket, és kapnak egy tekercs filmet. A képek akkor hívódnak elő, amikor te mondod: azonnal, vagy a buli végén.',
+      note: 'A vendégeknek nem kell appot letölteni, sem regisztrálni.',
+      create: 'Készítsd el a kamerádat ingyen',
       tryAsGuest: 'Próbáld ki vendégként',
       screenName: 'Egy hétvége együtt',
     },
@@ -311,27 +315,27 @@ export const landingCopy = {
       tabs: {
         wedding: {
           label: 'Esküvő',
-          title: ['„Pillanatok, amiket csak', 'a vendégeitek láttak.”'],
+          title: ['Pillanatok, amiket csak', 'a vendégeitek láttak.'],
           screenName: 'Anna & Péter',
         },
         birthday: {
           label: 'Születésnap',
-          title: ['„Egy születésnap,', 'az összes barátod szemével.”'],
+          title: ['Egy születésnap,', 'az összes barátod szemével.'],
           screenName: 'Lili születésnapja',
         },
         travel: {
           label: 'Utazás',
-          title: ['„Együtt utaztatok.', 'Mégis mást láttatok.”'],
+          title: ['Együtt utaztatok.', 'Mégis mást láttatok.'],
           screenName: 'Együtt a Balatonnál',
         },
         party: {
           label: 'Buli',
-          title: ['„Az este, amiről', 'mindenkinek van egy képe.”'],
+          title: ['Az este, amiről', 'mindenkinek van egy képe.'],
           screenName: 'Péntek este',
         },
         everyday: {
           label: 'Csak úgy',
-          title: ['„Nem kell nagy alkalom.', 'Csak legyetek együtt.”'],
+          title: ['Nem kell nagy alkalom.', 'Csak legyetek együtt.'],
           screenName: 'Csak egy jó nap',
         },
       } satisfies Record<
@@ -379,15 +383,19 @@ export const landingCopy = {
         ],
         [
           'Hány képet készíthet egy vendég?',
-          `Eseményenként ${rolls('hu')} képet engedélyezhetsz vendégenként. Nincs előnézet és újrafotózás: minden képkocka egy pillanat.`,
+          `Eseményenként ${rolls('hu')} képet engedélyezhetsz vendégenként. Nincs előnézet és nincs újrafotózás.`,
         ],
         [
           'Mikor jelennek meg a fotók?',
           'Te választod ki: azonnal, vagy az esemény végén. Ha vártok, addig a vendégek egyetlen képet sem látnak — így az egész társaság együtt fedezi fel az albumot, mint egy frissen előhívott filmet.',
         ],
         [
+          'Mit látnak a vendégek az előhívás előtt?',
+          'Ha a vendégek megnyithatják az albumot, elmosódott színfoltokat látnak, minden képhez egyet, a készítője nevével. Igazi kép csak az előhívás után jelenik meg.',
+        ],
+        [
           'Ki láthatja az elkészült képeket?',
-          'A galéria privát. Házigazdaként minden képet látsz, és te döntöd el, hogy a vendégek is megnyithatják-e.',
+          'Az albumot csak az nyithatja meg, akinél ott az esemény linkje; sehol nem listázzuk és nem indexeljük. Házigazdaként minden képet látsz, és te döntöd el, hogy a vendégek is megnyithatják-e.',
         ],
         [
           'Eltávolíthatok egy képet?',
@@ -406,6 +414,10 @@ export const landingCopy = {
           'Igen. Az esemény összes képét egyben is letöltheted, majd megoszthatod vagy kinyomtathatod őket.',
         ],
         [
+          `Mi történik, ha ${FREE_PARTICIPANT_LIMIT}-nél több vendég olvassa be a kódot?`,
+          'A következő vendég azt látja, hogy szóljon a házigazdának. Az eseményt bármikor, akár közben is korlátlanra válthatod.',
+        ],
+        [
           'Mennyibe kerül?',
           `Az OurFilmet ${FREE_PARTICIPANT_LIMIT} vendégig ingyen használhatod. Nagyobb társasághoz eseményenként egyszeri ${EVENT_PRICE_LABELS.hu} díjjal korlátlan vendéget engedhetsz be — előfizetés nélkül. Részletek az Árak oldalon.`,
         ],
@@ -414,12 +426,12 @@ export const landingCopy = {
     },
     final: {
       titleLines: ['Együtt megélni.', 'Együtt megőrizni.'],
-      create: 'Hozd létre ingyen',
+      create: 'Készítsd el a kamerádat ingyen',
       screenName: 'Egy hétvége együtt',
     },
     footer: {
       aria: 'Lábléc',
-      taglineLines: ['Egy közös nap. Minden szemszög.', 'Ez a ti filmetek.'],
+      taglineLines: ['Egy közös nap. Minden szemszög.'],
       columns: {
         product: 'OurFilm',
         occasions: 'Alkalmak',

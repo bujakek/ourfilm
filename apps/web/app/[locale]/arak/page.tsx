@@ -50,7 +50,7 @@ const copy = {
     // Managed Payments: Link is the merchant of record outside Hungary, so
     // the total and the document come from Stripe's page, not from us.
     vatNote:
-      'The final price and any applicable tax are shown in Stripe Checkout before you pay, and Link sends the invoice or receipt.',
+      'The final price and any applicable tax are shown in Stripe Checkout before you pay, and you get the invoice or receipt by email from our payment partner, Link.',
     occasionsHeadingLines: ['For every occasion', 'worth looking back on.'],
     faqKicker: 'FAQ',
     faqTitle: 'Frequently asked questions',
@@ -69,11 +69,11 @@ const copy = {
       ],
       [
         'What does the price include?',
-        'Unlimited guests, your own QR code and invite link, the reveal you choose, a private gallery and the whole album as one ZIP download.',
+        'Unlimited guests, your own QR code and invite link, the reveal you choose, an unlisted gallery only your guests can find and the whole album as one ZIP download.',
       ],
       [
         'Do I get an invoice?',
-        'Yes. Stripe Checkout shows the final price and any applicable tax before you pay, and Link sends the invoice or receipt by email.',
+        'Yes. Stripe Checkout shows the final price and any applicable tax before you pay, and you get the invoice or receipt by email from our payment partner, Link.',
       ],
     ],
   },
@@ -125,7 +125,7 @@ const copy = {
       ],
       [
         'Mit tartalmaz az ár?',
-        'Korlátlan számú vendéget, egyedi QR-kódot és meghívólinket, beállítható előhívást, privát galériát és az egész album letöltését, egyben, ZIP-ben.',
+        'Korlátlan számú vendéget, egyedi QR-kódot és meghívólinket, beállítható előhívást, csak a vendégeid által elérhető galériát és az egész album letöltését, egyben, ZIP-ben.',
       ],
       [
         'Kapok számlát a fizetésről?',

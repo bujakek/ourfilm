@@ -15,8 +15,9 @@ export const LANDING_PRIMARY_BUTTON =
   'inline-flex h-12 min-w-[180px] items-center justify-center rounded-[16px] bg-white px-[18px] text-[14px] font-medium whitespace-nowrap text-landing-ink transition-colors hover:bg-white/90 lg:h-14 lg:min-w-[190px] lg:px-[22px] lg:text-[16px]'
 
 /**
- * The headline, one sentence under it, the create button and a quieter way
- * to try the guest camera first — and the product.
+ * The headline, the lead under it, the create button and a quieter way to
+ * try the guest camera first, one line saying guests need no app or account
+ * — and the product.
  *
  * The two phones are the host's console and a guest's camera for the same
  * weekend, because that is the whole claim: one event, two sides of it. On a
@@ -63,6 +64,11 @@ export function LandingHero({ locale }: { locale: Locale }) {
               {copy.tryAsGuest}
             </Link>
           </div>
+          {/* Hidden exactly when the floating QR card shows (`xl`, taller than
+              720px): the card says the same thing, and would sit on top of it. */}
+          <p className="mt-3 text-[13px] leading-[1.5] text-balance text-white/45 lg:mt-4 lg:text-[14px] xl:[@media(min-height:721px)]:hidden">
+            {copy.note}
+          </p>
         </div>
 
         <PhoneDuo
