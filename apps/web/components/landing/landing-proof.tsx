@@ -49,7 +49,9 @@ export function LandingProof({ locale }: { locale: Locale }) {
         <div className="mt-10 flex flex-wrap items-end justify-center gap-x-6 gap-y-6 lg:mt-[50px] lg:justify-start lg:gap-x-10">
           <dl className="grid grid-cols-3 gap-x-4 text-center lg:flex lg:gap-x-10 lg:text-left">
             {copy.stats.map(([figure, label]) => (
-              <div key={label} className="flex flex-col-reverse">
+              // Reversed, `justify-end` packs to the top: the figures stay level
+              // whether a label wraps to one line or two.
+              <div key={label} className="flex flex-col-reverse justify-end">
                 <dt
                   className={cn(
                     LANDING_EYEBROW,

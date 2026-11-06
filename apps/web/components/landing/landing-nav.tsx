@@ -367,7 +367,7 @@ function MobileBar({
   )
   const plainRow = cn(row, 'pl-[37px]')
   const group =
-    'px-0 pt-5 pb-1 text-[13px] font-medium tracking-[0.2em] text-white/40 uppercase'
+    'px-0 pt-5 pb-1 text-[13px] font-medium tracking-[0.2em] text-white/55 uppercase'
 
   return (
     <header className="lg:hidden">

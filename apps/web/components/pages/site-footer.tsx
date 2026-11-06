@@ -121,7 +121,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         ))}
       </nav>
 
-      <div className="col-span-full mt-11 flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-site-faint tab:mt-[15px]">
+      <div className="col-span-full mt-11 flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-site-muted tab:mt-[15px]">
         {/* Never a literal year: a hardcoded one goes stale on 1 January. */}
         <p>© {new Date().getFullYear()} OurFilm</p>
         <a

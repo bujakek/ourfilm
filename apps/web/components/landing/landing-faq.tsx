@@ -2,6 +2,7 @@
 
 import {
   ArrowDownToLine,
+  Blend,
   Camera,
   ChevronRight,
   EyeOff,
@@ -11,6 +12,7 @@ import {
   Printer,
   Smartphone,
   Tag,
+  UserPlus,
   UsersRound,
   WifiOff,
   type LucideIcon,
@@ -31,11 +33,13 @@ const ICONS: LucideIcon[] = [
   Film,
   Camera,
   Loader,
+  Blend,
   LockKeyhole,
   EyeOff,
   WifiOff,
   Printer,
   ArrowDownToLine,
+  UserPlus,
   Tag,
 ]
 
