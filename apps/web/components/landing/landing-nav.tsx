@@ -177,20 +177,23 @@ function DesktopBar({
     <header className="fixed inset-x-0 bottom-0 z-50 hidden lg:block">
       <nav
         aria-label={copy.aria}
-        className="relative rounded-t-[24px] bg-white/6 pt-3.5 pb-3 backdrop-blur-[30px]"
+        className="rounded-t-[24px] bg-white/6 pt-3.5 pb-3 backdrop-blur-[30px]"
       >
         <div
-          className={cn(LANDING_CONTAINER, 'flex h-[51px] items-center gap-6')}
+          className={cn(
+            LANDING_CONTAINER,
+            'grid h-[51px] grid-cols-[1fr_auto_1fr] items-center gap-6',
+          )}
         >
           <Link
             href={nav.home ? '#top' : nav.homeHref}
             aria-label={copy.home}
-            className="flex shrink-0 items-center gap-[7px]"
+            className="flex shrink-0 items-center gap-[7px] justify-self-start"
           >
             <Brand size="lg" />
           </Link>
 
-          <ul className="absolute left-1/2 flex -translate-x-1/2 items-center gap-6 whitespace-nowrap xl:gap-[39px]">
+          <ul className="flex items-center gap-6 whitespace-nowrap xl:gap-[39px]">
             <li>
               <Link href={nav.anchor('how-it-works')} className={link}>
                 {copy.howItWorks}
@@ -289,7 +292,7 @@ function DesktopBar({
             </li>
           </ul>
 
-          <div className="ml-auto flex shrink-0 items-center gap-5">
+          <div className="flex shrink-0 items-center gap-5 justify-self-end">
             <Link
               href={`${LOGIN_PATH}?lang=${locale}`}
               className={cn(
