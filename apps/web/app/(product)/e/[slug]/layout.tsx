@@ -41,7 +41,7 @@ export const metadata: Metadata = {
  */
 export default function EventLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-[100dvh]">
       <PageGrain />
       <div className="relative z-10">{children}</div>
     </div>

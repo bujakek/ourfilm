@@ -177,6 +177,28 @@
   }
   html {
     scroll-behavior: smooth;
+    /* No grey flash on tap: controls carry their own :active state. */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  html,
+  body {
+    /* No pull-to-refresh or page rubber band over the camera and host screens;
+       scroll containers opt in to their own with overscroll-contain. */
+    overscroll-behavior: none;
+  }
+  button,
+  a,
+  [role='button'],
+  summary,
+  label {
+    touch-action: manipulation;
+  }
+  button,
+  [role='button'] {
+    /* A control's label is not content: no long-press text selection. */
+    -webkit-user-select: none;
+    user-select: none;
   }
   body {
     background-color: var(--background);

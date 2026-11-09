@@ -74,4 +74,8 @@ export const siteViewport: Viewport = {
   themeColor: '#050505',
   width: 'device-width',
   initialScale: 1,
+  // Without `cover` every env(safe-area-inset-*) in the product resolves to 0.
+  viewportFit: 'cover',
+  // The software keyboard shrinks the layout viewport on Android, as on iOS.
+  interactiveWidget: 'resizes-content',
 }

@@ -51,7 +51,7 @@ export default async function AuthCallbackPage({ searchParams }: Props) {
   const en = locale === 'en'
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-4 py-10">
       <PageGrain />
       <main
         className="relative z-10"
