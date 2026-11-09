@@ -43,16 +43,16 @@ export const HOST_FOCUS =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
 
 /** The one white action on a screen. */
-export const HOST_PRIMARY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-white px-6 text-[16px] font-medium text-landing-ink transition-colors ${SETTLE} hover:bg-white/90 disabled:opacity-40 ${HOST_FOCUS}`
+export const HOST_PRIMARY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-white px-6 text-[16px] font-medium text-landing-ink transition-[color,background-color,transform] active:scale-[0.97] ${SETTLE} hover:bg-white/90 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** Everything that is not the one primary. */
-export const HOST_SECONDARY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-white/8 px-6 text-[16px] font-medium text-white transition-colors ${SETTLE} hover:bg-white/12 disabled:opacity-40 ${HOST_FOCUS}`
+export const HOST_SECONDARY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-white/8 px-6 text-[16px] font-medium text-white transition-[color,background-color,transform] active:scale-[0.97] ${SETTLE} hover:bg-white/12 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** Sky is for payment, and nothing else is allowed to wear it as a button. */
-export const HOST_PAY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-landing-sky px-6 text-[16px] font-medium text-black transition-opacity ${SETTLE} hover:opacity-90 disabled:opacity-40 ${HOST_FOCUS}`
+export const HOST_PAY = `inline-flex h-14 items-center justify-center rounded-[16px] bg-landing-sky px-6 text-[16px] font-medium text-black transition-[opacity,transform] active:scale-[0.97] ${SETTLE} hover:opacity-90 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** 44px, the minimum tap target. */
-export const HOST_ICON_BUTTON = `inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile text-white transition-colors ${SETTLE} hover:bg-white/10 disabled:opacity-40 ${HOST_FOCUS}`
+export const HOST_ICON_BUTTON = `inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-host-tile text-white transition-[color,background-color,transform] active:scale-[0.97] ${SETTLE} hover:bg-white/10 disabled:opacity-40 ${HOST_FOCUS}`
 
 /** Text inputs and selects. */
 export const HOST_FIELD =

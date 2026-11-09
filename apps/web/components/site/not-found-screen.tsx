@@ -42,7 +42,7 @@ export function NotFoundScreen({
   const text = copy[locale]
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-4 py-16">
       <PageGrain />
       <main className="relative z-10 w-full max-w-md text-center">
         <p className="text-[11px] leading-[1.3] font-medium tracking-[0.24em] text-white/65 uppercase">

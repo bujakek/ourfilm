@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-[100dvh]">
       <PageGrain />
       <HostToastProvider>
         <div className="relative z-10">{children}</div>

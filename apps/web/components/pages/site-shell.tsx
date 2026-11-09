@@ -24,7 +24,7 @@ export function SiteShell({
 }) {
   return (
     <div
-      className={`${landingFontClass} min-h-screen bg-landing pb-[60px] font-landing-sans text-white lg:pb-[120px]`}
+      className={`${landingFontClass} min-h-[100svh] bg-landing pb-[60px] font-landing-sans text-white lg:pb-[120px]`}
     >
       <a
         href="#page-content"

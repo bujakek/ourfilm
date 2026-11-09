@@ -35,7 +35,7 @@ export function ErrorScreen({
   }, [error])
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-4 py-16">
       <PageGrain />
       <main className="relative z-10 w-full max-w-md text-center">
         <h1 className="text-[30px] leading-[1.2] font-medium tracking-tight text-balance text-white">

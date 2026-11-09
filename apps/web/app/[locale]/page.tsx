@@ -52,7 +52,7 @@ export default async function Page({ params }: Props) {
 
   return (
     <div
-      className={`${landingFontClass} min-h-screen bg-landing font-landing-sans text-white lg:pb-[120px]`}
+      className={`${landingFontClass} min-h-[100svh] bg-landing font-landing-sans text-white lg:pb-[120px]`}
     >
       <LandingNav locale={locale} />
       <main>
